@@ -153,7 +153,7 @@ static void radeon_emit_state( drm_radeon_private_t *dev_priv,
 		OUT_RING( CP_PACKET0( RADEON_PP_TXFILTER_0, 5 ) );
 		OUT_RING( tex[0].pp_txfilter );
 		OUT_RING( tex[0].pp_txformat );
-		OUT_RING( tex[0].pp_txoffset );
+		OUT_RING( tex[0].pp_txoffset);
 		OUT_RING( tex[0].pp_txcblend );
 		OUT_RING( tex[0].pp_txablend );
 		OUT_RING( tex[0].pp_tfactor );
@@ -167,7 +167,7 @@ static void radeon_emit_state( drm_radeon_private_t *dev_priv,
 		OUT_RING( CP_PACKET0( RADEON_PP_TXFILTER_1, 5 ) );
 		OUT_RING( tex[1].pp_txfilter );
 		OUT_RING( tex[1].pp_txformat );
-		OUT_RING( tex[1].pp_txoffset );
+		OUT_RING( tex[1].pp_txoffset);
 		OUT_RING( tex[1].pp_txcblend );
 		OUT_RING( tex[1].pp_txablend );
 		OUT_RING( tex[1].pp_tfactor );
@@ -181,7 +181,7 @@ static void radeon_emit_state( drm_radeon_private_t *dev_priv,
 		OUT_RING( CP_PACKET0( RADEON_PP_TXFILTER_2, 5 ) );
 		OUT_RING( tex[2].pp_txfilter );
 		OUT_RING( tex[2].pp_txformat );
-		OUT_RING( tex[2].pp_txoffset );
+		OUT_RING( tex[2].pp_txoffset);
 		OUT_RING( tex[2].pp_txcblend );
 		OUT_RING( tex[2].pp_txablend );
 		OUT_RING( tex[2].pp_tfactor );
@@ -1837,7 +1837,7 @@ static __inline__ int radeon_emit_scalars(
 {
 	int sz = header.scalars.count;
 	int *data = (int *)cmdbuf->buf;
-	int start = header.scalars.offset;
+	int start = header.scalars.offset+dev_priv->fb->offset;
 	int stride = header.scalars.stride;
 	RING_LOCALS;
 
@@ -1861,7 +1861,7 @@ static __inline__ int radeon_emit_scalars2(
 {
 	int sz = header.scalars.count;
 	int *data = (int *)cmdbuf->buf;
-	int start = ((unsigned int)header.scalars.offset) + 0x100;
+	int start = ((unsigned int)header.scalars.offset+dev_priv->fb->offset) + 0x100;
 	int stride = header.scalars.stride;
 	RING_LOCALS;
 
@@ -1883,7 +1883,7 @@ static __inline__ int radeon_emit_vectors(
 {
 	int sz = header.vectors.count;
 	int *data = (int *)cmdbuf->buf;
-	int start = header.vectors.offset;
+	int start = header.vectors.offset+dev_priv->fb->offset;
 	int stride = header.vectors.stride;
 	RING_LOCALS;
 
@@ -2178,7 +2178,7 @@ int radeon_cp_getparam( DRM_IOCTL_ARGS )
 
 	switch( param.param ) {
 	case RADEON_PARAM_AGP_BUFFER_OFFSET:
-		value = dev_priv->agp_buffers_offset;
+		value = dev_priv->agp_buffers_offset + dev_priv->fb->offset;
 		break;
 	case RADEON_PARAM_LAST_FRAME:
 		dev_priv->stats.last_frame_reads++;
@@ -2195,7 +2195,7 @@ int radeon_cp_getparam( DRM_IOCTL_ARGS )
 		value = dev->irq;
 		break;
 	case RADEON_PARAM_AGP_BASE:
-		value = dev_priv->agp_vm_start;
+		value = dev_priv->agp_vm_start + dev_priv->fb->offset;
 		break;
 	default:
 		return DRM_ERR(EINVAL);
