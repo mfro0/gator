@@ -53,6 +53,9 @@ int channel_mask=0;
 #define HI(a)	((unsigned char)((a) >> 8))
 #define LO(a)	((unsigned char)((a) & 0xff))
 
+#define SEND_FLAG_IN_PROGRESS	1
+#define SEND_FLAG_COMPLETE	2
+
 struct ati_remote {
 	unsigned char data[8];
 	char name[128];
@@ -65,6 +68,7 @@ struct ati_remote {
 	wait_queue_head_t wait;
 	devrequest dr;
 	int open;
+	int send_flags;
 };
 
 static char init1[]={
@@ -170,6 +174,7 @@ static void send_packet(struct ati_remote *ati_remote, u16 cmd, unsigned char* d
 	((char*)ati_remote->out.transfer_buffer)[0] = HI(cmd);
 	ati_remote->out.transfer_buffer_length = LO(cmd) + 1;
 	ati_remote->out.dev = ati_remote->usbdev;
+	ati_remote->send_flags=SEND_FLAG_IN_PROGRESS;
 
 	set_current_state(TASK_INTERRUPTIBLE);
 	add_wait_queue(&ati_remote->wait, &wait);
@@ -181,18 +186,17 @@ static void send_packet(struct ati_remote *ati_remote, u16 cmd, unsigned char* d
 		return;
 		}
 
-	while (timeout && ati_remote->out.status == -EINPROGRESS){
+	while (timeout && (ati_remote->out.status == -EINPROGRESS) && 
+		!(ati_remote->send_flags & SEND_FLAG_COMPLETE)){
 		timeout = schedule_timeout(timeout);
+		rmb();
 		}
 
 	set_current_state(TASK_RUNNING);
 	remove_wait_queue(&ati_remote->wait, &wait);
 
-	if (!timeout)
-		usb_unlink_urb(&ati_remote->out);
+	usb_unlink_urb(&ati_remote->out);
 }
-
-static int count=0;
 
 static void ati_remote_irq(struct urb *urb)
 {
@@ -322,6 +326,8 @@ static void ati_remote_usb_out(struct urb *urb)
 {
 	struct ati_remote *ati_remote = urb->context;
 	if (urb->status) return;
+	ati_remote->send_flags|=SEND_FLAG_COMPLETE;
+	wmb();
 	if (waitqueue_active(&ati_remote->wait))
 		wake_up(&ati_remote->wait);
 }
@@ -431,9 +437,7 @@ static void *ati_remote_probe(struct usb_device *dev, unsigned int ifnum,
 		}
 
 	send_packet(ati_remote, 0x8004, init1);
-	usb_unlink_urb(&(ati_remote->out)); 
 	send_packet(ati_remote, 0x8007, init2);
-	usb_unlink_urb(&(ati_remote->out)); 
 
 	return ati_remote;
 }
