@@ -10,6 +10,11 @@ scp_DATA = alsa.scp bindings.scp ffmpeg.scp themes.scp video_device.scp \
 	alsa_mixer.scp channel_scan.scp  km.scp tree.scp xv.scp	\
 	avview.scp diag.scp setup.scp v4l.scp avview.modmap
 
+#
+# Well, it doesn't exist !
+#
+nodist_start_avview_SOURCES = start_avview.c
+
 avview_shell_LDADD = @X_PRE_LIBS@ @X_LIBS@ @X_EXTRA_LIBS@
 avview_shell_CFLAGS = -DAVVIEW_VERSION=\"@PACKAGE_VERSION@\"
 

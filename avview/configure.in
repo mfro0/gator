@@ -4,8 +4,8 @@ AC_PREREQ(2.52)
 # Note to self: always bump version number when there are changes
 # in setup window or avview_shell
 #
-AC_INIT([AV viewer], [0.10.4], [gatos-devel@lists.sf.net])
-AM_INIT_AUTOMAKE
+AC_INIT([AVview], [0.10.4], [gatos-devel@lists.sf.net])
+AM_INIT_AUTOMAKE()
 AC_CONFIG_SRCDIR([frequencies.c])
 AM_CONFIG_HEADER([config.h])
 
@@ -106,7 +106,7 @@ AC_C_CONST
 AC_PROG_GCC_TRADITIONAL
 AC_CHECK_FUNCS([memset strdup strerror])
 
-AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([Makefile start_avview.no_install])
 AC_OUTPUT
 
 if test "no_x" = "yes" ; then
@@ -146,3 +146,5 @@ echo "Unless this tree is really in directory named \"yes\" or \"no\" please"
 echo "restart ./configure with the correct parameter syntax"
 echo ""
 fi
+
+chmod +x start_avview.no_install
