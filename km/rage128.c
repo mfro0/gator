@@ -78,6 +78,8 @@ writel(3, kms->reg_aperture+RAGE128_CAP_INT_STATUS);
 writel((1<<8)|(1<<16), kms->reg_aperture+RAGE128_GEN_INT_STATUS);
 a=readl(kms->reg_aperture+RAGE128_CAP_INT_CNTL);
 writel(a|3, kms->reg_aperture+RAGE128_CAP_INT_CNTL);
+a=readl(kms->reg_aperture+RAGE128_GEN_INT_CNTL);
+writel(a|(1<<16)|(1<<24), kms->reg_aperture+RAGE128_GEN_INT_CNTL);
 }
 
 void rage128_stop_transfer(KM_STRUCT *kms)
@@ -101,7 +103,8 @@ for(i=0;i<(frame->buf_size/PAGE_SIZE);i++){
 		frame->dma_table[i].command=PAGE_SIZE | RAGE128_BM_FORCE_TO_PCI;
 		count-=PAGE_SIZE;
 		} else {
-		frame->dma_table[i].command=count | RAGE128_BM_FORCE_TO_PCI | RAGE128_DMA_GUI_COMMAND__EOL;
+		frame->dma_table[i].command=count | RAGE128_BM_FORCE_TO_PCI | RAGE128_BM_END_OF_LIST;
+		return 0;
 		}
 	}
 return 0;
@@ -132,10 +135,8 @@ if(kms->frame.buf_ptr!=kms->frame.buf_free){
 	}
 kms->total_frames++;
 kms->frame.dma_active=1;
-a=readl(kms->reg_aperture+RAGE128_GEN_INT_CNTL);
-writel(a|(1<<16)|(1<<24), kms->reg_aperture+RAGE128_GEN_INT_CNTL);
 writel(kvirt_to_pa(kms->frame.dma_table)|RAGE128_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM, 
-	kms->reg_aperture+RAGE128_BM_GUI);
+	kms->reg_aperture+RAGE128_BM_VIDCAP_BUF0);
 printk("start_frame_transfer_buf0\n");
 }
 
@@ -164,16 +165,16 @@ if(kms->frame_even.buf_ptr!=kms->frame_even.buf_free){
 	}
 kms->total_frames++;
 kms->frame_even.dma_active=1;
-a=readl(kms->reg_aperture+RAGE128_GEN_INT_CNTL);
-writel(a|(1<<16)|(1<<24), kms->reg_aperture+RAGE128_GEN_INT_CNTL);
 writel(kvirt_to_pa(kms->frame_even.dma_table)|RAGE128_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM, 
-	kms->reg_aperture+RAGE128_BM_GUI);
+	kms->reg_aperture+RAGE128_BM_VIDCAP_BUF0);
 printk("start_frame_transfer_buf0_even\n");
 }
 
 static int rage128_is_capture_irq_active(KM_STRUCT *kms)
 {
 long status, mask;
+status=readl(kms->reg_aperture+RAGE128_GEN_INT_STATUS);
+if(!(status & (1<<8)))return 0;
 status=readl(kms->reg_aperture+RAGE128_CAP_INT_STATUS);
 mask=readl(kms->reg_aperture+RAGE128_CAP_INT_CNTL);
 if(!(status & mask))return 0;
@@ -198,12 +199,11 @@ count=10000;
 
 while(1){
 	printk("beep %ld\n", kms->interrupt_count);
-	status=readl(kms->reg_aperture+RAGE128_GEN_INT_STATUS);
-	mask=readl(kms->reg_aperture+RAGE128_GEN_INT_CNTL);
-	printk("status=0x%08x mask=0x%08x\n", status);
-	if(!(status & (1<<8)) && !rage128_is_capture_irq_active(kms)){
-		if(status & (1<<16))acknowledge_dma(kms);
+	if(!rage128_is_capture_irq_active(kms)){
+		status=readl(kms->reg_aperture+RAGE128_GEN_INT_STATUS);
+		mask=readl(kms->reg_aperture+RAGE128_GEN_INT_CNTL);
 		if(!(status & mask))return;
+		if(status & (1<<16))acknowledge_dma(kms);
 		writel(status & mask, kms->reg_aperture+RAGE128_GEN_INT_STATUS);
 		count--;
 		if(count<0){
