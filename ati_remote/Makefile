@@ -1,33 +1,49 @@
-CFLAGS = -m486 -O2 -Wall -Wstrict-prototypes -pipe -fno-strict-aliasing -fno-common
-LDFLAGS = -s -N
-CC=gcc
 
-TOPDIR=/usr/src/linux
+ifeq ($(KDIR),)
+	export KDIR := /usr/src/linux
+endif
 
-ATI_REMOTE_OBJS=km.o km_v4l.o km_memory.o radeon.o mach64.o rage128.o
+ifeq ($(PWD),)
+	export PWD := $(shell pwd)
+endif
 
-ATI_REMOTE_API_OBJS=km_api.o
+ifeq ($(KERNELRELEASE),)
 
-all: ati_remote.o
+    .DEFAULT:
+	$(MAKE) -C $(KDIR) SUBDIRS=$(PWD) $(@)
 
-ati_remote.o:	ati_remote.c 
-	$(CC) $(CFLAGS) -DMODULE -D__KERNEL__ -DLINUX -I/usr/src/linux/include -c ati_remote.c
+else
 
+    ifeq ($(PATCHLEVEL),6)
+            obj-m  := ati_remote26.o
+    endif
 
-test: ati_remote.o
+    ifeq ($(PATCHLEVEL),4)
+            obj-m  := ati_remote.o
+	    TOPDIR := $(KDIR)
+            include $(TOPDIR)/Rules.make
+    endif
+
+endif
+
+.PHONY: install test remove clean tarball
+
+all: modules
+
+install: modules
+	echo "Installation rule TODO (is tricky)"
+
+test: modules
 	sync
-	insmod ./ati_remote.o
-
-install:
-	mkdir -p /lib/modules/`uname -r`/misc/
-	install ati_remote.o /lib/modules/`uname -r`/misc/
-
-tarball:
-	(cd .. ; tar cvf - ati_remote/*.[c,h] ati_remote/Makefile ati_remote/README | gzip - ) > ati_remote.tgz
+	insmod $(PWD)/ati_remote26.ko || insmod $(PWD)/ati_remote.o
 
 remove:
-	rmmod ati_remote
+	sync
+	rmmod ati_remote26 || rmmod ati_remote
 
 clean:
-	rm -f *.o *.bck *.bak core
+	rm -f $(PWD)/*.o $(PWD)/*.ko $(PWD)/*.bck $(PWD)/*.bak $(PWD)/core
+	rm -f $(PWD)/*.mod.c $(PWD)/.*.cmd $(PWD)/.*.flags
 
+tarball:
+	(cd $(PWD)/.. ; tar cvf - ati_remote/ati_remote.c ati_remote/ati_remote26.c ati_remote/Makefile ati_remote/README ati_remote/README_LIRC ati_remote/README.Makefile | gzip - ) > $(PWD)/ati_remote.tgz

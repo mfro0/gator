@@ -1,5 +1,4 @@
 
-
      ATI USB Remote Control driver
      
      This is an experimental driver.. who knows what it'll do ?
@@ -7,7 +6,8 @@
      To use:
      
          * turn on USB and "input" support in the kernel
-	 * make
+	 * the kernel tree must be in a (partially) built state
+	 * make KDIR=/path/to/kernel/tree/
 	 * make test
 	 * configure X to use /devfs/input/mice as a mouse
 	 * start X - enjoy !
