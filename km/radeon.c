@@ -298,13 +298,14 @@ static int radeon_setup_dma_table(KM_STRUCT *kms, bm_list_descriptor *dma_table,
 int i;
 long count;
 count=free;
-for(i=0;i<(kms->capture.dvb.size/PAGE_SIZE);i++){
+for(i=0;;i++){
 	dma_table[i].from_addr=offset+i*PAGE_SIZE;
 	if(count>PAGE_SIZE){
 		dma_table[i].command=PAGE_SIZE;
 		count-=PAGE_SIZE;
 		} else {
 		dma_table[i].command=count | RADEON_DMA_GUI_COMMAND__EOL ;
+		break;
 		}
 	}
 /* verify_dma_table(kms, frame); */
@@ -331,7 +332,6 @@ do {
 	} while (!(status & 0x1f));
 wmb();
 writel(kvirt_to_bus(kmtr->stream->dma_table[kmtr->buffer])&~1, kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR);
-wmb();
 }
 
 static void radeon_schedule_request(KM_STRUCT *kms, KM_STREAM *stream, u32 offset, int odd)
@@ -536,7 +536,9 @@ int radeon_init_hardware(KM_STRUCT *kms)
 u32 a;
 
 a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
+#if 0
 writel(a|(INT_BIT_VBLANK|INT_BIT_VLINE|INT_BIT_VSYNC), kms->reg_aperture+RADEON_GEN_INT_CNTL);
+#endif
 /* turn off any capture related interrupts 
    km should be the only code that uses it
    Note that there is a separate bit 30 in GEN_INT_CNTL
