@@ -50,6 +50,7 @@ foreach file $km_devs {
 				}
 			if { [regexp {END_STATUS} $line] } { break }
 			}
+		close $FILE
 		}
 	if { $LOCATION_ID == $location_id } {
 		return [list file $file attrs $attrs]
