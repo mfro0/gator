@@ -65,6 +65,7 @@ make_text_holder $dmesg_pane {
 		}
 	regsub {child process exited abnormally.?.?.?$} $b "" c
 	$dmesg_pane.f.text insert end $c
+	$dmesg_pane.f.text insert end "\n"
 	$dmesg_pane.f.text see end
 	}
 

@@ -11,7 +11,7 @@
 # AVview version   Note to self: always bump it when setup window changes
 #
 global avview_version
-set avview_version "0.10.0"
+set avview_version "0.10.1"
 
 global control_screen
 set control_screen1 ""
@@ -19,14 +19,30 @@ regexp "control=\[^ \]+" "$argv" control_screen1
 regsub "control=" "$control_screen1" "" control_screen
 puts "control_screen=$control_screen"
 
-global debug
-set debug 0
+foreach {variable value} {
+	debug 0
+	show_control_window 0
+	file_save_path "."
+	current_capture_filename "test3.avi"
+	fullscreen_mode false
+	remember_fullscreen_state false
+	always_start_fullscreen false
+	display_setup_window_on_startup false
+	current_v4l_mode "single-frame"
+	v4l_capture_on false
+	current_video_codec "MPEG-1"
+	current_audio_codec "MPEG-2"
+	current_v4l_rrate "as is"
+	current_v4l_device "none"
+	current_av_format "MPEG"
+	} {
+	global $variable
+	set $variable $value
+	}
+
 
 global TABLE_LIST
 set TABLE_LIST [freq_get_table_list]
-
-global display_setup_window_on_startup
-set display_setup_window_on_startup false
 
 source tree.scp
 source setup.scp
@@ -39,18 +55,6 @@ source ffmpeg.scp
 source video_device.scp
 source diag.scp
 source bindings.scp
-
-foreach {variable value} {
-	show_control_window 0
-	file_save_path "."
-	current_capture_filename "test3.avi"
-	fullscreen_mode false
-	remember_fullscreen_state false
-	always_start_fullscreen false
-	} {
-	global $variable
-	set $variable $value
-	}
 
 proc skip_args3 { a b c } {
 }
@@ -629,22 +633,10 @@ trace variable capture_window w  { generate_capture_window .controlwin.capture ;
 global current_v4l_device
 trace variable current_v4l_device w  "set_v4l_device .controlwin.capture"
 global current_v4l_mode
-set current_v4l_mode "single-frame"
 trace variable current_v4l_mode w {update_v4l_window_info .controlwin.capture ; skip_args3 }
 global v4l_capture_on
 set v4l_capture_on false
 trace variable v4l_capture_on w "on_v4l_capture_set .controlwin.capture"
-global current_video_codec
-set current_video_codec "MPEG-4"
-global current_audio_codec
-set current_audio_codec "PCM"
-global current_av_format
-set current_av_format "AVI"
-global current_v4l_rrate
-set current_v4l_rrate "as is"
-global current_v4l_device
-set current_v4l_device "none"
-global alsa_window
 
 if {[alsa_present] == "yes" } {
 	trace variable alsa_window w "generate_alsa_window .controlwin.alsamixer ; skip_args3"
@@ -670,13 +662,19 @@ wm protocol . WM_DELETE_WINDOW {
 	save_settings  
 	exit 
 	}
+#wm protocol .controlwin WM_DELETE_WINDOW {
+#        if { [ffmpeg_present] == "yes" } {
+#                ffmpeg_stop_encoding
+#                }
+#	 save_settings
+#	 exit 
+#	 }
+
 wm protocol .controlwin WM_DELETE_WINDOW {
-        if { [ffmpeg_present] == "yes" } {
-                ffmpeg_stop_encoding
-                }
-	 save_settings
-	 exit 
-	 }
+	global show_control_window
+	set show_control_window false
+	}
+
 wm title . "AV Viewer"
 wm title .controlwin "AV Control"
 

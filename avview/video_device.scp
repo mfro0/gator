@@ -3,7 +3,8 @@
 add_parameter_pane "/Video device parameters" "Video device parameters" \
 	"Xv port used for on-screen display" choice {current_port } \
 	"Xv port encoding" choice {current_encoding } \
-	"Channel table" choice [linsert $TABLE_LIST 0 current_table_name] 
+	"Channel table" choice [linsert $TABLE_LIST 0 current_table_name] \
+	"Open favorite channel editor" command scan_channels
 
 
 proc regenerate_port_menu {} {
