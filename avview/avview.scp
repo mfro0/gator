@@ -614,10 +614,16 @@ if { [alsa_present] == "yes" } {
 .video_menu.interface_menu add separator
 .video_menu.interface_menu add cascade -label "Theme" -menu .video_menu.interface_menu.theme_menu
 
-
+bind .video_menu <Unmap> {
+	grab release .video_menu
+	grab -global .
+	focus -force .
+	}
+	
 bind $VIDEO_WINDOW  <ButtonPress-3>  {
 	global $VIDEO_WINDOW
-	.video_menu post [winfo pointerx $VIDEO_WINDOW] [winfo pointery $VIDEO_WINDOW]
+	#.video_menu post [winfo pointerx $VIDEO_WINDOW] [winfo pointery $VIDEO_WINDOW]
+	tk_popup .video_menu [winfo pointerx $VIDEO_WINDOW] [winfo pointery $VIDEO_WINDOW]
 	grab .video_menu
 	}
 
