@@ -41,6 +41,7 @@ test: km_drv.o km_api.o
 
 install:
 	mkdir -p /lib/modules/`uname -r`/misc/
+	install km_api.o /lib/modules/`uname -r`/misc/
 	install km_drv.o /lib/modules/`uname -r`/misc/
 
 tarball:

@@ -255,8 +255,8 @@ if(frame->buffer==NULL){
 	return -1;
 	}
 printk("Allocated %ld bytes for a single frame buffer\n", frame->buf_size);
-/*data1.dma_table=__get_dma_pages(GFP_KERNEL | GFP_DMA, 1);*/
-frame->dma_table=rvmalloc(4096);
+frame->dma_table=__get_dma_pages(GFP_KERNEL | GFP_DMA, 1);
+/*frame->dma_table=rvmalloc(4096);*/
 printk("frame table virtual address 0x%p, physical address: 0x%08lx, bus address: 0x%08lx\n",
 	frame->dma_table, kvirt_to_pa(frame->dma_table), kvirt_to_bus(frame->dma_table));
 if(frame->dma_table==NULL){
