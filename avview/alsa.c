@@ -298,6 +298,7 @@ for(elem=snd_hctl_first_elem(ad->hctl);elem!=NULL;elem=snd_hctl_elem_next(elem))
 			Tcl_ListObjAppendElement(interp,list,list2);
 			break;
 		default:
+			break;
 		}
 	Tcl_ListObjAppendElement(interp, ans, list);
 	j++;
