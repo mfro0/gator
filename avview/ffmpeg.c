@@ -42,9 +42,7 @@ typedef struct {
 	long width;
 	long height;
 	long stop;
-	long video_size;
 	long frame_count;
-	long step_frames;
 	long frames_encoded;
 	int64 encoded_stream_size;
 	int fd_out;
@@ -72,7 +70,6 @@ typedef struct {
 	PACKET_STREAM *audio_s;
 	pthread_t video_reader_thread;
 	pthread_t audio_reader_thread;
-	V4L_DATA *v4l_data;
 	ALSA_PARAMETERS alsa_param;
 	} FFMPEG_ENCODING_DATA;
 
@@ -314,57 +311,6 @@ while(1){
 	}
 }
 
-void v4l_reader_thread(V4L_DATA *data)
-{
-PACKET *p;
-PACKET_STREAM *s=sdata->video_s;
-fd_set read_fds;
-int a;
-long incoming_frames_count=0;
-struct timeval tv;
-/* lock mutex before testing s->stop_stream */
-p=new_generic_packet(s, sdata->video_size);
-pthread_mutex_lock(&(s->ctr_mutex));
-while(!(s->stop_stream & STOP_PRODUCER_THREAD)){
-	pthread_mutex_unlock(&(s->ctr_mutex));
-	
-	/* do the reading */
-	if((a=read(data->fd, p->buf+p->free, p->size-p->free))>0){
-		p->free+=a;
-		if(p->free==p->size){ /* deliver packet */
-			gettimeofday(&tv, NULL);
-			p->timestamp=(((int64)tv.tv_sec)<<20)|(tv.tv_usec);
-			pthread_mutex_lock(&(s->ctr_mutex));
-			if(!(s->stop_stream & STOP_PRODUCER_THREAD) &&
-				(!sdata->step_frames || !(incoming_frames_count % sdata->step_frames))){
-				deliver_packet(s, p);
-				pthread_mutex_unlock(&(s->ctr_mutex));
-				p=new_generic_packet(s, sdata->video_size);
-				} else {
-				p->free=0;
-				pthread_mutex_unlock(&(s->ctr_mutex));
-				}
-			incoming_frames_count++;
-			}
-		} else
-	if(a<0){
-		FD_ZERO(&read_fds);
-		FD_SET(data->fd, &read_fds);
-		a=select(data->fd+1, &read_fds, NULL, NULL, NULL);
-		#if 0
-		fprintf(stderr,"a=%d\n", a);
-		perror("");
-		#endif
-		} 
-	pthread_mutex_lock(&(s->ctr_mutex));
-	}
-data->priv=NULL;
-sdata->v4l_data=NULL;
-s->producer_thread_running=0;
-pthread_mutex_unlock(&(s->ctr_mutex));
-fprintf(stderr,"v4l_reader_thread finished\n");
-pthread_exit(NULL);
-}
 
 
 
@@ -395,6 +341,7 @@ char *arg_v4l_mode;
 char *arg_v4l_rate;
 char *arg_video_bitrate;
 char *arg_deinterlace_mode;
+char *arg_step_frames;
 struct video_picture vpic;
 struct video_window vwin;
 double a,b;
@@ -405,6 +352,7 @@ arg_v4l_mode=get_value(argc, argv, "-v4l_mode");
 arg_v4l_rate=get_value(argc, argv, "-v4l_rate");
 arg_video_bitrate=get_value(argc, argv, "-video_bitrate");
 arg_deinterlace_mode=get_value(argc, argv, "-deinterlace_mode");
+arg_step_frames=get_value(argc, argv, "-step_frames");
 
 if((arg_v4l_handle==NULL)||
 	(!strcmp(arg_v4l_handle, "none"))||
@@ -440,12 +388,19 @@ if(!strcmp("half-width", arg_deinterlace_mode)){
 	data->mode=MODE_DEINTERLACE_HALF_WIDTH;
 	}
 
+data->step_frames=0;
+if(arg_step_frames==NULL){
+	/* nothing */
+	} else
+if(!strcmp("one half", arg_step_frames))data->step_frames=2;
+	else
+if(!strcmp("one quarter", arg_step_frames))data->step_frames=4;
+
 sdata->width=vwin.width;
 sdata->height=vwin.height;
-sdata->video_size=vwin.width*vwin.height*2;
+data->video_size=vwin.width*vwin.height*2;
 sdata->frame_count=1;
 sdata->frames_encoded=0;
-sdata->last_audio_timestamp=0;
 sdata->last_video_timestamp=0;
 
 if(arg_video_codec==NULL){
@@ -502,14 +457,13 @@ switch(data->mode){
 sdata->video_codec_context.frame_rate=0;
 if(arg_v4l_rate!=NULL)sdata->video_codec_context.frame_rate=rint(atof(arg_v4l_rate)*FRAME_RATE_BASE);
 if(sdata->video_codec_context.frame_rate<=0)sdata->video_codec_context.frame_rate=60*FRAME_RATE_BASE;
-if(sdata->step_frames>0)sdata->video_codec_context.frame_rate=sdata->video_codec_context.frame_rate/sdata->step_frames;
+if(data->step_frames>0)sdata->video_codec_context.frame_rate=sdata->video_codec_context.frame_rate/data->step_frames;
 a=(((800000.0*vwin.width)*vwin.height)*sdata->video_codec_context.frame_rate);
 b=(352.0*288.0*25.0*FRAME_RATE_BASE);
 sdata->video_codec_context.bit_rate=0;
 if(arg_video_bitrate!=NULL)sdata->video_codec_context.bit_rate=atol(arg_video_bitrate);
 if(sdata->video_codec_context.bit_rate< (sdata->video_codec_context.frame_rate/FRAME_RATE_BASE+1))
 	sdata->video_codec_context.bit_rate=rint(a/b);
-
 fprintf(stderr,"video: using bitrate=%d, frame_rate=%d\n", sdata->video_codec_context.bit_rate, sdata->video_codec_context.frame_rate);
 sdata->video_codec_context.pix_fmt=PIX_FMT_YUV422;
 sdata->video_codec_context.flags=CODEC_FLAG_QSCALE;
@@ -522,7 +476,11 @@ if(avcodec_open(&(sdata->video_codec_context), sdata->video_codec)<0){
 	return 0;
 	}
 data->priv=sdata;
-sdata->v4l_data=data;
+sdata->video_s=new_packet_stream();
+sdata->video_s->priv=data;
+sdata->video_s->consume_func=ffmpeg_v4l_encoding_thread;
+/* set threshold to two frames worth of data */
+sdata->video_s->threshold=data->video_size*2;
 return 1;
 }
 
@@ -538,6 +496,7 @@ arg_audio_codec=get_value(argc, argv, "-audio_codec");
 arg_audio_bitrate=get_value(argc, argv, "-audio_bitrate");
 arg_audio_rate=get_value(argc, argv, "-audio_rate");
 sdata->audio_codec=avcodec_find_encoder(CODEC_ID_PCM_S16LE); 
+sdata->last_audio_timestamp=0;
 fprintf(stderr,"Using audio_codec=%s\n", arg_audio_codec);
 if(arg_audio_codec==NULL){
 	/* default to MPEG-2 */
@@ -587,6 +546,7 @@ if(sdata->audio_codec_context.frame_size==1){
 	
 if(sdata->audio_codec_context.frame_size>=1)
 	sdata->alsa_param.chunk_size=sdata->audio_codec_context.frame_size*2*sdata->alsa_param.channels;
+sdata->audio_s->consume_func=ffmpeg_audio_encoding_thread;
 return 1;
 }
 
@@ -594,7 +554,6 @@ int ffmpeg_encode_v4l_stream(ClientData client_data,Tcl_Interp* interp,int argc,
 {
 int i,k;
 char *arg_filename;
-char *arg_step_frames;
 char *arg_av_format;
 
 Tcl_ResetResult(interp);
@@ -605,7 +564,6 @@ if(argc<5){
 	}
 
 arg_filename=get_value(argc, argv, "-filename");
-arg_step_frames=get_value(argc, argv, "-step_frames");
 arg_av_format=get_value(argc, argv, "-av_format");
 
 if(arg_filename==NULL){
@@ -625,13 +583,6 @@ sdata->audio_sample_top_right=0;
 for(i=0;i<32;i++)sdata->luma_hist[i]=0;
 pthread_mutex_init(&(sdata->format_context_mutex), NULL);
 
-sdata->step_frames=0;
-if(arg_step_frames==NULL){
-	/* nothing */
-	} else
-if(!strcmp("one half", arg_step_frames))sdata->step_frames=2;
-	else
-if(!strcmp("one quarter", arg_step_frames))sdata->step_frames=4;
 
 sdata->fd_out=open(arg_filename, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
 if(sdata->fd_out<0){
@@ -703,15 +654,9 @@ if(sdata->format_context.format!=NULL){
 	strcpy(sdata->format_context.title, arg_filename);
 	sdata->format_context.format->write_header(&(sdata->format_context));
 	}
-sdata->video_s=new_packet_stream();
-sdata->video_s->priv=sdata->v4l_data;
-sdata->video_s->consume_func=ffmpeg_v4l_encoding_thread;
-sdata->audio_s->consume_func=ffmpeg_audio_encoding_thread;
-/* set threshold to two frames worth of data */
-sdata->video_s->threshold=sdata->video_size*2;
 if(sdata->video_stream_num>=0){
 	sdata->video_s->producer_thread_running=1;
-	if(pthread_create(&(sdata->video_reader_thread), NULL, v4l_reader_thread, sdata->v4l_data)!=0){
+	if(pthread_create(&(sdata->video_reader_thread), NULL, v4l_reader_thread, sdata->video_s)!=0){
 		sdata->video_s->producer_thread_running=0;
 		}
 	}

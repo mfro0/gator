@@ -15,6 +15,7 @@
 #include <sys/ioctl.h>
 #include <string.h>
 #include <errno.h>
+#include <sys/time.h>
 
 #include <X11/X.h>
 #include <X11/Xlib.h>
@@ -525,6 +526,57 @@ Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("half-width", -1));
 Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("double-interpolate", -1));
 Tcl_SetObjResult(interp, ans);
 return TCL_OK;
+}
+
+void v4l_reader_thread(PACKET_STREAM *s)
+{
+PACKET *p;
+V4L_DATA *data=s->priv;
+fd_set read_fds;
+int a;
+long incoming_frames_count=0;
+struct timeval tv;
+/* lock mutex before testing s->stop_stream */
+p=new_generic_packet(s, data->video_size);
+pthread_mutex_lock(&(s->ctr_mutex));
+while(!(s->stop_stream & STOP_PRODUCER_THREAD)){
+	pthread_mutex_unlock(&(s->ctr_mutex));
+	
+	/* do the reading */
+	if((a=read(data->fd, p->buf+p->free, p->size-p->free))>0){
+		p->free+=a;
+		if(p->free==p->size){ /* deliver packet */
+			gettimeofday(&tv, NULL);
+			p->timestamp=(((int64)tv.tv_sec)<<20)|(tv.tv_usec);
+			pthread_mutex_lock(&(s->ctr_mutex));
+			if(!(s->stop_stream & STOP_PRODUCER_THREAD) &&
+				(!data->step_frames || !(incoming_frames_count % data->step_frames))){
+				deliver_packet(s, p);
+				pthread_mutex_unlock(&(s->ctr_mutex));
+				p=new_generic_packet(s, data->video_size);
+				} else {
+				p->free=0;
+				pthread_mutex_unlock(&(s->ctr_mutex));
+				}
+			incoming_frames_count++;
+			}
+		} else
+	if(a<0){
+		FD_ZERO(&read_fds);
+		FD_SET(data->fd, &read_fds);
+		a=select(data->fd+1, &read_fds, NULL, NULL, NULL);
+		#if 0
+		fprintf(stderr,"a=%d\n", a);
+		perror("");
+		#endif
+		} 
+	pthread_mutex_lock(&(s->ctr_mutex));
+	}
+data->priv=NULL;
+s->producer_thread_running=0;
+pthread_mutex_unlock(&(s->ctr_mutex));
+fprintf(stderr,"v4l_reader_thread finished\n");
+pthread_exit(NULL);
 }
 
 
