@@ -3819,7 +3819,10 @@ static Bool RADEONInitCrtcRegisters(ScrnInfoPtr pScrn, RADEONSavePtr save,
 			  | (format << 8)
 			  | ((mode->Flags & V_DBLSCAN)
 			     ? RADEON_CRTC_DBL_SCAN_EN
-			     : 0)
+			     : 0)			   
+			  | ((mode->Flags & V_CSYNC)
+			     ? RADEON_CRTC_CSYNC_EN
+			     : 0)			   
 			  | ((mode->Flags & V_INTERLACE)
 			     ? RADEON_CRTC_INTERLACE_EN
 			     : 0));
@@ -3830,6 +3833,7 @@ static Bool RADEONInitCrtcRegisters(ScrnInfoPtr pScrn, RADEONSavePtr save,
         save->crtc_ext_cntl = RADEON_VGA_ATI_LINEAR | 
         			  RADEON_XCRT_CNT_EN;
         save->crtc_gen_cntl &= ~(RADEON_CRTC_DBL_SCAN_EN | 
+	                         RADEON_CRTC_CSYNC_EN |
                                   RADEON_CRTC_INTERLACE_EN);
     }
     else
@@ -3951,6 +3955,9 @@ static Bool RADEONInitCrtc2Registers(ScrnInfoPtr pScrn, RADEONSavePtr save,
 			  | (format << 8)
 			  | ((mode->Flags & V_DBLSCAN)
 			     ? RADEON_CRTC2_DBL_SCAN_EN
+			     : 0)
+			  | ((mode->Flags & V_CSYNC)
+			     ? RADEON_CRTC2_CSYNC_EN
 			     : 0)
 			  | ((mode->Flags & V_INTERLACE)
 			     ? RADEON_CRTC2_INTERLACE_EN
@@ -4316,6 +4323,7 @@ static Bool RADEONInit(ScrnInfoPtr pScrn, DisplayModePtr mode,
 	   pScrn->depth,
 	   pScrn->bitsPerPixel);
     if (mode->Flags & V_DBLSCAN)   ErrorF(" D");
+    if (mode->Flags & V_CSYNC)     ErrorF(" C");
     if (mode->Flags & V_INTERLACE) ErrorF(" I");
     if (mode->Flags & V_PHSYNC)    ErrorF(" +H");
     if (mode->Flags & V_NHSYNC)    ErrorF(" -H");
@@ -4338,6 +4346,7 @@ static Bool RADEONInit(ScrnInfoPtr pScrn, DisplayModePtr mode,
 	   pScrn->depth,
 	   pScrn->bitsPerPixel);
     if (mode->Flags & V_DBLSCAN)   ErrorF(" D");
+    if (mode->Flags & V_CSYNC)     ErrorF(" C");
     if (mode->Flags & V_INTERLACE) ErrorF(" I");
     if (mode->Flags & V_PHSYNC)    ErrorF(" +H");
     if (mode->Flags & V_NHSYNC)    ErrorF(" -H");

@@ -362,6 +362,7 @@
 #       define RADEON_CRTC2_DISP_DIS         (1 << 23)
 #       define RADEON_CRTC2_EN               (1 << 25)
 #       define RADEON_CRTC2_DISP_REQ_EN_B    (1 << 26)
+#       define RADEON_CRTC2_CSYNC_EN         (1 << 27)
 #       define RADEON_CRTC2_HSYNC_DIS        (1 << 28)
 #       define RADEON_CRTC2_VSYNC_DIS        (1 << 29)
 #define RADEON_CRTC_GUI_TRIG_VLINE          0x0218
