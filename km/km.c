@@ -189,6 +189,7 @@ kms->frame_info[FRAME_EVEN].buffer=NULL;
 kms->frame_info[FRAME_EVEN].dma_table=NULL;
 kms->interrupt_count=0;
 kms->irq_handler=NULL;
+kms->num_buffers=2;
 spin_lock_init(&(kms->kms_lock));
 printk("km: using irq %ld\n", kms->irq);
 init_waitqueue_head(&(kms->frameq));
