@@ -48,6 +48,7 @@ proc set_locked_state { mw name element i } {
 global $name.$i.locked
 global current_alsa_device
 global $name.$i.average_v
+global debug
 if { $debug } {
 	puts "$name.$i.locked=[set $name.$i.locked]"
 	}
