@@ -218,7 +218,7 @@ set c .controlwin.control
 global current_port_menu
 global current_encoding_menu
 
-eval label $c.encodingl -text {{Encoding: }} [get_settings $c.encodingl AVview]
+eval label $c.encodingl -text {{Encoding: }} [get_settings $c.encodingl label AVview]
 set current_encoding_menu [tk_optionMenu $c.encoding_optionmenu current_encoding_name  none]
 eval $c.encoding_optionmenu configure [get_settings $c.encoding_optionmenu AVview]
 eval $current_encoding_menu configure [get_settings $current_encoding_menu AVview menu]
@@ -226,7 +226,7 @@ $current_encoding_menu delete 0 end
 grid $c.encodingl $c.encoding_optionmenu -sticky news
 grid configure $c.encodingl -sticky nws
 
-eval label $c.channell -text {{Channel: }} [get_settings $c.channell]
+eval label $c.channell -text {{Channel: }} [get_settings $c.channell label AVview]
 set current_channel_menu [tk_optionMenu $c.channel_optionmenu current_channel none]
 eval $c.channel_optionmenu configure [get_settings $c.channel_optionmenu AVview]
 eval $current_channel_menu configure [get_settings $current_channel_menu AVview menu]
@@ -234,14 +234,14 @@ $current_channel_menu delete 0 end
 grid $c.channell $c.channel_optionmenu -sticky news
 grid configure $c.channell -sticky nsw
 
-eval checkbutton $c.xv_attr -variable attributes_window -text {{Xv Attributes}} -indicatoron false -onvalue true -offvalue false
+eval checkbutton $c.xv_attr -variable attributes_window -text {{Xv Attributes}} -indicatoron false -onvalue true -offvalue false [get_settings $c.xv_attr checkbutton AVview]
 grid $c.xv_attr -row 0 -column 2 -padx 2 -pady 2 -sticky ew
-eval checkbutton $c.capture_attr -variable capture_window -text {{Capture controls}} -indicatoron false -onvalue true -offvalue false
+eval checkbutton $c.capture_attr -variable capture_window -text {{Capture controls}} -indicatoron false -onvalue true -offvalue false [get_settings $c.capture_attr checkbutton AVview]
 grid $c.capture_attr -row 0 -column 3 -padx 2 -pady 2
-eval checkbutton $c.alsa_attr -variable alsa_window -text {{ALSA mixer}} -indicatoron false -onvalue true -offvalue false
+eval checkbutton $c.alsa_attr -variable alsa_window -text {{ALSA mixer}} -indicatoron false -onvalue true -offvalue false [get_settings $c.alsa_attr checkbutton AVview]
 grid $c.alsa_attr -row 0 -column 4 -padx 2 -pady 2
 
-eval button $c.setup_window -text {{Setup window}} -command create_setup_window
+eval button $c.setup_window -text {{Setup window}} -command create_setup_window [get_settings  $c.setup_window button AVview]
 grid $c.setup_window -row 1 -column 2 -padx 2 -pady 2
 
 grid $c - - -sticky nw
@@ -733,8 +733,6 @@ menu .video_menu.size_menu -type normal -tearoff false
 menu .video_menu.aspect_menu -type normal -tearoff false
 menu .video_menu.channel_menu -type normal -tearoff false
 menu .video_menu.connector_menu -type normal -tearoff false
-menu .video_menu.interface_menu -type normal -tearoff false
-menu .video_menu.interface_menu.theme_menu -type normal -tearoff false
 menu .video_menu.cc_menu -type normal -tearoff false
 
 .video_menu add command -label "Toggle mute" -command toggle_mute 
@@ -745,7 +743,8 @@ menu .video_menu.cc_menu -type normal -tearoff false
 .video_menu add cascade -menu .video_menu.size_menu -label "Size"
 .video_menu add cascade -menu .video_menu.aspect_menu -label "Aspect ratio"
 .video_menu add separator
-.video_menu add cascade -menu .video_menu.interface_menu -label "User interface"
+.video_menu add checkbutton -label "Show control window" -variable show_control_window  -onvalue true -offvalue false
+.video_menu add command -label "Open setup window" -command "create_setup_window"
 .video_menu add separator
 .video_menu add command -label "Exit AVview" -command exit_avview
 .video_menu add separator
@@ -777,18 +776,6 @@ for { set i 1 } { $i <= 8 } { incr i } {
 .video_menu.aspect_menu add radiobutton -label "Aspect ratio 3:4" -variable aspect_ratio -value [list 3 4]
 .video_menu.aspect_menu add radiobutton -label "Aspect ratio 16:9" -variable aspect_ratio -value [list 16 9]
 .video_menu.aspect_menu add radiobutton -label "Aspect ratio 9:16" -variable aspect_ratio -value [list 9 16]
-
-.video_menu.interface_menu add command -label "Show setup window" -command "create_setup_window"
-.video_menu.interface_menu add command -label "Favorite channel editor" -command scan_channels
-.video_menu.interface_menu add separator
-.video_menu.interface_menu add checkbutton -label "Show control window" -variable show_control_window  -onvalue true -offvalue false
-.video_menu.interface_menu add checkbutton -label "Show Xv attributes section" -variable attributes_window  -onvalue true -offvalue false
-.video_menu.interface_menu add checkbutton -label "Show capture (V4L) section" -variable capture_window  -onvalue true -offvalue false
-if { [alsa_present] == "yes" } {
-	.video_menu.interface_menu add checkbutton -label "Show audio mixer (ALSA) section" -variable alsa_window  -onvalue true -offvalue false
-	} 
-.video_menu.interface_menu add separator
-.video_menu.interface_menu add cascade -label "Theme" -menu .video_menu.interface_menu.theme_menu
 
 bind .video_menu <Unmap> {
 	grab release .video_menu
@@ -857,21 +844,6 @@ wm protocol .controlwin WM_DELETE_WINDOW {
 wm title . "AVview"
 wm title .controlwin "AV Control"
 
-#
-# Generate theme menu
-#
-#$c.interface_menubutton.menu.theme delete 0 end
-.video_menu.interface_menu.theme_menu delete 0 end
-foreach theme [lsort -ascii [array names theme_list]] {
-#	$c.interface_menubutton.menu.theme add radiobutton -label "$theme" \
-#		-value "$theme" -variable theme_name \
-#		-command {global theme_name ; reset_theme $theme_name}
-
-	.video_menu.interface_menu.theme_menu add radiobutton -label "$theme" \
-		-value "$theme" -variable theme_name \
-		-command {global theme_name ; reset_theme $theme_name}
-	}
-
 if { [alsa_present] } {
 	add_parameter_pane "/Configuration/User interface settings" "User interface settings" \
 		"Display setup window on startup" checkbutton display_setup_window_on_startup \
@@ -881,7 +853,8 @@ if { [alsa_present] } {
 		"Display mixer(ALSA) subsection" checkbutton alsa_window \
 		"Use physical screen size for aspect ratio" checkbutton use_physical_screen_size \
 		"On screen message stays visible for as long as (secs)" choice { message_visible_secs 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 } \
-		"Warn about missing km" checkbutton warn_about_missing_km
+		"Warn about missing km" checkbutton warn_about_missing_km \
+		"Color theme" choice [concat theme_name $theme_names]
 	} {
 	add_parameter_pane "/Configuration/User interface settings" "User interface settings" \
 		"Display setup window on startup" checkbutton display_setup_window_on_startup \
@@ -891,6 +864,7 @@ if { [alsa_present] } {
 		"Use physical screen size for aspect ratio" checkbutton use_physical_screen_size \
 		"Temporary message stays visible for as long as (secs)" choice { message_visible_secs 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 } \
 		"Warn about missing km" checkbutton warn_about_missing_km
+		"Color theme" choice [concat theme_name $theme_names]
 	}
 
 add_parameter_pane "/Configuration/User interface settings/Fullscreen behaviour" "Fullscreen behaviour" \
@@ -924,16 +898,17 @@ set_encoding_theme
 }
 
 proc set_ui_traces {} {
-global show_control_window attributes_window capture_window alsa_window
+global show_control_window attributes_window capture_window alsa_window theme_name
 trace variable show_control_window w "show_control_window_proc ; skip_args3"
 trace variable attributes_window w  { generate_attributes_window .controlwin.allattributes ; skip_args3 }
 trace variable capture_window w  { generate_capture_window .controlwin.capture ; skip_args3 }
+trace variable theme_name w { global theme_name ; reset_theme $theme_name ; skip_args3 }
 if {[alsa_present] == "yes" } {
 	trace variable alsa_window w "generate_alsa_window .controlwin.alsamixer ; skip_args3"
 	}
 
 
-foreach var {show_control_window attributes_window capture_window alsa_window} {
+foreach var {show_control_window attributes_window capture_window alsa_window theme_name} {
 	set $var [set $var]
 	}
 }

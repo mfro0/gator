@@ -213,7 +213,7 @@ if { "$master" != "" } {
 
 grid columnconfigure .controlwin 0 -weight 1
 
-label $af.title -text "Attributes" -background black -foreground white
+eval label $af.title -text {{Xv attributes}} -background black -foreground white [get_settings $af.title AVview XVideo]
 grid $af.title - -sticky news -pady 2 -padx 2 -row 0
 
 eval frame $af.f1 -relief groove -borderwidth 2 [get_settings $af.f1 AVview XVideo]

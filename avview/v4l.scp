@@ -49,7 +49,7 @@ eval label $cw.title -text "\"Capture (V4L)\"" [get_settings $cw.title Capture V
 grid $cw.title - - -sticky news -pady 2 -padx 2
 grid columnconfigure $cw 1 -weight 1
 
-eval label $cw.devicel -text "\"V4L device: \"" [get_settings $cw.devicel Capture V4L]
+eval label $cw.devicel -text "\"V4L device: \"" [get_settings $cw.devicel label Capture V4L]
 global v4l_device_menu
 set v4l_device_menu [tk_optionMenu $cw.device_optionmenu current_v4l_device none]
 eval $cw.device_optionmenu configure [get_settings $cw.device_optionmenu Capture V4L]
@@ -60,7 +60,7 @@ grid $cw.devicel $cw.device_optionmenu $cw.rescan_button -sticky news
 grid configure $cw.devicel -sticky nws
 
 if { [alsa_present] } {
-	eval label $cw.alsadevicel -text "\"ALSA device: \"" [get_settings $cw.alsadevicel Capture V4L]
+	eval label $cw.alsadevicel -text "\"ALSA device: \"" [get_settings $cw.alsadevicel label Capture V4L]
 	global v4l_alsadevice_menu current_alsa_capture_device
 	set old_value $current_alsa_capture_device
 	set v4l_alsadevice_menu [tk_optionMenu $cw.alsadevice_optionmenu current_alsa_capture_device none]
@@ -77,29 +77,15 @@ if { [alsa_present] } {
 		} ]
 	}
 
-
-#set methods [get_deinterlacing_methods]
-#eval label $cw.model -text "\"Recording mode: \"" [get_settings $cw.model Capture V4L]
-#set menu [tk_optionMenu $cw.mode_optionmenu current_v4l_mode None]
-#$menu delete 0 end
-#foreach method $methods {
-#	$menu add radiobutton -label "$method" -value "$method" -variable current_v4l_mode
-#	}
-#eval $cw.mode_optionmenu configure [get_settings $cw.mode_optionmenu Capture V4L]
-#eval $menu configure [get_settings $menu Capture V4L menu]
-#grid $cw.model $cw.mode_optionmenu - -sticky news
-#grid configure $cw.model -sticky nws
-
-
-eval label $cw.windowl -text "\"Window: \""  [get_settings $cw.windowl Capture V4L]
-eval label $cw.window -text "\"N/A\"" [get_settings $cw.window Capture V4L]
+eval label $cw.windowl -text "\"Window: \""  [get_settings $cw.windowl label Capture V4L]
+eval label $cw.window -text "\"N/A\"" [get_settings $cw.window label Capture V4L]
 eval button $cw.window_button -text "Change" -state disabled [get_settings $cw.window_button Capture V4L]
 grid $cw.windowl $cw.window $cw.window_button
 grid configure $cw.windowl -sticky nws
 grid configure $cw.window_button -sticky news
 
 
-eval label $cw.encoding_themel -text "\"Encoding theme: \"" [get_settings $cw.encoding_themel Capture V4L]
+eval label $cw.encoding_themel -text "\"Encoding theme: \"" [get_settings $cw.encoding_themel label Capture V4L]
 set menu [tk_optionMenu $cw.encoding_theme_optionmenu ffmpeg_encoding_theme None]
 $menu delete 0 end
 global encoding_themes_list
@@ -120,14 +106,14 @@ if {[ffmpeg_present] == "yes"} {
 #	grid $cw.rratel $cw.rrate_optionmenu - -sticky news
 #	grid configure $cw.rratel -sticky nws
 
-	eval label $cw.video_ratel -text "\"V4L device framerate:\"" [get_settings $cw.video_ratel Capture V4L]
+	eval label $cw.video_ratel -text "\"V4L device framerate:\"" [get_settings $cw.video_ratel label Capture V4L]
 	entry $cw.video_rate_entry -textvariable current_video_rate
 	eval $cw.video_rate_entry configure [get_settings $cw.video_rate_entry Capture V4L]
 	grid $cw.video_ratel $cw.video_rate_entry
 	grid configure $cw.video_ratel -sticky nws
 	grid configure $cw.video_rate_entry -sticky news
 
-	eval label $cw.filenamel -text "\"Save to file:\"" [get_settings $cw.filenamel Capture V4L]
+	eval label $cw.filenamel -text "\"Save to file:\"" [get_settings $cw.filenamel label Capture V4L]
 	eval entry $cw.filename_entry -textvariable current_capture_filename [get_settings $cw.filename_entry Capture V4L]
 	button $cw.filename_button -text "Change" -command {
 		global current_capture_filename; 
@@ -342,14 +328,14 @@ $sw.c configure -width $width -height $height
 #
 
 button $sw.f.sab -text "Save as" -command "save_image_as $sw $image"
-eval $sw.f.sab configure [get_settings $sw.f.sab Capture V4L]
+eval $sw.f.sab configure [get_settings $sw.f.sab button Capture V4L]
 
 set menu [tk_optionMenu $sw.f.type save_type Postscript PPM]
-eval $sw.f.type configure [get_settings $sw.f.type Capture V4L]
-eval $menu configure [get_settings $menu Capture V4L]
+eval $sw.f.type configure [get_settings $sw.f.type optionmenu menu Capture V4L]
+eval $menu configure [get_settings $menu menu Capture V4L]
 
 grid $sw.f.sab $sw.f.type -padx 5
-eval $cw.c configure [get_settings $cw.c Capture V4L]
+eval $cw.c configure [get_settings $cw.c canvas Capture V4L]
 eval $sw.vscroll configure [get_settings $sw.vscroll Capture V4L]
 eval $sw.hscroll configure [get_settings $sw.hscroll Capture V4L]
 }
@@ -520,15 +506,15 @@ after 800 "check_fifo $cw"
 proc make_video_stats { widget } {
 label $widget.total_stream_length -text "Total stream length:"
 label $widget.total_stream_length_value -text "0 Mb"
-eval $widget.total_stream_length configure [get_settings $widget.total_stream_length Capture V4L]
-eval $widget.total_stream_length_value configure [get_settings $widget.total_stream_length_value Capture V4L]
-grid $widget.total_stream_length $widget.total_stream_length_value -sticky nws
+eval $widget.total_stream_length configure [get_settings $widget.total_stream_length label Capture V4L]
+eval $widget.total_stream_length_value configure [get_settings $widget.total_stream_length_value label value Capture V4L]
+grid $widget.total_stream_length $widget.total_stream_length_value -sticky nws -padx 10
 
 label $widget.frames_encoded -text "Video frames encoded:"
 label $widget.frames_encoded_value -text "0"
-eval $widget.frames_encoded configure [get_settings $widget.frames_encoded Capture V4L]
-eval $widget.frames_encoded_value configure [get_settings $widget.frames_encoded_value Capture V4L]
-grid $widget.frames_encoded $widget.frames_encoded_value -sticky nws
+eval $widget.frames_encoded configure [get_settings $widget.frames_encoded label Capture V4L]
+eval $widget.frames_encoded_value configure [get_settings $widget.frames_encoded_value label value Capture V4L]
+grid $widget.frames_encoded $widget.frames_encoded_value -sticky nws -padx 10
 
 label $widget.fifo_label -text "Fifo size: "
 label $widget.fifo_value_label -text "0 Mb"
@@ -542,10 +528,10 @@ grid $widget.f - - - -sticky news
 grid columnconfig $widget 3 -weight 1
 	
 label $widget.f.audio_levels_label -text "Audio levels"
-eval $widget.f.audio_levels_label configure [get_settings $widget.f.audio_levels Capture V4L]
+eval $widget.f.audio_levels_label configure [get_settings $widget.f.audio_levels_label Capture V4L]
 
 label $widget.f.video_hist_label -text "Luminosity histogram"
-eval $widget.f.video_hist_label configure [get_settings $widget.f.video_hist Capture V4L]
+eval $widget.f.video_hist_label configure [get_settings $widget.f.video_hist_label Capture V4L]
 grid $widget.f.audio_levels_label - $widget.f.video_hist_label
 	
 canvas $widget.f.left_audio_level  -height 80 -width 20 -relief sunken -borderwidth 1

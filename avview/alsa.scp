@@ -262,7 +262,7 @@ eval $cw.title configure [get_settings $cw.title ALSA]
 grid $cw.title - - -sticky news -pady 2 -padx 2 -row 0
 grid columnconfigure $cw 1 -weight 1
 label $cw.devicel -text "ALSA Audio device: "
-eval $cw.devicel configure [get_settings $cw.devicel ALSA]
+eval $cw.devicel configure [get_settings $cw.devicel label ALSA]
 global alsa_device_menu
 global current_alsa_device1
 set save_alsa_device $current_alsa_device1

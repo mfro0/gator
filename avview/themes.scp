@@ -237,6 +237,173 @@ switch -glob -- "$widget $args1" \
 
 set theme_list(Pink) theme_pink
 
+proc theme_rainbow { widget args1 } {
+# uncomment to debug theme setting failures
+#puts "widget=$widget args=$args1"
+switch -glob -- "$widget $args1" \
+	.video*AVview {return "-background #102030" } \
+	*.title*  { return "-background #000088 -foreground yellow" } \
+	*.c.f.*checkbutton*ALSA* {  \
+		set i [lindex $args1 1]
+		if { [expr $i % 2] } {
+			return "-background #888800 -activebackground #FFDDDD -selectcolor #FF4444 -highlightbackground #FFCCCC";
+			} {
+			return "-background #008800 -activebackground #FFDDDD -selectcolor #FF4444 -highlightbackground #FFAAAA";
+			}
+		} \
+	*.c.f.*scale*ALSA* {  \
+		set i [lindex $args1 1]
+		if { [expr $i % 2] } {
+			return "-background #888800 -troughcolor #FF8888 -activebackground #FFDDDD -highlightbackground #FFCCCC";
+			} {
+			return "-background #008800 -troughcolor #FF8888 -activebackground #FFDDDD -highlightbackground #FFAAAA";
+			}
+		} \
+	*.c.f.*optionmenu*ALSA*menu* {  \
+		set i [lindex $args1 1]
+		if { [expr $i % 2] } {
+			return "-background #888800 -activebackground #FFDDDD -highlightbackground #FFCCCC";
+			} {
+			return "-background #008800 -activebackground #FFDDDD -highlightbackground #FFAAAA";
+			}
+		} \
+	*.c.f.*optionmenu*ALSA* {  \
+		set i [lindex $args1 1]
+		if { [expr $i % 2] } {
+			return "-background #888800 -activebackground #FFDDDD"
+			} {
+			return "-background #008800 -activebackground #FFDDDD"
+			}
+		} \
+	*.c.f.*label*ALSA* {  \
+		set i [lindex $args1 1]
+		if { [expr $i % 2] } {
+			return "-background #888800 -foreground #AAFFAA"
+			} {
+			return "-background #008800 -foreground #FFFFAA"
+			}
+		} \
+	*.c.f.*ALSA* {  \
+		set i [lindex $args1 1]
+		if { [expr $i % 2] } {
+			return "-background #888800"
+			} {
+			return "-background #008800"
+			}
+		} \
+	*.allattributes.*checkbutton*XVideo*attribute* {  \
+		set i [lindex $args1 5]
+		if { [expr $i % 2] } {
+			return "-background #008888 -activebackground #FFDDDD -selectcolor #FF4444 -highlightbackground #FFCCCC";
+			} {
+			return "-background #886644 -activebackground #FFDDDD -selectcolor #FF4444 -highlightbackground #FFAAAA";
+			}
+		} \
+	*.allattributes.*button*XVideo*attribute* {  \
+		set i [lindex $args1 5]
+		if { [expr $i % 2] } {
+			return "-background #008888 -foreground #FFCCAA -activebackground #FFDDDD -highlightbackground #FFCCCC";
+			} {
+			return "-background #886644 -foreground #00FFFF -activebackground #FFDDDD -highlightbackground #FFAAAA";
+			}
+		} \
+	*.allattributes.*scale*XVideo*attribute* {  \
+		set i [lindex $args1 5]
+		if { [expr $i % 2] } {
+			return "-background #008888 -foreground #FFCCAA -troughcolor #FF8888 -activebackground #FFDDDD -highlightbackground #FFCCCC";
+			} {
+			return "-background #886644 -foreground #00FFFF -troughcolor #FF8888 -activebackground #FFDDDD -highlightbackground #FFAAAA";
+			}
+		} \
+	*.allattributes.*optionmenu*XVideo*attribute*menu* {  \
+		set i [lindex $args1 5]
+		if { [expr $i % 2] } {
+			return "-background #008888 -activebackground #FFDDDD -highlightbackground #FFCCCC";
+			} {
+			return "-background #886644 -activebackground #FFDDDD -highlightbackground #FFAAAA";
+			}
+		} \
+	*.allattributes.*optionmenu*XVideo*attribute* {  \
+		set i [lindex $args1 5]
+		if { [expr $i % 2] } {
+			return "-background #008888 -activebackground #FFDDDD";
+			} {
+			return "-background #886644 -activebackground #FFDDDD";
+			}
+		} \
+	*.allattributes.*label*XVideo*attribute* {  \
+		set i [lindex $args1 5]
+		if { [expr $i % 2] } {
+			return "-background #008888 -foreground #FFCCAA";
+			} {
+			return "-background #886644 -foreground #88FFFF";
+			}
+		} \
+	*.allattributes.*entry*XVideo*attribute* {  \
+		return "-background #CCCCCC -foreground black"
+		} \
+	*.allattributes.*XVideo*attribute* {  \
+		set i [lindex $args1 5]
+		if { [expr $i % 2] } {
+			return "-background #008888";
+			} {
+			return "-background #444444";
+			}
+		} \
+	*.sel*ChannelList* { \
+		set i [lindex $args1 2]
+		if { [expr ($i/2) % 2] } {
+			return "-background #FFCCCC";
+			} {
+			return "-background #FFAAAA";
+			}
+		} \
+	*.cch*ChannelList* { \
+		set i [lindex $args1 2]
+		if { [expr ($i/2) % 2] } {
+			return "-background #FFCCCC";
+			} {
+			return "-background #FFAAAA";
+			}
+		} \
+	*video_hist\ *Capture* {
+		return "-background #DDDDDD"
+		} \
+	*audio_level\ *Capture* {
+		return "-background #DDDDDD"
+		} \
+	*optionmenu*\ menu {  \
+		return "-background #884444 -activebackground #FFDDDD -foreground white -selectcolor #FF4444";
+		} \
+	*optionmenu* {  \
+		return "-background #884444 -activebackground #FFDDDD -highlightbackground #FFCCCC -foreground white";
+		} \
+	*button*.menu* {  \
+		return "-background #884444 -activebackground #FFDDDD";
+		} \
+	*attr*checkbutton* {  \
+		return "-background #884444 -foreground #AAFFFF ";
+		} \
+	*button* {  \
+		return "-background #884444 -foreground #AAFFFF -activebackground #FFDDDD -highlightbackground #FFCCCC";
+		} \
+	*label* {  \
+		return "-background #884488 -foreground #AAFFAA";
+		} \
+	*entry* {  \
+		return "-background #DDDDDD  -highlightbackground #FFCCCC";
+		} \
+	*scroll* {
+		return "-background #884444 -troughcolor #FF8888 -activebackground #FFDDDD -highlightbackground #FFCCCC";
+		} \
+	*scale* {
+		return "-background #884444 -troughcolor #FF8888 -activebackground #FFDDDD -highlightbackground #FFCCCC";
+		} \
+	default { return "-background #884488" }
+}
+
+set theme_list(Rainbow) theme_rainbow
+
 proc theme_default { widget args1 } {
 switch -glob -- "$widget $args1" \
 	.video*AVview {return "-background #102030" } \
@@ -341,4 +508,10 @@ puts "widget=$widget args=$args1"
 set theme_list(Widget\ dump) theme_widget_dump
 
 set_theme Default
+
+global theme_names
+set theme_names {}
+foreach theme [lsort -ascii [array names theme_list]] {
+	lappend theme_names $theme
+	}
 
