@@ -99,6 +99,28 @@ update
 xmisc_hidecursor .
 xmisc_hidecursor .video
 
+proc hide_cursor_timer { window } {
+global hct_$window
+incr hct_$window -1
+if { [set hct_$window] < 1 } {
+	incr hct_$window -1
+	xmisc_hidecursor $window
+	} {
+	after 500 "hide_cursor_timer $window"
+	}
+}
+
+proc set_hiding_cursor {window cursor} {
+global hct_$window
+set hct_$window -1
+xmisc_hidecursor $window
+bind $window <Motion> "global hct_$window;\
+		  $window configure -cursor $cursor ; \
+		  if { \[set hct_$window\] < 0 } {after 500 \"hide_cursor_timer $window\"} ;\
+		 set hct_$window 4"
+}
+
+set_hiding_cursor .video left_ptr
 
 set NUM_ADAPTORS [xv_numadaptors $VIDEO_WINDOW]
 puts "NUM_ADAPTORS=$NUM_ADAPTORS"
