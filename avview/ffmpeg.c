@@ -125,10 +125,10 @@ switch(data->mode){
 		deinterlace_422_double_interpolate_to_420p(sdata->width, sdata->height, sdata->width*2, f->buf, picture->data[0], sdata->luma_hist);
 		break;		
 	}
-#if 0
 picture->pts=f->timestamp;
-#endif
 picture->quality=sdata->quality;
+picture->type=FF_BUFFER_TYPE_SHARED;
+picture->qscale_table=NULL;
 }
 
 void ffmpeg_v4l_encoding_thread(PACKET_STREAM *s)
@@ -140,6 +140,7 @@ V4L_DATA *data;
 AVFrame picture;
 char *output_buf;
 long ob_size, ob_free, ob_written;
+long frames=0;
 
 fprintf(stderr,"v4l_encoding pid %d\n", getpid());
 /* encode in the background */
@@ -164,7 +165,6 @@ picture.linesize[0]=sdata->video_codec_context.width;
 picture.linesize[1]=sdata->video_codec_context.width/2;
 start_ts=timestamp_now();
 picture.linesize[2]=sdata->video_codec_context.width/2;
-picture.type=FF_BUFFER_TYPE_SHARED;
 pthread_mutex_lock(&(s->ctr_mutex));
 while(1){
 	f=get_packet(s);
@@ -175,8 +175,10 @@ while(1){
 	pthread_mutex_unlock(&(s->ctr_mutex));
 	while((f!=NULL)&&!(s->stop_stream & STOP_PRODUCER_THREAD)){
 		if(1){
-			/* encode frame */
+			/* encode frame */			
 			ffmpeg_preprocess_frame(data, sdata, f, &picture);
+			frames++;
+			picture.age=frames;
 			ob_free=avcodec_encode_video(&(sdata->video_codec_context), output_buf, ob_size, &picture);
 			if(ob_free>0)sdata->encoded_stream_size+=ob_free; 
 			/* write out data */
@@ -388,6 +390,12 @@ fprintf(stderr,"file_seek pos=%lld whence=%d\n", pos, whence);
 return lseek64(sdata->fd_out, pos, whence);
 }
 
+int ffmpeg_get_buffer(AVCodecContext *s, AVFrame *pic)
+{
+pic->type=FF_BUFFER_TYPE_SHARED;
+return 0;
+}
+
 int ffmpeg_create_video_codec(Tcl_Interp* interp, int argc, const char * argv[])
 {
 V4L_DATA *data;
@@ -499,6 +507,7 @@ if(sdata->video_codec==NULL){
 	return 0;
 	}
 memset(&(sdata->video_codec_context), 0, sizeof(AVCodecContext));
+avcodec_get_context_defaults(&(sdata->audio_codec_context));
 sdata->video_codec_context.codec_id=sdata->video_codec->id;
 sdata->video_codec_context.codec_type=sdata->video_codec->type;
 
@@ -529,7 +538,7 @@ if(arg_video_bitrate!=NULL)sdata->video_codec_context.bit_rate=atol(arg_video_bi
 if(sdata->video_codec_context.bit_rate< (sdata->video_codec_context.frame_rate/FRAME_RATE_BASE+1))
 	sdata->video_codec_context.bit_rate=rint(a/b);
 fprintf(stderr,"video: using bitrate=%d, frame_rate=%d\n", sdata->video_codec_context.bit_rate, sdata->video_codec_context.frame_rate);
-sdata->video_codec_context.pix_fmt=PIX_FMT_YUV422;
+sdata->video_codec_context.pix_fmt=PIX_FMT_YUV420P;
 sdata->video_codec_context.flags=0;
 if((arg_video_bitrate_control!=NULL)&&!strcmp(arg_video_bitrate_control, "Fix quality"))
 	sdata->video_codec_context.flags=CODEC_FLAG_QSCALE;
@@ -549,6 +558,8 @@ sdata->video_codec_context.b_quant_offset=1.25;
 sdata->video_codec_context.i_quant_factor=-0.8;
 sdata->video_codec_context.i_quant_offset=0.0;
 sdata->video_codec_context.gop_size=0;
+sdata->video_codec_context.get_buffer=avcodec_default_get_buffer;
+sdata->video_codec_context.release_buffer=avcodec_default_release_buffer;
 if((arg_video_codec!=NULL)&&(
   !strcmp(arg_video_codec, "MPEG-4") ||
   !strcmp(arg_video_codec, "MSMPEG-4")))
@@ -588,10 +599,16 @@ sdata->last_audio_timestamp=0;
 fprintf(stderr,"Using audio_codec=%s\n", arg_audio_codec);
 if(arg_audio_codec==NULL){
 	/* default to MPEG-2 */
-	sdata->audio_codec=&mp2_encoder;
+	sdata->audio_codec=avcodec_find_encoder(CODEC_ID_MP2);
 	} else
 if(!strcasecmp(arg_audio_codec,"MPEG-2")){
-	sdata->audio_codec=&mp2_encoder;
+	sdata->audio_codec=avcodec_find_encoder(CODEC_ID_MP2);
+	} else 
+if(!strcasecmp(arg_audio_codec,"MPEG-3")){
+	sdata->audio_codec=avcodec_find_encoder(CODEC_ID_MP3LAME);
+	} else 
+if(!strcasecmp(arg_audio_codec,"VORBIS")){
+	sdata->audio_codec=avcodec_find_encoder(CODEC_ID_VORBIS);
 	} else 
 if(!strcasecmp(arg_audio_codec,"AC-3")){
 	sdata->audio_codec=avcodec_find_encoder(CODEC_ID_AC3); 
@@ -601,6 +618,7 @@ if(sdata->audio_codec==NULL){
 	return 0;
 	}
 memset(&(sdata->audio_codec_context), 0, sizeof(AVCodecContext));
+avcodec_get_context_defaults(&(sdata->audio_codec_context));
 sdata->audio_codec_context.bit_rate=64000;
 if(arg_audio_bitrate!=NULL)sdata->audio_codec_context.bit_rate=atoi(arg_audio_bitrate);
 #if 0 /* the correct code below does not work as ffmpeg is only able to encode
