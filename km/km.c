@@ -41,9 +41,11 @@ MODULE_LICENSE("GPL");
 
 MODULE_DESCRIPTION("km_ati");
 MODULE_PARM(km_debug, "i");
+MODULE_PARM(km_debug_overruns, "i");
 MODULE_PARM_DESC(km_debug, "kmultimedia debugging level");
 
 int km_debug=0;
+int km_debug_overruns=0;
 
 void generic_deallocate_single_frame_buffer(KM_STRUCT *kms, SINGLE_FRAME *frame)
 {
@@ -61,14 +63,20 @@ if(kms->frame_info[FRAME_ODD].dma_active){
 	if(kms->frame_info[FRAME_ODD].buf_ptr==kms->frame_info[FRAME_ODD].buf_free){
 		kms->frame_info[FRAME_ODD].buf_ptr=0;
 		if(kms->buf_read_from==0)wake_up_interruptible(&(kms->frameq));
-		}
+		} else
+	if(km_debug_overruns)printk("overrun buf_ptr=%d buf_free=%d total=%d\n", 
+			kms->frame_info[FRAME_ODD].buf_ptr,
+			kms->frame_info[FRAME_ODD].buf_free, kms->total_frames);
 	}
 if(kms->frame_info[FRAME_EVEN].dma_active){
 	kms->frame_info[FRAME_EVEN].dma_active=0;
 	if(kms->frame_info[FRAME_EVEN].buf_ptr==kms->frame_info[FRAME_EVEN].buf_free){
 		kms->frame_info[FRAME_EVEN].buf_ptr=0;
 		if(kms->buf_read_from==1)wake_up_interruptible(&(kms->frameq));
-		}
+		} else 
+	if(km_debug_overruns)printk("overrun buf_ptr=%d buf_free=%d total=%d\n", 
+			kms->frame_info[FRAME_ODD].buf_ptr,
+			kms->frame_info[FRAME_ODD].buf_free, kms->total_frames);
 	}
 return 0;
 }
@@ -190,6 +198,8 @@ kms->frame_info[FRAME_EVEN].dma_table=NULL;
 kms->interrupt_count=0;
 kms->irq_handler=NULL;
 kms->num_buffers=2;
+kms->v4l_du=-1;
+kms->v4l_info_du=-1;
 spin_lock_init(&(kms->kms_lock));
 printk("km: using irq %ld\n", kms->irq);
 init_waitqueue_head(&(kms->frameq));

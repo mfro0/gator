@@ -33,6 +33,14 @@ typedef struct {
 	bm_list_descriptor *dma_table;
 	} SINGLE_FRAME;
 
+#define KM_FI_ODD	1
+
+typedef struct {
+	int age;
+	int next_frame;
+	int flag;
+	} FIELD_INFO;
+
 typedef struct S_KM_STRUCT{
 	struct video_device vd;
 	struct video_window vwin;
@@ -54,9 +62,14 @@ typedef struct S_KM_STRUCT{
 #define MAX_FRAME_BUFF_NUM 	10
 
 	SINGLE_FRAME frame_info[MAX_FRAME_BUFF_NUM];
+	KM_DATA_VIRTUAL_BLOCK v4l_dvb_info;
+	void *info_ptr;
+	long info_free;
+	int v4l_info_du;
 	KM_DATA_VIRTUAL_BLOCK v4l_dvb;
 	void *v4l_ptr[MAX_FRAME_BUFF_NUM];
-	long *v4l_free[MAX_FRAME_BUFF_NUM];
+	long v4l_free[MAX_FRAME_BUFF_NUM];
+	FIELD_INFO *fi;
 	int v4l_du;
 	int num_buffers;
 

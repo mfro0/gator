@@ -43,7 +43,11 @@ rage128.o:	rage128.c
 	$(CC) $(CFLAGS) -DMODULE -D__KERNEL__ -DLINUX -I$(LINUXINCLUDES) -c rage128.c
 
 test: km_drv.o km_api_drv.o
+	@echo "** Syncing disks"
 	sync
+	@echo "** Trying to make sure v4l module is loaded"
+	modprobe videodev || true
+	@echo "** Now loading km modules"
 	insmod ./km_api_drv.o
 	insmod ./km_drv.o km_debug=0 
 
@@ -56,8 +60,8 @@ tarball:
 	(cd .. ; tar cvf - km/*.[c,h] km/Makefile km/README | gzip - ) > km.tgz
 
 remove:
-	rmmod km_drv
-	rmmod km_api_drv
+	rmmod km_drv || true
+	rmmod km_api_drv || true
 
 clean:
 	rm -f *.o *.bck *.bak core

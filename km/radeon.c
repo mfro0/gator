@@ -352,11 +352,19 @@ if(size>(4096*4096/sizeof(bm_list_descriptor))){
 	printk("Too large buffer allocation requested: %ld bytes\n", size);
 	return -1;
 	}
+/* allocate data unit to hold video data */
 kms->v4l_dvb.size=((size+PAGE_SIZE-1)/PAGE_SIZE)*PAGE_SIZE;
 kms->v4l_dvb.n=kms->num_buffers;
 kms->v4l_dvb.free=kms->v4l_free;
 kms->v4l_dvb.ptr=kms->v4l_ptr;
-kms->v4l_du=km_allocate_data_virtual_block(&(kms->v4l_dvb), S_IFREG | S_IRUGO | S_IWUSR);
+kms->v4l_du=km_allocate_data_virtual_block(&(kms->v4l_dvb), S_IFREG | S_IRUGO);
+/* allocate data unit to hold field info */
+kms->v4l_dvb_info.size=kms->num_buffers*sizeof(FIELD_INFO);
+kms->v4l_dvb_info.n=1;
+kms->v4l_dvb_info.free=&(kms->info_free);
+kms->info_free=kms->num_buffers*sizeof(FIELD_INFO);
+kms->v4l_dvb_info.ptr=&(kms->info_ptr);
+kms->v4l_info_du=km_allocate_data_virtual_block(&(kms->v4l_dvb_info), S_IFREG | S_IRUGO);
 if(kms->v4l_du<0)return -1;
 for(k=0;k<kms->num_buffers;k++){
 	kms->v4l_dvb.free[k]=size;
@@ -392,7 +400,10 @@ for(k=0;k<kms->num_buffers;k++){
 	kms->frame_info[k].buffer=NULL;
 	kms->frame_info[k].dma_active=0;
 	rvfree(kms->frame_info[k].dma_table, 4096);
+	kms->frame_info[k].dma_table=NULL;
 	}
+km_deallocate_data(kms->v4l_info_du);
+kms->v4l_info_du=-1;
 km_deallocate_data(kms->v4l_du);
 kms->v4l_du=-1;
 }
