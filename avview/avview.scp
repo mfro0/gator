@@ -429,7 +429,7 @@ if { $fullscreen_mode } {
 	update
 	update idletasks
 	xmisc_setfullscreen .
-	wm geometry . =${screen_width}x${screen_height}+0+0
+#	wm geometry . =${screen_width}x${screen_height}+0+0
 
 #	. configure -width $screen_width \
 #		-height $screen_height  -background red
@@ -437,8 +437,8 @@ if { $fullscreen_mode } {
 		-height ${screen_height}
 	xmisc_setscreensaver $VIDEO_WINDOW 0 0 DontPreferBlanking AllowExposures \
 		0 0 0 0 off
-#	display_video
-#	after idle "raise ."
+	display_video
+	after idle "raise ."
 	} {
 	$VIDEO_WINDOW configure -width $saved_vw_width -height $saved_vw_height
 	place $VIDEO_WINDOW.onscreen_display -relx 0.05 -rely 0.05 -anchor nw

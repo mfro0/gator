@@ -153,7 +153,7 @@ while(1){
 			while(ob_written<ob_free){
 				pthread_mutex_lock(&(sdata->format_context_mutex));
 				if(sdata->format_context.format!=NULL){
-					sdata->format_context.format->write_packet(&(sdata->format_context),sdata->video_stream_num, output_buf+ob_written, ob_free-ob_written);
+					sdata->format_context.format->write_packet(&(sdata->format_context),sdata->video_stream_num, output_buf+ob_written, ob_free-ob_written, 0);
 					i=ob_free-ob_written;
 					} else {
 					i=write(sdata->fd_out, output_buf+ob_written, ob_free-ob_written);
@@ -265,7 +265,7 @@ while(1){
 			while(ob_written<ob_free){
 				pthread_mutex_lock(&(sdata->format_context_mutex));
 				if(sdata->format_context.format!=NULL){
-					sdata->format_context.format->write_packet(&(sdata->format_context),sdata->audio_stream_num, out_buf+ob_written, ob_free-ob_written);
+					sdata->format_context.format->write_packet(&(sdata->format_context),sdata->audio_stream_num, out_buf+ob_written, ob_free-ob_written, 0);
 					i=ob_free-ob_written;
 					} else {
 					i=write(sdata->fd_out, out_buf+ob_written, ob_free-ob_written);

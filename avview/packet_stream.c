@@ -132,6 +132,6 @@ while((f!=NULL)&&(s->total>(s->threshold+f->free))){
 	f=get_packet(s);
 	}
 s->consumer_thread_running=0;
-pthread_mutex_lock(&(s->ctr_mutex));
+pthread_mutex_unlock(&(s->ctr_mutex));
 pthread_exit(NULL);
 }

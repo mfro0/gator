@@ -643,10 +643,8 @@ m=(MONITOR_INFO *)s->priv;
 /* get rid of older packets */
 while(1){
 	fprintf(stderr,"X");
-	trim_excess_consumer(s); 
-	fprintf(stderr,"Y");
 	write(m->filedes[1], &a, 1); /* signal TCL to do something about this */
-	fprintf(stderr,"Z");
+	fprintf(stderr,"Y");
 	pthread_mutex_lock(&(s->ctr_mutex));
 	pthread_cond_wait(&(s->suspend_consumer_thread), &(s->ctr_mutex));
 	if(s->stop_stream & STOP_CONSUMER_THREAD){
@@ -654,6 +652,7 @@ while(1){
 		pthread_exit(NULL);
 		}
 	pthread_mutex_unlock(&(s->ctr_mutex));
+	fprintf(stderr,"Z");
 	}
 }
 
