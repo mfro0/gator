@@ -3123,8 +3123,11 @@ RADEONQueryImageAttributes(
 ){
     int size, tmp;
 
+#if 0
     /* Overlay scaler has buffer that is pPriv->overlay_scaler_buffer_width pixels wide */
     if(*w > pPriv->overlay_scaler_buffer_width) *w = pPriv->overlay_scaler_buffer_width;
+#endif
+    if(*w > 2048) *w = 2048;
     if(*h > 2048) *h = 2048;
 
     *w = (*w + 1) & ~1;
