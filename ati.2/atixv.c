@@ -332,7 +332,7 @@ static XF86AttributeRec Attributes[NUM_ATTRIBUTES+1] =
    {XvSettable | XvGettable, 0, -1, "XV_FREQ"},
    {XvGettable, -1000, 1000, "XV_TUNER_STATUS"},
    {XvSettable | XvGettable, 0, 1, "XV_MUTE"},
-   {XvSettable | XvGettable, 0x01, 0x7F, "XV_VOLUME"},
+   {XvSettable | XvGettable, -1000, 1000, "XV_VOLUME"},
    {XvSettable | XvGettable, -1000, 1000, "XV_BRIGHTNESS"},
    {XvSettable | XvGettable, -1000, 1000, "XV_CONTRAST"},
    {XvSettable | XvGettable, -1000, 1000, "XV_SATURATION"},
@@ -371,7 +371,7 @@ static XF86ImageRec Images[NUM_IMAGES] =
 
 static void ATIMuteAudio(ATIPortPrivPtr pPriv, Bool mute)
 {
-  if (pPriv->msp3430 != NULL) xf86_MSP3430SetVolume(pPriv->msp3430, mute ? MSP3430_FAST_MUTE : pPriv->volume);
+  if (pPriv->msp3430 != NULL) xf86_MSP3430SetVolume(pPriv->msp3430, mute ? MSP3430_FAST_MUTE : MSP3430_VOLUME(pPriv->volume));
   if (pPriv->tda9850 != NULL) xf86_tda9850_mute(pPriv->tda9850, mute);
   if (pPriv->tda8425 != NULL) xf86_tda8425_mute(pPriv->tda8425, mute);
   if ((pPriv->bt829 != NULL) && (pPriv->bt829->out_en)) {
@@ -1233,7 +1233,7 @@ ATIAllocAdaptor(ScrnInfoPtr pScrn)
     pPriv->video_stream_active = FALSE;
     pPriv->encoding = 1;
     pPriv->frequency = 1000;
-    pPriv->volume = 0x01;
+    pPriv->volume = -1000;
     pPriv->mute = TRUE;
     pPriv->v=0;
     
@@ -1575,11 +1575,11 @@ ATISetPortAttribute(
         if(pPriv->i2c!=NULL) ATI_board_setmisc(pPriv);
   } else 
   if(attribute == xvVolume) {
-  	if(value<0x01) value=0x01;
-	if(value>0x7F) value=0x7F;
+  	if(value<-1000) value=-1000;
+	if(value>1000) value=1000;
         pPriv->volume = value;
 	pPriv->mute = FALSE;
-        if(pPriv->msp3430 != NULL) xf86_MSP3430SetVolume(pPriv->msp3430, value);
+        if(pPriv->msp3430 != NULL) xf86_MSP3430SetVolume(pPriv->msp3430, MSP3430_VOLUME(value));
         ATIMuteAudio(pPriv, pPriv->mute);
         if(pPriv->i2c!=NULL) ATI_board_setmisc(pPriv);
   } else 
@@ -2205,7 +2205,7 @@ switch(pPriv->encoding){
 		return;
 	}	
 xf86_InitMSP3430(pPriv->msp3430);
-xf86_MSP3430SetVolume(pPriv->msp3430, pPriv->mute ? MSP3430_FAST_MUTE : pPriv->volume);
+xf86_MSP3430SetVolume(pPriv->msp3430, pPriv->mute ? MSP3430_FAST_MUTE : MSP3430_VOLUME(pPriv->volume));
 }
 
 void ATI_BT_SetEncoding(ScrnInfoPtr pScrn, ATIPortPrivPtr pPriv)
