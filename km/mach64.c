@@ -216,7 +216,7 @@ int mach64_allocate_single_frame_buffer(KM_STRUCT *kms, SINGLE_FRAME *frame, lon
 {
 int i;
 if(size>(4096*4096/sizeof(bm_list_descriptor))){
-	printk("Too large buffer allocation requested: %d bytes\n", size);
+	printk("Too large buffer allocation requested: %ld bytes\n", size);
 	return -1;
 	}
 frame->buf_free=size;
@@ -225,13 +225,13 @@ frame->buf_ptr=frame->buf_free; /* no data is available */
 frame->buffer=rvmalloc(frame->buf_size);
 frame->dma_active=0;
 if(frame->buffer==NULL){
-	printk(KERN_ERR "km: failed to allocate buffer of %d bytes\n", frame->buf_size);
+	printk(KERN_ERR "km: failed to allocate buffer of %ld bytes\n", frame->buf_size);
 	return -1;
 	}
 printk("Allocated %ld bytes for a single frame buffer\n", frame->buf_size);
 /*data1.dma_table=__get_dma_pages(GFP_KERNEL | GFP_DMA, 1);*/
 frame->dma_table=rvmalloc(4096);
-printk("frame table virtual address 0x%08x, physical address: 0x%08x, bus address: 0x%08x\n",
+printk("frame table virtual address 0x%p08x, physical address: 0x%lu08x, bus address: 0x%lu08x\n",
 	frame->dma_table, kvirt_to_pa(frame->dma_table), kvirt_to_bus(frame->dma_table));
 if(frame->dma_table==NULL){
 	printk(KERN_ERR "km: failed to allocate DMA SYSTEM table\n");

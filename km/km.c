@@ -74,7 +74,7 @@ if(result==-EINVAL){
 	goto fail;
 	}
 if(result==-EBUSY){
-	printk(KERN_ERR "km: IRQ %d busy\n", kms->irq);
+	printk(KERN_ERR "km: IRQ %ld busy\n", kms->irq);
 	goto fail;
 	}
 if(result<0){
@@ -123,11 +123,11 @@ kms->frame_even.buffer=NULL;
 kms->frame_even.dma_table=NULL;
 kms->interrupt_count=0;
 
-printk("km: using irq %d\n", kms->irq);
+printk("km: using irq %ld\n", kms->irq);
 init_waitqueue_head(&(kms->frameq));
 if (pci_enable_device(dev))
 	return -EIO;	
-printk("Register aperture is 0x%08x 0x%08x\n", pci_resource_start(dev, 2), pci_resource_len(dev, 2));
+printk("Register aperture is 0x%lu08x 0x%lu08x\n", pci_resource_start(dev, 2), pci_resource_len(dev, 2));
 if (!request_mem_region(pci_resource_start(dev,2),
 			pci_resource_len(dev,2),
 			"km")) {
@@ -135,7 +135,7 @@ if (!request_mem_region(pci_resource_start(dev,2),
 	}
 
 kms->reg_aperture=ioremap(pci_resource_start(dev, 2), pci_resource_len(dev, 2));
-printk("kms variables: reg_aperture=0x%08x\n",
+printk("kms variables: reg_aperture=0x%p08x\n",
 	kms->reg_aperture);
 
 switch(pci_id->driver_data){
@@ -366,7 +366,7 @@ static int __init init_module(void)
 int result;
 long i;
 printk("Kmultimedia module version %s loaded\n", KM_VERSION);
-printk("Page size is %ld sizeof(bm_list_descriptor)=%ld sizeof(KM_STRUCT)=%ld\n", PAGE_SIZE, sizeof(bm_list_descriptor), sizeof(KM_STRUCT));
+printk("Page size is %ld sizeof(bm_list_descriptor)=%d sizeof(KM_STRUCT)=%d\n", PAGE_SIZE, sizeof(bm_list_descriptor), sizeof(KM_STRUCT));
 num_devices=0;
 
 result=pci_module_init(&radeon_km_pci_driver);
