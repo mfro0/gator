@@ -2693,7 +2693,7 @@ printk (KERN_INFO "refclock is %d\n", refclock);
 
   /* make room for odd frame + vbi frame + even frame */
   card->buffer0 = 1024*card->videoram - bufsize - 8000;
-  card->buffer1 = card->buffer0 - bufsize;
+  card->buffer1 = card->buffer0 - bufsize - 8000;
   card->vbibuffer = card->buffer1 - 32768;
 
   /* allocate space for two frames of max size eg 640*480*2) */
