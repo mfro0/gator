@@ -1013,7 +1013,7 @@ const struct
 	{"Philips FI1246 (or compatible)"		, TUNER_TYPE_FI1246},
 	{"Philips FI1216MF (or compatible)"		, TUNER_TYPE_FI1216},
 	{"Philips FI1236 (or compatible)"		, TUNER_TYPE_FI1236},
-	{"Philips FI1256 (or compatible)"		, -1},
+	{"Philips FI1256 (or compatible)"		, TUNER_TYPE_FI1256},
 	{"Philips FI1236 (or compatible)"		, TUNER_TYPE_FI1236},
 	{"Philips FI1216 (or compatible)"		, TUNER_TYPE_FI1216},
 	{"Philips FI1246 (or compatible)"		, TUNER_TYPE_FI1246},

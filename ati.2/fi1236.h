@@ -65,6 +65,7 @@ typedef struct {
 #define TUNER_TYPE_TEMIC_FN5AL         2
 #define TUNER_TYPE_MT2032	       3
 #define TUNER_TYPE_FI1246              4
+#define TUNER_TYPE_FI1246              5
 
 #define FI1236_ADDR(a)        ((a)->d.SlaveAddr)
 
