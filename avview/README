@@ -1,16 +1,16 @@
 
            AV viewer
 	   
-	   (C) Vladimir Dergachev 2001-2002
+	   (C) Vladimir Dergachev 2001-2003
 	   
 	  
    A viewer for TV capable cards.
    
           * Xv support
 	  
-   Requirements: TV input capable card with Xv support, Tcl/Tk 8.4.x or 
-                 later. 
+   Requirements: TV input capable card with Xv support, Tcl/Tk 8.4.x or later. 
 		 libzvbi from http://zapping.sf.net/
+		 ffmpeg-0.4.6 from http://ffmpeg.sf.net/
 		  
 	
 *** NOTES ***
