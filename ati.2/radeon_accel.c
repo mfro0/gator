@@ -191,6 +191,11 @@ static void RADEONCPWaitForIdle(ScrnInfoPtr pScrn)
     int         ret;
     int         i    = 0;
 
+    if(!info->CPInUse){
+    	RADEONWaitForIdle(pScrn);
+	return;
+	}
+
     FLUSH_RING();
 
     for (;;) {
@@ -201,6 +206,7 @@ static void RADEONCPWaitForIdle(ScrnInfoPtr pScrn)
 			   "%s: CP idle %d\n", __FUNCTION__, ret);
 	    }
 	} while ((ret == -EBUSY) && (i++ < RADEON_TIMEOUT));
+        
 
 	if (ret == 0) return;
 
