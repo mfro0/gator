@@ -732,6 +732,30 @@ release_mem_region(pci_resource_start(pci_dev,2),
 #define PCI_DEVICE_ID_ATI_RADEON_QW	 0x5157
 #endif                                             
 
+#ifndef PCI_DEVICE_ID_ATI_RADEON_N1
+#define PCI_DEVICE_ID_ATI_RADEON_N1    0x5159
+#endif
+
+#ifndef PCI_DEVICE_ID_ATI_RADEON_N2
+#define PCI_DEVICE_ID_ATI_RADEON_N2    0x515a
+#endif
+
+#ifndef PCI_DEVICE_ID_ATI_RADEON_RA
+#define PCI_DEVICE_ID_ATI_RADEON_RA    0x5144
+#endif
+
+#ifndef PCI_DEVICE_ID_ATI_RADEON_RB
+#define PCI_DEVICE_ID_ATI_RADEON_RB    0x5145
+#endif
+
+#ifndef PCI_DEVICE_ID_ATI_RADEON_RC
+#define PCI_DEVICE_ID_ATI_RADEON_RC    0x5146
+#endif
+
+#ifndef PCI_DEVICE_ID_ATI_RADEON_RD
+#define PCI_DEVICE_ID_ATI_RADEON_RD    0x5147
+#endif
+
 static struct pci_device_id km_pci_tbl[] __devinitdata = {
 	/* mach64 cards */
         {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_215GB,
