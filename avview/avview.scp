@@ -32,7 +32,7 @@ place .video -relx 0.0 -rely 0.0 -relwidth 1.0 -relheight 1.0 -anchor nw
 # .video configure -cursor no
 
 frame .video.onscreen_display -background [.video cget -background]
-place .video.onscreen_display -x 20 -y 30
+place .video.onscreen_display -relx 0.05 -rely 0.05 -anchor nw
 
 
 if { $control_screen != "" } {
@@ -411,13 +411,13 @@ if { $fullscreen_mode } {
 	$VIDEO_WINDOW configure -width [winfo screenwidth $VIDEO_WINDOW] \
 		-height [winfo screenheight $VIDEO_WINDOW]
 
-	place $VIDEO_WINDOW.onscreen_display -x 20 -y 20
+	place $VIDEO_WINDOW.onscreen_display -relx 0.05 -rely 0.05 -anchor nw
 	xmisc_setscreensaver $VIDEO_WINDOW 0 0 DontPreferBlanking AllowExposures \
 		0 0 0 0 off
 	} {
 	wm geometry . =$saved_main_window_geometry
 	$VIDEO_WINDOW configure -width $saved_vw_width -height $saved_vw_height
-	place $VIDEO_WINDOW.onscreen_display -x 20 -y 20
+	place $VIDEO_WINDOW.onscreen_display -relx 0.05 -rely 0.05 -anchor nw
 	xmisc_setscreensaver $VIDEO_WINDOW [lindex $saved_screensaver_mode 0]\
 					   [lindex $saved_screensaver_mode 1]\
 					   [lindex $saved_screensaver_mode 2]\
@@ -513,7 +513,7 @@ trace variable fullscreen_mode w set_fullscreen
 bind $VIDEO_WINDOW <Configure> {
 	global $VIDEO_WINDOW
 	display_video
-	place $VIDEO_WINDOW.onscreen_display -x 20 -y 30
+	place $VIDEO_WINDOW.onscreen_display -relx 0.05 -rely 0.05 -anchor nw
 	adjust_message_font
 	}
 
