@@ -60,3 +60,7 @@
 				 current channel
 	BackSpace		 erase last entered letter
 	
+	Left-click		 rotate among on-screen controls
+	Right-click		 bring up popup menu
+	MouseWheel		 adjust on-screen control
+	
