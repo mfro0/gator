@@ -60,7 +60,10 @@ unsigned r;
 r=0;
 for(i=0;(i<length)&& s[i] && (s[i]!=' ') && (s[i]!='\n') && (s[i]!='=');i++){
 	r=(r*KM_MULTIPLE+s[i]) % KM_MODULUS;
-	} 
+	}
+if(i>=length){
+	printk("%s %s: length limit reached for string %s\n",__FILE__, __FUNCTION__, s);
+	}
 return r;
 }
 
