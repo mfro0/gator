@@ -49,10 +49,17 @@ typedef struct
 } _MM_TABLE;
 
 typedef struct {
+   CARD32	 transform_index;
    int           brightness;
    int           saturation;
    int           hue;
    int           contrast;
+
+   int           dec_brightness;
+   int           dec_saturation;
+   int           dec_hue;
+   int           dec_contrast;
+
    Bool          doubleBuffer;
    unsigned char currentBuffer;
    FBLinearPtr   linear;
@@ -125,7 +132,8 @@ static void RADEONVideoTimerCallback(ScrnInfoPtr pScrn, Time now);
 
 static Atom xvBrightness, xvColorKey, xvSaturation, xvDoubleBuffer, 
              xvEncoding, xvVolume, xvMute, xvFrequency, xvContrast, xvHue, xvColor,
-	     xv_autopaint_colorkey, xv_set_defaults;
+	     xv_autopaint_colorkey, xv_set_defaults,
+	     xvDecBrightness, xvDecContrast, xvDecHue, xvDecColor, xvDecSaturation;
 
 
 
@@ -207,23 +215,28 @@ static XF86VideoFormatRec Formats[NUM_FORMATS] =
 };
 
 
-#define NUM_ATTRIBUTES 13
+#define NUM_DEC_ATTRIBUTES 17
+#define NUM_ATTRIBUTES 9
 
-static XF86AttributeRec Attributes[NUM_ATTRIBUTES+1] =
+static XF86AttributeRec Attributes[NUM_DEC_ATTRIBUTES+1] =
 {
    {XvSettable             , 0, 1, "XV_SET_DEFAULTS"},
    {XvSettable | XvGettable, 0, 1, "XV_AUTOPAINT_COLORKEY"},
    {XvSettable | XvGettable, 0, ~0, "XV_COLORKEY"},
    {XvSettable | XvGettable, 0, 1, "XV_DOUBLE_BUFFER"},
+   {XvSettable | XvGettable, -1000, 1000, "XV_BRIGHTNESS"},
+   {XvSettable | XvGettable, -1000, 1000, "XV_CONTRAST"},
+   {XvSettable | XvGettable, -1000, 1000, "XV_SATURATION"},
+   {XvSettable | XvGettable, -1000, 1000, "XV_COLOR"},
+   {XvSettable | XvGettable, -1000, 1000, "XV_HUE"},
+   {XvSettable | XvGettable, -1000, 1000, "XV_DEC_BRIGHTNESS"},
+   {XvSettable | XvGettable, -1000, 1000, "XV_DEC_SATURATION"},
+   {XvSettable | XvGettable, -1000, 1000, "XV_DEC_CONTRAST"},
+   {XvSettable | XvGettable, -1000, 1000, "XV_DEC_HUE"},
    {XvSettable | XvGettable, 0, 12, "XV_ENCODING"},
    {XvSettable | XvGettable, 0, -1, "XV_FREQ"},
    {XvSettable | XvGettable, 0x01, 0x7F, "XV_VOLUME"},
    {XvSettable | XvGettable, 0, 1, "XV_MUTE"},
-   {XvSettable | XvGettable, -1000, 1000, "XV_HUE"},
-   {XvSettable | XvGettable, -1000, 1000, "XV_BRIGHTNESS"},
-   {XvSettable | XvGettable, -1000, 1000, "XV_SATURATION"},
-   {XvSettable | XvGettable, -1000, 1000, "XV_COLOR"},
-   {XvSettable | XvGettable, -1000, 1000, "XV_CONTRAST"},
    { 0, 0, 0, NULL}  /* just a place holder so I don't have to be fancy with commas */
 };
 
@@ -301,7 +314,7 @@ GAMMA_SETTINGS def_gamma[18] =
 	{RADEON_OV0_GAMMA_40_7F, 0x100, 0x0080},
 	{RADEON_OV0_GAMMA_80_BF, 0x100, 0x0100},
 	{RADEON_OV0_GAMMA_C0_FF, 0x100, 0x0100},
-    {RADEON_OV0_GAMMA_100_13F, 0x100, 0x0200},
+        {RADEON_OV0_GAMMA_100_13F, 0x100, 0x0200},
 	{RADEON_OV0_GAMMA_140_17F, 0x100, 0x0200},
 	{RADEON_OV0_GAMMA_180_1BF, 0x100, 0x0300},
 	{RADEON_OV0_GAMMA_1C0_1FF, 0x100, 0x0300},
@@ -358,6 +371,16 @@ static void RADEONSetTransform(  ScrnInfoPtr pScrn,
 
 	CAdjLuma = cont * trans[ref].RefLuma;
 	CAdjOff = cont * trans[ref].RefLuma * bright * 1023.0;
+#if 1	
+	CAdjRCb = sat * -OvHueSin * trans[ref].RefRCr;
+	CAdjRCr = sat * OvHueCos * trans[ref].RefRCr;
+	CAdjGCb = sat * (OvHueCos * trans[ref].RefGCb - OvHueSin * trans[ref].RefGCr);
+	CAdjGCr = sat * (OvHueSin * trans[ref].RefGCb + OvHueCos * trans[ref].RefGCr);
+	CAdjBCb = sat * OvHueCos * trans[ref].RefBCb;
+	CAdjBCr = sat * OvHueSin * trans[ref].RefBCb;
+#endif
+	/* we really need the inverse transform .. */
+    #if 0
 	CAdjRCb = sat * -OvHueSin * trans[ref].RefRCr;
 	CAdjRCr = sat * OvHueCos * trans[ref].RefRCr;
 	CAdjGCb = sat * (OvHueCos * trans[ref].RefGCb - OvHueSin * trans[ref].RefGCr);
@@ -365,6 +388,24 @@ static void RADEONSetTransform(  ScrnInfoPtr pScrn,
 	CAdjBCb = sat * OvHueCos * trans[ref].RefBCb;
 	CAdjBCr = sat * OvHueSin * trans[ref].RefBCb;
 
+	CAdjRCb = sat * (-CAdjLuma/1.772);
+	CAdjRCr = sat * (CAdjLuma/((1+0.344136/1.772)*0.714136));
+	CAdjGCb = sat * 0;
+	CAdjGCr = sat * 0;
+	CAdjBCb = sat * (CAdjLuma/((1+0.344136/1.402)*0.714136));
+	CAdjBCr = sat * (-CAdjLuma/1.402);
+    #endif
+    
+    #if 0 /* default constants */
+        CAdjLuma = 1.16455078125;
+
+	CAdjRCb = 0.0;
+	CAdjRCr = 1.59619140625;
+	CAdjGCb = -0.39111328125;
+	CAdjGCr = -0.8125;
+	CAdjBCb = 2.01708984375;
+	CAdjBCr = 0;
+   #endif
 	OvLuma = CAdjLuma;
 	OvRCb = CAdjRCb;
 	OvRCr = CAdjRCr;
@@ -378,31 +419,42 @@ static void RADEONSetTransform(  ScrnInfoPtr pScrn,
 		OvLuma * Loff - (OvGCb + OvGCr) * Coff;
 	OvBOff = CAdjOff - 
 		OvLuma * Loff - (OvBCb + OvBCr) * Coff;
-
-	dwOvROff = (CARD32)(OvROff * 2.0);
-	dwOvGOff = (CARD32)(OvGOff * 2.0);
-	dwOvBOff = (CARD32)(OvBOff * 2.0);
+   #if 0 /* default constants */
+	OvROff = -888.5;
+	OvGOff = 545;
+	OvBOff = -1104;
+   #endif 
+   
+	dwOvROff = ((INT32)(OvROff * 2.0)) & 0x1fff;
+	dwOvGOff = (INT32)(OvGOff * 2.0) & 0x1fff;
+	dwOvBOff = (INT32)(OvBOff * 2.0) & 0x1fff;
 	if(!info->IsR200)
 	{
-		dwOvLuma = ((CARD32)(OvLuma * 2048.0))<<1;
-		dwOvRCb = ((CARD32)(OvRCb * 2048.0))<<17;
-		dwOvRCr = ((CARD32)(OvRCr * 2048.0))<<17;
-		dwOvGCb = ((CARD32)(OvGCb * 2048.0))<<17;
-		dwOvGCr = ((CARD32)(OvGCr * 2048.0))<<17;
-		dwOvBCb = ((CARD32)(OvBCb * 2048.0))<<17;
-		dwOvBCr = ((CARD32)(OvBCr * 2048.0))<<17;
+		dwOvLuma =(((INT32)(OvLuma * 2048.0))&0x7fff)<<17;
+		dwOvRCb = (((INT32)(OvRCb * 2048.0))&0x7fff)<<1;
+		dwOvRCr = (((INT32)(OvRCr * 2048.0))&0x7fff)<<17;
+		dwOvGCb = (((INT32)(OvGCb * 2048.0))&0x7fff)<<1;
+		dwOvGCr = (((INT32)(OvGCr * 2048.0))&0x7fff)<<17;
+		dwOvBCb = (((INT32)(OvBCb * 2048.0))&0x7fff)<<1;
+		dwOvBCr = (((INT32)(OvBCr * 2048.0))&0x7fff)<<17;
 	}
 	else
 	{
-		dwOvLuma = ((CARD32)(OvLuma * 256.0))<<4;
-		dwOvRCb = ((CARD32)(OvRCb * 256.0))<<20;
-		dwOvRCr = ((CARD32)(OvRCr * 256.0))<<20;
-		dwOvGCb = ((CARD32)(OvGCb * 256.0))<<20;
-		dwOvGCr = ((CARD32)(OvGCr * 256.0))<<20;
-		dwOvBCb = ((CARD32)(OvBCb * 256.0))<<20;
-		dwOvBCr = ((CARD32)(OvBCr * 256.0))<<20;
+		dwOvLuma = (((INT32)(OvLuma * 256.0))&0x7ff)<<20;
+		dwOvRCb = (((INT32)(OvRCb * 256.0))&0x7ff)<<4;
+		dwOvRCr = (((INT32)(OvRCr * 256.0))&0x7ff)<<20;
+		dwOvGCb = (((INT32)(OvGCb * 256.0))&0x7ff)<<4;
+		dwOvGCr = (((INT32)(OvGCr * 256.0))&0x7ff)<<20;
+		dwOvBCb = (((INT32)(OvBCb * 256.0))&0x7ff)<<4;
+		dwOvBCr = (((INT32)(OvBCr * 256.0))&0x7ff)<<20;
 	}
 
+        xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Red: Off=%g Y=%g Cb=%g Cr=%g\n",
+		OvROff, OvLuma, OvRCb, OvRCr);
+        xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Green: Off=%g Y=%g Cb=%g Cr=%g\n",
+		OvGOff, OvLuma, OvGCb, OvGCr);
+        xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Blue: Off=%g Y=%g Cb=%g Cr=%g\n",
+		OvBOff, OvLuma, OvBCb, OvBCr);
 	OUTREG(RADEON_OV0_LIN_TRANS_A, dwOvRCb | dwOvLuma);
 	OUTREG(RADEON_OV0_LIN_TRANS_B, dwOvROff | dwOvRCr);
 	OUTREG(RADEON_OV0_LIN_TRANS_C, dwOvGCb | dwOvLuma);
@@ -463,6 +515,13 @@ void RADEONResetVideo(ScrnInfoPtr pScrn)
     xvVolume       = MAKE_ATOM("XV_VOLUME");
     xvMute         = MAKE_ATOM("XV_MUTE");
     xvHue          = MAKE_ATOM("XV_HUE");
+
+    xvDecBrightness   = MAKE_ATOM("XV_DEC_BRIGHTNESS");
+    xvDecSaturation   = MAKE_ATOM("XV_DEC_SATURATION");
+    xvDecColor        = MAKE_ATOM("XV_DEC_COLOR");
+    xvDecContrast     = MAKE_ATOM("XV_DEC_CONTRAST");
+    xvDecHue          = MAKE_ATOM("XV_DEC_HUE");
+
     xv_autopaint_colorkey = MAKE_ATOM("XV_AUTOPAINT_COLORKEY");
     xv_set_defaults = MAKE_ATOM("XV_SET_DEFAULTS");
 
@@ -1360,10 +1419,18 @@ RADEONAllocAdaptor(ScrnInfoPtr pScrn)
     pPriv->colorKey = info->videoKey;
     pPriv->doubleBuffer = TRUE;
     pPriv->videoStatus = 0;
+    
+    pPriv->transform_index = 0;
     pPriv->brightness = 0;
     pPriv->saturation = 0;
     pPriv->contrast = 0;
     pPriv->hue = 0;
+
+    pPriv->dec_brightness = 0;
+    pPriv->dec_saturation = 0;
+    pPriv->dec_contrast = 0;
+    pPriv->dec_hue = 0;
+
     pPriv->currentBuffer = 0;
 
     pPriv->video_stream_active = FALSE;
@@ -1427,11 +1494,11 @@ RADEONSetupImageVideo(ScreenPtr pScreen)
     if(pPriv->theatre != NULL) 
     {
        xf86_InitTheatre(pPriv->theatre);
-       xf86_RT_SetTint(pPriv->theatre, pPriv->hue);
-       xf86_RT_SetSaturation(pPriv->theatre, pPriv->saturation);
+       xf86_RT_SetTint(pPriv->theatre, pPriv->dec_hue);
+       xf86_RT_SetSaturation(pPriv->theatre, pPriv->dec_saturation);
        xf86_RT_SetSharpness(pPriv->theatre, RT_NORM_SHARPNESS);
-       xf86_RT_SetContrast(pPriv->theatre, pPriv->contrast);
-       xf86_RT_SetBrightness(pPriv->theatre, pPriv->brightness);  
+       xf86_RT_SetContrast(pPriv->theatre, pPriv->dec_contrast);
+       xf86_RT_SetBrightness(pPriv->theatre, pPriv->dec_brightness);  
        RADEON_RT_SetEncoding(pPriv);
     }
     
@@ -1450,7 +1517,10 @@ RADEONSetupImageVideo(ScreenPtr pScreen)
     adapt->nFormats = NUM_FORMATS;
     adapt->pFormats = Formats;
     adapt->nPorts = 1;
-    adapt->nAttributes = NUM_ATTRIBUTES;
+    if(pPriv->theatre==NULL)
+	    adapt->nAttributes = NUM_ATTRIBUTES;
+	    else
+	    adapt->nAttributes = NUM_DEC_ATTRIBUTES;
     adapt->pAttributes = Attributes;
     adapt->nImages = NUM_IMAGES;
     adapt->pImages = Images;
@@ -1646,6 +1716,11 @@ RADEONSetPortAttribute(
 ){
   RADEONPortPrivPtr pPriv = (RADEONPortPrivPtr)data;
 
+#define RTFSaturation(a)   (1.0 + ((a)*1.0)/1000.0)
+#define RTFBrightness(a)   (((a)*1.0)/2000.0)
+#define RTFContrast(a)   (1.0 + ((a)*1.0)/1000.0)
+#define RTFHue(a)   (((a)*3.1416)/1000.0)
+
   if(attribute == xv_autopaint_colorkey) {
   	pPriv->autopaint_colorkey = value;
   } else
@@ -1655,26 +1730,54 @@ RADEONSetPortAttribute(
         RADEONSetPortAttribute(pScrn, xvSaturation, 0, data);
         RADEONSetPortAttribute(pScrn, xvContrast,   0, data);
         RADEONSetPortAttribute(pScrn, xvHue,   0, data);
+
+        RADEONSetPortAttribute(pScrn, xvDecBrightness, 0, data);
+        RADEONSetPortAttribute(pScrn, xvDecSaturation, 0, data);
+        RADEONSetPortAttribute(pScrn, xvDecContrast,   0, data);
+        RADEONSetPortAttribute(pScrn, xvDecHue,   0, data);
+
         RADEONSetPortAttribute(pScrn, xvVolume,   0, data);
         RADEONSetPortAttribute(pScrn, xvMute,   1, data);
         RADEONSetPortAttribute(pScrn, xvDoubleBuffer,   0, data);
   } else
   if(attribute == xvBrightness) {
 	pPriv->brightness = value;
-	if(pPriv->theatre!=NULL) xf86_RT_SetBrightness(pPriv->theatre, pPriv->brightness);	
+	RADEONSetTransform(pScrn, RTFBrightness(pPriv->brightness), RTFContrast(pPriv->contrast), 
+		RTFSaturation(pPriv->saturation), RTFHue(pPriv->hue), pPriv->transform_index);
   } else
   if((attribute == xvSaturation) || (attribute == xvColor)) {
   	if(value<-1000)value = -1000;
 	if(value>1000)value = 1000;
 	pPriv->saturation = value;
-	if(pPriv->theatre != NULL)xf86_RT_SetSaturation(pPriv->theatre, value);
+	RADEONSetTransform(pScrn, RTFBrightness(pPriv->brightness), RTFContrast(pPriv->contrast), 
+		RTFSaturation(pPriv->saturation), RTFHue(pPriv->hue), pPriv->transform_index);
   } else
   if(attribute == xvContrast) {
 	pPriv->contrast = value;
-	if(pPriv->theatre != NULL)xf86_RT_SetContrast(pPriv->theatre, value);
+	RADEONSetTransform(pScrn, RTFBrightness(pPriv->brightness), RTFContrast(pPriv->contrast), 
+		RTFSaturation(pPriv->saturation), RTFHue(pPriv->hue), pPriv->transform_index);
   } else
   if(attribute == xvHue) {
 	pPriv->hue = value;
+	RADEONSetTransform(pScrn, RTFBrightness(pPriv->brightness), RTFContrast(pPriv->contrast), 
+		RTFSaturation(pPriv->saturation), RTFHue(pPriv->hue), pPriv->transform_index);
+  } else
+  if(attribute == xvDecBrightness) {
+	pPriv->dec_brightness = value;
+	if(pPriv->theatre!=NULL) xf86_RT_SetBrightness(pPriv->theatre, pPriv->dec_brightness);	
+  } else
+  if((attribute == xvDecSaturation) || (attribute == xvDecColor)) {
+  	if(value<-1000)value = -1000;
+	if(value>1000)value = 1000;
+	pPriv->dec_saturation = value;
+	if(pPriv->theatre != NULL)xf86_RT_SetSaturation(pPriv->theatre, value);
+  } else
+  if(attribute == xvDecContrast) {
+	pPriv->dec_contrast = value;
+	if(pPriv->theatre != NULL)xf86_RT_SetContrast(pPriv->theatre, value);
+  } else
+  if(attribute == xvDecHue) {
+	pPriv->dec_hue = value;
 	if(pPriv->theatre != NULL)xf86_RT_SetTint(pPriv->theatre, value);
   } else
   if(attribute == xvDoubleBuffer) {
@@ -1746,6 +1849,18 @@ RADEONGetPortAttribute(
   } else
   if(attribute == xvHue) {
 	*value = pPriv->hue;
+  } else
+  if(attribute == xvDecBrightness) {
+	*value = pPriv->dec_brightness;
+  } else
+  if((attribute == xvDecSaturation) || (attribute == xvDecColor)) {
+	*value = pPriv->dec_saturation;
+  } else
+  if(attribute == xvDecContrast) {
+	*value = pPriv->dec_contrast;
+  } else
+  if(attribute == xvDecHue) {
+	*value = pPriv->dec_hue;
   } else
   if(attribute == xvDoubleBuffer) {
 	*value = pPriv->doubleBuffer ? 1 : 0;
