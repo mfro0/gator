@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/radeon.h,v 1.32 2002/10/31 18:06:59 anderson Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/radeon.h,v 1.36 2003/02/04 12:02:19 eich Exp $ */
 /*
  * Copyright 2000 ATI Technologies Inc., Markham, Ontario, and
  *                VA Linux Systems Inc., Fremont, California.
@@ -198,10 +198,6 @@ typedef struct {
     CARD32            p2pll_div_0;
     CARD32            htotal_cntl2;
 
-				/* DDA register */
-    CARD32            dda_config;
-    CARD32            dda_on_off;
-
 				/* Pallet */
     Bool              palette_valid;
     CARD32            palette[256];
@@ -313,6 +309,7 @@ typedef struct {
     Bool              ddc_mode;         /* Validate mode by matching exactly  
 					 * the modes supported in DDC data
 					 */
+    Bool              R300CGWorkaround;
 
 				/* EDID or BIOS values for FPs */
     int               PanelXRes;
@@ -438,6 +435,7 @@ typedef struct {
 
     CARD32            pciCommand;
 
+    Bool              CPRuns;           /* CP is running */
     Bool              CPInUse;          /* CP has been used by X server */
     Bool              CPStarted;        /* CP has started */
     int               CPMode;           /* CP mode that server/clients use */
@@ -525,7 +523,6 @@ typedef struct {
     int               perctx_sarea_size;
 #endif
 #endif
-    CARD32            gen_int_cntl;
 
 				/* XVideo */
     XF86VideoAdaptorPtr adaptor;
@@ -568,6 +565,7 @@ extern void        RADEONEngineRestore(ScrnInfoPtr pScrn);
 
 extern unsigned    RADEONINPLL(ScrnInfoPtr pScrn, int addr);
 extern void        RADEONWaitForVerticalSync(ScrnInfoPtr pScrn);
+extern void        RADEONWaitForVerticalSync2(ScrnInfoPtr pScrn);
 
 extern void        RADEONSelectBuffer(ScrnInfoPtr pScrn, int buffer);
 
@@ -610,13 +608,17 @@ do {									\
 
 #define RADEONCP_STOP(pScrn, info)					\
 do {									\
-    int _ret = RADEONCPStop(pScrn, info);				\
-    if (_ret) {								\
-	xf86DrvMsg(pScrn->scrnIndex, X_ERROR,				\
+    int _ret;								\
+     if (info->CPStarted) {						\
+        _ret = RADEONCPStop(pScrn, info);				\
+        if (_ret) {							\
+	    xf86DrvMsg(pScrn->scrnIndex, X_ERROR,			\
 		   "%s: CP stop %d\n", __FUNCTION__, _ret);		\
-    }									\
-    info->CPStarted = FALSE;                                            \
+        }								\
+        info->CPStarted = FALSE;                                        \
+   }									\
     RADEONEngineRestore(pScrn);						\
+    info->CPRuns = FALSE;						\
 } while (0)
 
 #define RADEONCP_RESET(pScrn, info)					\

@@ -1,6 +1,6 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atichip.c,v 1.27 2002/10/12 01:38:06 martin Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atichip.c,v 1.30 2003/01/17 19:54:02 martin Exp $ */
 /*
- * Copyright 1997 through 2002 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
+ * Copyright 1997 through 2003 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
  * documentation for any purpose is hereby granted without fee, provided that
@@ -611,6 +611,7 @@ ATIChipID
         case NewChipID('L', 'X'):
             return ATI_CHIP_RADEONMOBILITY7;
 
+        case NewChipID('Q', 'H'):
         case NewChipID('Q', 'L'):
         case NewChipID('Q', 'N'):
         case NewChipID('Q', 'O'):
@@ -634,6 +635,10 @@ ATIChipID
         case NewChipID('L', 'g'):
             return ATI_CHIP_RADEONMOBILITY9;
 
+        case NewChipID('A', 'D'):
+        case NewChipID('A', 'E'):
+        case NewChipID('A', 'F'):
+        case NewChipID('A', 'G'):
         case NewChipID('N', 'D'):
         case NewChipID('N', 'E'):
         case NewChipID('N', 'F'):

@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/r128_driver.c,v 1.71 2002/11/29 15:33:19 eich Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/r128_driver.c,v 1.73 2003/01/15 03:32:16 dawes Exp $ */
 /*
  * Copyright 1999, 2000 ATI Technologies Inc., Markham, Ontario,
  *                      Precision Insight, Inc., Cedar Park, Texas, and
@@ -304,6 +304,7 @@ static const char *drmSymbols[] = {
     "drmCommandRead",
     "drmCommandWrite",
     "drmCommandWriteRead",
+    "drmFreeBufs",
     "drmFreeVersion",
     "drmGetLibVersion",
     "drmGetVersion",
@@ -3525,6 +3526,11 @@ Bool R128EnterVT(int scrnIndex, int flags)
 
 #ifdef XF86DRI
     if (info->directRenderingEnabled) {
+	if (info->irq) {
+	    /* Need to make sure interrupts are enabled */
+	    unsigned char *R128MMIO = info->MMIO;
+	    OUTREG(R128_GEN_INT_CNTL, info->gen_int_cntl);
+	}
 	R128CCE_START(pScrn, info);
 	DRIUnlock(pScrn->pScreen);
     }

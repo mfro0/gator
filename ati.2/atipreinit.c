@@ -1,6 +1,6 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atipreinit.c,v 1.63 2002/11/08 02:46:07 tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atipreinit.c,v 1.65 2003/01/01 19:16:33 tsi Exp $ */
 /*
- * Copyright 1999 through 2002 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
+ * Copyright 1999 through 2003 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
  * documentation for any purpose is hereby granted without fee, provided that
@@ -1637,11 +1637,6 @@ ATIPreInit
                 pATI->LCDVBlankWidth =
                     ((pATIHW->crt[22] - pATIHW->crt[21]) & 0xFFU) + 1;
 
-                HDisplay = pATIHW->crt[0] + 5 - pATI->LCDHBlankWidth;
-                VDisplay = (((pATIHW->crt[7] << 4) & 0x0200U) |
-                            ((pATIHW->crt[7] << 8) & 0x0100U) |
-                            pATIHW->crt[6]) + 2 - pATI->LCDVBlankWidth;
-
                 pATI->LCDHSyncStart =
                     ((pATIHW->crt[4] - pATIHW->crt[2]) & 0xFFU) + 1;
                 pATI->LCDVSyncStart = (((((pATIHW->crt[7] << 2) & 0x0200U) |
@@ -1650,6 +1645,20 @@ ATIPreInit
                                         (((pATIHW->crt[9] << 4) & 0x0200U) |
                                          ((pATIHW->crt[7] << 5) & 0x0100U) |
                                          pATIHW->crt[21])) & 0xFFU) + 1;
+
+                HDisplay = pATI->LCDHSyncStart + pATI->LCDHSyncWidth -
+                    pATI->LCDHBlankWidth;
+                if (HDisplay > 0)
+                    pATI->LCDHBlankWidth += (HDisplay + 0x3FU) & ~0x3FU;
+                VDisplay = pATI->LCDVSyncStart + pATI->LCDVSyncWidth -
+                    pATI->LCDVBlankWidth;
+                if (VDisplay > 0)
+                    pATI->LCDVBlankWidth += (VDisplay + 0xFFU) & ~0xFFU;
+
+                HDisplay = pATIHW->crt[0] + 5 - pATI->LCDHBlankWidth;
+                VDisplay = (((pATIHW->crt[7] << 4) & 0x0200U) |
+                            ((pATIHW->crt[7] << 8) & 0x0100U) |
+                            pATIHW->crt[6]) + 3 - pATI->LCDVBlankWidth;
             }
             else
 
@@ -1851,7 +1860,8 @@ ATIPreInit
             if (!(pATIHW->horz_stretching & HORZ_STRETCH_EN) &&
                 ((HDisplay = pATI->LCDHorizontal - HDisplay) > 0))
             {
-                if ((pATI->LCDHSyncStart -= HDisplay) < 0)
+                pATI->LCDHSyncStart -= HDisplay;
+                if (pATI->LCDHSyncStart < 0)
                     pATI->LCDHSyncStart = 0;
                 pATI->LCDHBlankWidth -= HDisplay;
                 HDisplay = pATI->LCDHSyncStart + pATI->LCDHSyncWidth;
@@ -1862,7 +1872,8 @@ ATIPreInit
             if (!(pATIHW->vert_stretching & VERT_STRETCH_EN) &&
                 ((VDisplay = pATI->LCDVertical - VDisplay) > 0))
             {
-                if ((pATI->LCDVSyncStart -= VDisplay) < 0)
+                pATI->LCDVSyncStart -= VDisplay;
+                if (pATI->LCDVSyncStart < 0)
                     pATI->LCDVSyncStart = 0;
                 pATI->LCDVBlankWidth -= VDisplay;
                 VDisplay = pATI->LCDVSyncStart + pATI->LCDVSyncWidth;

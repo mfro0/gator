@@ -1,6 +1,6 @@
-XCOMM $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/Imakefile,v 1.41 2002/11/14 21:01:20 tsi Exp $
+XCOMM $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/Imakefile,v 1.43 2003/01/01 19:16:30 tsi Exp $
 XCOMM
-XCOMM Copyright 1997 through 2002 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
+XCOMM Copyright 1997 through 2003 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
 XCOMM
 XCOMM Permission to use, copy, modify, distribute, and sell this software and
 XCOMM its documentation for any purpose is hereby granted without fee, provided
@@ -410,6 +410,7 @@ InstallDriverSDKNonExecFile(radeon_dri.c,$(DRIVERSDKDIR)/drivers/ati)
 InstallDriverSDKNonExecFile(radeon_dri.h,$(DRIVERSDKDIR)/drivers/ati)
 InstallDriverSDKNonExecFile(radeon_dripriv.h,$(DRIVERSDKDIR)/drivers/ati)
 InstallDriverSDKNonExecFile(radeon_driver.c,$(DRIVERSDKDIR)/drivers/ati)
+InstallDriverSDKNonExecFile(radeon_macros.h,$(DRIVERSDKDIR)/drivers/ati)
 InstallDriverSDKNonExecFile(radeon_misc.c,$(DRIVERSDKDIR)/drivers/ati)
 InstallDriverSDKNonExecFile(radeon_probe.c,$(DRIVERSDKDIR)/drivers/ati)
 InstallDriverSDKNonExecFile(radeon_probe.h,$(DRIVERSDKDIR)/drivers/ati)

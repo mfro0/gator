@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/radeon_reg.h,v 1.22 2002/11/25 21:03:30 tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/radeon_reg.h,v 1.24 2003/01/17 19:54:03 martin Exp $ */
 /*
  * Copyright 2000 ATI Technologies Inc., Markham, Ontario, and
  *                VA Linux Systems Inc., Fremont, California.
@@ -52,85 +52,6 @@
 
 #ifndef _RADEON_REG_H_
 #define _RADEON_REG_H_
-
-#include "xf86_ansic.h"
-#include "compiler.h"
-
-				/* Memory mapped register access macros */
-#define INREG8(addr)        MMIO_IN8(RADEONMMIO, addr)
-#define INREG16(addr)       MMIO_IN16(RADEONMMIO, addr)
-#define INREG(addr)         MMIO_IN32(RADEONMMIO, addr)
-#define OUTREG8(addr, val)  MMIO_OUT8(RADEONMMIO, addr, val)
-#define OUTREG16(addr, val) MMIO_OUT16(RADEONMMIO, addr, val)
-#define OUTREG(addr, val)   MMIO_OUT32(RADEONMMIO, addr, val)
-
-#define ADDRREG(addr)       ((volatile CARD32 *)(pointer)(RADEONMMIO + (addr)))
-
-
-#define OUTREGP(addr, val, mask)					\
-do {									\
-    CARD32 tmp = INREG(addr);						\
-    tmp &= (mask);							\
-    tmp |= (val);							\
-    OUTREG(addr, tmp);							\
-} while (0)
-
-#define INPLL(pScrn, addr) RADEONINPLL(pScrn, addr)
-
-#define OUTPLL(addr, val)						\
-do {									\
-    OUTREG8(RADEON_CLOCK_CNTL_INDEX, (((addr) & 0x3f) |			\
-				      RADEON_PLL_WR_EN));		\
-    OUTREG(RADEON_CLOCK_CNTL_DATA, val);				\
-} while (0)
-
-#define OUTPLLP(pScrn, addr, val, mask)					\
-do {									\
-    CARD32 tmp = INPLL(pScrn, addr);					\
-    tmp &= (mask);							\
-    tmp |= (val);							\
-    OUTPLL(addr, tmp);							\
-} while (0)
-
-#define OUTPAL_START(idx)						\
-do {									\
-    OUTREG8(RADEON_PALETTE_INDEX, (idx));				\
-} while (0)
-
-#define OUTPAL_NEXT(r, g, b)						\
-do {									\
-    OUTREG(RADEON_PALETTE_DATA, ((r) << 16) | ((g) << 8) | (b));	\
-} while (0)
-
-#define OUTPAL_NEXT_CARD32(v)						\
-do {									\
-    OUTREG(RADEON_PALETTE_DATA, (v & 0x00ffffff));			\
-} while (0)
-
-#define OUTPAL(idx, r, g, b)						\
-do {									\
-    OUTPAL_START((idx));						\
-    OUTPAL_NEXT((r), (g), (b));						\
-} while (0)
-
-#define INPAL_START(idx)						\
-do {									\
-    OUTREG(RADEON_PALETTE_INDEX, (idx) << 16);				\
-} while (0)
-
-#define INPAL_NEXT() INREG(RADEON_PALETTE_DATA)
-
-#define PAL_SELECT(idx)							\
-do {									\
-    if (!idx) {								\
-	OUTREG(RADEON_DAC_CNTL2, INREG(RADEON_DAC_CNTL2) &		\
-	       (CARD32)~RADEON_DAC2_PALETTE_ACC_CTL);			\
-    } else {								\
-	OUTREG(RADEON_DAC_CNTL2, INREG(RADEON_DAC_CNTL2) |		\
-	       RADEON_DAC2_PALETTE_ACC_CTL);				\
-    }									\
-} while (0)
-
 
 				/* Registers for 2D/Video/Overlay */
 #define RADEON_ADAPTER_ID                   0x0f2c /* PCI */
@@ -294,6 +215,10 @@ do {									\
 #define RADEON_CONFIG_APER_SIZE             0x0108
 #define RADEON_CONFIG_BONDS                 0x00e8
 #define RADEON_CONFIG_CNTL                  0x00e0
+#       define RADEON_CFG_ATI_REV_A11       (0   << 16)
+#       define RADEON_CFG_ATI_REV_A12       (1   << 16)
+#       define RADEON_CFG_ATI_REV_A13       (2   << 16)
+#       define RADEON_CFG_ATI_REV_ID_MASK   (0xf << 16)
 #define RADEON_CONFIG_MEMSIZE               0x00f8
 #define RADEON_CONFIG_MEMSIZE_EMBEDDED      0x0114
 #define RADEON_CONFIG_REG_1_BASE            0x010c
@@ -570,6 +495,7 @@ do {									\
 #define RADEON_DST_LINE_START               0x1600
 #define RADEON_DST_LINE_END                 0x1604
 #define RADEON_DST_LINE_PATCOUNT            0x1608
+#       define RADEON_BRES_CNTL_SHIFT       8
 #define RADEON_DST_OFFSET                   0x1404
 #define RADEON_DST_PITCH                    0x1408
 #define RADEON_DST_PITCH_OFFSET             0x142c
@@ -633,6 +559,7 @@ do {									\
 #       define RADEON_FP_FPON                  (1 <<  0)
 #       define RADEON_FP_BLANK_EN	       (1 <<  1)
 #       define RADEON_FP_TMDS_EN               (1 <<  2)
+#       define RADEON_FP_PANEL_FORMAT          (1 <<  3)
 #       define RADEON_FP_EN_TMDS               (1 <<  7)
 #       define RADEON_FP_DETECT_SENSE          (1 <<  8)
 #       define RADEON_FP_SEL_CRTC2             (1 << 13)
@@ -691,6 +618,8 @@ do {									\
 #define RADEON_GEN_INT_STATUS               0x0044
 #       define RADEON_VSYNC_INT_AK          (1 <<  2)
 #       define RADEON_VSYNC_INT             (1 <<  2)
+#       define RADEON_VSYNC2_INT_AK         (1 <<  6)
+#       define RADEON_VSYNC2_INT            (1 <<  6)
 #define RADEON_GENENB                       0x03c3 /* VGA */
 #define RADEON_GENFC_RD                     0x03ca /* VGA */
 #define RADEON_GENFC_WT                     0x03da /* VGA, 0x03ba */
@@ -1065,6 +994,8 @@ do {									\
 #       define RADEON_P2PLL_REF_DIV_MASK    0x03ff
 #       define RADEON_P2PLL_ATOMIC_UPDATE_R (1 << 15) /* same as _W */
 #       define RADEON_P2PLL_ATOMIC_UPDATE_W (1 << 15) /* same as _R */
+#       define R300_PPLL_REF_DIV_ACC_MASK   (0x3ff < 18)
+#       define R300_PPLL_REF_DIV_ACC_SHIFT  18
 #define RADEON_PALETTE_DATA                 0x00b4
 #define RADEON_PALETTE_30_DATA              0x00b8
 #define RADEON_PALETTE_INDEX                0x00b0
@@ -1363,6 +1294,10 @@ do {									\
 #       define RADEON_TXFORMAT_WIDTH_SHIFT        8
 #       define RADEON_TXFORMAT_HEIGHT_MASK        (15 << 12)
 #       define RADEON_TXFORMAT_HEIGHT_SHIFT       12
+#       define RADEON_TXFORMAT_F5_WIDTH_MASK      (15 << 16)
+#       define RADEON_TXFORMAT_F5_WIDTH_SHIFT     16
+#       define RADEON_TXFORMAT_F5_HEIGHT_MASK     (15 << 20)
+#       define RADEON_TXFORMAT_F5_HEIGHT_SHIFT    20
 #       define RADEON_TXFORMAT_ST_ROUTE_STQ0      (0  << 24)
 #       define RADEON_TXFORMAT_ST_ROUTE_MASK      (3  << 24)
 #       define RADEON_TXFORMAT_ST_ROUTE_STQ1      (1  << 24)
@@ -1375,6 +1310,26 @@ do {									\
 #       define RADEON_TXFORMAT_CHROMA_KEY_ENABLE  (1  << 29)
 #       define RADEON_TXFORMAT_CUBIC_MAP_ENABLE   (1  << 30)
 #       define RADEON_TXFORMAT_PERSPECTIVE_ENABLE (1  << 31)
+#define RADEON_PP_CUBIC_FACES_0             0x1d24
+#define RADEON_PP_CUBIC_FACES_1             0x1d28
+#define RADEON_PP_CUBIC_FACES_2             0x1d2c
+#       define RADEON_FACE_WIDTH_1_SHIFT          0
+#       define RADEON_FACE_HEIGHT_1_SHIFT         4
+#       define RADEON_FACE_WIDTH_1_MASK           (0xf << 0)
+#       define RADEON_FACE_HEIGHT_1_MASK          (0xf << 4)
+#       define RADEON_FACE_WIDTH_2_SHIFT          8
+#       define RADEON_FACE_HEIGHT_2_SHIFT         12
+#       define RADEON_FACE_WIDTH_2_MASK           (0xf << 8)
+#       define RADEON_FACE_HEIGHT_2_MASK          (0xf << 12)
+#       define RADEON_FACE_WIDTH_3_SHIFT          16
+#       define RADEON_FACE_HEIGHT_3_SHIFT         20
+#       define RADEON_FACE_WIDTH_3_MASK           (0xf << 16)
+#       define RADEON_FACE_HEIGHT_3_MASK          (0xf << 20)
+#       define RADEON_FACE_WIDTH_4_SHIFT          24
+#       define RADEON_FACE_HEIGHT_4_SHIFT         28
+#       define RADEON_FACE_WIDTH_4_MASK           (0xf << 24)
+#       define RADEON_FACE_HEIGHT_4_MASK          (0xf << 28)
+
 #define RADEON_PP_TXOFFSET_0                0x1c5c
 #define RADEON_PP_TXOFFSET_1                0x1c74
 #define RADEON_PP_TXOFFSET_2                0x1c8c
@@ -1389,6 +1344,35 @@ do {									\
 #       define RADEON_TXO_MICRO_TILE_OPT     (2 << 3)
 #       define RADEON_TXO_OFFSET_MASK        0xffffffe0
 #       define RADEON_TXO_OFFSET_SHIFT       5
+
+#define RADEON_PP_CUBIC_OFFSET_T0_0         0x1dd0  /* bits [31:5] */
+#define RADEON_PP_CUBIC_OFFSET_T0_1         0x1dd4
+#define RADEON_PP_CUBIC_OFFSET_T0_2         0x1dd8
+#define RADEON_PP_CUBIC_OFFSET_T0_3         0x1ddc
+#define RADEON_PP_CUBIC_OFFSET_T0_4         0x1de0
+#define RADEON_PP_CUBIC_OFFSET_T1_0         0x1e00
+#define RADEON_PP_CUBIC_OFFSET_T1_1         0x1e04
+#define RADEON_PP_CUBIC_OFFSET_T1_2         0x1e08
+#define RADEON_PP_CUBIC_OFFSET_T1_3         0x1e0c
+#define RADEON_PP_CUBIC_OFFSET_T1_4         0x1e10
+#define RADEON_PP_CUBIC_OFFSET_T2_0         0x1e14
+#define RADEON_PP_CUBIC_OFFSET_T2_1         0x1e18
+#define RADEON_PP_CUBIC_OFFSET_T2_2         0x1e1c
+#define RADEON_PP_CUBIC_OFFSET_T2_3         0x1e20
+#define RADEON_PP_CUBIC_OFFSET_T2_4         0x1e24
+
+#define RADEON_PP_TEX_SIZE_0                0x1d04  /* NPOT */
+#define RADEON_PP_TEX_SIZE_1                0x1d0c
+#define RADEON_PP_TEX_SIZE_2                0x1d14
+#       define RADEON_TEX_USIZE_MASK        (0x7ff << 0)
+#       define RADEON_TEX_USIZE_SHIFT       0
+#       define RADEON_TEX_VSIZE_MASK        (0x7ff << 16)
+#       define RADEON_TEX_VSIZE_SHIFT       16
+#       define RADEON_SIGNED_RGB_MASK       (1 << 30)
+#       define RADEON_SIGNED_RGB_SHIFT      30
+#       define RADEON_SIGNED_ALPHA_MASK     (1 << 31)
+#       define RADEON_SIGNED_ALPHA_SHIFT    31
+
 #define RADEON_PP_TXCBLEND_0                0x1c60
 #define RADEON_PP_TXCBLEND_1                0x1c78
 #define RADEON_PP_TXCBLEND_2                0x1c90

@@ -136,10 +136,14 @@ ATIClaimResources
 #endif /* AVOID_CPIO */
 
     /* Register unshared relocatable resources for inactive adapters */
-    pResources = xf86RegisterResources(pATI->iEntity, NULL, ResExclusive);
-    pResources = xf86ReallocatePciResources(pATI->iEntity, pResources);
-    if (!pResources)
-        return;
+    do
+    {
+        pResources = xf86RegisterResources(pATI->iEntity, NULL, ResExclusive);
+        if (!pResources)
+            return;
+
+        pResources = xf86ReallocatePciResources(pATI->iEntity, pResources);
+    } while (!pResources);
 
     xf86Msg(X_WARNING,
         ATI_NAME ":  Unable to register the following resources for inactive"

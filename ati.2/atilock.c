@@ -1,6 +1,6 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atilock.c,v 1.16 2002/05/16 19:35:42 tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atilock.c,v 1.18 2003/01/10 20:57:57 tsi Exp $ */
 /*
- * Copyright 1999 through 2002 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
+ * Copyright 1999 through 2003 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
  * documentation for any purpose is hereby granted without fee, provided that
@@ -111,6 +111,8 @@ ATIUnlock
         tmp = pATI->LockData.bus_cntl & ~BUS_ROM_DIS;
         if (pATI->Chip < ATI_CHIP_264VTB)
             tmp |= SetBits(15, BUS_FIFO_WS);
+        else
+            tmp &= ~BUS_MASTER_DIS;
         if (pATI->Chip >= ATI_CHIP_264VT)
             tmp |= BUS_EXT_REG_EN;              /* Enable Block 1 */
         outr(BUS_CNTL, tmp);
@@ -170,20 +172,34 @@ ATIUnlock
 
         outr(DAC_CNTL, tmp);
 
-        /* Save Multimedia Peripheral Port and TVOut state */
         if (pATI->Chip >= ATI_CHIP_264VTB)
         {
             pATI->LockData.mpp_config = inr(MPP_CONFIG);
             pATI->LockData.mpp_strobe_seq = inr(MPP_STROBE_SEQ);
             pATI->LockData.tvo_cntl = inr(TVO_CNTL);
 
-            /* Save hardware-assisted I2C control registers */
-            if (pATI->Chip >= ATI_CHIP_264GTPRO)
+            if (pATI->Chip >= ATI_CHIP_264GT2C)
             {
-                pATI->LockData.i2c_cntl_0 =
-                    inr(I2C_CNTL_0) | (I2C_CNTL_STAT | I2C_CNTL_HPTR_RST);
-                outr(I2C_CNTL_0, pATI->LockData.i2c_cntl_0 & ~I2C_CNTL_INT_EN);
-                pATI->LockData.i2c_cntl_1 = inr(I2C_CNTL_1);
+                pATI->LockData.hw_debug = inr(HW_DEBUG);
+
+                if (pATI->Chip >= ATI_CHIP_264GTPRO)
+                {
+                    if (!(pATI->LockData.hw_debug & CMDFIFO_SIZE_EN))
+                        outr(HW_DEBUG,
+                            pATI->LockData.hw_debug | CMDFIFO_SIZE_EN);
+
+                    pATI->LockData.i2c_cntl_0 =
+                        inr(I2C_CNTL_0) | (I2C_CNTL_STAT | I2C_CNTL_HPTR_RST);
+                    outr(I2C_CNTL_0,
+                        pATI->LockData.i2c_cntl_0 & ~I2C_CNTL_INT_EN);
+                    pATI->LockData.i2c_cntl_1 = inr(I2C_CNTL_1);
+                }
+                else
+                {
+                    if (pATI->LockData.hw_debug & CMDFIFO_SIZE_DIS)
+                        outr(HW_DEBUG,
+                            pATI->LockData.hw_debug & ~CMDFIFO_SIZE_DIS);
+                }
             }
         }
 
@@ -556,10 +572,14 @@ ATILock
             outr(MPP_CONFIG, pATI->LockData.mpp_config);
             outr(MPP_STROBE_SEQ, pATI->LockData.mpp_strobe_seq);
             outr(TVO_CNTL, pATI->LockData.tvo_cntl);
-            if (pATI->Chip >= ATI_CHIP_264GTPRO)
+            if (pATI->Chip >= ATI_CHIP_264GT2C)
             {
-                outr(I2C_CNTL_0, pATI->LockData.i2c_cntl_0);
-                outr(I2C_CNTL_1, pATI->LockData.i2c_cntl_1);
+                outr(HW_DEBUG, pATI->LockData.hw_debug);
+                if (pATI->Chip >= ATI_CHIP_264GTPRO)
+                {
+                    outr(I2C_CNTL_0, pATI->LockData.i2c_cntl_0);
+                    outr(I2C_CNTL_1, pATI->LockData.i2c_cntl_1);
+                }
             }
         }
     }

@@ -1,6 +1,6 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atiregs.h,v 1.21 2002/05/16 19:35:42 tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atiregs.h,v 1.23 2003/01/10 17:43:40 tsi Exp $ */
 /*
- * Copyright 1994 through 2002 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
+ * Copyright 1994 through 2003 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
  * documentation for any purpose is hereby granted without fee, provided that
@@ -863,7 +863,7 @@
 #define DBL_BUFFER_EN			0x00000400ul	/* GTPro */
 #define MEM_WE_FIX_DIS			0x00000800ul
 #define MEM_OE_PULLBACK_B		0x00000800ul	/* GT2c/VT4 */
-#define CMDFIFO_SIZE_DIS_P		0x00000800ul	/* GTPro */
+#define CMDFIFO_SIZE_EN			0x00000800ul	/* GTPro */
 #define RD_EN_FIX_DIS			0x00001000ul
 #define MEM_WE_FIX_DIS_B		0x00001000ul
 #define AUTO_FF_DIS			0x00001000ul	/* GTPro */

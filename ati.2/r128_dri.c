@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/r128_dri.c,v 1.26 2002/11/25 14:04:57 eich Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/r128_dri.c,v 1.27 2002/12/16 16:19:11 dawes Exp $ */
 /*
  * Copyright 1999, 2000 ATI Technologies Inc., Markham, Ontario,
  *                      Precision Insight, Inc., Cedar Park, Texas, and
@@ -76,7 +76,7 @@ static Bool R128InitVisualConfigs(ScreenPtr pScreen)
     __GLXvisualConfig *pConfigs        = 0;
     R128ConfigPrivPtr pR128Configs     = 0;
     R128ConfigPrivPtr *pR128ConfigPtrs = 0;
-    int               i, accum, stencil;
+    int               i, accum, stencil, db;
 
     switch (info->CurrentLayout.pixel_code) {
     case 8:  /* 8bpp mode is not support */
@@ -89,11 +89,13 @@ static Bool R128InitVisualConfigs(ScreenPtr pScreen)
 
 #define R128_USE_ACCUM   1
 #define R128_USE_STENCIL 1
+#define R128_USE_DB      1
 
     case 16:
 	numConfigs = 1;
 	if (R128_USE_ACCUM)   numConfigs *= 2;
 	if (R128_USE_STENCIL) numConfigs *= 2;
+	if (R128_USE_DB)      numConfigs *= 2;
 
 	if (!(pConfigs
 	      = (__GLXvisualConfig*)xcalloc(sizeof(__GLXvisualConfig),
@@ -115,7 +117,8 @@ static Bool R128InitVisualConfigs(ScreenPtr pScreen)
 	}
 
 	i = 0;
-	for (accum = 0; accum <= R128_USE_ACCUM; accum++) {
+	for (db = 0; db <= R128_USE_DB; db++) {
+	  for (accum = 0; accum <= R128_USE_ACCUM; accum++) {
 	    for (stencil = 0; stencil <= R128_USE_STENCIL; stencil++) {
 		pR128ConfigPtrs[i] = &pR128Configs[i];
 
@@ -141,7 +144,10 @@ static Bool R128InitVisualConfigs(ScreenPtr pScreen)
 		    pConfigs[i].accumBlueSize  = 0;
 		    pConfigs[i].accumAlphaSize = 0;
 		}
-		pConfigs[i].doubleBuffer       = TRUE;
+		if (db) 
+		    pConfigs[i].doubleBuffer       = TRUE;
+		else
+		    pConfigs[i].doubleBuffer       = FALSE;
 		pConfigs[i].stereo             = FALSE;
 		pConfigs[i].bufferSize         = 16;
 		pConfigs[i].depthSize          = 16;
@@ -164,6 +170,7 @@ static Bool R128InitVisualConfigs(ScreenPtr pScreen)
 		pConfigs[i].transparentIndex   = 0;
 		i++;
 	    }
+	  }
 	}
 	break;
 
@@ -171,6 +178,7 @@ static Bool R128InitVisualConfigs(ScreenPtr pScreen)
 	numConfigs = 1;
 	if (R128_USE_ACCUM)   numConfigs *= 2;
 	if (R128_USE_STENCIL) numConfigs *= 2;
+	if (R128_USE_DB)      numConfigs *= 2;
 
 	if (!(pConfigs
 	      = (__GLXvisualConfig*)xcalloc(sizeof(__GLXvisualConfig),
@@ -192,7 +200,8 @@ static Bool R128InitVisualConfigs(ScreenPtr pScreen)
 	}
 
 	i = 0;
-	for (accum = 0; accum <= R128_USE_ACCUM; accum++) {
+	for (db = 0; db <= R128_USE_DB; db++) {
+	  for (accum = 0; accum <= R128_USE_ACCUM; accum++) {
 	    for (stencil = 0; stencil <= R128_USE_STENCIL; stencil++) {
 		pR128ConfigPtrs[i] = &pR128Configs[i];
 
@@ -218,7 +227,10 @@ static Bool R128InitVisualConfigs(ScreenPtr pScreen)
 		    pConfigs[i].accumBlueSize  = 0;
 		    pConfigs[i].accumAlphaSize = 0;
 		}
-		pConfigs[i].doubleBuffer       = TRUE;
+		if (db)
+		    pConfigs[i].doubleBuffer       = TRUE;
+		else
+		    pConfigs[i].doubleBuffer       = FALSE;
 		pConfigs[i].stereo             = FALSE;
 		pConfigs[i].bufferSize         = 24;
 		if (stencil) {
@@ -243,6 +255,7 @@ static Bool R128InitVisualConfigs(ScreenPtr pScreen)
 		pConfigs[i].transparentIndex   = 0;
 		i++;
 	    }
+	  }
 	}
 	break;
     }
@@ -845,6 +858,35 @@ static Bool R128DRIBufInit(R128InfoPtr info, ScreenPtr pScreen)
     return TRUE;
 }
 
+static void R128DRIIrqInit(R128InfoPtr info, ScreenPtr pScreen)
+{
+   ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
+
+   if (!info->irq) {
+      info->irq = drmGetInterruptFromBusID(
+	 info->drmFD,
+	 ((pciConfigPtr)info->PciInfo->thisCard)->busnum,
+	 ((pciConfigPtr)info->PciInfo->thisCard)->devnum,
+	 ((pciConfigPtr)info->PciInfo->thisCard)->funcnum);
+
+      if((drmCtlInstHandler(info->drmFD, info->irq)) != 0) {
+	 xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+		    "[drm] failure adding irq handler, "
+		    "there is a device already using that irq\n"
+		    "[drm] falling back to irq-free operation\n");
+	 info->irq = 0;
+      } else {
+          unsigned char *R128MMIO = info->MMIO;
+          info->gen_int_cntl = INREG( R128_GEN_INT_CNTL );
+      }
+   }
+
+   if (info->irq)
+      xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+		 "[drm] dma control initialized, using IRQ %d\n",
+		 info->irq);
+}
+
 /* Initialize the CCE state, and start the CCE (if used by the X server) */
 static void R128DRICCEInit(ScrnInfoPtr pScrn)
 {
@@ -1137,6 +1179,9 @@ Bool R128DRIFinishScreenInit(ScreenPtr pScreen)
 	return FALSE;
     }
 
+    /* Initialize IRQ */
+    R128DRIIrqInit(info, pScreen);
+
     /* Initialize and start the CCE if required */
     R128DRICCEInit(pScrn);
 
@@ -1188,6 +1233,11 @@ void R128DRICloseScreen(ScreenPtr pScreen)
 				/* Stop the CCE if it is still in use */
     if (info->directRenderingEnabled) {
 	R128CCE_STOP(pScrn, info);
+    }
+
+    if (info->irq) {
+	drmCtlUninstHandler(info->drmFD);
+	info->irq = 0;
     }
 
 				/* De-allocate vertex buffers */
