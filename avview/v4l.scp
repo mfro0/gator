@@ -340,6 +340,7 @@ catch {
 	$cw.fifo_value_label configure -text "[expr $size/(1024*1024)] Mb"
 	if { $v4l_capture_on && ($size > [expr $fifo_limit*1024*1024]) } {
 		set v4l_capture_on false
+		$cw.record_button flash
 		}
 	}
 after 800 "check_fifo $cw"
