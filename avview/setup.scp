@@ -188,8 +188,26 @@ foreach {description type var} $args {
 			label $A.label$param_count -text "$description" -wraplength 300
 			set choice_var "[lindex $var 0]"
 			set menu [tk_optionMenu $A.optionmenu$param_count "$choice_var" [lindex $var 1]]
+			# 
+			# use several colums when we have a lot of choices
+			#
+			set num_options [expr [llength $var]-1]
+			set height [expr round(sqrt($num_options))]
+			if { $height < 5 } { set height 5 }
+			if { $num_options < 10 } { set height $num_options } 
+			#
+			#
+			set i 0
 			foreach choice [lrange $var 2 end] {
-				$menu add radiobutton -label "$choice" -variable "$choice_var" -value "$choice"
+				if { $i < $height } { 
+					set cb 0 
+					} { 
+					set cb 1
+					set i -1
+					}
+				$menu add radiobutton -label "$choice" -variable "$choice_var" -value "$choice" \
+					-columnbreak $cb
+				incr i
 				}
 			grid $A.label$param_count $A.optionmenu$param_count -sticky new -padx 2 -pady 2 
 			grid configure $A.label$param_count -sticky nw
