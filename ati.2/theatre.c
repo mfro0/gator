@@ -1777,13 +1777,13 @@ void RT_SetConnector (TheatrePtr t, CARD16 wConnector, int tunerFlag)
     #if 0
     while (!((ReadRT_fld (fld_VS_LINE_COUNT)> 1) && (ReadRT_fld (fld_VS_LINE_COUNT)<20)) && (counter < 100000)){
     #endif
-    while ((ReadRT_fld (fld_VS_LINE_COUNT)<20) && (counter < 100000)){
+    while ((ReadRT_fld (fld_VS_LINE_COUNT)<20) && (counter < 10000)){
     	counter++;
 	}
+    dwTempContrast = ReadRT_fld (fld_LP_CONTRAST);
     xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre Checkpoint 2, counter=%ld  (%d)\n", counter,  ReadRT_fld(fld_VS_LINE_COUNT));
     if(counter>=100000)xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre: timeout waiting for line count (%d)\n", ReadRT_fld (fld_VS_LINE_COUNT));
 
-    dwTempContrast = ReadRT_fld (fld_LP_CONTRAST);
 
     WriteRT_fld (fld_LP_CONTRAST, 0x0);
 
@@ -1816,8 +1816,15 @@ void RT_SetConnector (TheatrePtr t, CARD16 wConnector, int tunerFlag)
     WriteRT_fld (fld_COMB_CNTL1, ReadRT_fld (fld_COMB_CNTL1) ^ 0x100);
     WriteRT_fld (fld_COMB_CNTL1, ReadRT_fld (fld_COMB_CNTL1) ^ 0x100);
 
-    /* wait at most 1 sec here */
-    i = 1000000;
+    /* wait at most 1 sec here 
+      VIP bus has a bandwidth of 27MB and it is 8bit.
+      A single Rage Theatre read should take at least 6 bytes (2 for address one way and 4 for data the other way)
+      However there are also latencies associated with such reads, plus latencies for PCI accesses.
+      
+      I guess we should not be doing more than 100000 per second.. At some point 
+      I should really write a program to time this.
+      */
+    i = 100000;
     
     xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre Checkpoint 3\n");
     while ((i>=0) && (! ReadRT_fld (fld_HS_GENLOCKED)))
@@ -1826,17 +1833,15 @@ void RT_SetConnector (TheatrePtr t, CARD16 wConnector, int tunerFlag)
     }
     if(i<0) xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre: waiting for fld_HS_GENLOCKED failed\n");
     xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre Checkpoint 4 i=%d\n",i);
+    /* now we are waiting for a non-visible line.. and there is absolutely no point to wait too long */
     counter = 0;
-    #if 0
-    while (!((ReadRT_fld (fld_VS_LINE_COUNT)> 1) && (ReadRT_fld (fld_VS_LINE_COUNT)<20)) && (counter < 100000)){
-    #endif
-    while ((ReadRT_fld(fld_VS_LINE_COUNT)<20) && (counter < 100000)){
+    while (!((ReadRT_fld (fld_VS_LINE_COUNT)> 1) && (ReadRT_fld (fld_VS_LINE_COUNT)<20)) && (counter < 10000)){
     	counter++;
 	}
+    WriteRT_fld (fld_LP_CONTRAST, dwTempContrast);
     xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre Checkpoint 5 counter=%d (%d)\n", counter, ReadRT_fld (fld_VS_LINE_COUNT));
     if(counter>=100000)xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre: timeout waiting for line count (%d)\n", ReadRT_fld (fld_VS_LINE_COUNT));
 
-    WriteRT_fld (fld_LP_CONTRAST, dwTempContrast);
 
 
     return;
