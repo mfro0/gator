@@ -64,6 +64,7 @@ void rage128_get_window_parameters(KM_STRUCT *kms, struct video_window *vwin)
 u32 a;
 vwin->x=0;
 vwin->y=0;
+rage128_wait_for_idle(kms);
 a=readl(kms->reg_aperture+RAGE128_CAP0_BUF_PITCH);
 vwin->width=a/2;
 a=readl(kms->reg_aperture+RAGE128_CAP0_V_WINDOW);
@@ -242,7 +243,7 @@ if(frame->buffer==NULL){
 printk("Allocated %ld bytes for a single frame buffer\n", frame->buf_size);
 /*data1.dma_table=__get_dma_pages(GFP_KERNEL | GFP_DMA, 1);*/
 frame->dma_table=rvmalloc(4096);
-printk("frame table virtual address 0x%p08x, physical address: 0x%lu08x, bus address: 0x%lu08x\n",
+printk("frame table virtual address 0x%p, physical address: 0x%08lx, bus address: 0x%08lx\n",
 	frame->dma_table, kvirt_to_pa(frame->dma_table), kvirt_to_bus(frame->dma_table));
 if(frame->dma_table==NULL){
 	printk(KERN_ERR "km: failed to allocate DMA SYSTEM table\n");

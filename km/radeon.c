@@ -67,6 +67,7 @@ void radeon_get_window_parameters(KM_STRUCT *kms, struct video_window *vwin)
 u32 a;
 vwin->x=0;
 vwin->y=0;
+radeon_wait_for_idle(kms);
 a=readl(kms->reg_aperture+RADEON_CAP0_BUF_PITCH);
 vwin->width=a/2;
 a=readl(kms->reg_aperture+RADEON_CAP0_V_WINDOW);
@@ -130,7 +131,7 @@ radeon_setup_single_frame_buffer(kms, &(kms->frame), offset);
 /* wait for at least one available queue */
 do {
 	status=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
-	KM_DEBUG("status=0x%lu08x\n", status);
+	KM_DEBUG("status=0x%08lx\n", status);
 	} while (!(status & 0x1f));
 /* start transfer */
 if(kms->frame.dma_active)KM_DEBUG("DMA overrun\n");
@@ -154,7 +155,7 @@ radeon_setup_single_frame_buffer(kms, &(kms->frame_even), offset);
 /* wait for at least one available queue */
 do {
 	status=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
-	KM_DEBUG("status=0x%lu08x\n", status);
+	KM_DEBUG("status=0x%08lx\n", status);
 	} while (!(status & 0x1f));
 /* start transfer */
 if(kms->frame_even.dma_active)KM_DEBUG("DMA overrun\n");
@@ -236,7 +237,7 @@ if(frame->buffer==NULL){
 printk("Allocated %ld bytes for a single frame buffer\n", frame->buf_size);
 /*data1.dma_table=__get_dma_pages(GFP_KERNEL | GFP_DMA, 1);*/
 frame->dma_table=rvmalloc(4096);
-printk("frame table virtual address 0x%p08x, physical address: 0x%lu08x, bus address: 0x%lu08x\n",
+printk("frame table virtual address 0x%p, physical address: 0x%08lx, bus address: 0x%08lx\n",
 	frame->dma_table, kvirt_to_pa(frame->dma_table), kvirt_to_bus(frame->dma_table));
 if(frame->dma_table==NULL){
 	printk(KERN_ERR "km: failed to allocate DMA SYSTEM table\n");

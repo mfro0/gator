@@ -37,7 +37,7 @@ rage128.o:	rage128.c
 test: km_drv.o km_api.o
 	sync
 	insmod ./km_api.o
-	insmod ./km_drv.o 
+	insmod ./km_drv.o km_debug=0 
 
 install:
 	mkdir -p /lib/modules/`uname -r`/misc/
