@@ -176,6 +176,7 @@ if(!(status & (1<<8)))return 0;
 status=readl(kms->reg_aperture+RADEON_CAP_INT_STATUS);
 mask=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
 if(!(status & mask))return 0;
+radeon_wait_for_idle(kms);
 writel(status & mask, kms->reg_aperture+RADEON_CAP_INT_STATUS);
 KM_DEBUG("CAP_INT_STATUS=0x%08x\n", status);
 /* do not start dma transfer if capture is not active anymore */
@@ -198,7 +199,6 @@ kms->interrupt_count++;
 count=10000;
 
 while(1){
-	radeon_wait_for_idle(kms);
 /*	KM_DEBUG("beep %ld\n", kms->interrupt_count); */
 	if(!radeon_is_capture_irq_active(kms)){
 		status=readl(kms->reg_aperture+RADEON_GEN_INT_STATUS);

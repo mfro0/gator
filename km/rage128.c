@@ -184,6 +184,7 @@ if(!(status & (1<<8)))return 0;
 status=readl(kms->reg_aperture+RAGE128_CAP_INT_STATUS);
 mask=readl(kms->reg_aperture+RAGE128_CAP_INT_CNTL);
 if(!(status & mask))return 0;
+rage128_wait_for_idle(kms);
 writel(status & mask, kms->reg_aperture+RAGE128_CAP_INT_STATUS);
 /* do not start dma transfer if capture is not active anymore */
 if(!rage128_is_capture_active(kms))return 1;
@@ -205,7 +206,6 @@ kms->interrupt_count++;
 count=10000;
 
 while(1){
-	rage128_wait_for_idle(kms);
 /*	KM_DEBUG("beep %ld\n", kms->interrupt_count); */
 	if(!rage128_is_capture_irq_active(kms)){
 		status=readl(kms->reg_aperture+RAGE128_GEN_INT_STATUS);

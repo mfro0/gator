@@ -168,6 +168,7 @@ static int mach64_is_capture_irq_active(KM_STRUCT *kms)
 long status;
 status=readl(kms->reg_aperture+MACH64_CRTC_INT_CNTL);
 if(!(status & (MACH64_CAPBUF0_INT_ACK|MACH64_CAPBUF1_INT_ACK)))return 0;
+mach64_wait_for_idle(kms);
 writel(ACK_INTERRUPT(status, MACH64_CAPBUF0_INT_ACK|MACH64_CAPBUF1_INT_ACK), kms->reg_aperture+MACH64_CRTC_INT_CNTL);
 KM_DEBUG("CRTC_INT_CNTL=0x%08x\n", status);
 /* do not start dma transfer if capture is not active anymore */
@@ -192,11 +193,11 @@ count=10000;
 
 while(1){
 	/* a little imprecise.. should work for now */
-	mach64_wait_for_idle(kms);
 /*	KM_DEBUG("beep %ld\n", kms->interrupt_count); */
 	count--;
 	if(count<0){
 		KM_DEBUG(KERN_ERR "Kmultimedia: IRQ %d locked up, disabling interrupts in the hardware\n", irq);
+		mach64_wait_for_idle(kms);
 		writel(0, kms->reg_aperture+MACH64_CRTC_INT_CNTL);
 		}
 	if(!mach64_is_capture_irq_active(kms)){
