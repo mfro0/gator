@@ -140,7 +140,7 @@ set af_info [grid info $af]
 set master [get_value $af_info "-in"]
 set column [get_value $af_info "-column"]
 set row [get_value $af_info "-row"]
-
+puts "master=$master row=$row column=$column"
 if { !$attributes_window || ("$current_port" == "none")} { 
 	if { "$master" != "" } {
 		grid columnconfigure $master $column -weight 0
@@ -158,12 +158,12 @@ if { "$master" != "" } {
 grid columnconfigure .controlwin 0 -weight 1
 
 label $af.title -text "Attributes" -background black -foreground white
-grid $af.title - -sticky news -pady 2 -padx 2
+grid $af.title - -sticky news -pady 2 -padx 2 -row 0
 
 eval frame $af.f1 -relief groove -borderwidth 2 [get_settings $af.f1 AVview XVideo]
 
 grid $af.f1 - -sticky news -pady 2 -padx 2
-grid rowconfig $af 2 -weight 1
+grid rowconfig $af 1 -weight 1
 
 canvas $af.f1.c -yscrollcommand "$af.f1.vscroll set" -bd 0 -borderwidth 0\
 	-highlightthickness 0 -confine "yes" -relief flat
