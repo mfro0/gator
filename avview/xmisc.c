@@ -163,12 +163,57 @@ if(b && (a!=dpms_current_level))DPMSForceLevel(d, dpms_current_level);
 return 0;
 }
 
+int xmisc_hidecursor(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+{
+Tk_Window tkwin;
+Tk_Cursor cursor;
+Window win;
+Display *d;
+int timeout, interval, pb, ae;
+Tcl_Obj *ans;
+CARD16 dpms_standby,dpms_suspend,dpms_off,dpms_current_level;
+BOOL dpms_enabled;
+char bits,mask;
+
+Tcl_ResetResult(interp);
+
+if(argc<2){
+	Tcl_AppendResult(interp,"ERROR: xmisc_hidecursor requires one argument", NULL);
+	return TCL_ERROR;
+	}
+
+
+tkwin=Tk_NameToWindow(interp,argv[1], Tk_MainWindow(interp));
+
+if(tkwin==NULL){
+	Tcl_AppendResult(interp,"ERROR: xmisc_hidecursor: first argument must be an existing toplevel or frame window", NULL);
+	return TCL_ERROR;
+	}
+
+d=Tk_Display(tkwin);
+win=Tk_WindowId(tkwin);
+
+if((d==NULL)||(win==(Window)NULL)){
+	Tcl_AppendResult(interp,"ERROR: xmisc_hidecursor: first argument must be a mapped toplevel or frame window", NULL);
+	return TCL_ERROR;
+	}
+
+bits=0x00;
+mask=0x00;
+cursor=Tk_GetCursorFromData(interp, tkwin, &bits, &mask, 1, 1, 0, 0, Tk_GetUid("red"), Tk_GetUid("blue"));
+Tk_DefineCursor(tkwin, cursor);
+
+return 0;
+}
+
+
 struct {
 	char *name;
 	Tcl_CmdProc *command;
 	} xmisc_commands[]={
 	{"xmisc_getscreensaver", xmisc_getscreensaver},
 	{"xmisc_setscreensaver", xmisc_setscreensaver},	
+	{"xmisc_hidecursor", xmisc_hidecursor},
 	{NULL, NULL}
 	};
 

@@ -96,6 +96,10 @@ pack .controlwin.allattributes -expand yes -fill both
 
 update
 
+xmisc_hidecursor .
+xmisc_hidecursor .video
+
+
 set NUM_ADAPTORS [xv_numadaptors $VIDEO_WINDOW]
 puts "NUM_ADAPTORS=$NUM_ADAPTORS"
 
