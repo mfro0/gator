@@ -3489,7 +3489,10 @@ RADEONPutVideo(
    vbi_line_width = 2048;
    vbi_line_width = 0x618;
    vbi_line_width = 798*2;
-   vbi_line_width = 0x640;
+   if(width<=640)
+	   vbi_line_width = 0x640; /* 1600 actually */
+	   else
+	   vbi_line_width = 2000; /* might need adjustment */
         
    if(!RADEONClipVideo(&dstBox, &xa, &xb, &ya, &yb, clipBoxes, width, height))
         return Success;
