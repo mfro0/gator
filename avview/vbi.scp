@@ -87,9 +87,20 @@ $canvas raise $a
 $canvas addtag $tag withtag $b
 }
 
+proc render_cc_page { canvas page } {
+set cc_page [vbi_get_cc_page primary $page]
+set width [lindex $cc_page 0]
+set height [lindex $cc_page 1]
+.video delete cc_text
+foreach line [lrange $cc_page 2 end] {
+	render_vbi_line $canvas cc_text [winfo width $canvas] [winfo height $canvas] $width $height $line
+	}
+update
+update idletasks
+}
+
 proc vbi_event_handler_on_screen {a b} {
-puts "vbi event $a $b"
-if { [ catch {
+catch {
 switch -exact -- $a {
 	"caption"  {	
 	        # signal that it is likely that we have received
@@ -100,19 +111,15 @@ switch -exact -- $a {
 			update
 			update idletasks
 			continue 
-			}	
-		set cc_page [vbi_get_cc_page primary $b]
-		set width [lindex $cc_page 0]
-		set height [lindex $cc_page 1]
-		.video delete cc_text
-		foreach line [lrange $cc_page 2 end] {
-			render_vbi_line .video cc_text [winfo width .video] [winfo height .video] $width $height $line
 			}
-		update
-		update idletasks
+		render_cc_page .video $b
+		}
+	default {
+		puts "vbi event $a $b"
 		}
 	}
-	} err ] } {
+	} err 
+if { $err != "" } {
 	puts "vbi_err=$err"
 	}
 }
@@ -130,7 +137,11 @@ if { $primary_vbi_device == "" } { update_primary_globals }
 catch {
 	vbi_open_device primary $primary_vbi_device	
 	vbi_set_event_handler primary vbi_event_handler_on_screen
+	render_cc_page .video $on_screen_cc_page
 	} err
+if { $err != "" } {
+	puts "vbi_sec_cc_page_on_screen_err=$err"
+	}
 }
 
 #vbi_open_device primary /dev/vbi0

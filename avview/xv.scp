@@ -309,12 +309,13 @@ proc set_attribute_by_index { index value } {
 global VIDEO_WINDOW current_port
 set success false
 catch {
-	set variable [find_attribute_variable $VIDEO_WINDOW $current_port $i]
+	set variable [find_attribute_variable $VIDEO_WINDOW $current_port $index]
+	set attribute [xv_port_attribute_name $VIDEO_WINDOW $current_port $index]
 	global $variable
 	set $variable $value
 	on_attribute_change $attribute $variable a b
 	set success true
-	}
+	} err
 return $success
 }
 
