@@ -84,7 +84,7 @@ typedef struct {
 
 FFMPEG_ENCODING_DATA *sdata=NULL;
 
-/* #define DEBUG_TIMESTAMPS   */
+/* #define DEBUG_TIMESTAMPS */
 
 /* make pts (90KHz clock) from timestamps */
 static int make_pts(int64 start, int64 now)
@@ -794,7 +794,7 @@ if(sdata->audio_stream_num>=0){
 		} 
 	}
 sdata->video_s->stop_stream &= ~STOP_CONSUMER_THREAD;
-return 0;
+return TCL_OK;
 }
 
 int ffmpeg_switch_file(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])

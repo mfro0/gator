@@ -537,10 +537,15 @@ if((i<0)||((ad=(ALSA_DATA *)alsa_sc->data[i])==NULL)){
 	return -1;
 	}
 fprintf(stderr,"Checkpoint 2.2.1.1\n");
-if((a=snd_pcm_open(&(ad->recording_handle), arg_audio_device, SND_PCM_STREAM_CAPTURE, 0))<0){
+if((a=snd_pcm_open(&(ad->recording_handle), arg_audio_device, SND_PCM_STREAM_CAPTURE, SND_PCM_NONBLOCK))<0){
 	fprintf(stderr,"Error opening device %s for capture %s\n", arg_audio_device, snd_strerror(a));
 	return -1;
 	}
+if((a=snd_pcm_nonblock(ad->recording_handle, 0))<0){
+        fprintf(stderr,"Error switching audio device %s to nonblocking mode %s\n", arg_audio_device, snd_strerror(a));
+        return -1;
+        }
+fprintf(stderr,"Checkpoint 2.2.1.1.1\n");
 fprintf(stderr,"Checkpoint 2.2.1.2\n");
 if((a=snd_pcm_hw_params_any(ad->recording_handle, hwparams))<0){
 	fprintf(stderr,"Error device %s has no configurations available: %s\n", arg_audio_device, snd_strerror(a));
