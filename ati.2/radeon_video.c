@@ -1029,7 +1029,7 @@ static void RADEONInitI2C(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
     }
     
     if(pPriv->i2c != NULL)RADEON_board_setmisc(pPriv);
-    #if 1
+    #if 0
     xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Scanning I2C Bus\n");
     for(i=0;i<255;i+=2)
     	if(RADEONProbeAddress(pPriv->i2c, i))
