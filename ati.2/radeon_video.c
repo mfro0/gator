@@ -2900,8 +2900,8 @@ RADEONPutImage(
    int top, left, npixels, nlines, bpp;
    BoxRec dstBox;
    CARD32 tmp;
-#if X_BYTE_ORDER == X_BIG_ENDIAN
    unsigned char *RADEONMMIO = info->MMIO;
+#if X_BYTE_ORDER == X_BIG_ENDIAN
    CARD32 surface_cntl = INREG(RADEON_SURFACE_CNTL);
 
    OUTREG(RADEON_SURFACE_CNTL, (surface_cntl | 

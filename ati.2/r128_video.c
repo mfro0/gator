@@ -2252,8 +2252,8 @@ R128PutImage(
    BoxRec dstBox;
    CARD32 tmp;
    int retcode;
-#if X_BYTE_ORDER == X_BIG_ENDIAN
    unsigned char *R128MMIO = info->MMIO;
+#if X_BYTE_ORDER == X_BIG_ENDIAN
    CARD32 config_cntl = INREG(R128_CONFIG_CNTL);
 
    /* We need to disable byte swapping, or the data gets mangled */
