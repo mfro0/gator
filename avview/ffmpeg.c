@@ -125,7 +125,9 @@ switch(data->mode){
 		deinterlace_422_double_interpolate_to_420p(sdata->width, sdata->height, sdata->width*2, f->buf, picture->data[0], sdata->luma_hist);
 		break;		
 	}
+#if 0
 picture->pts=f->timestamp;
+#endif
 picture->quality=sdata->quality;
 }
 
@@ -153,9 +155,11 @@ if((data==NULL)||(sdata==NULL)||(sdata->type!=FFMPEG_CAPTURE_KEY)||(sdata->video
 ob_size=1024*1024;
 ob_free=0;
 output_buf=do_alloc(ob_size, sizeof(char));
-picture.data[0]=do_alloc((3*sdata->video_codec_context.width*sdata->video_codec_context.height)/2+4096, sizeof(char));
-picture.data[1]=picture.data[0]+sdata->video_codec_context.width*sdata->video_codec_context.height;
-picture.data[2]=picture.data[1]+(sdata->video_codec_context.width*sdata->video_codec_context.height)/4;
+memset(&picture, 0, sizeof(picture));
+picture.base[0]=picture.data[0]=do_alloc((3*sdata->video_codec_context.width*sdata->video_codec_context.height)/2+4096, sizeof(char));
+picture.base[1]=picture.data[1]=picture.data[0]+sdata->video_codec_context.width*sdata->video_codec_context.height;
+picture.base[2]=picture.data[2]=picture.data[1]+(sdata->video_codec_context.width*sdata->video_codec_context.height)/4;
+picture.base[3]=picture.data[3]=NULL;
 picture.linesize[0]=sdata->video_codec_context.width;
 picture.linesize[1]=sdata->video_codec_context.width/2;
 start_ts=timestamp_now();
