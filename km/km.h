@@ -57,6 +57,29 @@ typedef struct {
 					  including data pointed to by requests */
 	} KM_TRANSFER_QUEUE;
 
+#define MAX_FRAME_BUFF_NUM 	10
+
+/* this structure contains information corresponding to a single stream
+   There should be one for each functions: video capture, vbi capture, etc */
+typedef struct {
+	int num_buffers;
+	/* dma buffers */
+	bm_list_descriptor **dma_table;
+	int du;
+	KM_DATA_VIRTUAL_BLOCK dvb;
+	long next_buf;
+	void *buffer[MAX_FRAME_BUFF_NUM];
+	long free[MAX_FRAME_BUFF_NUM];
+
+	/* meta information */
+	int info_du;
+	KM_DATA_VIRTUAL_BLOCK dvb_info;
+	KM_STREAM_BUFFER_INFO *kmsbi;
+	long info_free;
+
+	FIELD_INFO *fi;
+	} KM_STREAM;
+
 typedef struct S_KM_STRUCT {
 	struct video_device vd;
 	struct video_window vwin;
@@ -71,27 +94,13 @@ typedef struct S_KM_STRUCT {
 	long overrun;
 	unsigned char * reg_aperture;
 	
-	long next_cap_buf;
 	int v4l_buf_parity;
 
-#define FRAME_ODD 		0
-#define FRAME_EVEN 		1
-#define MAX_FRAME_BUFF_NUM 	10
-
-	KM_DATA_VIRTUAL_BLOCK dvb_info;
-	int info_du;
-	FIELD_INFO *fi;
-	KM_STREAM_BUFFER_INFO *kmsbi;
-	long info_free;
 	
-	KM_DATA_VIRTUAL_BLOCK dvb;
-	int capture_du;
-	void *buffer[MAX_FRAME_BUFF_NUM];
-	long v4l_free[MAX_FRAME_BUFF_NUM];
 	KM_FILE_PRIVATE_DATA *v4l_kdufpd;
 	
-	bm_list_descriptor **dma_table;
-	int num_buffers;
+	
+	KM_STREAM capture;
 	
 	KM_TRANSFER_QUEUE gui_dma_queue;
 	KM_TRANSFER_REQUEST gui_dma_request[10];  /* we should not have more than 10 
@@ -112,12 +121,12 @@ typedef struct S_KM_STRUCT {
 	void (*get_window_parameters)(struct S_KM_STRUCT *kms, struct video_window *vwin);
 	void (*start_transfer)(struct S_KM_STRUCT *kms);
 	void (*stop_transfer)(struct S_KM_STRUCT *kms);
-	int (*allocate_dvb)(struct S_KM_STRUCT *kms, long size);
-	int (*deallocate_dvb)(struct S_KM_STRUCT *kms);
+	int (*allocate_dvb)(KM_STREAM *stream, int num_buffers, long size);
+	int (*deallocate_dvb)(KM_STREAM *stream);
 	} KM_STRUCT;
 
 int acknowledge_dma(KM_STRUCT *kms);
-int find_free_buffer(KM_STRUCT *kms);
+int find_free_buffer(KM_STREAM *stream);
 int start_video_capture(KM_STRUCT *kms);
 void stop_video_capture(KM_STRUCT *kms);
 int km_add_transfer_request(KM_TRANSFER_QUEUE *kmtq, 

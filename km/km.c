@@ -51,17 +51,16 @@ int km_debug=0;
 int km_debug_overruns=0;
 int km_buffers=5;
 
-int find_free_buffer(KM_STRUCT *kms)
+int find_free_buffer(KM_STREAM *stream)
 {
-int i;
-if(kms->fi==NULL)return -1;
-while(kms->kmsbi[kms->next_cap_buf].flag & KM_STREAM_BUF_PINNED)kms->next_cap_buf=kms->kmsbi[kms->next_cap_buf].next;
-i=kms->next_cap_buf;
-kms->next_cap_buf=kms->kmsbi[kms->next_cap_buf].next;
-return i;
+int next;
+next=stream->next_buf;
+while(stream->kmsbi[next].flag & KM_STREAM_BUF_PINNED)next=stream->kmsbi[next].next;
+stream->next_buf=stream->kmsbi[next].next;
+return next;
 }
 
-int generic_allocate_dvb(KM_STRUCT *kms, long size)
+int generic_allocate_dvb(KM_STREAM *stream, int num_buffers,  long size)
 {
 int i,k;
 KM_CHECKPOINT
@@ -70,28 +69,30 @@ if(size>(4096*4096/sizeof(bm_list_descriptor))){
 	return -1;
 	}
 /* allocate data unit to hold video data */
-kms->dvb.size=((size+PAGE_SIZE-1)/PAGE_SIZE)*PAGE_SIZE;
-kms->dvb.n=kms->num_buffers;
-kms->dvb.free=kms->v4l_free;
-kms->dvb.ptr=kms->buffer;
-kms->capture_du=km_allocate_data_virtual_block(&(kms->dvb), S_IFREG | S_IRUGO);
-if(kms->capture_du<0)return -1;
+stream->num_buffers=num_buffers;
+stream->dvb.size=((size+PAGE_SIZE-1)/PAGE_SIZE)*PAGE_SIZE;
+stream->dvb.n=num_buffers;
+stream->dvb.free=stream->free;
+stream->dvb.ptr=stream->buffer;
+stream->du=km_allocate_data_virtual_block(&(stream->dvb), S_IFREG | S_IRUGO);
+if(stream->du<0)return -1;
 KM_CHECKPOINT
 /* allocate data unit to hold field info */
-kms->dvb_info.size=kms->num_buffers*(sizeof(FIELD_INFO)+sizeof(KM_STREAM_BUFFER_INFO));
-kms->dvb_info.n=1;
-kms->dvb_info.free=&(kms->info_free);
-kms->info_free=kms->num_buffers*(sizeof(FIELD_INFO)+sizeof(KM_STREAM_BUFFER_INFO));
-kms->dvb_info.ptr=&(kms->kmsbi);
-kms->info_du=km_allocate_data_virtual_block(&(kms->dvb_info), S_IFREG | S_IRUGO);
-if(kms->info_du<0){
-	km_deallocate_data(kms->capture_du);
-	kms->capture_du=-1;
+stream->dvb_info.size=num_buffers*(sizeof(FIELD_INFO)+sizeof(KM_STREAM_BUFFER_INFO));
+stream->dvb_info.n=1;
+stream->dvb_info.free=&(stream->info_free);
+stream->info_free=num_buffers*(sizeof(FIELD_INFO)+sizeof(KM_STREAM_BUFFER_INFO));
+stream->dvb_info.ptr=&(stream->kmsbi);
+stream->info_du=km_allocate_data_virtual_block(&(stream->dvb_info), S_IFREG | S_IRUGO);
+if(stream->info_du<0){
+	km_deallocate_data(stream->du);
+	stream->du=-1;
+	stream->num_buffers=-1;
 	return -1;
 	}
-memset(kms->kmsbi, 0 , kms->dvb_info.size);
+memset(stream->kmsbi, 0 , stream->dvb_info.size);
 /* Position field info after generic stream buffer information */
-kms->fi=((unsigned char *)kms->kmsbi)+kms->num_buffers*sizeof(KM_STREAM_BUFFER_INFO);
+stream->fi=((unsigned char *)stream->kmsbi)+num_buffers*sizeof(KM_STREAM_BUFFER_INFO);
 /*
   dma_table allocation and initialization is the only hardware dependent part of this function
 
@@ -101,45 +102,46 @@ kms->fi=((unsigned char *)kms->kmsbi)+kms->num_buffers*sizeof(KM_STREAM_BUFFER_I
   radeon cards.
 */
 
-kms->dma_table=kmalloc(sizeof(*(kms->dma_table))*kms->num_buffers, GFP_KERNEL);
-for(k=0;k<kms->num_buffers;k++){
-	kms->dvb.free[k]=size;
-	kms->kmsbi[k].flag=0;
-	kms->kmsbi[k].user_flag=0;
-	kms->kmsbi[k].next=k+1;
-	kms->kmsbi[k].prev=k-1;
-	kms->kmsbi[k].age=-1;
-	kms->dma_table[k]=rvmalloc(4096);
-	kms->v4l_free[k]=size;
-	memset(kms->dma_table[k], 0, 4096);
+stream->dma_table=kmalloc(sizeof(*(stream->dma_table))*num_buffers, GFP_KERNEL);
+for(k=0;k<num_buffers;k++){
+	stream->dvb.free[k]=size;
+	stream->kmsbi[k].flag=0;
+	stream->kmsbi[k].user_flag=0;
+	stream->kmsbi[k].next=k+1;
+	stream->kmsbi[k].prev=k-1;
+	stream->kmsbi[k].age=-1;
+	stream->dma_table[k]=rvmalloc(4096);
+	stream->free[k]=size;
+	memset(stream->dma_table[k], 0, 4096);
 	/* create DMA table */
-	for(i=0;i<(kms->dvb.size/PAGE_SIZE);i++){
-		kms->dma_table[k][i].to_addr=kvirt_to_pa(kms->buffer[k]+i*PAGE_SIZE);
-		if(kvirt_to_pa(kms->buffer[k]+i*PAGE_SIZE)!=kvirt_to_bus(kms->buffer[k]+i*PAGE_SIZE)){
+	for(i=0;i<(stream->dvb.size/PAGE_SIZE);i++){
+		stream->dma_table[k][i].to_addr=kvirt_to_pa(stream->buffer[k]+i*PAGE_SIZE);
+		if(kvirt_to_pa(stream->buffer[k]+i*PAGE_SIZE)!=kvirt_to_bus(stream->buffer[k]+i*PAGE_SIZE)){
 			printk(KERN_ERR "pa!=bus for entry %d frame %d\n", i, k);
 			}
 		}
 	}
-kms->kmsbi[0].prev=kms->num_buffers-1;
-kms->kmsbi[kms->num_buffers-1].next=0;
-kms->next_cap_buf=0;
+stream->kmsbi[0].prev=num_buffers-1;
+stream->kmsbi[num_buffers-1].next=0;
+stream->next_buf=0;
 KM_CHECKPOINT
 return 0;
 }
 
 
-int generic_deallocate_dvb(KM_STRUCT *kms)
+int generic_deallocate_dvb(KM_STREAM *stream)
 {
 int k;
-for(k=0;k<kms->num_buffers;k++){
-	rvfree(kms->dma_table[k], 4096);
+for(k=0;k<stream->num_buffers;k++){
+	rvfree(stream->dma_table[k], 4096);
 	}
-kfree(kms->dma_table);
-kms->dma_table=NULL;
-km_deallocate_data(kms->info_du);
-kms->info_du=-1;
-km_deallocate_data(kms->capture_du);
-kms->capture_du=-1;
+kfree(stream->dma_table);
+stream->dma_table=NULL;
+km_deallocate_data(stream->info_du);
+stream->info_du=-1;
+km_deallocate_data(stream->du);
+stream->du=-1;
+stream->num_buffers=-1;
 return 0;
 }
 
@@ -273,7 +275,7 @@ kms->get_window_parameters(kms, &(kms->vwin));
 buf_size=kms->vwin.width*kms->vwin.height*2;
 
 if(kms->allocate_dvb!=NULL){
-	if(kms->allocate_dvb(kms, buf_size)<0){
+	if(kms->allocate_dvb(&(kms->capture), km_buffers, buf_size)<0){
 		result=-ENOMEM;
 		goto fail;
 		}
@@ -295,7 +297,7 @@ void stop_video_capture(KM_STRUCT *kms)
 spin_lock(&(kms->kms_lock));
 kms->stop_transfer(kms);
 if(kms->deallocate_dvb!=NULL){
-	kms->deallocate_dvb(kms);
+	kms->deallocate_dvb(&(kms->capture));
 	kmd_signal_state_change(kms->kmd);
 	} else {
 	}
@@ -414,9 +416,8 @@ kms->interrupt_count=0;
 kms->irq_handler=NULL;
 if(km_buffers<2)km_buffers=2;
 if(km_buffers>=MAX_FRAME_BUFF_NUM)km_buffers=MAX_FRAME_BUFF_NUM-1;
-kms->num_buffers=km_buffers;
-kms->capture_du=-1;
-kms->info_du=-1;
+kms->capture.du=-1;
+kms->capture.info_du=-1;
 spin_lock_init(&(kms->kms_lock));
 printk("km: using irq %ld\n", kms->irq);
 if (pci_enable_device(dev))
@@ -511,9 +512,9 @@ kms->kmfl[5].data.i.field=&(kms->vline_count);
 
 kms->kmfl[6].data.i.field=&(kms->vd.minor);
 
-kms->kmfl[7].data.i.field=&(kms->capture_du);
+kms->kmfl[7].data.i.field=&(kms->capture.du);
 
-kms->kmfl[8].data.i.field=&(kms->info_du);
+kms->kmfl[8].data.i.field=&(kms->capture.info_du);
 
 kms->kmd=add_km_device(kms->kmfl, kms);
 printk("Device %s %s (0x%04x:0x%04x) corresponds to /dev/video%d\n",
@@ -536,10 +537,7 @@ if(kms->uninit_hardware!=NULL)kms->uninit_hardware(kms);
 remove_km_device(kms->kmd);
 cleanup_km_v4l(kms);
 free_irq(kms->irq, kms);
-#if 0
-kms->deallocate_single_frame_buffer(kms, &(kms->frame_info[FRAME_ODD]));
-kms->deallocate_single_frame_buffer(kms, &(kms->frame_info[FRAME_EVEN]));
-#endif
+
 iounmap(kms->reg_aperture);
 kfree(kms->kmfl[0].data.c.string);
 kfree(kms->kmfl[1].data.c.string);

@@ -171,7 +171,7 @@ long count;
 u32 mem_aperture;
 count=free;
 mem_aperture=pci_resource_start(kms->dev, 0);
-for(i=0;i<(kms->dvb.size/PAGE_SIZE);i++){
+for(i=0;i<(kms->capture.dvb.size/PAGE_SIZE);i++){
 	dma_table[i].from_addr=offset+i*PAGE_SIZE;
 	if(count>PAGE_SIZE){
 		dma_table[i].command=PAGE_SIZE;
@@ -195,7 +195,7 @@ do {
 	KM_DEBUG("status=0x%08lx\n", status);
 	} while (!(status & 0x1f));
 wmb();
-writel(kvirt_to_pa(kms->dma_table[kmtr->buffer]), (u32)(kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR)| (0));
+writel(kvirt_to_pa(kms->capture.dma_table[kmtr->buffer]), (u32)(kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR)| (0));
 }
 
 static void radeon_schedule_request(KM_STRUCT *kms, int buffer, int field)
@@ -208,33 +208,33 @@ if(buffer<0){
 switch(field){
 	case 0:
 		offset=kms->buf0_odd_offset;
-		kms->kmsbi[buffer].user_flag|=KM_FI_ODD;
+		kms->capture.kmsbi[buffer].user_flag|=KM_FI_ODD;
 		break;
 	case 1:
 		offset=kms->buf0_even_offset;
-		kms->kmsbi[buffer].user_flag&=~KM_FI_ODD;
+		kms->capture.kmsbi[buffer].user_flag&=~KM_FI_ODD;
 		break;
 	case 2:
 		offset=kms->buf1_odd_offset;
-		kms->kmsbi[buffer].user_flag|=KM_FI_ODD;
+		kms->capture.kmsbi[buffer].user_flag|=KM_FI_ODD;
 		break;
 	case 3:
 		offset=kms->buf1_even_offset;
-		kms->kmsbi[buffer].user_flag&=~KM_FI_ODD;
+		kms->capture.kmsbi[buffer].user_flag&=~KM_FI_ODD;
 		break;
 	default:
 		printk("Internal error %s %s %d\n", __FILE__, __FUNCTION__, __LINE__);
 		return;
 	}
 KM_DEBUG("buf=%d field=%d\n", buffer, field);
-kms->fi[buffer].timestamp_start=jiffies;
-radeon_setup_dma_table(kms, (kms->dma_table[buffer]), offset, kms->v4l_free[buffer]);
+kms->capture.fi[buffer].timestamp_start=jiffies;
+radeon_setup_dma_table(kms, (kms->capture.dma_table[buffer]), offset, kms->capture.free[buffer]);
 /* start transfer */
 kms->total_frames++;
-kms->kmsbi[buffer].age=kms->total_frames;
+kms->capture.kmsbi[buffer].age=kms->total_frames;
 wmb();
 km_add_transfer_request(&(kms->gui_dma_queue),
-	kms->kmsbi, &(kms->dvb), buffer, KM_TRANSFER_TO_SYSTEM_RAM, radeon_start_request_transfer, kms);
+	kms->capture.kmsbi, &(kms->capture.dvb), buffer, KM_TRANSFER_TO_SYSTEM_RAM, radeon_start_request_transfer, kms);
 }
 
 static int radeon_is_capture_irq_active(KM_STRUCT *kms)

@@ -35,7 +35,7 @@ int result;
 if((result=start_video_capture(kms))<0)return result;
 
 kms->v4l_buf_parity=0;
-kms->v4l_kdufpd=km_data_create_kdufpd(kms->capture_du);
+kms->v4l_kdufpd=km_data_create_kdufpd(kms->capture.du);
 if(kms->v4l_kdufpd==NULL){
 	stop_video_capture(kms);
 	return -EINVAL;
@@ -64,11 +64,11 @@ KM_STRUCT *kms=(KM_STRUCT *)v;
 int done;
 KDU_FILE_PRIVATE_DATA *kdufpd=kms->v4l_kdufpd;
 
-done=km_data_generic_stream_read(kdufpd, kms->kmsbi, &(kms->dvb), 
+done=km_data_generic_stream_read(kdufpd, kms->capture.kmsbi, &(kms->capture.dvb), 
 	buf, count, nonblock,
 	kms->v4l_buf_parity, 1);
 	
-if((done > 0) && (kdufpd->bytes_read>=kms->dvb.free[kdufpd->buffer])){
+if((done > 0) && (kdufpd->bytes_read>=kms->capture.dvb.free[kdufpd->buffer])){
 	kms->v4l_buf_parity=!kms->v4l_buf_parity;
 	}
 	
@@ -190,7 +190,7 @@ static unsigned int km_v4l_poll(struct video_device *dev, struct file *file,
 {
 KM_STRUCT *kms=(KM_STRUCT *)dev;
 
-return km_data_generic_stream_poll(kms->v4l_kdufpd, kms->kmsbi, &(kms->dvb), file, wait);
+return km_data_generic_stream_poll(kms->v4l_kdufpd, kms->capture.kmsbi, &(kms->capture.dvb), file, wait);
 }
 
 #ifndef VID_HARDWARE_KM
