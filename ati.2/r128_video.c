@@ -1805,7 +1805,9 @@ R128DMA(
     if ((passes = (h+hpass-1)/hpass) > MAXPASSES)
         return FALSE;
 
+#if 0
     R128CCEWaitForIdle(pScrn);
+#endif
 
     /* Request indirect buffers */
     srcpassbytes = w*hpass;
