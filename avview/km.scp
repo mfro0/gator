@@ -59,12 +59,14 @@ foreach file $km_devs {
 }
 
 proc update_primary_globals {} {
+global LOCATION_ID
 foreach var { primary_v4l_device primary_vbi_device } {
 	global $var
 	set $var ""
 	}
+if { ! [info exists LOCATION_ID] } { return }
 catch {
-	foreach {var value } [find_km_device [get_location_id]] {
+	foreach {var value } [find_km_device $LOCATION_ID] {
 		set $var $value
 		}
 	foreach {var value} $attrs {

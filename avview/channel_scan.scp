@@ -1,10 +1,7 @@
 #!avview_shell
 
 proc scan_channels {} {
-global current_table
-global VIDEO_WINDOW 
-global current_port
-global current_channel
+global current_table VIDEO_WINDOW current_port current_channel LOCATION_ID
 if { "$current_table" == "none" } {
 	return
 	}
@@ -27,8 +24,8 @@ scale $A.progress_scale -from 0 -to [llength $CHANNEL_LIST] -variable ch_scan_pr
 	-showvalue false
 eval $A.progress_scale configure [get_settings $A.progress_scale ChannelList]
 button $A.scan_now_button -text "Scan" -command do_scan -state disabled
-global tuner_status_present_${current_port}
-if { [set tuner_status_present_${current_port}] } {
+global tuner_status_present
+if { [set tuner_status_present] } {
 	$A.scan_now_button configure -state normal
 	}
 eval $A.scan_now_button configure [get_settings $A.scan_now_button ChannelList]
@@ -39,7 +36,7 @@ set ch_scan_progress 0
 set column 0
 set row 0
 foreach channel $CHANNEL_LIST {
-	checkbutton $A.ch_list.sel_${ch_scan_progress} -variable "is_favorite_channel(${current_port}_${current_table}_${ch_scan_progress})"
+	checkbutton $A.ch_list.sel_${ch_scan_progress} -variable "is_favorite_channel(${LOCATION_ID}_${current_table}_${ch_scan_progress})"
 	radiobutton $A.ch_list.cch_${ch_scan_progress} -indicatoron false -text " [lindex $CHANNEL_LIST $ch_scan_progress] " \
 		-value "[lindex $CHANNEL_LIST $ch_scan_progress]" -variable current_channel
 	eval $A.ch_list.sel_${ch_scan_progress} configure [get_settings $A.ch_list.sel_${ch_scan_progress} ChannelList $row $column $ch_scan_progress]
@@ -108,16 +105,13 @@ puts $fileid "#\n# End of favorite channel settings\n#"
 }
 
 proc reflect_favorite_channels {} {
-global current_channel_menu
-global current_port
-global current_table
-global is_favorite_channel
+global current_channel_menu current_port current_table is_favorite_channel LOCATION_ID
 set num_entries [$current_channel_menu index end]
 for { set i 0 } { $i < $num_entries} { incr i } {
 	$current_channel_menu entryconfigure $i -foreground #505050
 	.video_menu.channel_menu entryconfigure $i -foreground #505050
 	catch {
-		if { [set is_favorite_channel(${current_port}_${current_table}_$i)] } {
+		if { [set is_favorite_channel(${LOCATION_ID}_${current_table}_$i)] } {
 			$current_channel_menu entryconfigure $i -foreground black
 			.video_menu.channel_menu entryconfigure $i -foreground black
 			}
@@ -161,10 +155,7 @@ return $connector
 }
 
 proc find_first_favorite_channel {start_with dir} {
-global current_channel_menu
-global current_port
-global current_table
-global is_favorite_channel
+global current_channel_menu current_port current_table is_favorite_channel LOCATION_ID
 if { $current_port == "none" } { return "none" }
 set CHANNEL_LIST [freq_get_channel_list $current_table]
 set answer [lindex $CHANNEL_LIST [expr $start_with+$dir]]
@@ -174,7 +165,7 @@ catch {
 	for { set i [expr $start_with+$dir] } { $i != $start_with } { incr i $dir} {
 		if { $i >= $num_entries } { set i 0 }
 		if { $i < 0 } { set i [expr $num_entries - 1] }
-		if { [set is_favorite_channel(${current_port}_${current_table}_$i)] } {
+		if { [set is_favorite_channel(${LOCATION_ID}_${current_table}_$i)] } {
 			set answer [lindex $CHANNEL_LIST $i]
 			break;
 			}

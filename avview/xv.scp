@@ -4,20 +4,7 @@ proc find_attribute_widget {video_window port attribute} {
 set type1  [xv_port_attribute_type $video_window $port $attribute]
 set range [xv_port_attribute_range $video_window $port $attribute]
 set name [xv_port_attribute_name $video_window $port $attribute]
-if { [regexp {^XV_(LOCATION_ID|DEVICE_ID|INSTANCE_ID|ENCODING|AUTOPAINT_COLORKEY|COLORKEY)$} $name] } { return "none"}
-if {$name == "XV_TUNER_STATUS" } { 
-	global tuner_status_present_$port
-	set tuner_status_present_$port true
-	return "none" 
-	}
-if {$name == "XV_MUTE" } { 
-	global audio_mute_present_$port
-	set audio_mute_present_$port true
-	}
-if {$name == "XV_FREQ" } { 
-	global tuner_freq_present_$port
-	set tuner_freq_present_$port true
-	}
+if { [regexp {^XV_(LOCATION_ID|DEVICE_ID|INSTANCE_ID|ENCODING|AUTOPAINT_COLORKEY|COLORKEY|TUNER_STATUS)$} $name] } { return "none"}
 if { [lsearch $type1 "gettable"] < 0 } { 
 	if { ("$range" == "0 1") && ([lsearch $type1 "settable"] >=0 ) } {
 		return "button"
@@ -132,7 +119,19 @@ if { ($type != "button") && ($type != "unreadable") } {
 
 proc update_attribute_variables {} {
 global VIDEO_WINDOW
-global current_port
+global current_port LOCATION_ID INSTANCE_ID DEVICE_ID
+foreach {var value} [subst -nocommands {
+	LOCATION_ID "XV_PORT:$current_port"
+	INSTANCE_ID "XV_PORT:$current_port"
+	DEVICE_ID "XV_PORT:$current_port"
+	freq_present false
+	mute_present false
+	tuner_status_present false
+	autopaint_colorkey_present false
+	}] {
+	global $var
+	set $var $value
+	}
 if { $current_port == "none" } { return }
 set num_attributes [xv_num_port_attributes $VIDEO_WINDOW $current_port]
 for {set i 0 } { $i < $num_attributes} { incr i } {
@@ -140,6 +139,32 @@ for {set i 0 } { $i < $num_attributes} { incr i } {
 	set name [xv_port_attribute_name $VIDEO_WINDOW $current_port $i]
 	set attr_var [find_attribute_variable $VIDEO_WINDOW $current_port $i]
 	set type [find_attribute_widget $VIDEO_WINDOW $current_port $i]
+	switch -exact -- $name {
+		"XV_LOCATION_ID"   {
+			set atom [xv_getportattribute $VIDEO_WINDOW $current_port "XV_LOCATION_ID"]
+			set LOCATION_ID [winfo atomname $atom]
+			}
+		"XV_INSTANCE_ID"   {
+			set atom [xv_getportattribute $VIDEO_WINDOW $current_port "XV_LOCATION_ID"]
+			set LOCATION_ID [winfo atomname $atom]
+			}
+		"XV_DEVICE_ID"   {
+			set atom [xv_getportattribute $VIDEO_WINDOW $current_port "XV_LOCATION_ID"]
+			set LOCATION_ID [winfo atomname $atom]
+			}
+		"XV_FREQ" {
+		 	set freq_present true
+		 	}
+		"XV_MUTE" {
+		  	set mute_present true
+			}
+		"XV_TUNER_STATUS" {
+		  	set tuner_status_present true
+			}
+		"XV_AUTOPAINT_COLORKEY" {
+		  	set autopaint_colorkey_present true
+			}
+		}
 	global $attr_var
 	if { ($type != "button") && ($type != "none") } {
 		catch "
@@ -249,14 +274,6 @@ if { [find_port_adaptor $current_port] < 0 } {
 	return 	
 	}
 
-puts stderr "test"
-global tuner_status_present_$current_port
-global audio_mute_present_$current_port
-global tuner_freq_present_$current_port
-set tuner_status_present_$current_port false
-set audio_mute_present_$current_port false
-set tuner_freq_present_$current_port false
-
 set NUM_ENCODINGS [xv_num_port_encodings $VIDEO_WINDOW $current_port]
 
 set vd_param [get_pane_frame "/Video device parameters"]
@@ -311,13 +328,6 @@ if { $current_table_name == "none" } {
 if { $current_channel == "none" } {
 	set current_channel [find_first_favorite_channel 0 1]
 	}
-}
-
-proc get_location_id {} {
-global current_port VIDEO_WINDOW
-if { $current_port == "none" } { return "NONE" }
-set atom [xv_getportattribute $VIDEO_WINDOW $current_port "XV_LOCATION_ID"]
-return [winfo atomname $atom]
 }
 
 proc set_attribute_by_index { index value } {
