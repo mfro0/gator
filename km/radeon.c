@@ -100,7 +100,7 @@ return (radeon_check_mc_settings(kms) && (readl(kms->reg_aperture+RADEON_CAP0_CO
 
 int radeon_is_vbi_active(KM_STRUCT *kms)
 {
-return (radeon_is_capture_active(kms) && (readl(kms->reg_aperture+RADEON_CAP0_CONFIG) & (1<<13)));
+return (radeon_check_mc_settings(kms) && (readl(kms->reg_aperture+RADEON_CAP0_CONFIG) & (1<<13)));
 }
 
 void radeon_get_window_parameters(KM_STRUCT *kms, struct video_window *vwin)
@@ -254,9 +254,7 @@ static int radeon_setup_dma_table(KM_STRUCT *kms, bm_list_descriptor *dma_table,
 {
 int i;
 long count;
-u32 mem_aperture;
 count=free;
-mem_aperture=pci_resource_start(kms->dev, 0);
 for(i=0;i<(kms->capture.dvb.size/PAGE_SIZE);i++){
 	dma_table[i].from_addr=offset+i*PAGE_SIZE;
 	if(count>PAGE_SIZE){
