@@ -18,10 +18,9 @@ static int km_open(struct video_device *dev, int flags)
 {
 KM_STRUCT *kms=(KM_STRUCT *)dev;
 kms->frame.buf_ptr=0;
-printk("kms variables: reg_aperture=0x%08x reg_mask=0x%08x reg_status=0x%08x\n",
-	kms->reg_aperture, kms->reg_mask, kms->reg_status);
-printk("kms: %p %p 0x%08x 0x%08x\n", kms, kms->reg_aperture, kms->reg_mask, kms->reg_status);
-writel(1, kms->reg_aperture+CAP_INT_CNTL);
+kms->frame_even.buf_ptr=0;
+kms->buf_read_from=0;
+writel(3, kms->reg_aperture+CAP_INT_CNTL);
 return 0;
 }
 
@@ -29,8 +28,11 @@ return 0;
 static void km_close(struct video_device *dev)
 {
 KM_STRUCT *kms=(KM_STRUCT *)dev;
-kms->frame.buf_ptr=0;
+/* stop interrupts */
 writel(0, kms->reg_aperture+CAP_INT_CNTL);
+kms->frame.buf_ptr=0;
+kms->frame_even.buf_ptr=0;
+kms->buf_read_from=-1; /* none */
 }
 
 static long km_write(struct video_device *v, const char *buf, unsigned long count, int nonblock)
@@ -41,20 +43,32 @@ return -EINVAL;
 static long km_read(struct video_device *v, char *buf, unsigned long count, int nonblock)
 {
 KM_STRUCT *kms=(KM_STRUCT *)v;
+SINGLE_FRAME *frame;
 int q,todo;
 
 todo=count;
-while(todo>0){
+if(kms->buf_read_from<0){
+	printk("Internal error in km_v4l:km_read()\n");
+	return -1;
+	}
+if(kms->buf_read_from==1)frame=&(kms->frame_even);
+	else frame=&(kms->frame);
+printk("frame->buf_ptr=%d frame->buf_free=%d\n", frame->buf_ptr, frame->buf_free);
+while(todo>0){	
 	q=todo;
-	if((kms->frame.buf_ptr+q)>=kms->frame.buf_free)q=kms->frame.buf_free-kms->frame.buf_ptr;   
-	if(copy_to_user((void *) buf, (void *) (kms->frame.buffer+kms->frame.buf_ptr), q))
+	if((frame->buf_ptr+q)>=frame->buf_free)q=frame->buf_free-frame->buf_ptr;   
+	if(copy_to_user((void *) buf, (void *) (frame->buffer+frame->buf_ptr), q))
 		return -EFAULT;
 	todo-=q;
-	kms->frame.buf_ptr+=q;
+	frame->buf_ptr+=q;
 	buf+=q;
-	if(kms->frame.buf_ptr>=kms->frame.buf_free)kms->frame.buf_ptr=0;
+	if(frame->buf_ptr>=frame->buf_free){
+		frame->buf_ptr=0;
+		kms->buf_read_from=kms->buf_read_from ? 0: 1;
+		break;
+		}
 	}
-return count;
+return (count-todo);
 }
 
 static int km_ioctl(struct video_device *dev, unsigned int cmd, void *arg)
@@ -68,16 +82,16 @@ switch(cmd){
 		b.channels = 1;
 		b.audios = 0;
 		b.maxwidth = 640;
-		b.maxheight = 480;
-		b.minwidth = 48;
-		b.minheight = 32;
+		b.maxheight = 240;
+		b.minwidth = 640;
+		b.minheight = 240;
 		if(copy_to_user(arg,&b,sizeof(b)))
 			return -EFAULT;
 		return 0;
 		}
 	case VIDIOCGPICT:{
 		#if 0 /* ignore for now */
-		struct video_picture p=btv->picture;
+		struct video_picture p;
 		if(copy_to_user(arg, &p, sizeof(p)))
 			return -EFAULT;
 		#endif
@@ -96,16 +110,18 @@ return -EINVAL;
 static int km_mmap(struct video_device *dev, const char *adr, unsigned long size)
 {
 KM_STRUCT *kms=(KM_STRUCT *)dev;
+SINGLE_FRAME *frame;
 unsigned long start=(unsigned long) adr;
 unsigned long page,pos;
 
-if (size>kms->frame.buf_size)
+if (size>(kms->frame.buf_size+kms->frame_even.buf_size))
         return -EINVAL;
-if (!kms->frame.buffer) {
+if (!kms->frame.buffer || !kms->frame_even.buffer) {
 /*	if(fbuffer_alloc(kms)) */
         return -EINVAL;
         }
-pos=(unsigned long) kms->frame.buffer;
+frame=&(kms->frame);
+pos=(unsigned long) frame->buffer;
 while(size>0){
 	page = kvirt_to_pa(pos);
         if(remap_page_range(start, page, PAGE_SIZE, PAGE_SHARED))
@@ -113,6 +129,10 @@ while(size>0){
                 start+=PAGE_SIZE;
                 pos+=PAGE_SIZE;
                 size-=PAGE_SIZE;
+	if((pos-(unsigned long)frame->buffer)>frame->buf_size){
+		frame=&(kms->frame_even);
+		pos=frame->buffer;
+		}
         }
 return 0;
 }

@@ -26,10 +26,11 @@ typedef struct {
 	struct pci_dev *dev;
 	long interrupt_count;
 	unsigned char * reg_aperture;
-	long reserved;
 	long reg_status;
 	long reg_mask;
+	int buf_read_from;
 	SINGLE_FRAME frame;
+	SINGLE_FRAME frame_even;
 	} KM_STRUCT;
 
 

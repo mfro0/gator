@@ -75,7 +75,7 @@ for(i=0;i<(frame->buf_size/PAGE_SIZE);i++){
 return 0;
 }
 
-static void start_frame_transfer(KM_STRUCT *kms)
+static void start_frame_transfer_buf0(KM_STRUCT *kms)
 {
 long offset, status;
 offset=readl(kms->reg_aperture+CAP0_BUF0_OFFSET);
@@ -83,10 +83,26 @@ setup_single_frame_buffer(kms, &(kms->frame), offset);
 /* wait for at least one available queue */
 do {
 	status=readl(kms->reg_aperture+DMA_GUI_STATUS);
+	printk("status=0x%08x\n", status);
 	} while (!(status & 0x1f));
 /* start transfer */
 writel(kvirt_to_pa(kms->frame.dma_table), kms->reg_aperture+DMA_GUI_TABLE_ADDR);
-printk("start_frame_transfer\n");
+printk("start_frame_transfer_buf0\n");
+}
+
+static void start_frame_transfer_buf0_even(KM_STRUCT *kms)
+{
+long offset, status;
+offset=readl(kms->reg_aperture+CAP0_BUF0_EVEN_OFFSET);
+setup_single_frame_buffer(kms, &(kms->frame_even), offset);
+/* wait for at least one available queue */
+do {
+	status=readl(kms->reg_aperture+DMA_GUI_STATUS);
+	printk("status=0x%08x\n", status);
+	} while (!(status & 0x1f));
+/* start transfer */
+writel(kvirt_to_pa(kms->frame_even.dma_table), kms->reg_aperture+DMA_GUI_TABLE_ADDR);
+printk("start_frame_transfer_buf0_even\n");
 }
 
 static int is_capture_irq_active(int irq, KM_STRUCT *kms)
@@ -98,7 +114,8 @@ status=readl(kms->reg_aperture+CAP_INT_STATUS);
 mask=readl(kms->reg_aperture+CAP_INT_CNTL);
 if(!(status & mask))return 0;
 writel(status & mask, kms->reg_aperture+CAP_INT_STATUS);
-start_frame_transfer(kms);
+if(status & 1)start_frame_transfer_buf0(kms);
+if(status & 2)start_frame_transfer_buf0_even(kms);
 return 1;
 }
 
@@ -167,6 +184,11 @@ if(allocate_single_frame_buffer(kms, &(kms->frame), 640*240*2)<0){
 	goto fail;
 	}
 
+if(allocate_single_frame_buffer(kms, &(kms->frame_even), 640*240*2)<0){
+	result=-1;
+	goto fail;
+	}
+
 result=request_irq(kms->irq, km_irq, SA_SHIRQ, "km", (void *)kms);
 if(result==-EINVAL){
 	printk(KERN_ERR "km: bad irq number or handler\n");
@@ -199,6 +221,7 @@ printk("Removing Kmultimedia supported device. interrupt_count=%ld\n", kms->inte
 cleanup_km_v4l(kms);
 free_irq(kms->irq, kms);
 deallocate_single_frame_buffer(kms, &(kms->frame));
+deallocate_single_frame_buffer(kms, &(kms->frame_even));
 iounmap(kms->reg_aperture);
 release_mem_region(pci_resource_start(pci_dev,2),
                            pci_resource_len(pci_dev,2));
