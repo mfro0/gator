@@ -323,6 +323,10 @@ int start_video_capture(KM_STRUCT *kms)
 	printk("Capture buf size=%d\n", buf_size);
 	spin_unlock(&(kms->kms_lock));
 
+	/* Spin lock has to be released before calling allocate_dvb
+	 * which may sleep!
+	 */
+
 	if(kms->allocate_dvb(&(kms->capture), km_buffers, buf_size)<0){
 		spin_lock(&(kms->kms_lock));
 		result=-ENOMEM;
@@ -335,12 +339,13 @@ int start_video_capture(KM_STRUCT *kms)
 		goto fail;
 	}
 	kmd_signal_state_change(kms->kmd);
+	spin_lock(&(kms->kms_lock));
 	if(kms->start_transfer!=NULL){
 		kms->start_transfer(kms);
+		spin_unlock(&(kms->kms_lock));
 		return 0;
 	}
 	result=0;
-	spin_lock(&(kms->kms_lock));
 
  fail:
 	kms->gdq_usage--;
@@ -397,12 +402,14 @@ int start_vbi_capture(KM_STRUCT *kms)
 		result=-ENOTSUPP;
 		goto fail;
 	}
+
 	kmd_signal_state_change(kms->kmd);
+	spin_lock(&(kms->kms_lock));
 	if(kms->start_vbi_transfer!=NULL){
 		kms->start_vbi_transfer(kms);
+		spin_unlock(&(kms->kms_lock));
 		return 0;
 	}
-	spin_lock(&(kms->kms_lock));
 	result=0;
 
  fail:
