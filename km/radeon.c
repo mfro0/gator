@@ -144,7 +144,8 @@ int count;
 kms=dev_id;
 kms->interrupt_count++;
 
-count=1000;
+/* we should only get tens per second, no more */
+count=10000;
 
 while(1){
 	printk("beep %ld\n", kms->interrupt_count);

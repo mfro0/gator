@@ -14,6 +14,7 @@
 #include "km_memory.h"
 #include "km_v4l.h"
 #include "radeon.h"
+#include "mach64.h"
 
 void generic_deallocate_single_frame_buffer(KM_STRUCT *kms, SINGLE_FRAME *frame)
 {
