@@ -1,6 +1,8 @@
 #ifndef __RAGE128_REG_H__
 #define __RAGE128_REG_H__
 
+#define RAGE128_BUS_CNTL      0x30
+
 #define RAGE128_GEN_INT_STATUS 0x44
 #define RAGE128_GEN_INT_CNTL   0x40
 #define RAGE128_CAP_INT_CNTL   0x908
@@ -37,6 +39,24 @@
 #define RAGE128_BM_VIDCAP_BUF2                             0xA68
 #define RAGE128_BM_VIDCAP_ACTIVE                           0xA6c
 #define RAGE128_BM_GUI                                     0xA80
+
+/* RAGE128_BM_CHUNK_0_VAL bit constants */
+#define RAGE128_BM_PTR_FORCE_TO_PCI                        0x00200000
+#define RAGE128_BM_PM4_RD_FORCE_TO_PCI                     0x00400000
+#define RAGE128_BM_GLOBAL_FORCE_TO_PCI                     0x00800000
+#define RAGE128_BM_VIP3_NOCHUNK                            0x10000000
+#define RAGE128_BM_VIP2_NOCHUNK                            0x20000000
+#define RAGE128_BM_VIP1_NOCHUNK                            0x40000000
+#define RAGE128_BM_VIP0_NOCHUNK                            0x80000000
+
+/* RAGE128_BM_COMMAND bit constants */
+#define RAGE128_BM_INTERRUPT_DIS                           0x08000000
+#define RAGE128_BM_TRANSFER_DEST_REG                       0x10000000
+#define RAGE128_BM_FORCE_TO_PCI                            0x20000000
+#define RAGE128_BM_FRAME_OFFSET_HOLD                       0x40000000
+#define RAGE128_BM_END_OF_LIST                             0x80000000
+
+
 
 #define RAGE128_SYSTEM_TRIGGER_SYSTEM_TO_VIDEO 	0x0
 #define RAGE128_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM	0x1
