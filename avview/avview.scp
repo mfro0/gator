@@ -820,7 +820,6 @@ wm protocol .controlwin WM_DELETE_WINDOW {
 	}
 
 wm title . "AVview"
-wm aspect . 3 4 3 4
 wm title .controlwin "AV Control"
 
 #
