@@ -70,16 +70,16 @@ if { [set $name.$i.locked] } {
 }
 
 proc generate_element_generic { mw i element name value } {
-global $name.$i.locked
+global $name.$i.locked element_color_index
 trace vdelete $name.$i.locked w "set_locked_state $mw \"$name\" \"$element\" $i ; skip_args3"
 if { ! [info exists $name.$i.locked] } {
 	set $name.$i.locked 1
 	}
-eval label $mw.label$i -text "\"$name\"" -justify left [get_settings $mw.label$i ALSA $i]
+eval label $mw.label$i -text "\"$name\"" -justify left [get_settings $mw.label$i ALSA $element_color_index]
 destroy $mw.frame$i
 destroy $mw.frame_locked$i
-eval frame $mw.frame$i [get_settings $mw.frame$i ALSA $i]
-eval frame $mw.frame_locked$i [get_settings $mw.frame_locked$i ALSA $i]
+eval frame $mw.frame$i [get_settings $mw.frame$i ALSA $element_color_index]
+eval frame $mw.frame_locked$i [get_settings $mw.frame_locked$i ALSA $element_color_index]
 if { [llength $value] > 1 } {
 	# check if all values are identical
 	set a [lindex $value 0]
@@ -91,7 +91,7 @@ if { [llength $value] > 1 } {
 		}
 
 	eval checkbutton $mw.checkbutton$i -text "Locked" -variable \"$name.$i.locked\" \
-			-indicatoron false [get_settings $mw.checkbutton$i ALSA $i]
+			-indicatoron false [get_settings $mw.checkbutton$i ALSA $element_color_index]
 	if { [set $name.$i.locked ] } {
 		grid $mw.label$i $mw.frame_locked$i $mw.checkbutton$i -sticky news
 		} {
@@ -109,8 +109,9 @@ trace variable $name.$i.locked w "set_locked_state $mw \"$name\" \"$element\" $i
 
 proc generate_element { mw i element } {
 global current_alsa_device
+global element_color_index
 if { [get_value $element "-interface"] != "MIXER" } {
-		return 
+		return
 		}
 set values_count [get_value $element "-values_count"]
 set name [get_value $element "-name"]
@@ -118,19 +119,20 @@ grid columnconfig $mw 1 -weight 1
 switch "[get_value $element "-type"]" \
 	"BOOLEAN" {
 		set value [alsa_hctl_get_element_value "$current_alsa_device" $i]
-		eval label $mw.label$i -text "\"$name\"" -justify left [get_settings $mw.label$i ALSA $i]
-		eval frame $mw.frame$i [get_settings $mw.frame$i ALSA $i]
+		eval label $mw.label$i -text "\"$name\"" -justify left [get_settings $mw.label$i ALSA $element_color_index]
+		eval frame $mw.frame$i [get_settings $mw.frame$i ALSA $element_color_index]
 		grid $mw.label$i $mw.frame$i - -sticky news
 		grid configure $mw.label$i -sticky news
-		grid columnconfig $mw.frame$i 0 -weight 1
 		for { set j 0 } { $j < $values_count } { incr j } {
 			global $name.$i.v$j
-			eval checkbutton $mw.frame$i.checkbutton$j -variable \"$name.$i.v$j\" [get_settings $mw.frame$i.checkbutton$j ALSA $i $j]
+			eval checkbutton $mw.frame$i.checkbutton$j -variable \"$name.$i.v$j\" [get_settings $mw.frame$i.checkbutton$j ALSA $element_color_index $j]
 			grid $mw.frame$i.checkbutton$j -row 0 -column $j -sticky news
 			trace vdelete $name.$i.v$j w "set_element_value \"$name\" $values_count $i $j ; skip_args3"
 			set $name.$i.v$j [lindex $value $j]
 			trace variable $name.$i.v$j w "set_element_value \"$name\" $values_count $i $j ; skip_args3"
+			grid columnconfig $mw.frame$i $j -weight 1
 			}			
+		incr element_color_index
 		} \
 	"INTEGER" {
 		set value [alsa_hctl_get_element_value "$current_alsa_device" $i]
@@ -144,7 +146,7 @@ switch "[get_value $element "-type"]" \
 			eval scale $mw.frame$i.scale$j -variable \"$name.$i.v$j\" \
 				-from $min -to $max -resolution $step \
 				-orient horizontal -showvalue false \
-				[get_settings $mw.frame$i.scale$j ALSA $i $j]
+				[get_settings $mw.frame$i.scale$j ALSA $element_color_index $j]
 			grid $mw.frame$i.scale$j -row $j -column 0 -sticky news
 			trace vdelete $name.$i.v$j w "set_element_value \"$name\" $values_count $i $j ; skip_args3"
 			set $name.$i.v$j [lindex $value $j]
@@ -154,15 +156,16 @@ switch "[get_value $element "-type"]" \
 		eval scale $mw.frame_locked$i.scale -variable \"$name.$i.average_v\" \
 			-from $min -to $max -resolution $step \
 			-orient horizontal -showvalue false \
-			[get_settings $mw.frame_locked$i.scale ALSA $i]
+			[get_settings $mw.frame_locked$i.scale ALSA $element_color_index]
 		grid $mw.frame_locked$i.scale -row $j -column 0 -sticky news
 		trace vdelete $name.$i.average_v w "set_element_average_value \"$name\" $values_count $i; skip_args3"
 		set $name.$i.average_v [average_list $value]
 		trace variable $name.$i.average_v w "set_element_average_value \"$name\" $values_count $i; skip_args3"
+		incr element_color_index
 		} \
 	"ENUMERATED" {
-		eval label $mw.label$i -text "\"$name\"" -justify left [get_settings $mw.label$i ALSA $i]
-		eval frame $mw.frame$i [get_settings $mw.frame$i ALSA $i]
+		eval label $mw.label$i -text "\"$name\"" -justify left [get_settings $mw.label$i ALSA $element_color_index]
+		eval frame $mw.frame$i [get_settings $mw.frame$i ALSA $element_color_index]
 		grid $mw.label$i $mw.frame$i - -sticky news
 		grid configure $mw.label$i -sticky news
 		set value [alsa_hctl_get_element_value "$current_alsa_device" $i]
@@ -175,8 +178,8 @@ switch "[get_value $element "-type"]" \
 		for { set j 0 } { $j < $values_count } { incr j } {
 			global $name.$i.v$j
 			set "element.$i.$j.menu" [tk_optionMenu $mw.frame$i.optionmenu$j $name.$i.v$j none]
-			eval $mw.frame$i.optionmenu$j configure [get_settings $mw.frame$i.optionmenu$j ALSA $i $j]
-			eval [set "element.$i.$j.menu"] configure [get_settings [set "element.$i.$j.menu"] ALSA $i $j]
+			eval $mw.frame$i.optionmenu$j configure [get_settings $mw.frame$i.optionmenu$j ALSA $element_color_index $j]
+			eval [set "element.$i.$j.menu"] configure [get_settings [set "element.$i.$j.menu"] ALSA $element_color_index $j]
 			[set element.$i.$j.menu] delete 0 end
 			foreach item $items {
 				[set element.$i.$j.menu] add radiobutton -label "$item" -value "$item" -variable $name.$i.v$j 
@@ -186,6 +189,7 @@ switch "[get_value $element "-type"]" \
 			set $name.$i.v$j [lindex $value $j]
 			trace variable $name.$i.v$j w "set_element_value \"$name\" $values_count $i $j ; skip_args3"
 			}
+		incr element_color_index
 		}
 		
 }
@@ -210,9 +214,11 @@ eval label $mw.title -text "\"Mixer (ALSA)\"" \
 grid $mw.title - - -sticky news -pady 2 -padx 2
 grid columnconfigure $mw 1 -weight 1
 set i 0
+global element_color_index
+set element_color_index 0
 foreach element $current_alsa_info {
 	generate_element $mw $i $element
-	incr i
+	incr i 
 	}
 
 update
