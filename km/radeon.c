@@ -9,12 +9,45 @@
 #include <linux/interrupt.h>
 #include <linux/wrapper.h>
 #include <linux/videodev.h>
+#include <linux/delay.h>
 
 
 #include "km.h"
 #include "km_memory.h"
 #include "radeon_reg.h"
 
+void radeon_wait_for_fifo(KM_STRUCT *kms, int entries)
+{
+long count;
+u32 a;
+count=10000;
+while(((a=readl(kms->reg_aperture+RADEON_RBBM_STATUS))&0x7F)<entries){
+	udelay(1);
+	count--;
+	if(count<0){
+		printk(KERN_ERR "km: radeon FIFO locked up\n");
+		return;
+		}
+	}
+}
+
+void radeon_wait_for_idle(KM_STRUCT *kms)
+{
+u32 a;
+long count;
+radeon_wait_for_fifo(kms,64);
+count=1000;
+while(((a=readl(kms->reg_aperture+RADEON_RBBM_STATUS)) & RADEON_ENGINE_ACTIVE)!=0){
+	udelay(1);
+	count--;
+	if(count<0){
+		printk(KERN_ERR "km: radeon engine lock up\n");
+		return;
+		}
+	}
+/* according to docs we should do FlushPixelCache here. However we don't really
+read back framebuffer data, so no need */
+}
 
 int radeon_is_capture_active(KM_STRUCT *kms)
 {
@@ -38,7 +71,7 @@ void radeon_start_transfer(KM_STRUCT *kms)
 u32 a;
 
 a=readl(kms->reg_aperture+RADEON_BUS_CNTL);
-printk("RADEON_BUS_CNTL=0x%08x\n");
+printk("RADEON_BUS_CNTL=0x%08x\n", a);
 /* enable bus mastering */
 if(a & (1<<6)){ 
 	printk("Enabling bus mastering\n");
@@ -157,6 +190,7 @@ kms->interrupt_count++;
 count=10000;
 
 while(1){
+	radeon_wait_for_idle(kms);
 /*	KM_DEBUG("beep %ld\n", kms->interrupt_count); */
 	if(!radeon_is_capture_irq_active(kms)){
 		status=readl(kms->reg_aperture+RADEON_GEN_INT_STATUS);
