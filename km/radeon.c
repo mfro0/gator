@@ -354,7 +354,7 @@ memset(frame->dma_table, 0, 4096);
 printk("Frame %p\n", frame);
 for(i=0;i<(frame->buf_size/PAGE_SIZE);i++){
 	frame->dma_table[i].to_addr=kvirt_to_pa(frame->buffer+i*PAGE_SIZE);
-	#ifdef 0
+	#if 0
 	printk("entry virt %p phys %p %s\n", frame->buffer+i*PAGE_SIZE, frame->dma_table[i].to_addr,
 		((unsigned long)frame->dma_table[i].to_addr)<64*1024*1024?"*":"");
 	#endif
