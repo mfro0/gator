@@ -149,12 +149,15 @@ if(a & (1<<6)){
 	writel(a | (3<<1) | (1<<6), kms->reg_aperture+RADEON_BUS_CNTL);
 	}
 wmb();
-writel(3, kms->reg_aperture+RADEON_CAP_INT_STATUS);
-writel(1<<30, kms->reg_aperture+RADEON_GEN_INT_STATUS);
+if(kms->gdq_usage==1){
+	writel(1<<30, kms->reg_aperture+RADEON_GEN_INT_STATUS);
+	a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
+	writel(a|(1<<30), kms->reg_aperture+RADEON_GEN_INT_CNTL);
+	}
+wmb();
+writel(0xf, kms->reg_aperture+RADEON_CAP_INT_STATUS);
 a=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
 writel(a|0xf, kms->reg_aperture+RADEON_CAP_INT_CNTL);
-a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
-writel(a|(1<<30), kms->reg_aperture+RADEON_GEN_INT_CNTL);
 }
 
 void radeon_stop_transfer(KM_STRUCT *kms)
@@ -193,12 +196,15 @@ if(a & (1<<6)){
 	writel(a | (3<<1) | (1<<6), kms->reg_aperture+RADEON_BUS_CNTL);
 	}
 wmb();
-writel(3, kms->reg_aperture+RADEON_CAP_INT_STATUS);
-writel(1<<30, kms->reg_aperture+RADEON_GEN_INT_STATUS);
+if(kms->gdq_usage==1){
+	writel(1<<30, kms->reg_aperture+RADEON_GEN_INT_STATUS);
+	a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
+	writel(a|(1<<30), kms->reg_aperture+RADEON_GEN_INT_CNTL);
+	}
+wmb();
+writel(0x30, kms->reg_aperture+RADEON_CAP_INT_STATUS);
 a=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
 writel(a|0x30, kms->reg_aperture+RADEON_CAP_INT_CNTL);
-a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
-writel(a|(1<<30), kms->reg_aperture+RADEON_GEN_INT_CNTL);
 }
 
 void radeon_stop_vbi_transfer(KM_STRUCT *kms)
