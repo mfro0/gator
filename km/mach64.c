@@ -244,10 +244,6 @@ for(k=0;k<kms->num_buffers;k++){
 	/* create DMA table */
 	for(i=0;i<(kms->v4l_dvb.size/PAGE_SIZE);i++){
 		kms->dma_table[k][i].to_addr=kvirt_to_pa(kms->buffer[k]+i*PAGE_SIZE);
-		#if 0
-		printk("entry virt %p phys %p %s\n", kms->frame_info[k].buffer+i*PAGE_SIZE, kms->frame_info[k].dma_table[i].to_addr,
-		((unsigned long)kms->frame_info[k].dma_table[i].to_addr)<64*1024*1024?"*":"");
-		#endif
 		if(kvirt_to_pa(kms->buffer[k]+i*PAGE_SIZE)!=kvirt_to_bus(kms->buffer[k]+i*PAGE_SIZE)){
 			printk(KERN_ERR "pa!=bus for entry %d frame %d\n", i, k);
 			}
