@@ -98,6 +98,11 @@ int radeon_is_capture_active(KM_STRUCT *kms)
 return (radeon_check_mc_settings(kms) && (readl(kms->reg_aperture+RADEON_CAP0_CONFIG) & 0x1));
 }
 
+int radeon_is_vbi_active(KM_STRUCT *kms)
+{
+return (radeon_is_capture_active(kms) && (readl(kms->reg_aperture+RADEON_CAP0_CONFIG) & (1<<13)));
+}
+
 void radeon_get_window_parameters(KM_STRUCT *kms, struct video_window *vwin)
 {
 u32 a;

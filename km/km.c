@@ -261,10 +261,13 @@ int start_video_capture(KM_STRUCT *kms)
 int result;
 u32 buf_size;
 spin_lock(&(kms->kms_lock));
+if(kms->is_capture_active==NULL){
+	result=-ENOTSUPP;
+	goto fail;
+	}
 if(!kms->is_capture_active(kms)){
 	printk("km: no data is available until AVview or xawtv is started\n");
 	result=-ENODATA;
-	spin_unlock(&(kms->kms_lock));
 	goto fail;
 	}
 
@@ -286,7 +289,7 @@ if(kms->allocate_dvb!=NULL){
 	goto fail;
 	}
 spin_unlock(&(kms->kms_lock));
-kms->start_transfer(kms);
+if(kms->start_transfer!=NULL)kms->start_transfer(kms);
 return 0;
 
 fail:
@@ -297,9 +300,61 @@ fail:
 void stop_video_capture(KM_STRUCT *kms)
 {
 spin_lock(&(kms->kms_lock));
-kms->stop_transfer(kms);
+if(kms->stop_transfer!=NULL)kms->stop_transfer(kms);
 if(kms->deallocate_dvb!=NULL){
 	kms->deallocate_dvb(&(kms->capture));
+	kmd_signal_state_change(kms->kmd);
+	} else {
+	}
+printk("km: total frames: %ld, overrun: %ld\n", kms->total_frames, kms->overrun);
+spin_unlock(&(kms->kms_lock));
+}
+
+int start_vbi_capture(KM_STRUCT *kms)
+{
+int result;
+u32 buf_size;
+spin_lock(&(kms->kms_lock));
+if(kms->is_vbi_active==NULL){
+	result=-ENOTSUPP;
+	goto fail;
+	}
+if(!kms->is_vbi_active(kms)){
+	printk("km: no data is available until AVview or xawtv is started\n");
+	result=-ENODATA;
+	goto fail;
+	}
+
+kms->get_window_parameters(kms, &(kms->vwin));
+
+
+buf_size=kms->vwin.width*kms->vwin.height*2;
+
+if(kms->allocate_dvb!=NULL){
+	if(kms->allocate_dvb(&(kms->vbi), km_buffers, buf_size)<0){
+		result=-ENOMEM;
+		goto fail;
+		}
+	kmd_signal_state_change(kms->kmd);
+	} else {
+	result=-ENOTSUPP;
+	goto fail;
+	}
+spin_unlock(&(kms->kms_lock));
+if(kms->start_vbi_transfer!=NULL)kms->start_vbi_transfer(kms);
+return 0;
+
+fail:
+  spin_unlock(&(kms->kms_lock));
+  return result;
+}
+
+void stop_vbi_capture(KM_STRUCT *kms)
+{
+spin_lock(&(kms->kms_lock));
+if(kms->stop_vbi_transfer!=NULL)kms->stop_vbi_transfer(kms);
+if(kms->deallocate_dvb!=NULL){
+	kms->deallocate_dvb(&(kms->vbi));
 	kmd_signal_state_change(kms->kmd);
 	} else {
 	}
@@ -312,6 +367,16 @@ spin_unlock(&(kms->kms_lock));
 #define MAX_DEVICES 10
 KM_STRUCT km_devices[10];
 int num_devices=0;
+
+int find_kmfl(KM_FIELD *kmfl, char *id)
+{
+int i;
+for(i=0;kmfl[i].type!=KM_FIELD_TYPE_EOL;i++){
+	if(!strcmp(kmfl[i].name, id))return i;
+	}
+printk(KERN_ERR "km: internal error: could not find field %s\n", id);
+return 0;
+}
 
 KM_FIELD kmfl_template[]={
 	{ type: KM_FIELD_TYPE_STATIC,
@@ -372,6 +437,27 @@ KM_FIELD kmfl_template[]={
 	},
 	{ type: KM_FIELD_TYPE_DYNAMIC_INT,
 	  name: "VIDEO_STREAM_INFO_DATA_UNIT",
+	  changed: 0,
+	  lock: NULL,
+	  priv: NULL,
+	  read_complete: NULL,
+	},
+	{ type: KM_FIELD_TYPE_DYNAMIC_INT,
+	  name: "VBI_DEVICE",
+	  changed: 0,
+	  lock: NULL,
+	  priv: NULL,
+	  read_complete: NULL,
+	},
+	{ type: KM_FIELD_TYPE_DYNAMIC_INT,
+	  name: "VBI_STREAM_DATA_UNIT",
+	  changed: 0,
+	  lock: NULL,
+	  priv: NULL,
+	  read_complete: NULL,
+	},
+	{ type: KM_FIELD_TYPE_DYNAMIC_INT,
+	  name: "VBI_STREAM_INFO_DATA_UNIT",
 	  changed: 0,
 	  lock: NULL,
 	  priv: NULL,
@@ -441,6 +527,7 @@ switch(pci_id->driver_data){
 #ifndef OMIT_RADEON_DRIVER
 	case HARDWARE_RADEON:
 		kms->is_capture_active=radeon_is_capture_active;
+		kms->is_vbi_active=radeon_is_vbi_active;
 		kms->get_window_parameters=radeon_get_window_parameters;
 		kms->start_transfer=radeon_start_transfer;
 		kms->stop_transfer=radeon_stop_transfer;
@@ -499,26 +586,34 @@ printk("sizeof(kmfl_template)=%d sizeof(KM_FIELD)=%d\n", sizeof(kmfl_template), 
 kms->kmfl=kmalloc(sizeof(kmfl_template), GFP_KERNEL);
 memcpy(kms->kmfl, kmfl_template, sizeof(kmfl_template));
 
-kms->kmfl[0].data.c.string=kmalloc(strlen(dev->name)+1, GFP_KERNEL);
-memcpy(kms->kmfl[0].data.c.string, dev->name, strlen(dev->name)+1);
+#define FIELD(name)   kms->kmfl[find_kmfl(kms->kmfl, name)]
 
-kms->kmfl[1].data.c.string=kmalloc(strlen(dev->slot_name)+10, GFP_KERNEL);
-sprintf(kms->kmfl[1].data.c.string, "PCI:%s", dev->slot_name);
+FIELD("DEVICE_ID").data.c.string=kmalloc(strlen(dev->name)+1, GFP_KERNEL);
+memcpy(FIELD("DEVICE_ID").data.c.string, dev->name, strlen(dev->name)+1);
 
-kms->kmfl[2].data.c.string=kmalloc(20, GFP_KERNEL);
-sprintf(kms->kmfl[2].data.c.string, "KM_DEVICE:%d", num_devices);
+FIELD("LOCATION_ID").data.c.string=kmalloc(strlen(dev->slot_name)+10, GFP_KERNEL);
+sprintf(FIELD("LOCATION_ID").data.c.string, "PCI:%s", dev->slot_name);
 
-kms->kmfl[3].data.i.field=&(kms->vsync_count);
+FIELD("INSTANCE_ID").data.c.string=kmalloc(20, GFP_KERNEL);
+sprintf(FIELD("INSTANCE_ID").data.c.string, "KM_DEVICE:%d", num_devices);
 
-kms->kmfl[4].data.i.field=&(kms->vblank_count);
+FIELD("VSYNC_COUNT").data.i.field=&(kms->vsync_count);
 
-kms->kmfl[5].data.i.field=&(kms->vline_count);
+FIELD("VBLANK_COUNT").data.i.field=&(kms->vblank_count);
 
-kms->kmfl[6].data.i.field=&(kms->vd.minor);
+FIELD("VLINE_COUNT").data.i.field=&(kms->vline_count);
 
-kms->kmfl[7].data.i.field=&(kms->capture.du);
+FIELD("V4L_DEVICE").data.i.field=&(kms->vd.minor);
 
-kms->kmfl[8].data.i.field=&(kms->capture.info_du);
+FIELD("VIDEO_STREAM_DATA_UNIT").data.i.field=&(kms->capture.du);
+
+FIELD("VIDEO_STREAM_INFO_DATA_UNIT").data.i.field=&(kms->capture.info_du);
+
+FIELD("VBI_DEVICE").data.i.field=&(kms->vbi_vd.minor);
+
+FIELD("VBI_STREAM_DATA_UNIT").data.i.field=&(kms->vbi.du);
+
+FIELD("VBI_STREAM_INFO_DATA_UNIT").data.i.field=&(kms->vbi.info_du);
 
 kms->kmd=add_km_device(kms->kmfl, kms);
 printk("Device %s %s (0x%04x:0x%04x) corresponds to /dev/video%d\n",

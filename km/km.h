@@ -80,6 +80,7 @@ typedef struct {
 
 typedef struct S_KM_STRUCT {
 	struct video_device vd;
+	struct video_device vbi_vd;
 	struct video_window vwin;
 	spinlock_t kms_lock;
 	long irq;
@@ -96,9 +97,11 @@ typedef struct S_KM_STRUCT {
 
 	
 	KDU_FILE_PRIVATE_DATA *v4l_kdufpd;
+	KDU_FILE_PRIVATE_DATA *vbi_kdufpd;
 	
 	
 	KM_STREAM capture;
+	KM_STREAM vbi;
 	
 	KM_TRANSFER_QUEUE gui_dma_queue;
 	KM_TRANSFER_REQUEST gui_dma_request[10];  /* we should not have more than 10 
@@ -116,9 +119,12 @@ typedef struct S_KM_STRUCT {
 	void (*uninit_hardware)(struct S_KM_STRUCT *kms);
 	void (*irq_handler)(int irq, void *dev_id, struct pt_regs *regs);
 	int  (*is_capture_active)(struct S_KM_STRUCT *kms);
+	int (*is_vbi_active)(struct S_KM_STRUCT *kms);
 	void (*get_window_parameters)(struct S_KM_STRUCT *kms, struct video_window *vwin);
 	void (*start_transfer)(struct S_KM_STRUCT *kms);
 	void (*stop_transfer)(struct S_KM_STRUCT *kms);
+	void (*start_vbi_transfer)(struct S_KM_STRUCT *kms);
+	void (*stop_vbi_transfer)(struct S_KM_STRUCT *kms);
 	int (*allocate_dvb)(KM_STREAM *stream, int num_buffers, long size);
 	int (*deallocate_dvb)(KM_STREAM *stream);
 	} KM_STRUCT;
