@@ -2,30 +2,30 @@
 #
 #
 
-global fifo_limit
-set fifo_limit 32
-global file_limit
-set file_limit 2000
+global ffmpeg_max_fifo_size
+set ffmpeg_max_fifo_size 32
+global ffmpeg_recording_chunk_size
+set ffmpeg_recording_chunk_size 2000
 global current_video_rate
 set current_video_rate 59.94
-global current_video_bitrate 
-set current_video_bitrate 300000
+global ffmpeg_video_bitrate 
+set ffmpeg_video_bitrate 300000
 global current_audio_rate 
 set current_audio_rate 48000
-global current_audio_bitrate 
-set current_audio_bitrate 64000
-global current_video_quality 
-set current_video_quality 2
+global ffmpeg_audio_bitrate 
+set ffmpeg_audio_bitrate 64000
+global ffmpeg_video_quality 
+set ffmpeg_video_quality 2
 
 
 
 #
 #
-# Heuristic to figure out a good fifo_limit
+# Heuristic to figure out a good ffmpeg_max_fifo_size
 #
 catch { 
 	set core_size [file size /proc/kcore]
-	set fifo_limit [expr $core_size/(2*1024*1024)]
+	set ffmpeg_max_fifo_size [expr $core_size/(2*1024*1024)]
 	}
 
 proc generate_capture_window { cw } {
@@ -82,13 +82,13 @@ if {[ffmpeg_present] == "yes"} {
 	grid $cw.rratel $cw.rrate_optionmenu - -sticky news
 	grid configure $cw.rratel -sticky nws
 
-	eval label $cw.vcodecl -text "\"Video codec:\"" [get_settings $cw.vcodecl Capture V4L]
-	set menu [tk_optionMenu $cw.vcodec_optionmenu current_video_codec "H263" "H263I" "H263P" "MJPEG" "MPEG-1" "MPEG-4" "MSMPEG-4" "RV10"]
-	eval $cw.vcodec_optionmenu configure [get_settings $cw.vcodec_optionmenu Capture V4L]
-	eval $menu configure [get_settings $menu Capture V4L menu]
-	grid $cw.vcodecl $cw.vcodec_optionmenu
-	grid configure $cw.vcodecl -sticky nws
-	grid configure $cw.vcodec_optionmenu -sticky news
+#	eval label $cw.vcodecl -text "\"Video codec:\"" [get_settings $cw.vcodecl Capture V4L]
+#	set menu [tk_optionMenu $cw.vcodec_optionmenu ffmpeg_video_codec "H263" "H263I" "H263P" "MJPEG" "MPEG-1" "MPEG-4" "MSMPEG-4" "RV10"]
+#	eval $cw.vcodec_optionmenu configure [get_settings $cw.vcodec_optionmenu Capture V4L]
+#	eval $menu configure [get_settings $menu Capture V4L menu]
+#	grid $cw.vcodecl $cw.vcodec_optionmenu
+#	grid configure $cw.vcodecl -sticky nws
+#	grid configure $cw.vcodec_optionmenu -sticky news
 
 	eval label $cw.video_ratel -text "\"V4L device framerate:\"" [get_settings $cw.video_ratel Capture V4L]
 	entry $cw.video_rate_entry -textvariable current_video_rate
@@ -97,57 +97,57 @@ if {[ffmpeg_present] == "yes"} {
 	grid configure $cw.video_ratel -sticky nws
 	grid configure $cw.video_rate_entry -sticky news
 
-	eval label $cw.video_bitratel -text "\"Video bitrate (bits/sec):\"" [get_settings $cw.video_bitratel Capture V4L]
-	entry $cw.video_bitrate_entry -textvariable current_video_bitrate 
-	button $cw.video_bitrate_button -command recompute_video_bitrate -text "Default"
-	eval $cw.video_bitrate_entry configure [get_settings $cw.video_bitrate_entry Capture V4L]
-	eval $cw.video_bitrate_button configure [get_settings $cw.video_bitrate_button Capture V4L]
-	grid $cw.video_bitratel $cw.video_bitrate_entry $cw.video_bitrate_button -sticky news
-	grid configure $cw.video_bitratel -sticky nws
-#	grid configure $cw.video_bitrate_entry -sticky news
+#	eval label $cw.video_bitratel -text "\"Video bitrate (bits/sec):\"" [get_settings $cw.video_bitratel Capture V4L]
+#	entry $cw.video_bitrate_entry -textvariable ffmpeg_video_bitrate 
+#	button $cw.video_bitrate_button -command recompute_video_bitrate -text "Default"
+#	eval $cw.video_bitrate_entry configure [get_settings $cw.video_bitrate_entry Capture V4L]
+#	eval $cw.video_bitrate_button configure [get_settings $cw.video_bitrate_button Capture V4L]
+#	grid $cw.video_bitratel $cw.video_bitrate_entry $cw.video_bitrate_button -sticky news
+#	grid configure $cw.video_bitratel -sticky nws
+##	grid configure $cw.video_bitrate_entry -sticky news
 
-	eval label $cw.video_qualityl -text "\"Video quality:\"" [get_settings $cw.video_qualityl Capture V4L]
-#	entry $cw.video_quality_entry -textvariable current_video_quality 
-#	eval $cw.video_quality_entry configure [get_settings $cw.video_quality_entry Capture V4L]
-	scale $cw.video_quality_scale -from 2 -to 31 -showvalue false -tickinterval 0 -variable current_video_quality \
-		-orient horizontal
-	eval label $cw.video_quality_value_label -text "\"\"" [get_settings $cw.video_qualityl Capture V4L] \
-		-width 14
-	eval $cw.video_quality_scale configure [get_settings $cw.video_quality_scale Capture V4L]
-	grid $cw.video_qualityl $cw.video_quality_scale $cw.video_quality_value_label -sticky news
-	grid configure $cw.video_qualityl -sticky nws
+#	eval label $cw.video_qualityl -text "\"Video quality:\"" [get_settings $cw.video_qualityl Capture V4L]
+##	entry $cw.video_quality_entry -textvariable ffmpeg_video_quality 
+##	eval $cw.video_quality_entry configure [get_settings $cw.video_quality_entry Capture V4L]
+#	scale $cw.video_quality_scale -from 2 -to 31 -showvalue false -tickinterval 0 -variable ffmpeg_video_quality \
+#		-orient horizontal
+#	eval label $cw.video_quality_value_label -text "\"\"" [get_settings $cw.video_qualityl Capture V4L] \
+#		-width 14
+#	eval $cw.video_quality_scale configure [get_settings $cw.video_quality_scale Capture V4L]
+#	grid $cw.video_qualityl $cw.video_quality_scale $cw.video_quality_value_label -sticky news
+#	grid configure $cw.video_qualityl -sticky nws
 
-	eval label $cw.acodecl -text "\"Audio codec:\"" [get_settings $cw.acodecl Capture V4L]
-	set menu [tk_optionMenu $cw.acodec_optionmenu current_audio_codec "PCM" "MPEG-2" "AC-3"]
-	eval $cw.acodec_optionmenu configure [get_settings $cw.acodec_optionmenu Capture V4L]
-	eval $menu configure [get_settings $menu Capture V4L menu]
-	grid $cw.acodecl $cw.acodec_optionmenu
-	grid configure $cw.acodecl -sticky nws
-	grid configure $cw.acodec_optionmenu -sticky news
+#	eval label $cw.acodecl -text "\"Audio codec:\"" [get_settings $cw.acodecl Capture V4L]
+#	set menu [tk_optionMenu $cw.acodec_optionmenu ffmpeg_audio_codec "PCM" "MPEG-2" "AC-3"]
+#	eval $cw.acodec_optionmenu configure [get_settings $cw.acodec_optionmenu Capture V4L]
+#	eval $menu configure [get_settings $menu Capture V4L menu]
+#	grid $cw.acodecl $cw.acodec_optionmenu
+#	grid configure $cw.acodecl -sticky nws
+#	grid configure $cw.acodec_optionmenu -sticky news
 
-	eval label $cw.aratel -text "\"Audio rate (samples/sec):\"" [get_settings $cw.aratel Capture V4L]
-	set menu [tk_optionMenu $cw.arate_optionmenu current_audio_rate "48000" "44100" "32000" "24000" "22050" "16000"]
-	eval $cw.arate_optionmenu configure [get_settings $cw.arate_optionmenu Capture V4L]
-	eval $menu configure [get_settings $menu Capture V4L menu]
-	grid $cw.aratel $cw.arate_optionmenu
-	grid configure $cw.aratel -sticky nws
-	grid configure $cw.arate_optionmenu -sticky news
+#	eval label $cw.aratel -text "\"Audio rate (samples/sec):\"" [get_settings $cw.aratel Capture V4L]
+#	set menu [tk_optionMenu $cw.arate_optionmenu current_audio_rate "48000" "44100" "32000" "24000" "22050" "16000"]
+#	eval $cw.arate_optionmenu configure [get_settings $cw.arate_optionmenu Capture V4L]
+#	eval $menu configure [get_settings $menu Capture V4L menu]
+#	grid $cw.aratel $cw.arate_optionmenu
+#	grid configure $cw.aratel -sticky nws
+#	grid configure $cw.arate_optionmenu -sticky news
 
-	eval label $cw.audio_bitratel -text "\"Audio bitrate (bits/sec):\"" [get_settings $cw.audio_bitratel Capture V4L]
-	set menu [tk_optionMenu $cw.audio_bitrate_optionmenu current_audio_bitrate "384000" "320000" "256000" "224000" "192000" "160000" "128000" "112000" "96000" "80000" "64000" "56000" "48000" "32000"]
-	eval $cw.audio_bitrate_optionmenu configure [get_settings $cw.audio_bitrate_optionmenu Capture V4L]
-	eval $menu configure [get_settings $menu Capture V4L menu]
-	grid $cw.audio_bitratel $cw.audio_bitrate_optionmenu
-	grid configure $cw.audio_bitratel -sticky nws
-	grid configure $cw.audio_bitrate_optionmenu -sticky news
+#	eval label $cw.audio_bitratel -text "\"Audio bitrate (bits/sec):\"" [get_settings $cw.audio_bitratel Capture V4L]
+#	set menu [tk_optionMenu $cw.audio_bitrate_optionmenu ffmpeg_audio_bitrate "384000" "320000" "256000" "224000" "192000" "160000" "128000" "112000" "96000" "80000" "64000" "56000" "48000" "32000"]
+#	eval $cw.audio_bitrate_optionmenu configure [get_settings $cw.audio_bitrate_optionmenu Capture V4L]
+#	eval $menu configure [get_settings $menu Capture V4L menu]
+#	grid $cw.audio_bitratel $cw.audio_bitrate_optionmenu
+#	grid configure $cw.audio_bitratel -sticky nws
+#	grid configure $cw.audio_bitrate_optionmenu -sticky news
 
-	eval label $cw.av_formatl -text "\"File format:\"" [get_settings $cw.av_formatl Capture V4L]
-	set menu [tk_optionMenu $cw.av_format_optionmenu current_av_format "none" "AVI" "ASF" "MPEG"]
-	eval $cw.av_format_optionmenu configure [get_settings $cw.av_format_optionmenu Capture V4L]
-	eval $menu configure [get_settings $menu Capture V4L menu]
-	grid $cw.av_formatl $cw.av_format_optionmenu
-	grid configure $cw.av_formatl -sticky nws
-	grid configure $cw.av_format_optionmenu -sticky news
+#	eval label $cw.av_formatl -text "\"File format:\"" [get_settings $cw.av_formatl Capture V4L]
+#	set menu [tk_optionMenu $cw.av_format_optionmenu ffmpeg_file_format "none" "AVI" "ASF" "MPEG"]
+#	eval $cw.av_format_optionmenu configure [get_settings $cw.av_format_optionmenu Capture V4L]
+#	eval $menu configure [get_settings $menu Capture V4L menu]
+#	grid $cw.av_formatl $cw.av_format_optionmenu
+#	grid configure $cw.av_formatl -sticky nws
+#	grid configure $cw.av_format_optionmenu -sticky news
 
 	eval label $cw.filenamel -text "\"Save to file:\"" [get_settings $cw.filenamel Capture V4L]
 	eval entry $cw.filename_entry -textvariable current_capture_filename [get_settings $cw.filename_entry Capture V4L]
@@ -198,19 +198,19 @@ if {[ffmpeg_present] == "yes"} {
 
         make_video_stats $cw.video_stats
 
-	label $cw.fifo_limit_label -text "Fifo limit (Mb):"
-	entry $cw.fifo_limit_entry -textvariable fifo_limit
-	eval $cw.fifo_limit_label configure [get_settings $cw.fifo_limit_label Capture V4L]
-	eval $cw.fifo_limit_entry configure [get_settings $cw.fifo_limit_entry Capture V4L]
-	grid $cw.fifo_limit_label $cw.fifo_limit_entry -sticky news
-	grid configure $cw.fifo_limit_label -sticky nws
+#	label $cw.ffmpeg_max_fifo_size_label -text "Fifo limit (Mb):"
+#	entry $cw.ffmpeg_max_fifo_size_entry -textvariable ffmpeg_max_fifo_size
+#	eval $cw.ffmpeg_max_fifo_size_label configure [get_settings $cw.ffmpeg_max_fifo_size_label Capture V4L]
+#	eval $cw.ffmpeg_max_fifo_size_entry configure [get_settings $cw.ffmpeg_max_fifo_size_entry Capture V4L]
+#	grid $cw.ffmpeg_max_fifo_size_label $cw.ffmpeg_max_fifo_size_entry -sticky news
+#	grid configure $cw.ffmpeg_max_fifo_size_label -sticky nws
 
-	label $cw.file_limit_label -text "Recording chunk size (Mb):"
-	entry $cw.file_limit_entry -textvariable file_limit
-	eval $cw.file_limit_label configure [get_settings $cw.file_limit_label Capture V4L]
-	eval $cw.file_limit_entry configure [get_settings $cw.file_limit_entry Capture V4L]
-	grid $cw.file_limit_label $cw.file_limit_entry -sticky news
-	grid configure $cw.file_limit_label -sticky nws
+#	label $cw.ffmpeg_recording_chunk_size_label -text "Recording chunk size (Mb):"
+#	entry $cw.ffmpeg_recording_chunk_size_entry -textvariable ffmpeg_recording_chunk_size
+#	eval $cw.ffmpeg_recording_chunk_size_label configure [get_settings $cw.ffmpeg_recording_chunk_size_label Capture V4L]
+#	eval $cw.ffmpeg_recording_chunk_size_entry configure [get_settings $cw.ffmpeg_recording_chunk_size_entry Capture V4L]
+#	grid $cw.ffmpeg_recording_chunk_size_label $cw.ffmpeg_recording_chunk_size_entry -sticky news
+#	grid configure $cw.ffmpeg_recording_chunk_size_label -sticky nws
 	} {
 	button $cw.snapshot_button -text "Snapshot" -command capture_snapshot -state disabled
 	eval $cw.snapshot_button configure [get_settings $cw.snapshot_button Capture V4L]
@@ -390,17 +390,17 @@ switch "$save_type" \
 
 proc verify_v4l_stream_parameters {} {
 global v4l_capture_on
-global current_video_codec
-global current_audio_codec
+global ffmpeg_video_codec
+global ffmpeg_audio_codec
 global current_v4l_mode
 global current_v4l_rrate
-global current_av_format
+global ffmpeg_file_format
 global current_capture_filename
 global current_v4l_device
 global current_alsa_device
 global file_save_path
 
-if { ("$current_av_format" == "none") &&
+if { ("$ffmpeg_file_format" == "none") &&
 	("$current_v4l_device" != "none") &&
 	("$current_alsa_device" != "none") } {
 	tk_dialog .controlwin.capture.wrong_parameters "Incompatible capture parameters" \
@@ -409,8 +409,8 @@ if { ("$current_av_format" == "none") &&
 	return 0
 	}
 
-if { ("$current_av_format" == "MPEG") &&
-	( ("$current_v4l_device" != "none" ) && ("$current_video_codec" != "MPEG-1") )
+if { ("$ffmpeg_file_format" == "MPEG") &&
+	( ("$current_v4l_device" != "none" ) && ("$ffmpeg_video_codec" != "MPEG-1") )
 	} {
 	set ans [tk_dialog .controlwin.capture.wrong_parameters "Incompatible capture parameters" \
 		"At the moment mpeg format is not compatible with video formats except mpeg-1.\n Do you want to proceed anyway ?" ""\
@@ -424,19 +424,19 @@ return 1
 
 proc on_v4l_capture_set {cw name1 name2 w } {
 global v4l_capture_on
-global current_video_codec
-global current_audio_codec
+global ffmpeg_video_codec
+global ffmpeg_audio_codec
 global current_v4l_mode
 global current_v4l_rrate
-global current_av_format
+global ffmpeg_file_format
 global current_capture_filename
 global current_alsa_device
 global file_save_path
 global current_audio_rate
 global current_video_rate
-global current_audio_bitrate
-global current_video_bitrate
-global current_video_quality
+global ffmpeg_audio_bitrate
+global ffmpeg_video_bitrate
+global ffmpeg_video_quality
 if { $v4l_capture_on } {
 	if { ! [verify_v4l_stream_parameters] } {
 		set v4l_capture_on 0
@@ -444,17 +444,17 @@ if { $v4l_capture_on } {
 		return
 		}
 	set status [ffmpeg_encode_v4l_stream -v4l_handle current_v4l_handle \
-				-video_codec $current_video_codec \
-				-audio_codec $current_audio_codec \
+				-video_codec $ffmpeg_video_codec \
+				-audio_codec $ffmpeg_audio_codec \
 				-deinterlace_mode $current_v4l_mode \
 				-step_frames $current_v4l_rrate \
-				-av_format $current_av_format \
+				-av_format $ffmpeg_file_format \
 				-audio_device "$current_alsa_device" \
 				-audio_rate "$current_audio_rate" \
-				-audio_bitrate "$current_audio_bitrate" \
+				-audio_bitrate "$ffmpeg_audio_bitrate" \
 				-v4l_rate "$current_video_rate" \
-				-video_bitrate "$current_video_bitrate" \
-				-video_quality "$current_video_quality" \
+				-video_bitrate "$ffmpeg_video_bitrate" \
+				-video_quality "$ffmpeg_video_quality" \
 				-filename "$file_save_path/$current_capture_filename"]
 	if { "$status" == "" } { 
 		after cancel "check_fifo $cw"
@@ -469,8 +469,8 @@ if { $v4l_capture_on } {
 }
 
 proc check_fifo { cw } {
-global fifo_limit
-global file_limit
+global ffmpeg_max_fifo_size
+global ffmpeg_recording_chunk_size
 global v4l_capture_on
 global file_save_path
 global current_capture_filename
@@ -482,19 +482,19 @@ catch {
 		return
 		}
 	set size [get_value $status "-total_fifo"]
-	if { $v4l_capture_on && ("$size" != "") && ($size > [expr $fifo_limit*1024*1024]) } {
+	if { $v4l_capture_on && ("$size" != "") && ($size > [expr $ffmpeg_max_fifo_size*1024*1024]) } {
 		set v4l_capture_on false
 		$cw.record_button flash
 		tk_dialog .controlwin.limit_reached "Fifo limit reached" "Fifo limit has been reached.\nCapture stopped." "" 0 "OK"
 		}
 	set length [get_value $status "-encoded_stream_size"]
-	if { $file_limit > 2000 } {
-		set file_limit 2000
+	if { $ffmpeg_recording_chunk_size > 2000 } {
+		set ffmpeg_recording_chunk_size 2000
 		}
-	if { $file_limit < 10 } {
-		set file_limit 10 
+	if { $ffmpeg_recording_chunk_size < 10 } {
+		set ffmpeg_recording_chunk_size 10 
 		}
-	if { $file_limit < $length } {
+	if { $ffmpeg_recording_chunk_size < $length } {
 			set result "$file_save_path/$current_capture_filename"
 			set extension [file extension "$result"]
 			set rootname [file rootname "$result"]
@@ -634,41 +634,42 @@ $widget.f.right_audio_level coords top_volume_line 1 $top_right_coord 20 $top_ri
 proc save_v4l_capture { fileid } {
 global current_v4l_rrate
 global current_v4l_mode
-global current_av_format
-global current_video_codec
-global current_audio_codec
+global ffmpeg_file_format
+global ffmpeg_video_codec
+global ffmpeg_audio_codec
 global current_audio_rate
-global current_video_bitrate
-global current_video_quality
-global current_audio_bitrate
-global fifo_limit
+global ffmpeg_video_bitrate
+global ffmpeg_video_quality
+global ffmpeg_audio_bitrate
+global ffmpeg_max_fifo_size
+global ffmpeg_recording_chunk_size
 
 puts $fileid "#\n# V4L and capture settings\n#"
 
 puts $fileid "global current_v4l_mode"
 puts $fileid "global current_v4l_rrate"
-puts $fileid "global current_av_format"
-puts $fileid "global current_video_codec"
-puts $fileid "global current_audio_codec"
+puts $fileid "global ffmpeg_file_format"
+puts $fileid "global ffmpeg_video_codec"
+puts $fileid "global ffmpeg_audio_codec"
 puts $fileid "global current_audio_rate"
-puts $fileid "global current_audio_bitrate"
-puts $fileid "global current_video_bitrate"
-puts $fileid "global current_video_quality"
-puts $fileid "global fifo_limit"
-puts $fileid "global file_limit"
+puts $fileid "global ffmpeg_audio_bitrate"
+puts $fileid "global ffmpeg_video_bitrate"
+puts $fileid "global ffmpeg_video_quality"
+puts $fileid "global ffmpeg_max_fifo_size"
+puts $fileid "global ffmpeg_recording_chunk_size"
 
 
-puts $fileid "set current_video_codec \"$current_video_codec\""
-puts $fileid "set current_audio_codec \"$current_audio_codec\""
+puts $fileid "set ffmpeg_video_codec \"$ffmpeg_video_codec\""
+puts $fileid "set ffmpeg_audio_codec \"$ffmpeg_audio_codec\""
 puts $fileid "set current_v4l_mode \"$current_v4l_mode\""
 puts $fileid "set current_v4l_rrate \"$current_v4l_rrate\""
-puts $fileid "set current_av_format \"$current_av_format\""
+puts $fileid "set ffmpeg_file_format \"$ffmpeg_file_format\""
 puts $fileid "set current_audio_rate \"$current_audio_rate\""
-puts $fileid "set current_audio_bitrate \"$current_audio_bitrate\""
-puts $fileid "set current_video_bitrate \"$current_video_bitrate\""
-puts $fileid "set current_video_quality \"$current_video_quality\""
-puts $fileid "set fifo_limit \"$fifo_limit\""
-puts $fileid "set file_limit \"$file_limit\""
+puts $fileid "set ffmpeg_audio_bitrate \"$ffmpeg_audio_bitrate\""
+puts $fileid "set ffmpeg_video_bitrate \"$ffmpeg_video_bitrate\""
+puts $fileid "set ffmpeg_video_quality \"$ffmpeg_video_quality\""
+puts $fileid "set ffmpeg_max_fifo_size \"$ffmpeg_max_fifo_size\""
+puts $fileid "set ffmpeg_recording_chunk_size \"$ffmpeg_recording_chunk_size\""
 
 puts $fileid "#\n# End of V4L and capture settings\n#"
 }
@@ -677,15 +678,15 @@ proc recompute_video_bitrate {} {
 global current_v4l_rrate
 global current_v4l_mode
 global current_video_rate
-global current_video_bitrate
-set current_video_bitrate 600000
+global ffmpeg_video_bitrate
+set ffmpeg_video_bitrate 600000
 catch {
 	switch "$current_v4l_mode" {
-		"half-width"  { set current_video_bitrate [ expr $current_video_bitrate/2] }
+		"half-width"  { set ffmpeg_video_bitrate [ expr $ffmpeg_video_bitrate/2] }
 		}
 	switch "$current_v4l_rrate" {
-		"as is" { set current_video_bitrate [expr $current_video_bitrate * 2] }
-		"one quarter" { set current_video_bitrate [expr $current_video_bitrate / 2] }
+		"as is" { set ffmpeg_video_bitrate [expr $ffmpeg_video_bitrate * 2] }
+		"one quarter" { set ffmpeg_video_bitrate [expr $ffmpeg_video_bitrate / 2] }
 		}
 	}
 }
@@ -704,25 +705,25 @@ set status [start_monitor current_v4l_handle $mw.canvas]
 puts "status=$status"
 }
 
-trace variable current_video_quality w {
+trace variable ffmpeg_video_quality w {
 	catch {
-		global current_video_quality
-		if { $current_video_quality < 6 } {
-			.controlwin.capture.video_quality_value_label configure -text "$current_video_quality (very high)"
+		global ffmpeg_video_quality
+		if { $ffmpeg_video_quality < 6 } {
+			.controlwin.capture.video_quality_value_label configure -text "$ffmpeg_video_quality (very high)"
 			return
 			} 
-		if { $current_video_quality < 11 } {
-			.controlwin.capture.video_quality_value_label configure -text "$current_video_quality (high)"
+		if { $ffmpeg_video_quality < 11 } {
+			.controlwin.capture.video_quality_value_label configure -text "$ffmpeg_video_quality (high)"
 			return
 			} 
-		if { $current_video_quality < 17 } {
-			.controlwin.capture.video_quality_value_label configure -text "$current_video_quality (medium)"
+		if { $ffmpeg_video_quality < 17 } {
+			.controlwin.capture.video_quality_value_label configure -text "$ffmpeg_video_quality (medium)"
 			return
 			} 
-		if { $current_video_quality < 23 } {
-			.controlwin.capture.video_quality_value_label configure -text "$current_video_quality (low)"
+		if { $ffmpeg_video_quality < 23 } {
+			.controlwin.capture.video_quality_value_label configure -text "$ffmpeg_video_quality (low)"
 			return
 			} 
-		.controlwin.capture.video_quality_value_label configure -text "$current_video_quality (very low)"
+		.controlwin.capture.video_quality_value_label configure -text "$ffmpeg_video_quality (very low)"
 		}
 	skip_args3}

@@ -1,0 +1,21 @@
+#!./avview_shell
+
+if { [ffmpeg_present] } {
+	add_parameter_pane "/Compression parameters" "Compression parameters" \
+		"Video codec parameters" heading "" \
+		"Bitrate control" choice { ffmpeg_video_bitrate_control "Fix bitrate" "Fix quality" } \
+		"Bitrate" entry ffmpeg_video_bitrate \
+		"Quality (smaller is better)" scale { ffmpeg_video_quality 2 31 } \
+		"Video codec" choice { ffmpeg_video_codec "H623" "H623I" "H623P" "MJPEG" "MPEG-1" "MPEG-4" "MSMPEG-4" "RV10" } \
+		"Audio codec parameters" heading "" \
+		"Audio sample rate" choice {ffmpeg_audio_sample_rate "48000" "44100" "32000" "24000" "22050" "16000" } \
+		"Audio bitrate" choice {ffmpeg_audio_bitrate "384000" "320000" "256000" "224000" "192000" "160000" "128000" "112000" "96000" "80000" "64000" "56000" "48000" "32000" } \
+		"Audio codec" choice {ffmpeg_audio_codec "PCM" "MPEG-2" "AC3" } \
+		"File format parameters" heading "" \
+		"File format" choice {ffmpeg_file_format "none" "AVI" "ASF" "MPEG" } \
+		"Record in chunks of (MB)" entry ffmpeg_recording_chunk_size \
+		"Stop capture when fifo exceeds (MB)" entry ffmpeg_max_fifo_size
+		
+	} {
+	add_description_pane "/Compression parameters" "Compression parameters" "AVview has not been compiled to include compression library"
+	}

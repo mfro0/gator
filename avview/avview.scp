@@ -7,26 +7,33 @@
 #       GNU Public License
 #       
 
-global debug
-set debug 0
-
-source themes.scp
-source alsa.scp
-source v4l.scp
-source xv.scp
-source channel_scan.scp
-
 global control_screen
-global show_control_window
-set show_control_window 1
-
 set control_screen1 ""
 regexp "control=\[^ \]+" "$argv" control_screen1
 regsub "control=" "$control_screen1" "" control_screen
 puts "control_screen=$control_screen"
 
+global debug
+set debug 0
+
 global TABLE_LIST
 set TABLE_LIST [freq_get_table_list]
+
+
+source tree.scp
+source setup.scp
+source themes.scp
+source alsa.scp
+source v4l.scp
+source xv.scp
+source channel_scan.scp
+source ffmpeg.scp
+source video_device.scp
+
+
+global show_control_window
+set show_control_window 1
+
 
 global file_save_path
 set file_save_path "."
@@ -133,6 +140,7 @@ eval menu $c.interface_menubutton.menu.theme [get_settings $c.interface_menubutt
 $c.interface_menubutton.menu add cascade -menu $c.interface_menubutton.menu.theme -label "Theme"
 $c.interface_menubutton.menu add separator
 $c.interface_menubutton.menu add command -label "Exit" -command {
+	ffmpeg_stop_encoding
 	save_settings
 	exit
 	}
@@ -530,9 +538,10 @@ adjust_message_font
 }
 
 menu .video_menu -type normal -tearoff false
+menu .video_menu.size_menu -type normal -tearoff false
 menu .video_menu.channel_menu -type normal -tearoff false
-.video_menu add cascade -menu .video_menu.channel_menu -label Channel
-.video_menu add checkbutton -variable fullscreen_mode -label "Fullscreen"
+.video_menu add cascade -menu .video_menu.channel_menu -label "Channel"
+.video_menu add cascade -menu .video_menu.size_menu -label "Size"
 .video_menu add separator
 .video_menu add checkbutton -label "Show control window" -variable show_control_window
 .video_menu add separator
@@ -540,9 +549,13 @@ menu .video_menu.channel_menu -type normal -tearoff false
 .video_menu add separator
 .video_menu add command -label "Dismiss this menu"
 
+.video_menu.size_menu add checkbutton -variable fullscreen_mode -label "Fullscreen"
+.video_menu.size_menu add command -label "Half size" -command "make_half_size"
+
 bind $VIDEO_WINDOW  <ButtonPress-3>  {
 	global $VIDEO_WINDOW
 	.video_menu post [winfo pointerx $VIDEO_WINDOW] [winfo pointery $VIDEO_WINDOW]
+	grab .video_menu
 	}
 
 

@@ -134,8 +134,8 @@ picture.data[2]=picture.data[1]+(sdata->video_codec_context.width*sdata->video_c
 picture.linesize[0]=sdata->video_codec_context.width;
 picture.linesize[1]=sdata->video_codec_context.width/2;
 picture.linesize[2]=sdata->video_codec_context.width/2;
+pthread_mutex_lock(&(s->ctr_mutex));
 while(1){
-	pthread_mutex_lock(&(s->ctr_mutex));
 	f=get_packet(s);
 	if(!(s->stop_stream & STOP_PRODUCER_THREAD) &&((f==NULL))){
 		/* no data to encode - pause thread instead of spinning */
@@ -212,9 +212,12 @@ while(1){
 		fprintf(stderr,"Video encoding finished\n");
 		pthread_exit(NULL);
 		}
-	pthread_mutex_unlock(&(s->ctr_mutex));
+	if(s->stop_stream & STOP_CONSUMER_THREAD){
+		pthread_cond_wait(&(s->suspend_consumer_thread), &(s->ctr_mutex));
+		}
 	}
 s->consumer_thread_running=0;
+pthread_mutex_unlock(&(s->ctr_mutex));
 pthread_exit(NULL);
 }
 
@@ -248,8 +251,8 @@ out_buf=do_alloc(ob_size, 1);
 
 /* encode in the background */
 nice(1);
+pthread_mutex_lock(&(s->ctr_mutex));
 while(1){
-	pthread_mutex_lock(&(s->ctr_mutex));
 	f=get_packet(s);
 	if(!(s->stop_stream & STOP_PRODUCER_THREAD) &&((f==NULL))){
 		/* no data to encode - pause thread instead of spinning */
@@ -305,8 +308,11 @@ while(1){
 		fprintf(stderr,"Audio encoding finished\n");
 		pthread_exit(NULL);
 		}
-	pthread_mutex_unlock(&(s->ctr_mutex));
+	if((s->stop_stream & STOP_CONSUMER_THREAD)){
+		pthread_cond_wait(&(s->suspend_consumer_thread), &(s->ctr_mutex));
+		}
 	}
+pthread_mutex_unlock(&(s->ctr_mutex));
 }
 
 

@@ -1,0 +1,268 @@
+#!./avview_shell
+
+font create title_font -size 20 -family Helvetica -slant roman -weight normal
+proc make_title {widget title_string} {
+label ${widget} -text ${title_string} -font title_font -background black\
+	-foreground white -relief flat
+}
+
+
+global SETUP_MAIN
+set SETUP_MAIN .setup
+
+global SETUP_PANES
+global diag_pane_count
+set diag_pane_count 0
+
+proc create_setup_window {} {
+
+global SETUP_MAIN
+if { [winfo exists $SETUP_MAIN] } {
+	deiconify $SETUP_MAIN
+	raise $SETUP_MAIN
+	return
+	}
+
+toplevel .setup
+
+make_title $SETUP_MAIN.title "AVview settings"
+wm title $SETUP_MAIN "AVview settings"
+grid $SETUP_MAIN.title - - -sticky news
+
+scrollbar $SETUP_MAIN.ysb -orient vertical -command "$SETUP_MAIN.tree yview"
+Tree:create $SETUP_MAIN.tree  -width 200 -height 300 \
+	-yscrollcommand "$SETUP_MAIN.ysb set"
+frame $SETUP_MAIN.f -width 500  -height 420
+grid $SETUP_MAIN.ysb $SETUP_MAIN.tree $SETUP_MAIN.f -sticky news
+grid columnconfig $SETUP_MAIN 1 -weight 1
+grid columnconfig $SETUP_MAIN 2 -weight 3
+grid rowconfig $SETUP_MAIN 1 -weight 1
+
+$SETUP_MAIN.tree bind x <1> {
+  	set lbl [Tree:labelat %W %x %y]
+  	Tree:setselection %W $lbl
+	switch_to_pane "$lbl"
+  	}
+	
+canvas $SETUP_MAIN.f.c -width 450 -height 0
+place $SETUP_MAIN.f.c -x 0 -y 0
+}
+
+proc switch_to_pane { key } {
+global SETUP_MAIN
+set pane [get_pane_frame "$key"]
+Tree:setselection $SETUP_MAIN.tree "$key"
+foreach win [place slaves $SETUP_MAIN.f] {
+	place forget $win
+	}
+if { "$pane" != "" } {
+#	grid $pane -row 1 -column 0 -sticky new -in $SETUP_MAIN.f
+	place $pane -x 0 -y 0 -in $SETUP_MAIN.f
+#	grid rowconfig $SETUP_MAIN.f 1 -weight 1
+#	grid columnconfig $SETUP_MAIN.f 0 -weight 1
+	set L [grid bbox $SETUP_MAIN 2 1]
+#	$pane configure -width [$SETUP_MAIN.f cget -width] -height [$SETUP_MAIN.f cget -height]
+	$pane configure -width [lindex $L 2] -height [lindex $L 3]
+	}
+}
+
+proc get_pane_frame {key } {
+global SETUP_PANES
+set a ""
+catch {
+	set a $SETUP_PANES($key:pane_frame)
+	}
+return "$a"
+}
+
+proc add_pane {key title} {
+global SETUP_MAIN
+global SETUP_PANES
+global diag_pane_count
+set PANE_FRAME $SETUP_MAIN.f.pane$diag_pane_count
+frame $PANE_FRAME 
+make_title $PANE_FRAME.title "$title"
+grid $PANE_FRAME.title -sticky news -pady 2
+frame $PANE_FRAME.f
+grid $PANE_FRAME.f -sticky news -padx 2 -pady 2
+grid rowconfig $PANE_FRAME 1 -weight 1
+grid columnconfig $PANE_FRAME 0 -weight 1
+
+checkbutton $PANE_FRAME.done -indicatoron false -text "Done" -variable "VAR_$key" \
+	-command "
+		global VAR_$key
+		if { \[set \"VAR_$key\"\] } {
+			Tree:configitem $SETUP_MAIN.tree \"$key\" -textcolor \"#707070\"
+			set next_key \"\"
+			catch {
+				global SETUP_PANES
+				set next_key \$SETUP_PANES($key:next_key)
+				}
+			switch_to_pane \"\$next_key\"
+			} {
+			Tree:configitem $SETUP_MAIN.tree \"$key\" -textcolor black
+			}
+	"
+#grid $PANE_FRAME.done -sticky ne -pady 3 -padx 3
+
+Tree:newitem $SETUP_MAIN.tree $key -tags "KEY_$key"
+
+
+set SETUP_PANES($key:pane_frame) "$PANE_FRAME"
+incr diag_pane_count
+}
+
+proc set_next_key { key next_key } {
+global SETUP_PANES
+set SETUP_PANES($key:next_key) "$next_key"
+}
+
+proc add_description_pane { key title description } {
+add_pane "$key" "$title"
+set PANE_FRAME [get_pane_frame "$key"]
+text $PANE_FRAME.f.text -wrap word -yscrollcommand "$PANE_FRAME.f.ysb set" -width 60 -height 20
+scrollbar $PANE_FRAME.f.ysb -orient vertical -command "$PANE_FRAME.f.text yview"
+grid $PANE_FRAME.f.text $PANE_FRAME.f.ysb -sticky news 
+grid columnconfig $PANE_FRAME.f 0 -weight 1
+grid rowconfig $PANE_FRAME.f 0 -weight 1
+$PANE_FRAME.f.text delete 0.0 end
+$PANE_FRAME.f.text insert end "$description"
+$PANE_FRAME.f.text configure -state disabled -relief flat
+$PANE_FRAME.f configure -relief groove -borderwidth 2
+}
+
+proc add_parameter_pane {key title args} {
+add_pane "$key" "$title"
+set PANE_FRAME [get_pane_frame "$key"]
+canvas $PANE_FRAME.f.canvas -yscrollcommand "$PANE_FRAME.f.ysb set"
+scrollbar $PANE_FRAME.f.ysb -orient vertical -command "$PANE_FRAME.f.canvas yview"
+grid $PANE_FRAME.f.canvas $PANE_FRAME.f.ysb -sticky news
+grid columnconfigure $PANE_FRAME.f 0 -weight 1
+grid rowconfigure $PANE_FRAME.f 0 -weight 1
+$PANE_FRAME.f configure -relief groove -borderwidth 2
+set A $PANE_FRAME.f.canvas.f
+frame $A  
+$PANE_FRAME.f.canvas create window 5 2 -window $A -anchor nw
+set param_count 0
+foreach {description type var} $args {
+	switch -exact -- "$type" {
+		"entry" {
+			label $A.label$param_count -text "$description" -wraplength 300
+			entry $A.entry$param_count -textvariable $var
+			grid $A.label$param_count $A.entry$param_count -sticky new -padx 2 -pady 2 
+			grid configure $A.label$param_count -sticky nw
+			}
+		"checkbutton" {
+			label $A.label$param_count -text "$description" -wraplength 300
+			checkbutton  $A.checkbutton$param_count -variable $var -onvalue "true" -offvalue "false"
+			grid $A.label$param_count $A.checkbutton$param_count -sticky new -padx 2 -pady 2 
+			grid configure $A.label$param_count -sticky nw
+			}
+		"command" {
+			label $A.label$param_count -text "$description" -wraplength 300
+			button $A.entry$param_count -text "Invoke" -command $var
+			grid $A.label$param_count $A.entry$param_count -sticky new -padx 2 -pady 2 
+			grid configure $A.label$param_count -sticky nw
+			}
+		"heading" {
+			label $A.label$param_count -text "$description"  -background black -foreground white
+			grid $A.label$param_count - -sticky new -padx 2 -pady 2
+			}
+		"choice" {
+			label $A.label$param_count -text "$description" -wraplength 300
+			set choice_var "[lindex $var 0]"
+			set menu [tk_optionMenu $A.optionmenu$param_count "$choice_var" [lindex $var 1]]
+			foreach choice [lrange $var 2 end] {
+				$menu add radiobutton -label "$choice" -variable "$choice_var" -value "$choice"
+				}
+			grid $A.label$param_count $A.optionmenu$param_count -sticky new -padx 2 -pady 2 
+			grid configure $A.label$param_count -sticky nw
+			}
+		"scale" {
+			label $A.label$param_count -text "$description" -wraplength 300
+			scale $A.scale$param_count -from "[lindex $var 1]" -to "[lindex $var 2]" -showvalue true -tickinterval 0 -orient horizontal\
+				-variable "[lindex $var 0]"
+			grid $A.label$param_count $A.scale$param_count -sticky new -padx 2 -pady 2 
+			grid configure $A.label$param_count -sticky nw
+			}
+		}
+	incr param_count
+	}
+canvas $A.ccc -width 400 -height 0
+grid $A.ccc - -sticky news
+grid columnconfigure $A 0 -weight 1
+update idletasks
+$PANE_FRAME.f.canvas configure -scrollregion "[grid bbox $A]"
+bind $PANE_FRAME <Configure> "resize_parameter_pane $PANE_FRAME $A"
+bind $PANE_FRAME <Map> "resize_parameter_pane $PANE_FRAME $A"
+
+}
+
+proc resize_parameter_pane {PANE_FRAME A} {
+update idletasks
+set L [grid bbox $PANE_FRAME.f 0 0]
+set width [lindex $L 2 ]
+$A.ccc configure -width [expr $width-10]
+}
+
+proc resize_frames {} {
+global SETUP_PANES
+global SETUP_MAIN
+
+set a [grid bbox $SETUP_MAIN 2 1]
+set width [lindex $a 2]
+set height [lindex $a 3]
+
+
+set panes [array get SETUP_PANES *:pane_frame]
+foreach { key frame} $panes {
+	set a [grid bbox $frame]
+	set b [lindex $a 2]
+	set c [lindex $a 3]
+	if { $b > $width } { set width $b}
+	if { $c > $height } { set height $c}
+	}
+$SETUP_MAIN.f configure -width $width -height $height
+foreach { key frame} $panes {
+	grid propagate $frame true
+	$frame configure -width $width -height $height
+	grid propagate $frame false
+	}
+$SETUP_MAIN.f configure -width $width -height $height
+}
+
+global propagate_count
+set propagate_count 0
+
+proc propagate_frame_size {} {
+global propagate_count
+
+if { $propagate_count < 1 } { 
+	incr propagate_count 
+	after idle {
+		global SETUP_PANES
+		global SETUP_MAIN
+		global propagate_count
+		incr propagate_count -1
+		set a [grid bbox $SETUP_MAIN 2 1]
+		set width [lindex $a 2]
+		set height [lindex $a 3]
+
+		set panes [array get SETUP_PANES *:pane_frame]
+		$SETUP_MAIN.f configure -width $width -height $height
+		foreach { key frame} $panes {
+			grid propagate $frame true
+			$frame configure -width $width -height $height
+			grid propagate $frame false
+			}
+		}
+	}
+}
+
+create_setup_window
+
+after idle {
+	global SETUP_MAIN
+	resize_frames
+	bind $SETUP_MAIN.f <Configure> "propagate_frame_size"
+	}

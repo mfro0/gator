@@ -1,0 +1,6 @@
+#!./avview_shell
+
+add_parameter_pane "/Video device parameters" "Video device parameters" \
+	"Xv port used for on-screen display" choice {current_port } \
+	"Xv port encoding" choice {current_encoding } \
+	"Channel table" choice [linsert $TABLE_LIST 0 current_table_name] 
