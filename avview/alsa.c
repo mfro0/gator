@@ -579,12 +579,13 @@ if(a<0){
         return -1;
         }
         /* set the stream rate */
-a=snd_pcm_hw_params_set_rate_near(ad->recording_handle, hwparams, rate, 0);
+dir=0;
+a=snd_pcm_hw_params_set_rate_near(ad->recording_handle, hwparams, &rate, &dir);
 if(a<0){
         fprintf(stderr,"Rate %ldHz not available for recording: %s\n", rate, snd_strerror(a));
         return -1;
         }
-param->sample_rate=a;
+param->sample_rate=rate;
 param->channels=2;
 ad->param=param;
 fprintf(stderr,"Using sample rate %ld Hz frame_size=%ld\n", param->sample_rate, ad->frame_size);
