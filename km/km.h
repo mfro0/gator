@@ -109,7 +109,6 @@ typedef struct S_KM_STRUCT {
 	u32 vbi0_offset;
 	u32 vbi1_offset;
 
-	int capture_active;
 	long kmd;
 	KM_FIELD *kmfl;
 	int (*init_hardware)(struct S_KM_STRUCT *kms);

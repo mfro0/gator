@@ -139,8 +139,7 @@ void radeon_start_transfer(KM_STRUCT *kms)
 {
 u32 a;
 
-kms->capture_active=radeon_check_mc_settings(kms);
-if(!kms->capture_active)return;
+if(!radeon_check_mc_settings(kms))return;
 wmb();
 a=readl(kms->reg_aperture+RADEON_BUS_CNTL);
 printk("RADEON_BUS_CNTL=0x%08x\n", a);
@@ -177,7 +176,6 @@ if(kms->gdq_usage==1){
 		wmb();
 		writel(a & ~ RADEON_DMA_GUI_STATUS__ABORT, kms->reg_aperture+RADEON_DMA_GUI_STATUS);
 		}
-	kms->capture_active=0;
 	}
 }
 
@@ -185,8 +183,7 @@ void radeon_start_vbi_transfer(KM_STRUCT *kms)
 {
 u32 a;
 
-kms->capture_active=radeon_check_mc_settings(kms);
-if(!kms->capture_active)return;
+if(!radeon_check_mc_settings(kms))return;
 wmb();
 a=readl(kms->reg_aperture+RADEON_BUS_CNTL);
 printk("RADEON_BUS_CNTL=0x%08x\n", a);
@@ -223,7 +220,6 @@ if(kms->gdq_usage==1){
 		wmb();
 		writel(a & ~ RADEON_DMA_GUI_STATUS__ABORT, kms->reg_aperture+RADEON_DMA_GUI_STATUS);
 		}
-	kms->capture_active=0;
 	}
 }
 

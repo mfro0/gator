@@ -173,14 +173,14 @@ if(kdufpd->buffer<0){
 	return 0;
 	}
 q=kmsbi[kdufpd->buffer].next;
-if((kdufpd->bytes_read>=dvb->free[kdufpd->buffer])||(q<0)){
+if((kdufpd->bytes_read>=dvb->free[kdufpd->buffer])&&(q<0)){
 	spin_unlock(&(kdu->lock));
 	poll_wait(file, &(kdu->dataq), wait);
 	spin_lock(&(kdu->lock));
 	}
 
 q=kmsbi[kdufpd->buffer].next;
-if((kdufpd->bytes_read<dvb->free[kdufpd->buffer])&&(q>=0))
+if((kdufpd->bytes_read<dvb->free[kdufpd->buffer])||(q>=0))
 	/* Now we have more data.. */
 	mask |= (POLLIN | POLLRDNORM);
 
