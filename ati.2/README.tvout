@@ -1,0 +1,144 @@
+
+      *******************************************************
+      **  XFree86 driver for TV output on ATI Radeon cards **
+      *******************************************************
+
+Copyright (c) 2003, by Federico Ulivi <fulivi@lycos.com>
+Released under the GNU General Public License, version 2.
+
+1. About this driver
+--------------------
+
+This driver was developped as a part of ati.2 project. Its purpose
+is to enable the TV output of ATI Radeon cards when running the
+XFree86 graphical environment.
+
+2. Status of the driver
+-----------------------
+
+The driver is in early development stage. It currently works only with
+those cards having a Rage Theater chip for TV output. There are not
+many models having this arrangement, to my knowledge just a few models
+of the 7000 series have it. It certainly works on my 7200 card with PAL
+standard. 
+I'm working on extending the driver so that it works on those cards
+that have a scaled-down version of Rage Theater embedded into the Radeon chip.
+As far as I know, all 9000 series cards has this configuration. So, stay
+tuned.. ;)
+
+3. Making it work
+-----------------
+
+The driver is normally disabled, so that you can use the usual video
+grabbing functions of AIW cards (the main reason for developping ati.2
+drivers, I guess). Video grabbing functions and TV output are mutually
+exclusive because they both access the RT chip and, for the moment, I
+don't want to think about integrating these functions. In principle
+integration should be possible but I've no AIW card for testing (does
+anyone have a spare card? :) ).
+
+Principle of operation of the driver is very simple. Driver enables 
+tv output whenever the current screen resolution and tv standard match
+one of a set of pre-computed combinations. In all other cases tv output
+is simply kept disabled.
+The driver currently works in the so-called "clone" mode only. This means
+that the image on the TV screen is exactly the same as the one on the
+monitor.
+
+The driver is enabled by adding a "TVOutput" line in the "device"
+section of XF86Config-4 file (this file is usually located in /etc/X11
+directory). Syntax of this option is very simple:
+
+Section "Device"
+ ..
+ ..
+ Option "TVOuput" "<name of tv standard>"
+EndSection
+
+Names of recognized TV standards are:
+"NTSC"
+"NTSC-J"
+"PAL"
+"PAL-CN"
+"PAL-M"
+"PAL-N"
+"PAL-60"
+
+In the current version of the driver these are the recognized TV standard &
+resolution combinations:
+
+PAL	800x600
+
+More combinations will be added in future releases.
+
+4. XV Interface
+---------------
+
+The driver has an external interface through some new Xv attributes. You
+can read the value of these attributes by using the standard "xvinfo"
+utility. I'm planning to write a small CLI utility to manipulate these
+values.
+
+XV_TVO_ENABLE		Settable/Gettable
+	Driver is disabled or enabled when this attribute has, respectively,
+	a 0 or 1 value.
+	
+XV_TVO_STANDARD		Settable/Gettable
+	This is the tv standard in use by the driver. Its value is encoded
+	according to this table:
+
+	0	NTSC
+	1	PAL
+	2	PAL-M
+	3	PAL-60
+	4	NTSC-J
+	5	PAL-CN
+	6	PAL-N
+
+XV_TVO_MODE_COMPAT	Gettable
+	This attribute is set to 1 whenever the current resolution & tv
+	standard combination is recognized by the driver. Tv output is
+	enabled when both this attribute and XV_TVO_ENABLE are set to 1.
+
+5. WARNING
+----------
+
+It's important that you are aware of the fact that, when TV output is active,
+the monitor is driven at the same vertical refresh frequency as that of the
+TV output. This means 50 or 60 Hz according to the standard you're using.
+NO CHECK IS DONE IN THE DRIVER ABOUT THE CAPABILITY OF THE MONITOR TO
+SUSTAIN THESE FREQUENCIES. You should look up in the monitor manual
+and check that 50/60 Hz is within the limits. IT IS POTENTIALLY HARMFUL
+TO THE MONITOR TO BE DRIVEN AT A FREQUENCY OUTSIDE ITS OPERATING RANGE.
+
+Note, however, that most monitors should accept a 60 Hz vertical frequency,
+since this is used in standard VGA modes. You should really check for 50 Hz 
+compatibility if you are going to use any related standard (PAL mostly).
+ATI manuals recommend checking for 50 Hz compatibility (they take
+60 Hz for granted).
+
+One last thing: keep in mind that my testing was done on a radeon 7200.
+This card has no provision for a second head (this is the reason why the
+driver only works in clone mode). Neither it has a DVI or LCD display
+output, so I'm not sure about the driver behaviour with this kind of
+displays. Be warned.
+
+6. Credits
+----------
+
+Vladimir Dergachev	For leading the GATOS project, for all the good
+			advices he gave me about dealing with ATI and for
+			all his precious technical hints.
+
+ATI external developer office
+			For providing me the Rage Theater documentation.
+
+7.  Revision history
+--------------------
+
+
+2003-09-23
+==========
+
+Initial release
+
