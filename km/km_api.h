@@ -124,8 +124,10 @@ void kmd_signal_state_change(int num);
 
 #if 1
 #define KM_CHECKPOINT printk("**CKPT %s %s %d\n", __FILE__, __FUNCTION__, __LINE__);
+#define KM_API_DEBUG if(0)printk
 #else
 #define KM_CHECKPOINT
+#define KM_API_DEBUG if(0)printk
 #endif
 
 #endif

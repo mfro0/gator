@@ -64,6 +64,7 @@ memset(kdufpd, 0, sizeof(KDU_FILE_PRIVATE_DATA));
 kdufpd->kdu=kdu;
 kdufpd->buffer=0;
 kdufpd->bytes_read=0;
+kdufpd->age=0;
 
 spin_unlock(&(kdu->lock));
 return kdufpd;
@@ -102,11 +103,11 @@ while((kdufpd->bytes_read==dvb->free[kdufpd->buffer])||(q<0)||((kmsbi[q].flag & 
 		kdufpd->age=kmsbi[q].age;
 		if((kmsbi[q].user_flag & user_flag_mask)!=user_flag){
 			kdufpd->bytes_read=dvb->free[q];
-			KM_DEBUG("Skipping buf %d flag=%d age=%d\n", q, kmsbi[q].flag, kdufpd->age);
+			KM_API_DEBUG("Skipping buf %d flag=%d age=%d\n", q, kmsbi[q].user_flag, kdufpd->age);
 			continue;
 			} else {
 			kdufpd->bytes_read=0;
-			KM_DEBUG("Reading buf %d flag=%d age=%d\n", q, kmsbi[q].flag, kdufpd->age);
+			KM_API_DEBUG("Reading buf %d flag=%d age=%d\n", q, kmsbi[q].user_flag, kdufpd->age);
 			break;
 			}
 		}
@@ -129,6 +130,10 @@ while((kdufpd->bytes_read==dvb->free[kdufpd->buffer])||(q<0)||((kmsbi[q].flag & 
 	remove_wait_queue(&(kdu->dataq), &wait);
 	current->state=TASK_RUNNING;
 	}
+/* We can unlock earlier than before as we are not modifying any of kdu fields.
+   dvb should not change under us as we have been passwed kdufpd - and this
+   implies that kdufpd->kdu is still in use */
+spin_unlock(&(kdu->lock));
 todo=count;
 while(todo>0){	
 	q=todo;
@@ -147,7 +152,6 @@ while(todo>0){
 		}
 	#endif
 	}
-spin_unlock(&(kdu->lock));
 return (count-todo);
 }
 

@@ -30,21 +30,12 @@ typedef struct {
 typedef struct {
 	long timestamp_start;
 	long timestamp_end;
-	#if 0
-	int age;
-	int next;
-	int prev;
-	int flag;
-	#endif
 	} FIELD_INFO;
 
 typedef struct S_KM_STRUCT {
 	struct video_device vd;
 	struct video_window vwin;
 	spinlock_t kms_lock;
-	#if 0
-	wait_queue_head_t frameq;
-	#endif
 	long irq;
 	struct pci_dev *dev;
 	long interrupt_count;
@@ -56,30 +47,20 @@ typedef struct S_KM_STRUCT {
 	unsigned char * reg_aperture;
 	
 	long next_cap_buf;
-	#if 0
-	int v4l_buf_read_from;
-	#endif
 	int v4l_buf_parity;
-	#if 0
-	long buf_ptr;
-	long buf_age;
-	#endif
 
 #define FRAME_ODD 		0
 #define FRAME_EVEN 		1
 #define MAX_FRAME_BUFF_NUM 	10
 
-#if 0
-	SINGLE_FRAME frame_info[MAX_FRAME_BUFF_NUM];
-#endif
 	KM_DATA_VIRTUAL_BLOCK dvb_info;
+	int info_du;
 	FIELD_INFO *fi;
 	KM_STREAM_BUFFER_INFO *kmsbi;
 	long info_free;
-	int info_du;
-	int capture_du;
 	
 	KM_DATA_VIRTUAL_BLOCK dvb;
+	int capture_du;
 	void *buffer[MAX_FRAME_BUFF_NUM];
 	long v4l_free[MAX_FRAME_BUFF_NUM];
 	KM_FILE_PRIVATE_DATA *v4l_kdufpd;

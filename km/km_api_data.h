@@ -41,8 +41,13 @@ typedef struct S_KM_DATA_UNIT{
 /* this describes an age of the buffer..
    since any number is capable of rollover
    it is best to use these  only as an indicator that
-   the data in the buffer has been updated */
-typedef unsigned KM_BUFFER_AGE;
+   the data in the buffer has been updated 
+   
+   Q: should it be unsigned ? It is so convinient to use age=-1
+      to mark unused buffers.   
+   
+   */
+typedef int KM_BUFFER_AGE;
 
 /* the following struct provides meta information needed
    to interpret KM_DATA_VIRTUAL_BLOCK as a stream 
