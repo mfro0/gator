@@ -28,19 +28,45 @@ global theme_settings_cache
 if { "$theme_name" != "$name" } {
 	catch { unset theme_settings_cache }
 	}
-if { [ catch { set current_theme_proc $theme_list(\"$name\") } ] } {
+set theme_name "$name"
+if { [ catch { set current_theme_proc $theme_list($name) } ] } {
 	set current_theme_proc theme_none
 	}
 }
+
+proc reset_theme { name } {
+global theme_list
+global theme_name
+global current_theme_proc
+global theme_settings_cache
+
+set theme_name "$name"
+if { [ catch { set current_theme_proc $theme_list($name) } ] } {
+	set current_theme_proc theme_none
+	}
+puts "current_theme_proc=$current_theme_proc"
+set id [array startsearch theme_settings_cache]
+for {} { [array anymore theme_settings_cache $id ] } {} {
+	set element [array nextelement theme_settings_cache $id]
+	set a [$current_theme_proc [lindex $element 0] [lindex $element 1] ];
+#	puts "widget=[lindex $element 0] args=[lindex $element 1] a=$a"
+	catch { eval "[lindex $element 0]" configure $a ; \
+		array set tsc [list $element $a ] } 
+	}
+array donesearch theme_settings_cache $id
+array unset theme_settings_cache
+array set theme_settings_cache [array get tsc]
+}
+
 #
 #
 #
 proc get_settings { widget args } {
 global theme_settings_cache
 global current_theme_proc
-if { [catch { return "$theme_settings_cache("$widget $args")" } ] } {
+if { [catch { return "$theme_settings_cache([list $widget $args])" } ] } {
 	set a [$current_theme_proc "$widget" $args]
-	array set theme_settings_cache [list  "$widget $args" $a ]
+	array set theme_settings_cache [list [list $widget $args] $a ]
 	return $a
 	}
 }
@@ -53,19 +79,19 @@ proc theme_none { widget args1 } {
 return ""
 }
 
-set theme_list("Unthemed")  theme_none
+set theme_list(Unthemed)  theme_none
 
 proc theme_red { widget args1 } {
-return [list -background red]
+return "-background red"
 }
 
-set theme_list("Red") theme_red
+set theme_list(Red) theme_red
 
 proc theme_default { widget args1 } {
 puts "widget=$widget args=$args1"
 switch -glob -- "$widget $args1" \
 	.video*AVview {return "-background #102030" } \
-	*.fullscreen*  { return "-background blue" } \
+	*.fullscreen*  { return "-background #CCDDFF" } \
 	*.title*  { return "-background black -foreground white" } \
 	*.c.f.*ALSA* {  \
 		set i [lindex $args1 1]
@@ -79,7 +105,7 @@ switch -glob -- "$widget $args1" \
 	default { return "" }
 }
 
-set theme_list("Default") theme_default
+set theme_list(Default) theme_default
 
 set_theme Default
 

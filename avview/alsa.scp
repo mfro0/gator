@@ -43,15 +43,15 @@ global $name.locked
 global current_alsa_device
 global $name.average_v
 puts "$name.locked=[set $name.locked]"
-set row [get_value [grid info $mw.l$i] "-row"]
+set row [get_value [grid info $mw.label$i] "-row"]
 if { [set $name.locked] } {
-	grid forget $mw.f$i
-	grid $mw.f_locked$i -row $row -column 1 -sticky news
+	grid forget $mw.frame$i
+	grid $mw.frame_locked$i -row $row -column 1 -sticky news
 	set value [alsa_hctl_get_element_value "$current_alsa_device" $i]
 	set $name.average_v [average_list $value]
 	} {
-	grid forget $mw.f_locked$i
-	grid $mw.f$i -row $row -column 1 -sticky news
+	grid forget $mw.frame_locked$i
+	grid $mw.frame$i -row $row -column 1 -sticky news
 	set values_count [get_value $element "-values_count"]
 	for { set k 0 } { $k < $values_count } { incr k } {
 		global $name.v$k
@@ -66,11 +66,11 @@ trace vdelete $name.locked w "set_locked_state $mw \"$name\" \"$element\" $i ; s
 if { ! [info exists $name.locked] } {
 	set $name.locked 1
 	}
-eval label $mw.l$i -text "\"$name\"" -justify left [get_settings $mw.l$i ALSA $i]
-destroy $mw.f$i
-destroy $mw.f_locked$i
-eval frame $mw.f$i [get_settings $mw.f$i ALSA $i]
-eval frame $mw.f_locked$i [get_settings $mw.f_locked$i ALSA $i]
+eval label $mw.label$i -text "\"$name\"" -justify left [get_settings $mw.label$i ALSA $i]
+destroy $mw.frame$i
+destroy $mw.frame_locked$i
+eval frame $mw.frame$i [get_settings $mw.frame$i ALSA $i]
+eval frame $mw.frame_locked$i [get_settings $mw.frame_locked$i ALSA $i]
 if { [llength $value] > 1 } {
 	# check if all values are identical
 	set a [lindex $value 0]
@@ -81,19 +81,19 @@ if { [llength $value] > 1 } {
 			}
 		}
 
-	eval checkbutton $mw.cb$i -text "Locked" -variable \"$name.locked\" \
-			-indicatoron false [get_settings $mw.cb$i ALSA $i]
+	eval checkbutton $mw.checkbutton$i -text "Locked" -variable \"$name.locked\" \
+			-indicatoron false [get_settings $mw.checkbutton$i ALSA $i]
 	if { [set $name.locked ] } {
-		grid $mw.l$i $mw.f_locked$i $mw.cb$i -sticky news
+		grid $mw.label$i $mw.frame_locked$i $mw.checkbutton$i -sticky news
 		} {
-		grid $mw.l$i $mw.f$i $mw.cb$i -sticky news
+		grid $mw.label$i $mw.frame$i $mw.checkbutton$i -sticky news
 		}
-	grid configure $mw.l$i -sticky news
-	grid columnconfig $mw.f$i 0 -weight 1
+	grid configure $mw.label$i -sticky news
+	grid columnconfig $mw.frame$i 0 -weight 1
 	} {
-	grid $mw.l$i $mw.f$i - -sticky news
-	grid configure $mw.l$i -sticky news
-	grid columnconfig $mw.f$i 0 -weight 1
+	grid $mw.label$i $mw.frame$i - -sticky news
+	grid configure $mw.label$i -sticky news
+	grid columnconfig $mw.frame$i 0 -weight 1
 	}
 trace variable $name.locked w "set_locked_state $mw \"$name\" \"$element\" $i ; skip_args3"
 }
@@ -109,15 +109,15 @@ grid columnconfig $mw 1 -weight 1
 switch "[get_value $element "-type"]" \
 	"BOOLEAN" {
 		set value [alsa_hctl_get_element_value "$current_alsa_device" $i]
-		eval label $mw.l$i -text "\"$name\"" -justify left [get_settings $mw.l$i ALSA $i]
-		eval frame $mw.f$i [get_settings $mw.f$i ALSA $i]
-		grid $mw.l$i $mw.f$i - -sticky news
-		grid configure $mw.l$i -sticky news
-		grid columnconfig $mw.f$i 0 -weight 1
+		eval label $mw.label$i -text "\"$name\"" -justify left [get_settings $mw.label$i ALSA $i]
+		eval frame $mw.frame$i [get_settings $mw.frame$i ALSA $i]
+		grid $mw.label$i $mw.frame$i - -sticky news
+		grid configure $mw.label$i -sticky news
+		grid columnconfig $mw.frame$i 0 -weight 1
 		for { set j 0 } { $j < $values_count } { incr j } {
 			global $name.v$j
-			eval checkbutton $mw.f$i.cb$j -variable \"$name.v$j\" [get_settings $mw.f$i.cb$j ALSA $i $j]
-			grid $mw.f$i.cb$j -row 0 -column $j -sticky news
+			eval checkbutton $mw.frame$i.checkbutton$j -variable \"$name.v$j\" [get_settings $mw.frame$i.checkbutton$j ALSA $i $j]
+			grid $mw.frame$i.checkbutton$j -row 0 -column $j -sticky news
 			trace vdelete $name.v$j w "set_element_value \"$name\" $values_count $i $j ; skip_args3"
 			set $name.v$j [lindex $value $j]
 			trace variable $name.v$j w "set_element_value \"$name\" $values_count $i $j ; skip_args3"
@@ -132,47 +132,47 @@ switch "[get_value $element "-type"]" \
 		if { "$step" == "0" } { set step 1 }
 		for { set j 0 } { $j < $values_count } { incr j } {
 			global $name.v$j
-			eval scale $mw.f$i.scale$j -variable \"$name.v$j\" \
+			eval scale $mw.frame$i.scale$j -variable \"$name.v$j\" \
 				-from $min -to $max -resolution $step \
 				-orient horizontal -showvalue false \
-				[get_settings $mw.f$i.scale$j ALSA $i $j]
-			grid $mw.f$i.scale$j -row $j -column 0 -sticky news
+				[get_settings $mw.frame$i.scale$j ALSA $i $j]
+			grid $mw.frame$i.scale$j -row $j -column 0 -sticky news
 			trace vdelete $name.v$j w "set_element_value \"$name\" $values_count $i $j ; skip_args3"
 			set $name.v$j [lindex $value $j]
 			trace variable $name.v$j w "set_element_value \"$name\" $values_count $i $j ; skip_args3"
 			}
 		global $name.average_v
-		eval scale $mw.f_locked$i.scale -variable \"$name.average_v\" \
+		eval scale $mw.frame_locked$i.scale -variable \"$name.average_v\" \
 			-from $min -to $max -resolution $step \
 			-orient horizontal -showvalue false \
-			[get_settings $mw.f_locked$i.scale ALSA $i]
-		grid $mw.f_locked$i.scale -row $j -column 0 -sticky news
+			[get_settings $mw.frame_locked$i.scale ALSA $i]
+		grid $mw.frame_locked$i.scale -row $j -column 0 -sticky news
 		trace vdelete $name.average_v w "set_element_average_value \"$name\" $values_count $i; skip_args3"
 		set $name.average_v [average_list $value]
 		trace variable $name.average_v w "set_element_average_value \"$name\" $values_count $i; skip_args3"
 		} \
 	"ENUMERATED" {
-		eval label $mw.l$i -text "\"$name\"" -justify left [get_settings $mw.l$i ALSA $i]
-		eval frame $mw.f$i [get_settings $mw.f$i ALSA $i]
-		grid $mw.l$i $mw.f$i - -sticky news
-		grid configure $mw.l$i -sticky news
+		eval label $mw.label$i -text "\"$name\"" -justify left [get_settings $mw.label$i ALSA $i]
+		eval frame $mw.frame$i [get_settings $mw.frame$i ALSA $i]
+		grid $mw.label$i $mw.frame$i - -sticky news
+		grid configure $mw.label$i -sticky news
 		set value [alsa_hctl_get_element_value "$current_alsa_device" $i]
 		set min [get_value $element "-min"]
 		set max [get_value $element "-max"]
 		set step [get_value $element "-step"]
 		if { "$step" == "0" } { set step 1 }
-		grid columnconfig $mw.f$i 0 -weight 1
+		grid columnconfig $mw.frame$i 0 -weight 1
 		set items [get_value $element "-items"]
 		for { set j 0 } { $j < $values_count } { incr j } {
 			global $name.v$j
-			set "element.$i.$j.menu" [tk_optionMenu $mw.f$i.om$j $name.v$j none]
-			eval $mw.f$i.om$j configure [get_settings $mw.f$i.om$j ALSA $i $j]
+			set "element.$i.$j.menu" [tk_optionMenu $mw.frame$i.optionmenu$j $name.v$j none]
+			eval $mw.frame$i.optionmenu$j configure [get_settings $mw.frame$i.optionmenu$j ALSA $i $j]
 			eval [set "element.$i.$j.menu"] configure [get_settings [set "element.$i.$j.menu"] ALSA $i $j]
 			[set element.$i.$j.menu] delete 0 end
 			foreach item $items {
 				[set element.$i.$j.menu] add radiobutton -label "$item" -value "$item" -variable $name.v$j 
 				}
-			grid $mw.f$i.om$j -row $j -column 0 -sticky news
+			grid $mw.frame$i.optionmenu$j -row $j -column 0 -sticky news
 			trace vdelete $name.v$j w "set_element_value \"$name\" $values_count $i $j ; skip_args3"
 			set $name.v$j [lindex $value $j]
 			trace variable $name.v$j w "set_element_value \"$name\" $values_count $i $j ; skip_args3"
@@ -191,8 +191,8 @@ if { ![winfo exists $mw] } {
 
 foreach win [grid slaves $mw] { destroy $win }
 if { "$current_alsa_device" == "none" } {
-	canvas $mw.l -width 0 -height 0 -background red
-	grid $mw.l
+	canvas $mw.label -width 0 -height 0 -background red
+	grid $mw.label
 	return
 	}
 eval label $mw.title -text "\"Mixer (ALSA)\"" \

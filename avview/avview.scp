@@ -41,6 +41,7 @@ eval frame .video [get_settings .video AVview]
 place .video -relx 0.0 -rely 0.0 -relwidth 1.0 -relheight 1.0 -anchor nw
 
 frame .video.onscreen_display -background [.video cget -background]
+eval .video.onscreen_display configure [get_settings .video.onscreen_display AVview]
 place .video.onscreen_display -relx 0.05 -rely 0.05 -anchor nw
 
 
@@ -49,6 +50,7 @@ if { $control_screen != "" } {
 	} {
 	toplevel .controlwin
 	}
+eval .controlwin configure [get_settings .controlwin AVview]
 
 eval frame .controlwin.control [get_settings .controlwin.control]
 eval frame .controlwin.allattributes [get_settings .controlwin.allattributes]
@@ -67,18 +69,24 @@ set current_encoding -1
 
 eval label $c.portl -text "\"Port: \"" [get_settings $c.portl]
 set current_port_menu [tk_optionMenu $c.portom current_port  none]
+eval $c.portom configure [get_settings $c.portom AVview]
+eval $current_port_menu configure [get_settings $current_port_menu AVview menu]
 $current_port_menu delete 0 end
 grid $c.portl $c.portom -sticky news
 grid configure $c.portl -sticky nws
 
 eval label $c.encodingl -text "\"Encoding: \"" [get_settings $c.encodingl]
 set current_encoding_menu [tk_optionMenu $c.encodingom current_encoding_name  none]
+eval $c.encodingom configure [get_settings $c.encodingom AVview]
+eval $current_encoding_menu configure [get_settings $current_encoding_menu AVview menu]
 $current_encoding_menu delete 0 end
 grid $c.encodingl $c.encodingom -sticky news
 grid configure $c.encodingl -sticky nws
 
 eval label $c.tablel -text "\"Channel table: \"" [get_settings $c.tablel]
 set current_table_menu [tk_optionMenu $c.tableom current_table_name none]
+eval $c.tableom configure [get_settings $c.tableom AVview]
+eval $current_table_menu configure [get_settings $current_table_menu AVview menu]
 $current_table_menu delete 0 end
 foreach table $TABLE_LIST {
 	eval $current_table_menu add radiobutton -label "$table" -value "$table" -variable current_table_name [get_settings $current_table_menu "$table"]
@@ -88,6 +96,8 @@ grid configure $c.tablel -sticky nws
 
 eval label $c.channell -text "\"Channel: \"" [get_settings $c.channell]
 set current_channel_menu [tk_optionMenu $c.channelom current_channel none]
+eval $c.channelom configure [get_settings $c.channelom AVview]
+eval $current_channel_menu configure [get_settings $current_channel_menu AVview menu]
 $current_channel_menu delete 0 end
 grid $c.channell $c.channelom -sticky news
 grid configure $c.channell -sticky nsw
@@ -100,10 +110,13 @@ eval checkbutton $c.fullscreen -text "Fullscreen"  \
 eval button $c.half_size -text \"Half size\" -command "make_half_size" [get_settings $c.half_size]
 
 eval menubutton $c.interface -text "Interface" -relief raised -menu $c.interface.menu [get_settings $c.interface]
-menu $c.interface.menu 
+eval menu $c.interface.menu [get_settings $c.inteface.menu AVview]
 $c.interface.menu add checkbutton -label "Attributes" -variable attributes_window
 $c.interface.menu add checkbutton -label "Capture (V4L)" -variable capture_window
 $c.interface.menu add checkbutton -label "Audio mixer (ALSA)" -variable alsa_window
+$c.interface.menu add separator
+eval menu $c.interface.menu.theme [get_settings $c.interface.menu.theme AVview]
+$c.interface.menu add cascade -menu $c.interface.menu.theme -label "Theme"
 
 grid $c.fullscreen $c.half_size $c.interface -padx 5 -pady 5 -sticky ns
 
@@ -693,3 +706,12 @@ wm protocol .controlwin WM_DELETE_WINDOW { save_settings ; exit }
 wm title . "AV Viewer"
 wm title .controlwin "AV Control"
 
+#
+# Generate theme menu
+#
+$c.interface.menu.theme delete 0 end
+foreach theme [array names theme_list] {
+	$c.interface.menu.theme add radiobutton -label "$theme" \
+		-value "$theme" -variable theme_name \
+		-command {global theme_name ; reset_theme $theme_name}
+	}
