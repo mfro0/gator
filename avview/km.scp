@@ -1,0 +1,21 @@
+#!tclsh
+
+puts "This only works with km from CVS at the moment"
+
+proc get_km_status { km_control } {
+set file [open "$km_control" "w+"]
+puts $file "STATUS"
+flush $file
+set r [list ]
+set s ""
+while { "$s" != "+END_STATUS" } {
+	set s [gets $file]
+	set i [string first "=" "$s"]
+	if { $i > 0 } {
+		lappend r [string range "$s" 0 [expr $i-1]] [string range "$s" [expr $i+1] end]
+		}
+	}
+puts "$r"
+}
+
+get_km_status "/proc/km/control0"
