@@ -1855,6 +1855,11 @@ RADEONSetupImageVideo(ScreenPtr pScreen)
         
     RADEONResetVideo(pScrn);
 
+    if(info->VBIOS){
+         xfree(info->VBIOS);
+         info->VBIOS=NULL;
+         }
+ 
     return adapt;
 }
 
@@ -1993,6 +1998,15 @@ RADEONStopVideo(ScrnInfoPtr pScrn, pointer data, Bool cleanup)
 	RADEONWaitForFifo(pScrn, 2);
 	OUTREG(RADEON_OV0_SCALE_CNTL, 0);
 	xf86ForceHWCursor (pScrn->pScreen, FALSE);
+     }
+     if(pPriv->video_stream_active){
+        RADEONWaitForFifo(pScrn, 2);
+        OUTREG(RADEON_FCP_CNTL, RADEON_FCP0_SRC_GND);
+        OUTREG(RADEON_CAP0_TRIG_CNTL, 0);
+        RADEONResetVideo(pScrn);
+        pPriv->video_stream_active = FALSE;
+        if(pPriv->msp3430 != NULL) xf86_MSP3430SetVolume(pPriv->msp3430, MSP3430_FAST_MUTE);
+        if(pPriv->i2c != NULL) RADEON_board_setmisc(pPriv);
      }
      if(info->videoLinear) {
 	xf86FreeOffscreenLinear(info->videoLinear);
@@ -2479,7 +2493,7 @@ RADEONDisplayVideo(
 	v_inc_shift++;
     if (pScrn->currentMode->Flags & V_DBLSCAN)
 	v_inc_shift--;
-    v_inc = (src_h << v_inc_shift) / drw_h;
+    v_inc = (1 << v_inc_shift);
     v_inc_d = src_h * pScrn->currentMode->VDisplay;
     if(info->DisplayType==MT_LCD)
         v_inc_d = v_inc_d/(drw_h*info->PanelYRes);
@@ -3459,7 +3473,7 @@ RADEONVideoTimerCallback(ScrnInfoPtr pScrn, Time now)
 	if(pPriv->videoStatus & OFF_TIMER) {
 	    if(pPriv->offTime < now) {
 		unsigned char *RADEONMMIO = info->MMIO;
-		OUTREG(RADEON_OV0_SCALE_CNTL, 0);
+		OUTREG(RADEON_OV0_SCALE_CNTL, 0x80000000);
 		if (pPriv->videoStatus & CLIENT_VIDEO_ON)
 		    xf86ForceHWCursor (pScrn->pScreen, FALSE);
 		pPriv->videoStatus = FREE_TIMER;
