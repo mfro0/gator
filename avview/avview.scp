@@ -275,7 +275,7 @@ for {set i 16} { $i < $num_channels } {incr i 16 } {
 	.video_menu.channel_menu entryconfigure $i -columnbreak 1
 	}
 reflect_favorite_channels
-set current_channel [find_first_favorite_channel]
+set current_channel [find_first_favorite_channel 0 1]
 }
 
 proc set_channel {a b c} {
@@ -285,8 +285,8 @@ if { $current_table < 0 } { return }
 set CHANNEL_LIST [freq_get_channel_list $current_table]
 global channel_freq
 set channel_freq [freq_get_channel_value $current_table [lsearch -exact $CHANNEL_LIST "$current_channel" ]]
-on_attribute_change XV_FREQ channel_freq a b
 flash_message " Channel $current_channel "
+on_attribute_change XV_FREQ channel_freq a b
 }
 
 proc display_video {} {
@@ -558,6 +558,7 @@ set message_font_id [font create message_font -size -$f_size -family Helvetica -
 set m $VIDEO_WINDOW.onscreen_display.message
 destroy $m
 frame $m -background $bg
+raise $m
 grid $m
 label $m.l -text "$message" -font message_font -background black -foreground "#FFAA88"
 grid $m.l

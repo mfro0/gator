@@ -7,7 +7,11 @@
 proc assign_default_bindings {} {
 
 foreach {action sequence} {
-	toggle_fullscreen "<Control--KeyPress-f>"
+	toggle_fullscreen "<Control-KeyPress-f>"
+	"next_fav_channel 1" "<Key-KP_Add>"
+	"next_fav_channel -1" "<Key-KP_Subtract>"
+	"next_channel 1" "<Control-Key-KP_Add>"
+	"next_channel -1" "<Control-Key-KP_Subtract>"
 	} {
 	bind all $sequence $action
 	}
@@ -21,4 +25,35 @@ if { $fullscreen_mode } {
 	} {
 	set fullscreen_mode true
 	}
+}
+
+proc next_channel { dir } {
+global current_channel
+global current_channel_menu
+global current_table
+
+set CHANNEL_LIST [freq_get_channel_list $current_table]
+set num_entries [$current_channel_menu index end]
+set current_channel_index [lsearch $CHANNEL_LIST $current_channel]
+
+if {$current_channel_index == $num_entries} {
+        set current_channel_index -1
+	}
+
+incr current_channel_index $dir
+if { $current_channel_index >= $num_entries } { set current_channel_index 0 }
+if { $current_channel_index <0 } { set current_channel_index [expr $num_entries-1] }
+set current_channel [lindex $CHANNEL_LIST $current_channel_index]
+}
+
+proc next_fav_channel { dir } {
+global current_channel
+global current_channel_menu
+global current_table
+
+set CHANNEL_LIST [freq_get_channel_list $current_table]
+set num_entries [$current_channel_menu index end]
+set current_channel_index [lsearch $CHANNEL_LIST $current_channel]
+
+set current_channel [find_first_favorite_channel $current_channel_index $dir]
 }
