@@ -151,14 +151,17 @@ struct file_operations km_data_file_operations={
 	} ;
 
 
-void km_free_private_data_virtual_block(KM_DATA_VIRTUAL_BLOCK *dvb)
+void km_free_private_data_virtual_block(KM_DATA_UNIT *kdu)
 {
-rvfree(dvb->ptr, dvb->size);
+int i;
+KM_DATA_VIRTUAL_BLOCK *dvb;
+dvb=(KM_DATA_VIRTUAL_BLOCK *)kdu->data_private;
+for(i=0;i<dvb->n;i++)rvfree(dvb->ptr[i],dvb->size);
 }
 
 int km_allocate_data_virtual_block(KM_DATA_VIRTUAL_BLOCK *dvb, mode_t mode)
 {
-long k;
+long i,k;
 KM_DATA_UNIT *kdu;
 dvb->ptr=rvmalloc(dvb->size);
 if(dvb->ptr==NULL)return -ENOMEM;
@@ -175,8 +178,12 @@ kdu->free_private=km_free_private_data_virtual_block;
 if(kdu->data!=NULL){
 	kdu->data->size=dvb->size;
 	}
+for(i=0;i<dvb->n;i++){
+	dvb->ptr[i]=rvmalloc(dvb->size);
+	}
 return k;
 }
+
 
 void km_deallocate_data(long data_unit)
 {
@@ -188,6 +195,7 @@ kdu=&(data_units[data_unit]);
 spin_lock(&(kdu->lock));
 kdu->use_count--;
 if(kdu->use_count>0){
+	MOD_DEC_USE_COUNT;
 	spin_unlock(&(kdu->lock));
 	return; /* something is still using it */
 	}
@@ -201,6 +209,7 @@ if(kdu->free_private!=NULL)kdu->free_private(kdu);
 spin_unlock(&(kdu->lock));
 MOD_DEC_USE_COUNT;
 }
+
 
 int __init init_km_data_units(void)
 {

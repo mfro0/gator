@@ -17,8 +17,9 @@
 
 typedef struct {
 	long size;
-	long free;
-	void *ptr;
+	long n;
+	long *free;
+	void **ptr;
 	} KM_DATA_VIRTUAL_BLOCK;
 
 #define KDU_TYPE_GENERIC		100
@@ -41,6 +42,6 @@ typedef struct {
 int init_km_data_units(void);
 void cleanup_km_data_units(void);
 int km_allocate_data_virtual_block(KM_DATA_VIRTUAL_BLOCK *, mode_t mode);
-void km_deallocate_data(long data_unit);
+void km_deallocate_data_virtual_block(long data_unit);
 
 #endif

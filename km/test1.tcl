@@ -1,4 +1,4 @@
-#!/usr/bin/wish
+#!/usr/local/bin/wish
 
 set file [open "/proc/km/control0" w+]
 

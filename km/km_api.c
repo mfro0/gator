@@ -30,7 +30,7 @@ struct proc_dir_entry  *km_root=NULL;
 
 static struct file_operations km_file_operations;
 
-KM_DEVICE *devices=NULL;
+KM_DEVICE **devices=NULL;
 long devices_size=0;
 long devices_free=0;
 
@@ -156,10 +156,11 @@ if(strncmp(filename, "control", 7)){
 i=simple_strtol(filename+7, NULL, 10);
 if(i<0)return -EINVAL;
 if(i>=devices_free)return -EINVAL;
+kmd=(devices[i]);
+if((kmd==NULL)||(kmd->fields==NULL))return -EINVAL;
 
 MOD_INC_USE_COUNT;
 
-kmd=&(devices[i]);
 spin_lock(&(kmd->lock));
 kmfpd=kmalloc(sizeof(KM_FILE_PRIVATE_DATA), GFP_KERNEL);
 memset(kmfpd, sizeof(KM_FILE_PRIVATE_DATA), 0);
@@ -185,6 +186,7 @@ return 0;
 
 static int km_fo_control_release(struct inode * inode, struct file * file)
 {
+char temp[32];
 KM_FILE_PRIVATE_DATA *kmfpd=file->private_data;
 KM_DEVICE *kmd=kmfpd->kmd;
 
@@ -195,6 +197,13 @@ kfree(kmfpd);
 file->private_data=NULL;
 spin_lock(&(kmd->lock));
 kmd->use_count--;
+if(kmd->use_count<=0){
+	devices[kmd->number]=NULL;
+	sprintf(temp, "control%d", kmd->number);
+	remove_proc_entry(temp, km_root);
+	kmd->control=NULL;
+	kfree(kmd);
+	}
 spin_unlock(&(kmd->lock));
 
 MOD_DEC_USE_COUNT;
@@ -223,8 +232,11 @@ while(kmfpd->br_free==0){
 		break;
 		}
 	schedule();
-	if(kmfpd->request_flags & KM_STATUS_REQUESTED)perform_status_cmd(kmd, kmfpd);
-	dump_changed_fields(kmd, kmfpd);
+	/* check that the devices has not been removed from under us */
+	if(kmd->fields!=NULL){
+		if(kmfpd->request_flags & KM_STATUS_REQUESTED)perform_status_cmd(kmd, kmfpd);
+		dump_changed_fields(kmd, kmfpd);
+		}
 	}
 current->state=TASK_RUNNING;
 remove_wait_queue(&(kmd->wait), &wait);
@@ -288,8 +300,12 @@ static void expand_devices(void)
 {
 KM_DEVICE *d;
 devices_size+=devices_size+10;
-d=kmalloc(devices_size*sizeof(KM_DEVICE), GFP_KERNEL);
-if(devices_free>0)memcpy(d, devices, devices_free*sizeof(KM_DEVICE));
+d=kmalloc(devices_size*sizeof(*devices), GFP_KERNEL);
+if(d==NULL){
+	devices_size=(devices_size-10)/2;
+	return;
+	}
+if(devices_free>0)memcpy(d, devices, devices_free*sizeof(*devices));
 kfree(devices);
 devices=d;
 }
@@ -312,15 +328,23 @@ KM_FIELD *kf=NULL;
 num=-1;
 MOD_INC_USE_COUNT;
 for(i=0;(num<0)&&(i<devices_free);i++){
-	spin_lock(&(devices[i].lock));
-	if(devices[i].use_count<1)num=i;
-	spin_unlock(&(devices[i].lock));
+	if(devices[i]==NULL)num=i;
 	}
 if(num<0){
-	num=devices_free;
 	if(devices_free>=devices_size)expand_devices();
+	if(devices_free>=devices_size){
+		MOD_DEC_USE_COUNT;
+		return -ENOMEM;
+		}
+	num=devices_free;
+	devices_free++;
 	}
-kmd=&(devices[num]);
+kmd=kmalloc(sizeof(KM_DEVICE), GFP_KERNEL);
+if(kmd==NULL){
+	MOD_DEC_USE_COUNT;
+	return -ENOMEM;
+	}
+devices[num]=kmd;
 memset(kmd, sizeof(KM_DEVICE), 0);
 kmd->number=num;
 kmd->fields=kmfl;
@@ -357,7 +381,6 @@ kmd->control->data=kmd;
 kmd->control->proc_fops=&km_control_file_operations;
 
 kmd->use_count=1;
-devices_free++;
 return num;
 }
 
@@ -365,25 +388,31 @@ void kmd_signal_state_change(int num)
 {
 if(num<0)return;
 if(num>=devices_free)return;
-wake_up_interruptible(&(devices[num].wait));
+if(devices[num]!=NULL)wake_up_interruptible(&(devices[num]->wait));
 }
 
 int remove_km_device(int num)
 {
 char temp[32];
+KM_DEVICE *kmd;
 if(num<0)return -EINVAL;
 if(num>devices_free)return -EINVAL;
-if(devices[num].number<0)return -EINVAL;
-spin_lock(&(devices[num].lock));
-sprintf(temp, "control%d", num);
-remove_proc_entry(temp, km_root);
-kfree(devices[num].command_hash);
-devices[num].command_hash=NULL;
-devices[num].control=NULL;
-devices[num].fields=NULL;
-devices[num].priv=NULL;
-devices[num].use_count--;
-spin_unlock(&(devices[num].lock));
+kmd=devices[num];
+if(kmd==NULL)return -EINVAL;
+spin_lock(&(kmd->lock));
+kfree(kmd->command_hash);
+kmd->command_hash=NULL;
+kmd->fields=NULL;
+kmd->priv=NULL;
+kmd->use_count--;
+if(kmd->use_count<=0){
+	devices[num]=NULL;
+	sprintf(temp, "control%d", num);
+	remove_proc_entry(temp, km_root);
+	kmd->control=NULL;
+	kfree(kmd);
+	}
+spin_unlock(&(kmd->lock));
 MOD_DEC_USE_COUNT;
 return 0;
 }
