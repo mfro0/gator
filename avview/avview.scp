@@ -66,11 +66,37 @@ set VIDEO_WINDOW .video
 destroy .video
 
 
-. configure -width 320 -height 240 
+. configure -width 320 -height 240 -background black
+
+global aspect_ratio
+set aspect_ratio [list 4 3]
+
 #frame .video -background #102030
 eval frame .video [get_settings .video AVview]
 .video configure -borderwidth 0
 place .video -relx 0.0 -rely 0.0 -relwidth 1.0 -relheight 1.0 -anchor nw
+
+bind . <Configure> place_video_window
+proc place_video_window {} {
+set h [winfo height .]
+set w [winfo width .]
+global aspect_ratio
+set a_x [lindex $aspect_ratio 0]
+set a_y [lindex $aspect_ratio 1]
+set rw 1.0
+set rh 1.0
+catch {
+	if { $a_x*$h>=$a_y*$w } {
+		set rh [expr (1.0*$a_y*$w)/($a_x*$h)]
+		set rw 1.0
+		} {
+		set rw [expr (1.0*$a_x*$h)/($a_y*$w)]
+		set rh 1.0
+		}
+	}
+place configure .video -relx [expr (1.0-$rw)/2.0] -rely [expr (1.0-$rh)/2.0] \
+	-relw $rw -relh $rh -anchor nw
+}
 
 frame .video.onscreen_display -background [.video cget -background]
 eval .video.onscreen_display configure [get_settings .video.onscreen_display AVview]
@@ -353,6 +379,9 @@ foreach variable {current_port current_encoding_name current_table_name
 	puts $fileid "\nglobal $variable"
 	puts $fileid "set $variable \"[set $variable]\""
 	}
+global aspect_ratio
+puts $fileid "\nglobal aspect_ratio"
+puts $fileid "set aspect_ration \[list $aspect_ratio\]"
 save_theme $fileid
 puts $fileid "update idletasks"
 
@@ -643,9 +672,14 @@ menu .video_menu.interface_menu.theme_menu -type normal -tearoff false
 .video_menu.size_menu add checkbutton -variable fullscreen_mode -label "Fullscreen" -onvalue true -offvalue false
 .video_menu.size_menu add command -label "Half size" -command "make_half_size"
 .video_menu.size_menu add command -label "Double size" -command "make_double_size"
-.video_menu.size_menu add command -label "Adjust to 4:3 aspect ratio" -command "make_aspect_ratio 4 3"
-.video_menu.size_menu add command -label "Adjust to 16:9 aspect ratio" -command "make_aspect_ratio 16 9"
-.video_menu.size_menu add command -label "Adjust to 9:16 aspect ratio" -command "make_aspect_ratio 9 16"
+.video_menu.size_menu add radiobutton -label "Unconstrained aspect ratio" -variable aspect_ratio -value [list NONE NONE]
+.video_menu.size_menu add radiobutton -label "Aspect ratio 4:3" -variable aspect_ratio -value [list 4 3]
+.video_menu.size_menu add radiobutton -label "Aspect ratio 3:4" -variable aspect_ratio -value [list 3 4]
+.video_menu.size_menu add radiobutton -label "Aspect ratio 16:9" -variable aspect_ratio -value [list 16 9]
+.video_menu.size_menu add radiobutton -label "Aspect ratio 9:16" -variable aspect_ratio -value [list 9 16]
+#.video_menu.size_menu add command -label "Adjust to 4:3 aspect ratio" -command "make_aspect_ratio 4 3"
+#.video_menu.size_menu add command -label "Adjust to 16:9 aspect ratio" -command "make_aspect_ratio 16 9"
+#.video_menu.size_menu add command -label "Adjust to 9:16 aspect ratio" -command "make_aspect_ratio 9 16"
 
 .video_menu.interface_menu add command -label "Show setup window" -command "create_setup_window"
 .video_menu.interface_menu add command -label "Favorite channel editor" -command scan_channels
@@ -693,6 +727,7 @@ global current_v4l_mode
 trace variable current_v4l_mode w {update_v4l_window_info .controlwin.capture ; skip_args3 }
 global v4l_capture_on
 trace variable v4l_capture_on w "on_v4l_capture_set .controlwin.capture"
+trace variable aspect_ratio w "place_video_window ; skip_args3"
 
 if {[alsa_present] == "yes" } {
 	trace variable alsa_window w "generate_alsa_window .controlwin.alsamixer ; skip_args3"
