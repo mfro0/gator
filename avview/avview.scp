@@ -678,10 +678,8 @@ replace_parameter_choices "/Video device parameters" 0 a
 after 200 {
 	read_settings
 	if { $display_setup_window_on_startup } {
-		wm deiconify .setup
-		global SETUP_MAIN
+		create_setup_window
 		switch_to_pane "/User interface settings"
-		resize_frames
 		}	
 	}	
 	
