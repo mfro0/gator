@@ -2210,7 +2210,7 @@ RADEONSetPortAttribute(ScrnInfoPtr  pScrn,
                 }                       
   } else 
   if(attribute == xvDumpStatus) {
-  	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Current mode flags 0x08x: %s%s\n",
+  	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Current mode flags 0x%08x: %s%s\n",
 		pScrn->currentMode->Flags,
 		pScrn->currentMode->Flags & V_INTERLACE ? " interlaced" : "" ,
 		pScrn->currentMode->Flags & V_DBLSCAN ? " doublescan" : ""
