@@ -326,6 +326,33 @@ elseif { $valid == 1 } {
 	}
 }
 
+proc toggle_screensaver {} {
+set ss [xmisc_getscreensaver .]
+if { [lindex $ss 7] == 0 } {
+	xmisc_setscreensaver . [lindex $ss 0] \
+		[lindex $ss 1] \
+		[lindex $ss 2] \
+		[lindex $ss 3] \
+		[lindex $ss 4] \
+		[lindex $ss 5] \
+		[lindex $ss 6] \
+		3 \
+		on
+	stop_video
+	} {
+	xmisc_setscreensaver . [lindex $ss 0] \
+		[lindex $ss 1] \
+		[lindex $ss 2] \
+		[lindex $ss 3] \
+		[lindex $ss 4] \
+		[lindex $ss 5] \
+		[lindex $ss 6] \
+		0 \
+		off
+	display_video
+	}
+}
+
 #
 #  Attempt to load AVview modmap
 #

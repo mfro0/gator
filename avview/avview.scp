@@ -41,6 +41,7 @@ foreach {variable value} {
 	current_channel "none"
 	use_physical_screen_size true
 	aspect_ratio {4 3}
+	port_grabbed false
 	} {
 	global $variable
 	set $variable $value
@@ -321,9 +322,7 @@ on_attribute_change XV_FREQ channel_freq a b
 
 proc display_video {} {
 
-global VIDEO_WINDOW
-global current_port
-global current_encoding
+global VIDEO_WINDOW current_port current_encoding port_grabbed
 
 if { $current_port == "none" } { return }
 if { $current_encoding < 0 } { return }
@@ -336,9 +335,26 @@ set port_size [xv_port_encoding_size $VIDEO_WINDOW $current_port $current_encodi
 
 xv_setportattribute $VIDEO_WINDOW $current_port "XV_COLORKEY" [xv_getwindowbackgroundpixel $VIDEO_WINDOW]
 
+if { ! $port_grabbed } {
+	if { [xv_grabport $VIDEO_WINDOW $current_port] } {
+		set port_grabbed true
+		} {
+		flash_message "Video port $current_port is being used\nby another program"
+		return 		
+		}
+	}
+
 xv_putvideo $VIDEO_WINDOW $current_port 0 0 [expr [lindex $port_size 0]-1] [expr [lindex $port_size 1]-1]
 }
 
+proc stop_video {} {
+global VIDEO_WINDOW
+global current_port
+
+if { $current_port == "none" } { return }
+
+xv_stopvideo $VIDEO_WINDOW $current_port
+}
 
 proc set_encoding {name1 name2 op} {
 global current_encoding_name current_encoding current_port current_video_rate

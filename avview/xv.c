@@ -780,6 +780,131 @@ Tk_FreeGC(d, gc);
 return 0;
 }
 
+int xv_stopvideo(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+{
+Tk_Window tkwin;
+Window win;
+Display *d;
+XvPortID port;
+long x,y,w,h;
+XGCValues xgcv;
+GC gc;
+
+Tcl_ResetResult(interp);
+
+if(argc<3){
+	Tcl_AppendResult(interp,"ERROR: xv_stopvideo requires 2 arguments", NULL);
+	return TCL_ERROR;
+	}
+
+tkwin=Tk_NameToWindow(interp,argv[1], Tk_MainWindow(interp));
+
+if(tkwin==NULL){
+	Tcl_AppendResult(interp,"ERROR: xv_stopvideo: first argument must be an existing toplevel or frame window", NULL);
+	return TCL_ERROR;
+	}
+
+d=Tk_Display(tkwin);
+win=Tk_WindowId(tkwin);
+
+if((d==NULL)||(win==(Window)NULL)){
+	Tcl_AppendResult(interp,"ERROR: xv_stopvideo: first argument must be a mapped toplevel or frame window", NULL);
+	return TCL_ERROR;
+	}
+
+
+port=atoi(argv[2]);
+XvStopVideo(d, port, win);
+
+return TCL_OK;
+}
+
+int xv_grabport(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+{
+Tk_Window tkwin;
+Window win;
+Display *d;
+XvPortID port;
+long x,y,w,h;
+XGCValues xgcv;
+GC gc;
+
+Tcl_ResetResult(interp);
+
+if(argc<3){
+	Tcl_AppendResult(interp,"ERROR: xv_grabport requires 2 arguments", NULL);
+	return TCL_ERROR;
+	}
+
+tkwin=Tk_NameToWindow(interp,argv[1], Tk_MainWindow(interp));
+
+if(tkwin==NULL){
+	Tcl_AppendResult(interp,"ERROR: xv_grabport: first argument must be an existing toplevel or frame window", NULL);
+	return TCL_ERROR;
+	}
+
+d=Tk_Display(tkwin);
+win=Tk_WindowId(tkwin);
+
+if((d==NULL)||(win==(Window)NULL)){
+	Tcl_AppendResult(interp,"ERROR: xv_grabport: first argument must be a mapped toplevel or frame window", NULL);
+	return TCL_ERROR;
+	}
+
+
+port=atoi(argv[2]);
+if(XvGrabPort(d, port, CurrentTime)==Success){
+	Tcl_SetObjResult(interp, Tcl_NewIntObj(1));
+	} else {
+	Tcl_SetObjResult(interp, Tcl_NewIntObj(0));
+	}
+
+return TCL_OK;
+}
+
+int xv_ungrabport(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+{
+Tk_Window tkwin;
+Window win;
+Display *d;
+XvPortID port;
+long x,y,w,h;
+XGCValues xgcv;
+GC gc;
+
+Tcl_ResetResult(interp);
+
+if(argc<3){
+	Tcl_AppendResult(interp,"ERROR: xv_ungrabport requires 2 arguments", NULL);
+	return TCL_ERROR;
+	}
+
+tkwin=Tk_NameToWindow(interp,argv[1], Tk_MainWindow(interp));
+
+if(tkwin==NULL){
+	Tcl_AppendResult(interp,"ERROR: xv_ungrabport: first argument must be an existing toplevel or frame window", NULL);
+	return TCL_ERROR;
+	}
+
+d=Tk_Display(tkwin);
+win=Tk_WindowId(tkwin);
+
+if((d==NULL)||(win==(Window)NULL)){
+	Tcl_AppendResult(interp,"ERROR: xv_ungrabport: first argument must be a mapped toplevel or frame window", NULL);
+	return TCL_ERROR;
+	}
+
+
+port=atoi(argv[2]);
+if(XvUngrabPort(d, port, CurrentTime)){
+	Tcl_SetObjResult(interp, Tcl_NewIntObj(1));
+	} else {
+	Tcl_SetObjResult(interp, Tcl_NewIntObj(0));
+	}
+
+return TCL_OK;
+}
+
 int xv_getportattribute(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
 {
 Tk_Window tkwin;
@@ -908,6 +1033,9 @@ struct {
 	{"xv_port_attribute_type", xv_port_attribute_type},
 	{"xv_port_attribute_range", xv_port_attribute_range},
 	{"xv_putvideo", xv_putvideo},
+	{"xv_stopvideo", xv_stopvideo},
+	{"xv_grabport", xv_grabport},
+	{"xv_ungrabport", xv_ungrabport},
 	{"xv_getportattribute", xv_getportattribute},
 	{"xv_setportattribute", xv_setportattribute},
 	{"xv_getwindowbackgroundpixel", xv_getwindowbackgroundpixel},
