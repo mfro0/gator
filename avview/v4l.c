@@ -633,7 +633,7 @@ while(data->streams_out_free>0){
 		p->free+=a;
 		if(p->free==p->size){ /* deliver packet */
 			gettimeofday(&tv, NULL);
-			p->timestamp=(((int64)tv.tv_sec)<<20)|(tv.tv_usec);
+			p->timestamp=(int64)tv.tv_sec*1000000+(int64)tv.tv_usec;
 			p->use_count=1;
 			pthread_mutex_lock(&(data->streams_out_mutex));
 			for(i=0;i<data->streams_out_free;i++){

@@ -473,7 +473,7 @@ while(!(s->stop_stream & STOP_PRODUCER_THREAD)){
 		#endif
 		if(p->free>=p->size){ /* deliver packet */
 			gettimeofday(&tv, NULL);
-			p->timestamp=(((int64)tv.tv_sec)<<20)|(tv.tv_usec);
+			p->timestamp=(int64)tv.tv_sec*1000000+(int64)tv.tv_usec;
 			pthread_mutex_lock(&(s->ctr_mutex));
 			if(!(s->stop_stream & STOP_PRODUCER_THREAD)){
 				p->use_count=1;
@@ -580,9 +580,6 @@ if(a<0){
         }
 param->sample_rate=a;
 param->channels=2;
-ad->recording_chunk_size=4096*ad->frame_size; /* multiple of pages this way */
-if(a>40960)ad->recording_chunk_size=(a*ad->frame_size)/10;
-param->chunk_size=ad->recording_chunk_size; /* suggest chunk size.. */
 ad->param=param;
 fprintf(stderr,"Using sample rate %ld Hz frame_size=%ld\n", param->sample_rate, ad->frame_size);
         /* set buffer time */
@@ -708,4 +705,3 @@ for(i=0;alsa_commands[i].name!=NULL;i++)
 	Tcl_CreateCommand(interp, alsa_commands[i].name, alsa_commands[i].command, (ClientData)0, NULL);
 }
 #endif /* USE_ALSA */
-

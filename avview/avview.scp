@@ -22,12 +22,12 @@ foreach {variable value} {
 	show_control_window 0
 	file_save_path "."
 	current_capture_filename "test3.avi"
-	fullscreen_mode false
-	remember_fullscreen_state false
-	always_start_fullscreen false
-	display_setup_window_on_startup false
+	fullscreen_mode "false"
+	remember_fullscreen_state "false"
+	always_start_fullscreen "false"
+	display_setup_window_on_startup "false"
 	current_v4l_mode "single-frame"
-	v4l_capture_on false
+	v4l_capture_on "false"
 	current_video_codec "MPEG-1"
 	current_audio_codec "MPEG-2"
 	current_v4l_rrate "as is"
@@ -40,12 +40,12 @@ foreach {variable value} {
 	current_table_name "none"
 	current_channel "none"
 	current_connector "none"
-	use_physical_screen_size true
+	use_physical_screen_size "true"
 	aspect_ratio {4 3}
-	port_grabbed false
-	screen_off false
-	dpms_off_on_fullscreen_power_off false
-	disable_fullscreen_switching false
+	port_grabbed "false"
+	screen_off "false"
+	dpms_off_on_fullscreen_power_off "false"
+	disable_fullscreen_switching "false"
 	} {
 	global $variable
 	set $variable $value
@@ -414,7 +414,7 @@ foreach variable {current_port current_encoding_name current_table_name
 	current_channel attributes_window capture_window alsa_window
 	 show_control_window always_start_fullscreen remember_fullscreen_state
 	display_setup_window_on_startup file_save_path dpms_off_on_fullscreen_power_off
-	disable_fullscreen_switching } {
+	disable_fullscreen_switching use_physical_screen_size} {
 	global $variable
 	puts $fileid "\nglobal $variable"
 	puts $fileid "set $variable \"[set $variable]\""

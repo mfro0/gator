@@ -85,6 +85,20 @@ FFMPEG_ENCODING_DATA *sdata=NULL;
 
 /* #define DEBUG_TIMESTAMPS   */
 
+/* make pts (90KHz clock) from timestamps */
+static int make_pts(int64 start, int64 now)
+{
+int64 diff=now-start;
+return (int)(diff/11);
+}
+
+static int64 timestamp_now(void)
+{
+struct timeval tv;
+gettimeofday(&tv, NULL);
+return (int64)tv.tv_sec*1000000+(int64)tv.tv_usec;
+}
+
 int ffmpeg_present(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tcl_ResetResult(interp);
@@ -114,6 +128,7 @@ switch(data->mode){
 
 void ffmpeg_v4l_encoding_thread(PACKET_STREAM *s)
 {
+int64 start_ts;
 int i;
 PACKET *f;
 V4L_DATA *data;
@@ -140,6 +155,7 @@ picture.data[1]=picture.data[0]+sdata->video_codec_context.width*sdata->video_co
 picture.data[2]=picture.data[1]+(sdata->video_codec_context.width*sdata->video_codec_context.height)/4;
 picture.linesize[0]=sdata->video_codec_context.width;
 picture.linesize[1]=sdata->video_codec_context.width/2;
+start_ts=timestamp_now();
 picture.linesize[2]=sdata->video_codec_context.width/2;
 pthread_mutex_lock(&(s->ctr_mutex));
 while(1){
@@ -160,7 +176,7 @@ while(1){
 			while(ob_written<ob_free){
 				pthread_mutex_lock(&(sdata->format_context_mutex));
 				if(sdata->format_context.oformat!=NULL){
-					sdata->format_context.oformat->write_packet(&(sdata->format_context),sdata->video_stream_num, output_buf+ob_written, ob_free-ob_written, 0);
+					sdata->format_context.oformat->write_packet(&(sdata->format_context),sdata->video_stream_num, output_buf+ob_written, ob_free-ob_written, make_pts(start_ts, f->timestamp));
 					i=ob_free-ob_written;
 					} else {
 					i=write(sdata->fd_out, output_buf+ob_written, ob_free-ob_written);
@@ -265,6 +281,7 @@ while(written<size){
 void ffmpeg_audio_encoding_thread(PACKET_STREAM *s)
 {
 unsigned char *out_buf;
+int64 start_ts;
 long ob_size, ob_free;
 PACKET *f;
 ob_size=sdata->audio_codec_context.frame_size*sdata->audio_codec_context.channels*sizeof(short);
@@ -273,6 +290,7 @@ fprintf(stderr,"audio_encoding pid %d\n", getpid());
 /* encode in the background */
 nice(1);
 pthread_mutex_lock(&(s->ctr_mutex));
+start_ts=timestamp_now();
 while(1){
 	f=get_packet(s);
 	if(!(s->stop_stream & STOP_PRODUCER_THREAD) &&((f==NULL))){
@@ -289,7 +307,7 @@ while(1){
                        	/* write output buffer */
                        	if(sdata->format_context.oformat!=NULL){
                                	/* write using libavcodec format output */
-                               	sdata->format_context.oformat->write_packet(&(sdata->format_context),sdata->audio_stream_num, out_buf, ob_free, 0);
+                               	sdata->format_context.oformat->write_packet(&(sdata->format_context),sdata->audio_stream_num, out_buf, ob_free, make_pts(start_ts, f->timestamp));
                                	} else {
                                	/* write using os function */
                                	os_write_packet(sdata->fd_out, out_buf, ob_free);
