@@ -1510,11 +1510,21 @@ void RADEONVIP_reset(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
 
 
     RADEONWaitForIdleMMIO(pScrn);
-    OUTREG(VIPH_CONTROL, 0x003F0004); /* slowest, timeout in 16 phases */
-    OUTREG(VIPH_TIMEOUT_STAT, (INREG(VIPH_TIMEOUT_STAT) & 0xFFFFFF00) | VIPH_TIMEOUT_STAT__VIPH_REGR_DIS);
-    OUTREG(VIPH_DV_LAT, 0x444400FF); /* set timeslice */
-    OUTREG(VIPH_BM_CHUNK, 0x151);
-    OUTREG(RADEON_TEST_DEBUG_CNTL, INREG(RADEON_TEST_DEBUG_CNTL) & (~TEST_DEBUG_CNTL__TEST_DEBUG_OUT_EN));
+    switch(info->ChipFamily){
+    	case CHIP_FAMILY_RV250:
+	    OUTREG(VIPH_CONTROL, 0x003F0009); /* slowest, timeout in 16 phases */
+	    OUTREG(VIPH_TIMEOUT_STAT, (INREG(VIPH_TIMEOUT_STAT) & 0xFFFFFF00) | VIPH_TIMEOUT_STAT__VIPH_REGR_DIS);
+	    OUTREG(VIPH_DV_LAT, 0x444400FF); /* set timeslice */
+	    OUTREG(VIPH_BM_CHUNK, 0x0);
+	    OUTREG(RADEON_TEST_DEBUG_CNTL, INREG(RADEON_TEST_DEBUG_CNTL) & (~TEST_DEBUG_CNTL__TEST_DEBUG_OUT_EN));
+	    break;
+	default:
+	    OUTREG(VIPH_CONTROL, 0x003F0004); /* slowest, timeout in 16 phases */
+	    OUTREG(VIPH_TIMEOUT_STAT, (INREG(VIPH_TIMEOUT_STAT) & 0xFFFFFF00) | VIPH_TIMEOUT_STAT__VIPH_REGR_DIS);
+	    OUTREG(VIPH_DV_LAT, 0x444400FF); /* set timeslice */
+	    OUTREG(VIPH_BM_CHUNK, 0x151);
+	    OUTREG(RADEON_TEST_DEBUG_CNTL, INREG(RADEON_TEST_DEBUG_CNTL) & (~TEST_DEBUG_CNTL__TEST_DEBUG_OUT_EN));
+	} 
 }
 
 static void RADEONVIP_init(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
@@ -3195,14 +3205,16 @@ void RADEON_board_setmisc(RADEONPortPrivPtr pPriv)
         }
     }
     
-    /* Disable VBI capture for anything but TV tuner */
-    if(pPriv->encoding==5)pPriv->capture_vbi_data=1;
-    	else pPriv->capture_vbi_data=0;
 }
 
 void RADEON_RT_SetEncoding(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
 {
+int width, height;
 RADEONWaitForIdleMMIO(pScrn);
+/* Disable VBI capture for anything but TV tuner */
+if(pPriv->encoding==5)pPriv->capture_vbi_data=1;
+    	else pPriv->capture_vbi_data=0;
+
 switch(pPriv->encoding){
         case 1:
                 xf86_RT_SetConnector(pPriv->theatre,DEC_COMPOSITE, 0);
@@ -3268,6 +3280,10 @@ switch(pPriv->encoding){
                 pPriv->v=0;
                 return;
         }       
+xf86_RT_SetInterlace(pPriv->theatre, 1);
+width = InputVideoEncodings[pPriv->encoding].width;
+height = InputVideoEncodings[pPriv->encoding].height;
+xf86_RT_SetOutputVideoSize(pPriv->theatre, width, height*2, 0, pPriv->capture_vbi_data);   
 }
 
 void RADEON_MSP_SetEncoding(RADEONPortPrivPtr pPriv)
@@ -3659,8 +3675,6 @@ RADEONPutVideo(
       if(pPriv->theatre != NULL) 
       {
          RADEON_RT_SetEncoding(pScrn, pPriv); 
-         xf86_RT_SetInterlace(pPriv->theatre, 1);
-         xf86_RT_SetOutputVideoSize(pPriv->theatre, width, height*2, 0, pPriv->capture_vbi_data);   
       }
       if(pPriv->msp3430 != NULL) RADEON_MSP_SetEncoding(pPriv);
       if(pPriv->tda9885 != NULL) RADEON_TDA9885_SetEncoding(pPriv);
