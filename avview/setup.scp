@@ -158,7 +158,7 @@ foreach {description type var} $args {
 			}
 		"checkbutton" {
 			label $A.label$param_count -text "$description" -wraplength 300
-			checkbutton  $A.checkbutton$param_count -variable $var -onvalue "true" -offvalue "false"
+			checkbutton  $A.checkbutton$param_count -variable $var
 			grid $A.label$param_count $A.checkbutton$param_count -sticky new -padx 2 -pady 2 
 			grid configure $A.label$param_count -sticky nw
 			}

@@ -184,8 +184,8 @@ if {[ffmpeg_present] == "yes"} {
 
 	button $cw.snapshot_button -text "Snapshot" -command capture_snapshot -state disabled
 	eval $cw.snapshot_button configure [get_settings $cw.snapshot_button Capture V4L]
-	button $cw.monitor_button -text "Monitor" -command "create_monitor_window $cw"
-	eval $cw.monitor_button configure [get_settings $cw.monitor_button Capture V4L]
+#	button $cw.monitor_button -text "Monitor" -command "create_monitor_window $cw"
+#	eval $cw.monitor_button configure [get_settings $cw.monitor_button Capture V4L]
 	checkbutton $cw.record_button -text "Record" -variable v4l_capture_on \
 		-indicatoron false 
 	eval $cw.record_button configure [get_settings $cw.record_button Capture V4L]
@@ -236,6 +236,8 @@ for {set i 0 } {$i < 10 } { incr i } {
 			}
 		v4l_close_device rescan_handle
 		}
+	update
+	update idletasks
 	}
 }
 

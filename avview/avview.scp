@@ -659,8 +659,20 @@ foreach theme [lsort -ascii [array names theme_list]] {
 		-command {global theme_name ; reset_theme $theme_name}
 	}
 
-add_parameter_pane "/User interface settings" "User interface settings" \
-	"Display setup window on startup" checkbutton display_setup_window_on_startup
+if { [alsa_present] } {
+	add_parameter_pane "/User interface settings" "User interface settings" \
+		"Display setup window on startup" checkbutton display_setup_window_on_startup \
+		"Display control window" checkbutton show_control_window \
+		"Display attributes subsection" checkbutton attributes_window \
+		"Display capture(V4L) subsection" checkbutton capture_window \
+		"Display mixer(ALSA) subsection" checkbutton alsa_window 
+	} {
+	add_parameter_pane "/User interface settings" "User interface settings" \
+		"Display setup window on startup" checkbutton display_setup_window_on_startup \
+		"Display control window" checkbutton show_control_window \
+		"Display attributes subsection" checkbutton attributes_window \
+		"Display capture(V4L) subsection" checkbutton capture_window \
+	}
 
 after 200 {
 	read_settings
