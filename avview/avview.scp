@@ -329,6 +329,7 @@ set channel_freq [freq_get_channel_value $current_table [lsearch -exact $CHANNEL
 flash_message " Channel $current_channel "
 update
 on_attribute_change XV_FREQ channel_freq a b
+vbi_new_channel primary
 }
 
 proc display_video {} {
@@ -415,7 +416,8 @@ foreach variable {current_port current_encoding_name current_table_name
 	current_channel attributes_window capture_window alsa_window
 	 show_control_window always_start_fullscreen remember_fullscreen_state
 	display_setup_window_on_startup file_save_path dpms_off_on_fullscreen_power_off
-	disable_fullscreen_switching use_physical_screen_size message_visible_secs} {
+	disable_fullscreen_switching use_physical_screen_size message_visible_secs
+	on_screen_cc_page } {
 	global $variable
 	puts $fileid "\nglobal $variable"
 	puts $fileid "set $variable \"[set $variable]\""
@@ -706,10 +708,12 @@ menu .video_menu.channel_menu -type normal -tearoff false
 menu .video_menu.connector_menu -type normal -tearoff false
 menu .video_menu.interface_menu -type normal -tearoff false
 menu .video_menu.interface_menu.theme_menu -type normal -tearoff false
+menu .video_menu.cc_menu -type normal -tearoff false
 
 .video_menu add command -label "Toggle mute" -command { toggle_mute }
 .video_menu add cascade -menu .video_menu.channel_menu -label "Channel"
 .video_menu add cascade -menu .video_menu.connector_menu -label "Connector"
+.video_menu add cascade -menu .video_menu.cc_menu -label "Closed caption"
 .video_menu add cascade -menu .video_menu.size_menu -label "Size"
 .video_menu add separator
 .video_menu add cascade -menu .video_menu.interface_menu -label "User interface"
@@ -721,6 +725,11 @@ menu .video_menu.interface_menu.theme_menu -type normal -tearoff false
 .video_menu.connector_menu add radiobutton -label "Tuner" -variable current_connector -command "change_connector tuner" -value "tuner"
 .video_menu.connector_menu add radiobutton -label "Composite" -variable current_connector  -command "change_connector composite" -value "composite"
 .video_menu.connector_menu add radiobutton -label "SVideo" -variable current_connector  -command "change_connector svideo" -value "svideo"
+
+.video_menu.cc_menu add radiobutton -label "Off" -value "Off" -variable on_screen_cc_page
+for { set i 1 } { $i <= 8 } { incr i } {
+	.video_menu.cc_menu add radiobutton -label "$i" -value $i -variable on_screen_cc_page
+	}
 
 .video_menu.size_menu add checkbutton -variable fullscreen_mode -label "Fullscreen" -onvalue true -offvalue false
 .video_menu.size_menu add command -label "Half size" -command "make_half_size"
@@ -782,6 +791,8 @@ global v4l_capture_on
 trace variable v4l_capture_on w "on_v4l_capture_set .controlwin.capture"
 trace variable aspect_ratio w "place_video_window ; skip_args3"
 trace variable use_physical_screen_size w "place_video_window ; skip_args3"
+global on_screen_cc_page
+trace variable on_screen_cc_page w "vbi_set_cc_page_on_screen ; skip_args3"
 
 if {[alsa_present] == "yes" } {
 	trace variable alsa_window w "generate_alsa_window .controlwin.alsamixer ; skip_args3"

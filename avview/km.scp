@@ -20,6 +20,13 @@ puts "$r"
 
 proc find_km_device { location_id } {
 puts "Looking for km device that corresponds to $location_id"
+if { ! [file exists /proc/km ] } {
+	global km_warning
+	if { [info exists km_warning ] } { return }
+	tk_dialog .controlwin.b "KM is not loaded" "It does not appear that KM driver has been loaded.\nThis driver is required for snapshot and video capture and for closed captioning.\nSee README for more details\n" "" 0 "Acknowledged"
+	set km_warning 1
+	return
+	}
 set km_devs [list ]
 catch {
 	set km_devs [split [exec ls -1 /proc/km] "\n"]
@@ -45,11 +52,24 @@ foreach file $km_devs {
 			}
 		}
 	if { $LOCATION_ID == $location_id } {
-		return [list $file $attrs]
+		return [list file $file attrs $attrs]
 		}
 	}
 }
 
-after 1000 {
-	puts "[find_km_device [get_location_id]]"
+proc update_primary_globals {} {
+foreach var { primary_v4l_device primary_vbi_device } {
+	global $var
+	set $var ""
 	}
+catch {
+	foreach {var value } [find_km_device [get_location_id]] {
+		set $var $value
+		}
+	foreach {var value} $attrs {
+		set $var $value
+		}
+	set primary_v4l_device "/dev/video$V4L_DEVICE"
+	set primary_vbi_device "/dev/vbi[expr $VBI_DEVICE-224]"
+	}
+}

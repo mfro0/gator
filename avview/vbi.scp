@@ -45,7 +45,6 @@ trace variable $var w "puts \"+\" ; global vbi_caption_images $var; set vbi_capt
 }
 
 proc render_vbi_line { canvas tag width height columns rows line } {
-puts "line=$line"
 foreach var {x y attr str} value $line {
 	set $var $value
 	}
@@ -53,7 +52,6 @@ set fontsize [expr $height/$rows]
 foreach var {style effect size opacity foreground background} value [split $attr -] {
 	set $var $value
 	}
-puts "fontsize=$fontsize"
 switch -exact -- $style {
 	""  {
 		set font [font create -family Helvetica -size -$fontsize -slant roman -underline false -weight normal]
@@ -91,26 +89,42 @@ $canvas addtag $tag withtag $b
 
 proc vbi_event_handler_on_screen {a b} {
 puts "vbi event $a $b"
-catch {
+if { [ catch {
 switch -exact -- $a {
-	"caption"  {		
+	"caption"  {	
+		global on_screen_cc_page
+		if { $b != $on_screen_cc_page } { continue }	
 		set cc_page [vbi_get_cc_page primary 1]
 		set width [lindex $cc_page 0]
 		set height [lindex $cc_page 1]
-		puts "$width x $height"
 		.video delete cc_text
-		puts "info=[place info .video]"
 		foreach line [lrange $cc_page 2 end] {
-			render_vbi_line .video cc_text [.video cget -width] [.video cget -height] $width $height $line
+			render_vbi_line .video cc_text [winfo width .video] [winfo height .video] $width $height $line
 			}
-		puts "ZXY"
 		update
 		}
 	}
-	} err
-puts "err=$err"
+	} err ] } {
+	puts "vbi_err=$err"
+	}
+}
+
+proc vbi_set_cc_page_on_screen { } {
+global on_screen_cc_page
+if { $on_screen_cc_page == "Off" } {
+	vbi_close_device primary
+	}
+global primary_vbi_device on_screen_page
+if { ! [info exists primary_vbi_device] } { update_primary_globals } 
+if { $primary_vbi_device == "" } { update_primary_globals }
+catch {
+	vbi_open_device primary $primary_vbi_device	
+	vbi_set_event_handler primary vbi_event_handler_on_screen
+	}
 }
 
 #vbi_open_device primary /dev/vbi0
 #vbi_set_event_handler primary vbi_event_handler_on_screen
 
+global on_screen_cc_page
+set on_screen_cc_page "Off"

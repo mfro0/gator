@@ -218,35 +218,11 @@ if { "$current_v4l_device" == "none" } {
 		}
 	return 
 	}
-if { $current_v4l_device == "automatic" } {
-	set location_id [get_location_id]
-	set v4l_device "none"
-	set km_devs [list ]
-	catch {
-		set km_devs [split [exec ls -1 /proc/km] "\n"]
-		}
-	puts "km_devs=$km_devs"
-	foreach file $km_devs {
-		if { ! [regexp {^control} $file] } { continue }
-		catch {
-			set FILE [open /proc/km/$file "w+"]
-			fconfigure $FILE -buffersize 65536
-			puts -nonewline $FILE "STATUS\n"
-			flush $FILE
-			while {1} {
-				gets $FILE line
-				puts "read line=$line"
-				if { [regexp {^(.*)=(.*)} $line {} var value] } { 
-					set $var $value
-					}
-				if { [regexp {END_STATUS} $line] } { break }
-				}
-			if { $LOCATION_ID == $location_id } {
-				set v4l_device "/dev/video$V4L_DEVICE"
-				}
-			}
-		if { $v4l_device != "none" } { break }
-		}
+if { $current_v4l_device == "automatic" } {	
+	global primary_v4l_device
+	if { ! [info exists primary_v4l_device] } { update_primary_globals }
+	if { $primary_v4l_device == "" } { update_primary_globals }
+	set v4l_device $primary_v4l_device
 	if { $v4l_device != "none" } {
 		set status "[v4l_open_device current_v4l_handle $v4l_device]"
 		} {

@@ -266,6 +266,7 @@ update_attribute_variables
 generate_attributes_window .controlwin.allattributes
 
 display_video
+update_primary_globals
 }
 
 proc xv_pick_defaults {} {
