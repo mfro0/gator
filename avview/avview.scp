@@ -7,6 +7,8 @@
 #       GNU Public License
 #       
 
+set avview_version "0.10.0"
+
 global control_screen
 set control_screen1 ""
 regexp "control=\[^ \]+" "$argv" control_screen1
@@ -31,6 +33,7 @@ source xv.scp
 source channel_scan.scp
 source ffmpeg.scp
 source video_device.scp
+source diag.scp
 
 global show_control_window
 set show_control_window 1

@@ -116,6 +116,15 @@ set SETUP_PANES($key:pane_frame) "$PANE_FRAME"
 incr diag_pane_count
 }
 
+proc get_pane_frame { key } {
+global SETUP_PANES
+set frame ""
+catch {
+	set frame [set SETUP_PANES($key:pane_frame)]
+	}
+return $frame
+}
+
 proc set_next_key { key next_key } {
 global SETUP_PANES
 set SETUP_PANES($key:next_key) "$next_key"
