@@ -405,6 +405,7 @@ if { $v4l_capture_on } {
 				-audio_rate "$current_audio_rate" \
 				-audio_bitrate "$current_audio_bitrate" \
 				-v4l_rate "$current_video_rate" \
+				-video_bitrate "$current_video_bitrate" \
 				-filename "$file_save_path/$current_capture_filename"]
 	if { "$status" == "" } { 
 		after cancel "check_fifo $cw"
