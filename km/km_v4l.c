@@ -360,12 +360,13 @@ static struct file_operations km_v4l_fops = {
 
 static struct video_device km_v4l_template=
 {
-	owner:		THIS_MODULE,
-	name:		"Km",
-	type:		VID_TYPE_CAPTURE|VID_TYPE_TELETEXT,
-	hardware:	VID_HARDWARE_KM,
-	fops:		&km_v4l_fops,
-	minor:		-1,
+	.owner		= THIS_MODULE,
+	.name		= "Km",
+	.type		= VID_TYPE_CAPTURE|VID_TYPE_TELETEXT,
+	.hardware	= VID_HARDWARE_KM,
+	.fops		= &km_v4l_fops,
+	.minor		= -1,
+	.release	= video_device_release
 };
 
 static struct file_operations km_vbi_fops = {
@@ -381,12 +382,13 @@ static struct file_operations km_vbi_fops = {
 
 static struct video_device km_v4l_vbi_template=
 {
-	owner:		THIS_MODULE,
-	name:		"Km",
-	type:		VID_TYPE_CAPTURE|VID_TYPE_TELETEXT,
-	hardware:	VID_HARDWARE_KM,
-	fops:		&km_vbi_fops,
-	minor:		-1,
+	.owner		= THIS_MODULE,
+	.name		= "Km",
+	.type		= VID_TYPE_CAPTURE|VID_TYPE_TELETEXT,
+	.hardware	= VID_HARDWARE_KM,
+	.fops		= &km_vbi_fops,
+	.minor		= -1,
+	.release	= video_device_release
 };
 
 int init_km_v4l(KM_STRUCT *kms)
@@ -417,6 +419,4 @@ void cleanup_km_v4l(KM_STRUCT *kms)
 		video_unregister_device(kms->vd);
 	if(kms->is_vbi_active!=NULL)
 		video_unregister_device(kms->vbi_vd);
-	video_device_release(kms->vbi_vd);
-	video_device_release(kms->vd);
 }
