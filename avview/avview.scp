@@ -410,6 +410,7 @@ global current_encoding_name
 global current_channel
 global attributes_window
 global capture_window
+global current_codec
 catch {
 	set fileid [open "~/.avview_state" w]
 	}
@@ -417,8 +418,10 @@ puts $fileid "global current_port"
 puts $fileid "global current_encoding_name"
 puts $fileid "global current_table_name"
 puts $fileid "global current_channel"
+puts $fileid "global current_codec"
 puts $fileid "global attributes_window"
 puts $fileid "global capture_window"
+puts $fileid "set current_codec $current_codec"
 if { $current_port != "none" } {
 	puts $fileid "set current_port \"$current_port\""
 	if { $current_encoding_name != "none" } {
@@ -589,8 +592,8 @@ button $cw.rescanb -text "Rescan" -command rescan_v4l_devices
 grid $cw.devicel $cw.deviceom $cw.rescanb -sticky news
 grid configure $cw.devicel -sticky nws
 
-label $cw.model -text "Mode: "
-tk_optionMenu $cw.modeom current_v4l_mode single-frame deinterlace-bob deinterlace-weave
+label $cw.model -text "Recording mode: "
+tk_optionMenu $cw.modeom current_v4l_mode single-frame deinterlace-bob deinterlace-weave half-width
 grid $cw.model $cw.modeom - -sticky news
 grid configure $cw.model -sticky nws
 
@@ -602,8 +605,13 @@ grid configure $cw.windowl -sticky nws
 grid configure $cw.windowb -sticky news
 
 if {[ffmpeg_present] == "yes"} {
+	label $cw.rratel -text "Recording framerate: "
+	tk_optionMenu $cw.rrateom current_v4l_rrate "as is" "one half" "one quarter"
+	grid $cw.rratel $cw.rrateom - -sticky news
+	grid configure $cw.rratel -sticky nws
+
 	label $cw.codecl -text "Recording format:"
-	tk_optionMenu $cw.codecom current_codec "MPEG-4"
+	tk_optionMenu $cw.codecom current_codec "H263" "H263I" "H263P" "MJPEG" "MPEG-1" "MPEG-4" "MSMPEG-4" "RV10"
 	grid $cw.codecl $cw.codecom
 	grid configure $cw.codecl -sticky nws
 	grid configure $cw.codecom -sticky news
@@ -658,6 +666,9 @@ switch "$current_v4l_mode" \
 		}\
 	"deinterlace-weave" {
 		$cw.window configure -text "[lindex $window 2]x[expr [lindex $window 3]*2]+[lindex $window 0]+[expr [lindex $window 1]*2]"
+		}\
+	"half-width" {
+		$cw.window configure -text "[expr [lindex $window 2]/2]x[lindex $window 3]+[lindex $window 0]+[expr [lindex $window 1]*2]"
 		}
 
 }
@@ -778,12 +789,13 @@ switch "$save_type" \
 proc on_v4l_capture_set {cw name1 name2 w } {
 global v4l_capture_on
 global current_codec
+global current_v4l_mode
+global current_v4l_rrate
 if { $v4l_capture_on } {
-	set status [ffmpeg_encode_v4l_stream current_v4l_handle $current_codec "hello.mpg"]
+	set status [ffmpeg_encode_v4l_stream current_v4l_handle $current_codec $current_v4l_mode $current_v4l_rrate "hello.mpg"]
 	after 800 "check_fifo $cw"
 	puts "status=$status"
 	} {
-	after cancel "check_fifo $cw"
 	ffmpeg_stop_encoding current_v4l_handle
 	}
 }
@@ -791,7 +803,7 @@ if { $v4l_capture_on } {
 proc check_fifo { cw } {
 catch {
 	set size [ffmpeg_incoming_fifo_size current_v4l_handle]
-	$cw.fifov -configure -text "$size"
+	$cw.fifov configure -text "[expr $size/(1024*1024)] Mb"
 	}
 after 800 "check_fifo $cw"
 }
@@ -818,6 +830,8 @@ trace variable current_v4l_mode w {update_v4l_window_info .controlwin.capture ; 
 global v4l_capture_on
 set v4l_capture_on false
 trace variable v4l_capture_on w "on_v4l_capture_set .controlwin.capture"
+global current_codec
+set current_codec "MPEG-4"
 
 bind $VIDEO_WINDOW <Configure> {
 	global $VIDEO_WINDOW

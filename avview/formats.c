@@ -411,3 +411,96 @@ for(line=height-1;line>=0;line--){
 	memcpy(t2,s2,pitch);
 	}
 }
+
+void deinterlace_422_half_width(long width, long height, long pitch, char *frame1, char *dest)
+{
+long line;
+long pixel;
+long dst_pitch;
+unsigned char *t1;
+unsigned char *s1;
+int y1,y2,y3,y4,v1,v2,u1,u2;
+dst_pitch=width & (~3);
+for(line=height-1;line>=0;line--){
+	s1=frame1+line*pitch;
+	t1=dest+line*dst_pitch;
+	for(pixel=0;pixel<width;pixel+=4){
+		y1=(*s1++);
+		u1=(*s1++);
+		y2=(*s1++);
+		v1=(*s1++);
+		y3=(*s1++);
+		u2=(*s1++);
+		y4=(*s1++);
+		v2=(*s1++);
+		(*t1++)=(y1+y2)>>1;
+		(*t1++)=(u1+u2)>>1;
+		(*t1++)=(y3+y4)>>1;
+		(*t1++)=(v1+v2)>>1;
+		}
+	}
+}
+
+/* this replicates Y */
+void deinterlace_422_bob_to_420p(long width, long height, long pitch, char *frame1, char *dest)
+{
+long line;
+long pixel;
+long dst_pitch;
+unsigned char *t1,*t2,*t3;
+unsigned char *s1;
+char y1,y2,v1,u1;
+t1=dest;
+t2=dest+(width*height*2);
+t3=t2+(width*height*2)/4;
+for(line=0;line<(height*2);line++){
+	s1=frame1+(line/2)*pitch;
+	for(pixel=0;pixel<width;pixel+=2){
+		y1=(*s1++);
+		u1=(*s1++);
+		y2=(*s1++);
+		v1=(*s1++);
+		(*t1++)=y1;
+		(*t1++)=y2;
+		if(line & 1){
+			(*t3++)=v1;
+			} else {
+			(*t2++)=u1;
+			}
+		}
+	}
+}
+
+
+void deinterlace_422_half_width_to_420p(long width, long height, long pitch, char *frame1, char *dest)
+{
+long line;
+long pixel;
+long dst_pitch;
+unsigned char *t1,*t2,*t3;
+unsigned char *s1;
+int y1,y2,y3,y4,v1,v2,u1,u2;
+t1=dest;
+t2=dest+((width/2)*height);
+t3=t2+((width/2)*height)/4;
+for(line=0;line<height;line++){
+	s1=frame1+line*pitch;
+	for(pixel=0;pixel<width;pixel+=4){
+		y1=(*s1++);
+		u1=(*s1++);
+		y2=(*s1++);
+		v1=(*s1++);
+		y3=(*s1++);
+		u2=(*s1++);
+		y4=(*s1++);
+		v2=(*s1++);
+		(*t1++)=(y1+y2)>>1;
+		(*t1++)=(y3+y4)>>1;
+		if(line & 1){
+			(*t3++)=(v1+v2)>>1;
+			} else {
+			(*t2++)=(u1+u2)>>1;
+			}
+		}
+	}
+}

@@ -12,9 +12,10 @@
 #include <linux/videodev.h>
 
 
-#define MODE_SINGLE_FRAME	1
-#define MODE_DEINTERLACE_BOB	2
-#define MODE_DEINTERLACE_WEAVE	3
+#define MODE_SINGLE_FRAME		1
+#define MODE_DEINTERLACE_BOB		2
+#define MODE_DEINTERLACE_WEAVE		3
+#define MODE_DEINTERLACE_HALF_WIDTH	4
 
 typedef struct S_V4L_DATA{
 	int fd;

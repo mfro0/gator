@@ -32,6 +32,7 @@ int v4l_open_device(ClientData client_data,Tcl_Interp* interp,int argc,char *arg
 {
 long i;
 V4L_DATA *data;
+struct video_picture vpic;
 
 Tcl_ResetResult(interp);
 
@@ -63,6 +64,20 @@ if(ioctl(data->fd, VIDIOCGCAP, &(data->vcap))<0){
 	free(data);
 	v4l_sc->data[i]=NULL;
 	Tcl_AppendResult(interp,"failed: not a v4l device", NULL);
+	}
+/* for now just require that the device supports YUV422 */
+/* ++++++++++++++++ FIXME ++++++++++++++++++++++++++++++*/
+if(ioctl(data->fd, VIDIOCGPICT, &vpic)<0){
+	Tcl_AppendResult(interp,"ERROR: v4l_capture_snapshot: error getting picture parameters", NULL);
+	return TCL_ERROR;
+	}
+vpic.palette=VIDEO_PALETTE_YUV422;
+if(ioctl(data->fd, VIDIOCSPICT, &vpic)<0){
+	close(data->fd);
+	free(data);
+	v4l_sc->data[i]=NULL;
+	Tcl_AppendResult(interp,"failed: v4l device cannot support YUV422", NULL);
+	return 0;
 	}
 data->mode=0;
 data->frame_count=0;
@@ -271,6 +286,14 @@ if(sdata->transfer_size==sdata->transfer_read){
 			free(sdata->read_buffer);
 			sdata->read_buffer=p;
 			break;
+		case MODE_DEINTERLACE_HALF_WIDTH:
+			p=do_alloc(sdata->pib.width*sdata->pib.height*2, 1);
+			deinterlace_422_half_width(sdata->pib.width*2, sdata->pib.height, sdata->pib.width*4,
+					sdata->read_buffer,p);
+			data->frame_count++;
+			free(sdata->read_buffer);
+			sdata->read_buffer=p;
+			break;
 		}
 	
 	vcvt_422_rgb32(sdata->pib.width, sdata->pib.height, sdata->pib.width, sdata->read_buffer, sdata->pib.pixelPtr);
@@ -343,6 +366,9 @@ if(!strcmp("deinterlace-bob", argv[3])){
 if(!strcmp("deinterlace-weave", argv[3])){
 	data->mode=MODE_DEINTERLACE_WEAVE;
 	}
+if(!strcmp("half-width", argv[3])){
+	data->mode=MODE_DEINTERLACE_HALF_WIDTH;
+	}
 sdata=do_alloc(1, sizeof(V4L_SNAPSHOT_DATA));
 sdata->ph=Tk_FindPhoto(interp, argv[2]);
 if(sdata->ph==NULL){
@@ -356,19 +382,25 @@ sdata->transfer_complete_script=strdup(argv[4]);
 sdata->type=V4L_SNAPSHOT_KEY;
 if(argc>=6)sdata->transfer_failed_script=strdup(argv[5]);
 sdata->interp=interp;
-sdata->pib.width=vwin.width;
 switch(data->mode){
 	case MODE_SINGLE_FRAME:
+		sdata->pib.width=vwin.width;
 		sdata->pib.height=vwin.height;
 		sdata->transfer_size=2*vwin.width*vwin.height; 
 		break;
 	case MODE_DEINTERLACE_BOB:
 	case MODE_DEINTERLACE_WEAVE:
+		sdata->pib.width=vwin.width;
 		sdata->pib.height=vwin.height*2;
 		if(data->frame_count & 1)
 			sdata->transfer_size=3*2*vwin.width*vwin.height; 
 			else
 			sdata->transfer_size=2*2*vwin.width*vwin.height; 
+		break;
+	case MODE_DEINTERLACE_HALF_WIDTH:
+		sdata->pib.width=vwin.width/2;
+		sdata->pib.height=vwin.height;
+		sdata->transfer_size=2*vwin.width*vwin.height; 
 		break;
 	}
 sdata->pib.offset[0]=0;

@@ -25,7 +25,7 @@ test: avview
 #	./read_pci.scp
 
 avview: $(SRCS) main.c
-	$(CC) $(X11CFLAGS) @FFMPEG_CFLAGS@ $(SRCS) $(TCLLIBS) $(TKLIBS) $(LIBS) main.c -o avview 
+	$(CC) -O2 $(X11CFLAGS) @FFMPEG_CFLAGS@ $(SRCS) $(TCLLIBS) $(TKLIBS) $(LIBS) main.c -o avview 
 
 avview.static: $(SRCS) main.c
 	$(CC) -static $(X11CFLAGS) @FFMPEG_CFLAGS@ $(SRCS) $(TCLLIBS) $(LIBS) main.c -lm -dl -o avview.static

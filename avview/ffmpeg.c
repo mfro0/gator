@@ -6,7 +6,7 @@
        
 */
 
-
+#include <stdlib.h>
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/types.h>
@@ -29,6 +29,7 @@
 #include <pthread.h>
 #include "avcodec.h"
 #include "v4l.h"
+#include "formats.h"
 
 typedef struct S_FFMPEG_INCOMING_FRAME{
 	struct S_FFMPEG_INCOMING_FRAME *next;
@@ -45,6 +46,8 @@ typedef struct {
 	long stop;
 	long size;
 	long frame_count;
+	long step_frames;
+	long frames_encoded;
 	int fd_out;
 	AVCodec *codec;
 	AVCodecContext codec_context;
@@ -95,6 +98,22 @@ free(f->data);
 free(f);
 }
 
+void ffmpeg_preprocess_frame(V4L_DATA *data, FFMPEG_V4L_ENCODING_DATA *sdata, 
+		FFMPEG_INCOMING_FRAME *f, AVPicture *picture)
+{
+switch(data->mode){
+	case MODE_SINGLE_FRAME:
+		break;
+	case MODE_DEINTERLACE_BOB:
+	case MODE_DEINTERLACE_WEAVE:
+		deinterlace_422_bob_to_420p(sdata->width, sdata->height, sdata->width*2, f->data, picture->data[0]);
+		break;
+	case MODE_DEINTERLACE_HALF_WIDTH:
+		deinterlace_422_half_width_to_420p(sdata->width, sdata->height, sdata->width*2, f->data, picture->data[0]);
+		break;
+	}
+}
+
 void *ffmpeg_v4l_encoding_thread(V4L_DATA *data)
 {
 int i;
@@ -104,32 +123,37 @@ FFMPEG_INCOMING_FRAME *f,*fn;
 AVPicture picture;
 char *output_buf;
 long ob_size, ob_free, ob_written;
+long incoming_frames_count=0;
 
 sdata=(FFMPEG_V4L_ENCODING_DATA *)data->priv;
 if((sdata==NULL)||(sdata->type!=FFMPEG_V4L_CAPTURE_KEY))pthread_exit(NULL);
 ob_size=1000000;
 ob_free=0;
 output_buf=do_alloc(ob_size, sizeof(char));
+picture.data[0]=do_alloc((3*sdata->codec_context.width*sdata->codec_context.height)/2, sizeof(char));
+picture.data[1]=picture.data[0]+sdata->codec_context.width*sdata->codec_context.height;
+picture.data[2]=picture.data[1]+(sdata->codec_context.width*sdata->codec_context.height)/4;
+picture.linesize[0]=sdata->codec_context.width;
+picture.linesize[1]=sdata->codec_context.width/2;
+picture.linesize[2]=sdata->codec_context.width/2;
 while(1){
 	/* wait for data to arrive */
 /*	sleep(1); */
 	f=sdata->last;
 	fprintf(stderr,"frame_count=%d  stop=%d\n", sdata->frame_count, sdata->stop);
 	while((f!=NULL)&&(f->free==f->size)&&(f->prev!=NULL)){
-		/* encode frame */
-		picture.data[0]=f->data;
-		picture.data[1]=f->data;
-		picture.data[2]=f->data;
-		picture.linesize[0]=sdata->width*2;
-		picture.linesize[1]=sdata->width*2;
-		picture.linesize[2]=sdata->width*2;
-		ob_free=avcodec_encode_video(&(sdata->codec_context), output_buf, ob_size, &picture);
-		/* write out data */
-		ob_written=0;
-		while(ob_written<ob_free){
-			i=write(sdata->fd_out, output_buf+ob_written, ob_free-ob_written);
-			if(i>=0)ob_written+=i;
+		if(!sdata->step_frames || !(incoming_frames_count % sdata->step_frames)){
+			/* encode frame */
+			ffmpeg_preprocess_frame(data, sdata, f, &picture);
+			ob_free=avcodec_encode_video(&(sdata->codec_context), output_buf, ob_size, &picture);
+			/* write out data */
+			ob_written=0;
+			while(ob_written<ob_free){
+				i=write(sdata->fd_out, output_buf+ob_written, ob_free-ob_written);
+				if(i>=0)ob_written+=i;
+				}
 			}
+		incoming_frames_count++;
 		/* get next one */
 		fn=f->prev;
 		if(sdata->unused==NULL){
@@ -219,8 +243,8 @@ struct video_window vwin;
 
 Tcl_ResetResult(interp);
 
-if(argc<4){
-	Tcl_AppendResult(interp,"ERROR: ffmpeg_encode_v4l_stream requires three arguments", NULL);
+if(argc<6){
+	Tcl_AppendResult(interp,"ERROR: ffmpeg_encode_v4l_stream requires five arguments", NULL);
 	return TCL_ERROR;
 	}
 data=get_v4l_device_from_handle(argv[1]);
@@ -240,6 +264,17 @@ if(ioctl(data->fd, VIDIOCGPICT, &vpic)<0){
 	Tcl_AppendResult(interp,"ERROR: ffmpeg_encode_v4l_stream: error getting picture parameters", NULL);
 	return TCL_ERROR;
 	}
+data->mode=MODE_SINGLE_FRAME;
+if(!strcmp("deinterlace-bob", argv[3])){
+	data->mode=MODE_DEINTERLACE_BOB;
+	} else
+if(!strcmp("deinterlace-weave", argv[3])){
+	data->mode=MODE_DEINTERLACE_WEAVE;
+	} else
+if(!strcmp("half-width", argv[3])){
+	data->mode=MODE_DEINTERLACE_HALF_WIDTH;
+	}
+
 sdata=do_alloc(1, sizeof(FFMPEG_V4L_ENCODING_DATA));
 sdata->type=FFMPEG_V4L_CAPTURE_KEY;
 sdata->stop=0;
@@ -248,6 +283,11 @@ sdata->height=vwin.height;
 sdata->size=vwin.width*vwin.height*2;
 sdata->unused=NULL;
 sdata->frame_count=1;
+sdata->frames_encoded=0;
+sdata->step_frames=0;
+if(!strcmp("one half", argv[4]))sdata->step_frames=2;
+	else
+if(!strcmp("one quarter", argv[4]))sdata->step_frames=4;
 sdata->fd_out=open("test3.mpg", O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
 if(sdata->fd_out<0){
 	free(sdata);
@@ -255,7 +295,31 @@ if(sdata->fd_out<0){
 	Tcl_AppendResult(interp, strerror(errno), NULL);
 	return 0;
 	}
-sdata->codec=avcodec_find_encoder(CODEC_ID_MPEG1VIDEO);
+if(!strcmp("MPEG-1", argv[2]))
+	sdata->codec=avcodec_find_encoder(CODEC_ID_MPEG1VIDEO);
+	else
+if(!strcmp("MPEG-4", argv[2]))
+	sdata->codec=avcodec_find_encoder(CODEC_ID_MPEG4);
+	else
+if(!strcmp("MJPEG", argv[2]))
+	sdata->codec=avcodec_find_encoder(CODEC_ID_MJPEG);
+	else
+if(!strcmp("MSMPEG-4", argv[2]))
+	sdata->codec=avcodec_find_encoder(CODEC_ID_MSMPEG4);
+	else
+if(!strcmp("H263", argv[2]))
+	sdata->codec=avcodec_find_encoder(CODEC_ID_H263);
+	else
+if(!strcmp("RV10", argv[2]))
+	sdata->codec=avcodec_find_encoder(CODEC_ID_RV10);
+	else
+if(!strcmp("H263P", argv[2]))
+	sdata->codec=avcodec_find_encoder(CODEC_ID_H263P);
+	else
+if(!strcmp("H263I", argv[2]))
+	sdata->codec=avcodec_find_encoder(CODEC_ID_H263I);
+	else
+	sdata->codec=NULL;
 if(sdata->codec==NULL){
 	close(sdata->fd_out);
 	free(sdata);
@@ -263,9 +327,23 @@ if(sdata->codec==NULL){
 	return TCL_ERROR;
 	}
 memset(&(sdata->codec_context), 0, sizeof(AVCodecContext));
-sdata->codec_context.width=vwin.width;
-sdata->codec_context.height=vwin.height;
-sdata->codec_context.frame_rate=30*FRAME_RATE_BASE;
+switch(data->mode){
+	case MODE_SINGLE_FRAME:
+		sdata->codec_context.width=vwin.width;
+		sdata->codec_context.height=vwin.height;
+		break;
+	case MODE_DEINTERLACE_BOB:
+	case MODE_DEINTERLACE_WEAVE:
+		sdata->codec_context.width=vwin.width;
+		sdata->codec_context.height=vwin.height*2;
+		break;
+	case MODE_DEINTERLACE_HALF_WIDTH:
+		sdata->codec_context.width=vwin.width/2;
+		sdata->codec_context.height=vwin.height;
+		break;
+	}
+sdata->codec_context.frame_rate=60*FRAME_RATE_BASE;
+if(sdata->step_frames>0)sdata->codec_context.frame_rate=sdata->codec_context.frame_rate/sdata->step_frames;
 sdata->codec_context.bit_rate=400000;
 sdata->codec_context.pix_fmt=PIX_FMT_YUV422;
 if(avcodec_open(&(sdata->codec_context), sdata->codec)<0){
@@ -335,6 +413,7 @@ struct video_picture vpic;
 struct video_window vwin;
 
 Tcl_ResetResult(interp);
+/* Report 0 bytes when no such device exists or it is not capturing */
 
 if(argc<2){
 	Tcl_AppendResult(interp,"ERROR: ffmpeg_incoming_fifo_size requires one argument", NULL);
@@ -342,13 +421,13 @@ if(argc<2){
 	}
 data=get_v4l_device_from_handle(argv[1]);
 if(data==NULL){
-	Tcl_AppendResult(interp,"ERROR: ffmpeg_incoming_fifo_size: no such v4l device", NULL);
-	return TCL_ERROR;
+	Tcl_SetObjResult(interp, Tcl_NewIntObj(0));
+	return 0;
 	}
 sdata=(FFMPEG_V4L_ENCODING_DATA *)data->priv;
 if((sdata==NULL)||(sdata->type!=FFMPEG_V4L_CAPTURE_KEY)){
-	Tcl_AppendResult(interp,"ERROR: ffmpeg_incoming_fifo_size: v4l device not capturing", NULL);
-	return TCL_ERROR;
+	Tcl_SetObjResult(interp, Tcl_NewIntObj(0));
+	return 0;
 	}
 
 Tcl_SetObjResult(interp, Tcl_NewIntObj(sdata->size*sdata->frame_count));
