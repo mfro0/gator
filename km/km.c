@@ -522,6 +522,8 @@ if(km_buffers<2)km_buffers=2;
 if(km_buffers>=MAX_FRAME_BUFF_NUM)km_buffers=MAX_FRAME_BUFF_NUM-1;
 kms->capture.du=-1;
 kms->capture.info_du=-1;
+kms->vbi.du=-1;
+kms->vbi.info_du=-1;
 spin_lock_init(&(kms->kms_lock));
 printk("km: using irq %ld\n", kms->irq);
 if (pci_enable_device(dev))
