@@ -31,3 +31,13 @@ Notes:
 
 	* if README or INSTALL files have been updated during your last
 	  CVS checkout make will ask you to review them
+
+	* make install will copy a KDE desktop file start_avview.desktop
+	  to avview shared files directory (usually /usr/local/share/AVview).
+	  You can link (or copy) this file to your Desktop (or any other place)
+	  to be able to start AVview with a click of a mouse. 
+	  
+	  This file has hardcoded paths (computed during compile) so there is
+	  no need to copy icons or edit anything.
+	  
+	  
