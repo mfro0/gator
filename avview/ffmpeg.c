@@ -579,10 +579,12 @@ if(argc<2){
 	Tcl_AppendResult(interp,"ERROR: ffmpeg_stop_encoding requires one argument", NULL);
 	return TCL_ERROR;
 	}
+#if 0
 data=get_v4l_device_from_handle(argv[1]);
 if(data==NULL){
 	return 0;
 	}
+#endif
 if((sdata==NULL)||(sdata->type!=FFMPEG_CAPTURE_KEY)){
 	return 0;
 	}

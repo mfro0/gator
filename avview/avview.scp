@@ -680,7 +680,7 @@ if {[ffmpeg_present] == "yes"} {
 
 	button $cw.snapshotb -text "Snapshot" -command capture_snapshot -state disabled
 	checkbutton $cw.recordb -text "Record" -variable v4l_capture_on \
-		-indicatoron false -state disabled
+		-indicatoron false 
 	grid x $cw.snapshotb $cw.recordb -sticky ns -padx 5
 	label $cw.fifol -text "Fifo size: "
 	label $cw.fifov -text "0 Mb"
@@ -749,7 +749,6 @@ v4l_close_device current_v4l_handle
 if { "$current_v4l_device" == "none" } { 
 	set v4l_capture_on false
 	catch {
-		$cw.recordb configure -state disabled
 		$cw.snapshotb configure -state disabled
 		}
 	return 
@@ -758,7 +757,6 @@ set status "[v4l_open_device current_v4l_handle $current_v4l_device]"
 if { "$status" != "" } {
 	set current_v4l_device "none"
 	}
-$cw.recordb configure -state normal
 $cw.snapshotb configure -state normal
 update_v4l_window_info $cw
 }
