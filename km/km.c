@@ -114,12 +114,11 @@ for(k=0;k<num_buffers;k++){
 	stream->dma_table[k]=rvmalloc(4096);
 	stream->free[k]=size;
 	memset(stream->dma_table[k], 0, 4096);
+	KMDEBUG("dma_table[%d]=0x%08x\n", k, stream->dma_table[k]);
 	/* create DMA table */
 	for(i=0;i<(stream->dvb.size/PAGE_SIZE);i++){
-		stream->dma_table[k][i].to_addr=kvirt_to_pa(stream->buffer[k]+i*PAGE_SIZE);
-		if(kvirt_to_pa(stream->buffer[k]+i*PAGE_SIZE)!=kvirt_to_bus(stream->buffer[k]+i*PAGE_SIZE)){
-			printk(KERN_ERR "pa!=bus for entry %d frame %d\n", i, k);
-			}
+		stream->dma_table[k][i].to_addr=kvirt_to_bus(stream->buffer[k]+i*PAGE_SIZE);
+		KMDEBUG("dma_table[%d][%d].to_addr=0x%08x\n", k, i,stream->dma_table[k][i].to_addr);
 		}
 	}
 stream->dvb.kmsbi[0].prev=num_buffers-1;
