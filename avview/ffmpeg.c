@@ -589,6 +589,8 @@ if(sdata->fd_out<0){
 	do_free(sdata);
 	Tcl_AppendResult(interp, "failed: ", NULL);
 	Tcl_AppendResult(interp, strerror(errno), NULL);
+	free(sdata);
+	sdata=NULL;
 	return 0;
 	}
 motion_estimation_method=ME_FULL;
