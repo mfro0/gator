@@ -521,8 +521,6 @@ static int radeon_do_engine_reset( drm_device_t *dev )
 	u32 clock_cntl_index, mclk_cntl, rbbm_soft_reset;
 	DRM_DEBUG( "%s\n", __FUNCTION__ );
 
-	printk("radeon_do_engine_reset\n");
-
 	radeon_do_pixcache_flush( dev_priv );
 
 	clock_cntl_index = RADEON_READ( RADEON_CLOCK_CNTL_INDEX );
@@ -579,8 +577,6 @@ static void radeon_cp_init_ring_buffer( drm_device_t *dev,
 {
 	u32 ring_start, cur_read_ptr;
 	u32 tmp;
-
-	printk("fb_offset=0x%08x\n", dev_priv->fb->offset);
 
 	/* Initialize the memory controller */
 	#if 0
@@ -667,7 +663,6 @@ static int radeon_do_init_cp( drm_device_t *dev, drm_radeon_init_t *init )
 	u32 tmp;
 	DRM_DEBUG( "%s\n", __FUNCTION__ );
 
-	printk("radeon_do_init_cp\n");
 	dev_priv = DRM(alloc)( sizeof(drm_radeon_private_t), DRM_MEM_DRIVER );
 	if ( dev_priv == NULL )
 		return -ENOMEM;
@@ -746,9 +741,6 @@ static int radeon_do_init_cp( drm_device_t *dev, drm_radeon_init_t *init )
 	}
 	dev_priv->depth_offset	= init->depth_offset;
 	dev_priv->depth_pitch	= init->depth_pitch;
-
-	printk("fo=0x%08x bo=0x%08x do=0x%08x\n", dev_priv->front_offset,
-		dev_priv->back_offset, dev_priv->depth_offset);
 
 	dev_priv->front_pitch_offset = (((dev_priv->front_pitch/64) << 22) |
 					(((dev_priv->front_offset) >> 10)&0x3FFFFF));
@@ -884,8 +876,6 @@ static int radeon_do_init_cp( drm_device_t *dev, drm_radeon_init_t *init )
 
 	dev_priv->agp_size = init->agp_size;
 	dev_priv->agp_vm_start = RADEON_READ( RADEON_CONFIG_APER_SIZE );
-	printk("fb->offset=0x%08x agp_vm_start=0x%08x\n",
-		dev_priv->fb->offset, dev_priv->agp_vm_start);
 #if __REALLY_HAVE_AGP
 	if ( !dev_priv->is_pci )
 		dev_priv->agp_buffers_offset = (dev_priv->buffers->offset
@@ -1172,7 +1162,6 @@ static int radeon_do_init_pageflip( drm_device_t *dev )
 	drm_radeon_private_t *dev_priv = dev->dev_private;
 	DRM_DEBUG( "%s\n", __FUNCTION__ );
 	
-	printk("radeon_do_init_pageflip\n");
 	dev_priv->crtc_offset =      RADEON_READ( RADEON_CRTC_OFFSET );
 	dev_priv->crtc_offset_cntl = RADEON_READ( RADEON_CRTC_OFFSET_CNTL );
 
@@ -1373,8 +1362,6 @@ int radeon_wait_ring( drm_radeon_private_t *dev_priv, int n )
 	drm_radeon_ring_buffer_t *ring = &dev_priv->ring;
 	int i;
 
-	printk("Radeon wait ring\n");
-
 	for ( i = 0 ; i < dev_priv->usec_timeout ; i++ ) {
 		radeon_update_ring_snapshot( ring );
 		if ( ring->space > n )
@@ -1387,7 +1374,6 @@ int radeon_wait_ring( drm_radeon_private_t *dev_priv, int n )
 	radeon_status( dev_priv );
 	DRM_ERROR( "failed!\n" );
 #endif
-	printk("Radeon wait ring busy\n");
 	return -EBUSY;
 }
 
