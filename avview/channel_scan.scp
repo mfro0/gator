@@ -112,6 +112,37 @@ for { set i 0 } { $i < $num_entries} { incr i } {
 	}
 }
 
+proc next_encoding { dir } {
+global VIDEO_WINDOW current_port current_encoding_name current_channel
+set ENCODINGS [xv_port_encodings $VIDEO_WINDOW $current_port]
+regexp {^(.*)-(.*)$} $current_encoding_name "" root connector
+set L [list ]
+foreach encoding $ENCODINGS {
+	if { [regexp "^$root" $encoding] } {
+		lappend L $encoding
+		}
+	}
+set i [lsearch $L $current_encoding_name]
+if { $i < 0 } { return }
+incr i $dir
+if { $i < 0 } { set i [expr [llength $L]-1] }
+if { $i >= [llength $L] } { set i 0 }
+set current_encoding_name [lindex $L $i]
+set connector [current_connector]
+if { $connector == "tuner" } {
+	flash_message " Channel $current_channel "
+	} {
+	set a [string totitle $connector]
+	flash_message " $a "
+	}
+}
+
+proc current_connector {} {
+global current_port current_encoding_name
+regexp {^(.*)-(.*)$} $current_encoding_name "" root connector
+return $connector
+}
+
 proc find_first_favorite_channel {start_with dir} {
 global current_channel_menu
 global current_port

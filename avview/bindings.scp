@@ -19,6 +19,7 @@ set avview_bindings {
 	"change_control -1" "<Key-Left>"
 	"save_settings ; exit" "<Control-Key-q>"
 	"save_settings ; exit" "<Key-Escape>"
+	"next_encoding 1" "<Key-i>"
 	}
 set avview_bindings_layout {action default_sequence}
 
@@ -45,6 +46,8 @@ global current_channel
 global current_channel_menu
 global current_table
 
+if { [current_connector] != "tuner" } { return }
+
 set CHANNEL_LIST [freq_get_channel_list $current_table]
 set num_entries [$current_channel_menu index end]
 set current_channel_index [lsearch $CHANNEL_LIST $current_channel]
@@ -63,6 +66,8 @@ proc next_fav_channel { dir } {
 global current_channel
 global current_channel_menu
 global current_table
+
+if { [current_connector] != "tuner" } { return }
 
 set CHANNEL_LIST [freq_get_channel_list $current_table]
 set num_entries [$current_channel_menu index end]
