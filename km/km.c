@@ -103,6 +103,7 @@ memset(stream->dvb.kmsbi, 0 , stream->dvb_info.size);
   radeon cards.
 */
 
+
 stream->dma_table=kmalloc(sizeof(*(stream->dma_table))*num_buffers, GFP_KERNEL);
 for(k=0;k<num_buffers;k++){
 	stream->dvb.free[k]=size;
@@ -127,6 +128,18 @@ stream->next_buf=0;
 return 0;
 }
 
+int verify_dvb(KM_STRUCT *kms, KM_STREAM *stream)
+{
+int i,k;
+#define VERIFY_PAGE(addr)    ((kms->verify_page==NULL)||kms->verify_page(kms, (addr)))
+for(k=0;k<stream->num_buffers;k++){
+	if(!VERIFY_PAGE(kvirt_to_bus(stream->dma_table[k])))return 0;
+	for(i=0;i<(stream->dvb.size/PAGE_SIZE);i++){
+		if(!VERIFY_PAGE(stream->dma_table[k][i].to_addr))return 0;
+		}
+	}
+return 1;
+}
 
 int generic_deallocate_dvb(KM_STREAM *stream)
 {
@@ -186,6 +199,8 @@ int km_add_transfer_request(KM_TRANSFER_QUEUE *kmtq,
 int last;
 spin_lock_irq(&(kmtq->lock));
 last=kmtq->last;
+last++;
+if(last>=kmtq->size)last=0;
 if(kmtq->request[last].flag!=KM_TRANSFER_NOP){
 	printk("km: GUI_DMA queue is full first=%d last=%d flag=0x%08x\n", kmtq->first, kmtq->last,
 		kmtq->request[last].flag);
@@ -198,8 +213,7 @@ kmtq->request[last].buffer=buffer;
 kmtq->request[last].flag=flag;
 kmtq->request[last].start_transfer=start_transfer;
 kmtq->request[last].user_data=user_data;
-kmtq->last++;
-if(kmtq->last>=kmtq->size)kmtq->last=0;
+kmtq->last=last;
 /* check if any transfer has been scheduled */
 if(km_fire_transfer_request(kmtq)){
 	spin_unlock_irq(&(kmtq->lock));
@@ -292,9 +306,15 @@ kms->get_window_parameters(kms, &(kms->vwin));
 
 
 buf_size=kms->vwin.width*kms->vwin.height*2;
+printk("Capture buf size=%d\n", buf_size);
 
 if(kms->allocate_dvb(&(kms->capture), km_buffers, buf_size)<0){
 	result=-ENOMEM;
+	goto fail;
+	}
+if(!verify_dvb(kms, &(kms->capture))){
+	if(kms->deallocate_dvb!=NULL)kms->deallocate_dvb(&(kms->capture));
+	result=-ENOTSUPP;
 	goto fail;
 	}
 kmd_signal_state_change(kms->kmd);
@@ -349,6 +369,11 @@ printk("vbi_buf_size=%ld\n", buf_size);
 
 if(kms->allocate_dvb(&(kms->vbi), km_buffers, buf_size)<0){
 	result=-ENOMEM;
+	goto fail;
+	}
+if(!verify_dvb(kms, &(kms->vbi))){
+	if(kms->deallocate_dvb!=NULL)kms->deallocate_dvb(&(kms->vbi));
+	result=-ENOTSUPP;
 	goto fail;
 	}
 kmd_signal_state_change(kms->kmd);
@@ -558,6 +583,7 @@ switch(pci_id->driver_data){
 		kms->irq_handler=radeon_km_irq;
 		kms->init_hardware=radeon_init_hardware;
 		kms->uninit_hardware=radeon_uninit_hardware;
+		kms->verify_page=radeon_verify_page;
 		break;
 #endif
 #ifndef OMIT_MACH64_DRIVER

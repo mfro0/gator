@@ -20,6 +20,7 @@ void radeon_stop_vbi_transfer(KM_STRUCT *kms);
 void radeon_km_irq(int irq, void *dev_id, struct pt_regs *regs);
 int radeon_init_hardware(KM_STRUCT *kms);
 void radeon_uninit_hardware(KM_STRUCT *kms);
+int radeon_verify_page(KM_STRUCT *kms, long addr);
 
 
 

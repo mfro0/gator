@@ -338,17 +338,53 @@ count=10000;
 
 while(1){
 /*	KM_DEBUG("beep %ld\n", kms->interrupt_count); */
-             /* Check capture registers first */
-	status_cap=readl(kms->reg_aperture+RADEON_CAP_INT_STATUS);
-	mask=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
-	KM_DEBUG_LEVEL(3)("CAP_INT_STATUS=0x%08x mask=0x%08x\n", status_cap, mask);
-	status_cap&=(CAP_INT_BIT_BUF0|CAP_INT_BIT_BUF0_EVEN|
-		     CAP_INT_BIT_BUF1|CAP_INT_BIT_BUF1_EVEN|
-		     CAP_INT_BIT_VBI0|CAP_INT_BIT_VBI1) & mask; /* be nice to other users */
+
+		/* Check interrupt status */
+	status=readl(kms->reg_aperture+RADEON_GEN_INT_STATUS);
+	mask=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL) & ((1<<30)|7);
+	KM_DEBUG_LEVEL(3)("GEN_INT_STATUS=0x%08x mask=0x%08x\n", status, mask);
+	status &=mask & (INT_BIT_GUIDMA|INT_BIT_VLINE|INT_BIT_VSYNC|INT_BIT_VBLANK|INT_BIT_CAP0);
+	if(!status){
+		/* INT_BIT_CAP0 will tell us if any interrupt bits are high */
+		return;
+		}
+	status_cap=0;
+	if(status & INT_BIT_CAP0){
+	             /* Check capture registers */
+		status_cap=readl(kms->reg_aperture+RADEON_CAP_INT_STATUS);
+		mask=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
+		KM_DEBUG_LEVEL(3)("CAP_INT_STATUS=0x%08x mask=0x%08x\n", status_cap, mask);
+		status_cap&=(CAP_INT_BIT_BUF0|CAP_INT_BIT_BUF0_EVEN|
+			     CAP_INT_BIT_BUF1|CAP_INT_BIT_BUF1_EVEN|
+			     CAP_INT_BIT_VBI0|CAP_INT_BIT_VBI1) & mask; /* be nice to other users */
+		}
+	status &= ~INT_BIT_CAP0;
+	
+	     /* Acknowledge if necessary */
+	if(status){
+		writel(status, kms->reg_aperture+RADEON_GEN_INT_STATUS);
+		}
+
+	if(status_cap){
+		writel(status_cap, kms->reg_aperture+RADEON_CAP_INT_STATUS);
+		}
+        wmb();
+		/* Respond to events */
+             /* check DMA and vblank bits in GEN_INT_STATUS */
+	if(status & INT_BIT_GUIDMA){
+		acknowledge_dma(kms);
+		}
+
+	if(status & (INT_BIT_VBLANK|INT_BIT_VLINE|INT_BIT_VSYNC)){
+		if(status & INT_BIT_VBLANK)kms->vblank_count++;
+		if(status & INT_BIT_VLINE)kms->vline_count++;
+		if(status & INT_BIT_VSYNC)kms->vsync_count++;
+		kmd_signal_state_change(kms->kmd);
+		}
+
 	if(status_cap){
 		/*radeon_wait_for_idle(kms); */
 		wmb();
-		writel(status_cap, kms->reg_aperture+RADEON_CAP_INT_STATUS);
 
 		if(status_cap & CAP_INT_BIT_BUF0)radeon_schedule_request(kms, &(kms->capture), kms->buf0_odd_offset, KM_FI_ODD);
 		if(status_cap & CAP_INT_BIT_BUF0_EVEN)radeon_schedule_request(kms, &(kms->capture), kms->buf0_even_offset, 0);
@@ -356,25 +392,6 @@ while(1){
 		if(status_cap & CAP_INT_BIT_BUF1_EVEN)radeon_schedule_request(kms, &(kms->capture), kms->buf1_even_offset, 0);
 		if(status_cap & CAP_INT_BIT_VBI0)radeon_schedule_request(kms, &(kms->vbi),  kms->vbi0_offset, KM_FI_ODD);
 		if(status_cap & CAP_INT_BIT_VBI1)radeon_schedule_request(kms, &(kms->vbi),  kms->vbi1_offset, 0);		
-		}
-             /* check DMA and vblank bits in GEN_INT_STATUS */
-	status=readl(kms->reg_aperture+RADEON_GEN_INT_STATUS);
-	mask=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL) & ((1<<30)|7);
-	KM_DEBUG_LEVEL(3)("GEN_INT_STATUS=0x%08x mask=0x%08x\n", status, mask);
-	status &=mask & (INT_BIT_GUIDMA|INT_BIT_VLINE|INT_BIT_VSYNC|INT_BIT_VBLANK|INT_BIT_CAP0);
-	if(!status && !status_cap){
-		return;
-		}
-	writel(status, kms->reg_aperture+RADEON_GEN_INT_STATUS);
-	if(status & INT_BIT_GUIDMA){
-		wmb();
-		acknowledge_dma(kms);
-		}
-	if(status & (INT_BIT_VBLANK|INT_BIT_VLINE|INT_BIT_VSYNC)){
-		if(status & INT_BIT_VBLANK)kms->vblank_count++;
-		if(status & INT_BIT_VLINE)kms->vline_count++;
-		if(status & INT_BIT_VSYNC)kms->vsync_count++;
-		kmd_signal_state_change(kms->kmd);
 		}
 	count--;
 	if(count<0){
@@ -458,6 +475,23 @@ writel(a|(INT_BIT_VBLANK|INT_BIT_VLINE|INT_BIT_VSYNC), kms->reg_aperture+RADEON_
    cause an interrupt */
 writel(0, kms->reg_aperture+RADEON_CAP_INT_CNTL);
 return 0;
+}
+
+int radeon_verify_page(KM_STRUCT *kms, long addr)
+{
+u32  mc_fb_location, mc_agp_location;
+mc_fb_location=readl(kms->reg_aperture+RADEON_MC_FB_LOCATION);
+mc_agp_location=readl(kms->reg_aperture+RADEON_MC_AGP_LOCATION);
+addr=(addr>>16) & 0xffff;
+if((addr>=(mc_fb_location & 0xffff))&& (addr<=((mc_fb_location >> 16)& 0xffff))){
+	printk(KERN_ERR "km: page address 0x%08x is within framebuffer aperture\n", addr);
+	return 0;
+	}
+if((addr>=(mc_agp_location & 0xffff))&& (addr<=((mc_agp_location >> 16)& 0xffff))){
+	printk(KERN_ERR "km: page address 0x%08x is within AGP aperture\n", addr);
+	return 0;
+	}
+return 1;
 }
 
 void radeon_uninit_hardware(KM_STRUCT *kms)

@@ -131,6 +131,7 @@ typedef struct S_KM_STRUCT {
 	void (*stop_vbi_transfer)(struct S_KM_STRUCT *kms);
 	int (*allocate_dvb)(KM_STREAM *stream, int num_buffers, long size);
 	int (*deallocate_dvb)(KM_STREAM *stream);
+	int (*verify_page)(struct S_KM_STRUCT *kms, long addr);
 	} KM_STRUCT;
 
 int acknowledge_dma(KM_STRUCT *kms);
