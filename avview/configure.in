@@ -4,7 +4,7 @@ AC_PREREQ(2.52)
 # Note to self: always bump version number when there are changes
 # in setup window or avview_shell
 #
-AC_INIT([AVview], [0.10.8], [gatos-devel@lists.sf.net])
+AC_INIT([AVview], [0.10.9], [gatos-devel@lists.sf.net])
 #
 # For now I'll be happier without NEWS and Changelog files.
 #
