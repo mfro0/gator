@@ -1719,6 +1719,7 @@ RADEONSetupImageVideo(ScreenPtr pScreen)
 	        xf86DrvMsg(pScrn->scrnIndex,X_INFO,"Detected Radeon Mobility M6, disabling i2c and Rage Theatre\n");
 		break;
 	case PCI_CHIP_RADEON_LW:
+  	    	pPriv->theatre=xf86_DetectTheatre(pPriv->VIP);
 	        xf86DrvMsg(pScrn->scrnIndex,X_INFO,"Detected Radeon Mobility M7, disabling i2c and Rage Theatre\n");
 		break;
 	default:
