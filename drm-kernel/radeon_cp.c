@@ -451,7 +451,6 @@ int radeon_do_cp_idle( drm_radeon_private_t *dev_priv )
 {
 	RING_LOCALS;
 	DRM_DEBUG( "%s\n", __FUNCTION__ );
-	printk("radeon_do_cp_idle\n");
 
 	BEGIN_RING( 6 );
 
@@ -590,7 +589,7 @@ static void radeon_cp_init_ring_buffer( drm_device_t *dev,
 	#endif
 	RADEON_WRITE( RADEON_MC_FB_LOCATION, 
 			((dev_priv->fb->offset>>16)&0xffff)|
-			((dev_priv->fb->offset+dev_priv->fb->size-1)&0xffff0000));
+			((dev_priv->fb->offset+RADEON_READ(RADEON_CONFIG_APER_SIZE)-1)&0xffff0000));
 
 	RADEON_WRITE( RADEON_DISPLAY_BASE_ADDR, dev_priv->fb->offset);
 	RADEON_WRITE( RADEON_OVERLAY_BASE_ADDR, dev_priv->fb->offset);

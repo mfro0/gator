@@ -450,7 +450,7 @@ static void radeon_clear_box( drm_radeon_private_t *dev_priv,
 #if 0
 	OUT_RING( (pitch << 22) | ((offset) >> 5) );
 #endif
-	OUT_RING( (pitch << 22) | ((offset+dev_priv->fb_offset) >> 10) );
+	OUT_RING( (pitch << 22) | ((offset) >> 10) );
 	OUT_RING( color );
 
 	OUT_RING( (x << 16) | y );
@@ -1109,7 +1109,6 @@ static int radeon_cp_dispatch_texture( drm_device_t *dev,
 	buffer[7] = dwords;
 
 	buffer += 8;
-	printk("buffer=0x%08x data=0x%08x\n", buffer, data);
 	if ( tex_width >= 32 ) {
 		/* Texture image width is larger than the minimum, so we
 		 * can upload it directly.
