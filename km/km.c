@@ -1022,7 +1022,7 @@ static struct pci_driver radeon_km_pci_driver = {
 */
 
 #ifdef MODULE
-static int __init init_module(void)
+static int km_init_module(void)
 {
 int result;
 struct pci_dev *pdev=0;
@@ -1050,13 +1050,16 @@ if(result<0)printk("km: **** no supported devices found ****\n");
 return result;
 }
 
-void cleanup_module(void)
+void km_cleanup_module(void)
 {
 int i;
 for(i=0;i<num_devices;i++)
 	km_remove(km_devices[i].dev, &(km_devices[i]));
 return;
 }
+
+module_init(km_init_module);
+module_exit(km_cleanup_module);
 
 
 #endif
