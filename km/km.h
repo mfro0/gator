@@ -2,7 +2,7 @@
 #define __KM_H__
 
 #include <linux/videodev.h>
-#include <asm/spinlock.h>
+#include <linux/spinlock.h>
 #include "km_api.h"
 
 #define KM_VERSION      "alpha-2.0"
