@@ -585,10 +585,14 @@ static int __devinit km_probe(struct pci_dev *dev, const struct pci_device_id *p
 	/* too many */
 	if(num_devices>=MAX_DEVICES)return -1;
 
+#ifdef LINUX_2_6
 #ifdef CONFIG_PCI_NAMES
 	printk(KERN_INFO "km: probing %s\n",dev->pretty_name);
 #else
 	printk(KERN_INFO "km: probing %s\n",dev->slot_name);
+#endif
+#else
+	printk(KERN_INFO "km: probing %s\n",dev->name);
 #endif
 
 	switch(pci_id->driver_data){
@@ -1006,8 +1010,10 @@ static struct pci_device_id km_pci_tbl [] = {
          PCI_ANY_ID, PCI_ANY_ID, 0, 0, HARDWARE_RAGE128},	 
         {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_RAGE128_LF,
          PCI_ANY_ID, PCI_ANY_ID, 0, 0, HARDWARE_RAGE128},
+#ifdef PCI_DEVICE_ID_ATI_RAGE128_TF
         {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_RAGE128_TF,
          PCI_ANY_ID, PCI_ANY_ID, 0, 0, HARDWARE_RAGE128},
+#endif
 #ifdef PCI_DEVICE_ID_ATI_RAGE128_U1
         {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_RAGE128_U1,
          PCI_ANY_ID, PCI_ANY_ID, 0, 0, HARDWARE_RAGE128},	 
