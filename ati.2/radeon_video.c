@@ -232,15 +232,15 @@ static XF86VideoEncodingRec
 InputVideoEncodings[] =
 {
     { 0, "XV_IMAGE",			2048,2048,{1,1}},        
-    { 1, "pal-composite",		720, 240, { 1, 50 }},
-    { 2, "pal-tuner",			720, 240, { 1, 50 }},
-    { 3, "pal-svideo",			720, 240, { 1, 50 }},
+    { 1, "pal-composite",		720, 288, { 1, 50 }},
+    { 2, "pal-tuner",			720, 288, { 1, 50 }},
+    { 3, "pal-svideo",			720, 288, { 1, 50 }},
     { 4, "ntsc-composite",		640, 240, { 1001, 60000 }},
     { 5, "ntsc-tuner",			640, 240, { 1001, 60000 }},
     { 6, "ntsc-svideo",			640, 240, { 1001, 60000 }},
-    { 7, "secam-composite",		720, 240, { 1, 50 }},
-    { 8, "secam-tuner",			720, 240, { 1, 50 }},
-    { 9, "secam-svideo",		720, 240, { 1, 50 }},
+    { 7, "secam-composite",		720, 288, { 1, 50 }},
+    { 8, "secam-tuner",			720, 288, { 1, 50 }},
+    { 9, "secam-svideo",		720, 288, { 1, 50 }},
     { 10,"pal_60-composite",		768, 288, { 1, 50 }},
     { 11,"pal_60-tuner",		768, 288, { 1, 50 }},
     { 12,"pal_60-svideo",		768, 288, { 1, 50 }}
