@@ -256,6 +256,7 @@ proc set_encoding {name1 name2 op} {
 global current_encoding_name 
 global current_encoding
 global current_port
+global current_video_rate
 global VIDEO_WINDOW
 
 if { $current_port == "none" } { return }
@@ -264,6 +265,17 @@ set ENCODINGS [xv_port_encodings $VIDEO_WINDOW $current_port]
 set current_encoding [lsearch $ENCODINGS $current_encoding_name]
 if { $current_encoding > 0 } {
 	on_attribute_change XV_ENCODING current_encoding a b
+	switch -glob -- "$current_encoding_name" \
+		"*pal*" {
+			set current_video_rate 50
+			} \
+		"*secam*" {
+			set current_video_rate 50
+			} \
+		"*ntsc*" {
+			set current_video_rate 60
+			}			
+			
 	}
 }
 

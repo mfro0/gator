@@ -216,6 +216,7 @@ void ffmpeg_audio_encoding_thread(PACKET_STREAM *s)
 {
 unsigned char *out_buf;
 long ob_size, ob_free, ob_written, i;
+int frame_size;
 PACKET *f;
 ob_size=sdata->alsa_param.chunk_size;
 out_buf=do_alloc(ob_size, 1);
@@ -464,6 +465,9 @@ switch(data->mode){
 		sdata->video_codec_context.height=vwin.height;
 		break;
 	}
+sdata->video_codec_context.frame_rate=0;
+if(arg_v4l_rate!=NULL)sdata->video_codec_context.frame_rate=atol(arg_v4l_rate)*FRAME_RATE_BASE;
+if(sdata->video_codec_context.frame_rate<0)sdata->video_codec_context.frame_rate=0;
 sdata->video_codec_context.frame_rate=60*FRAME_RATE_BASE;
 if(sdata->step_frames>0)sdata->video_codec_context.frame_rate=sdata->video_codec_context.frame_rate/sdata->step_frames;
 a=(((800000.0*vwin.width)*vwin.height)*sdata->video_codec_context.frame_rate);
@@ -494,11 +498,13 @@ if(alsa_setup_reader_thread(sdata->audio_s, argc, argv, &(sdata->alsa_param))<0)
 	}
 arg_audio_codec=get_value(argc, argv, "-audio_codec");
 sdata->audio_codec=avcodec_find_encoder(CODEC_ID_PCM_S16LE); 
+fprintf(stderr,"Using audio_codec=%s\n", arg_audio_codec);
 if(arg_audio_codec==NULL){
-	/* nothing */
+	/* default to MPEG-2 */
+	sdata->audio_codec=&mp2_encoder;
 	} else
 if(!strcasecmp(arg_audio_codec,"MPEG-2")){
-	sdata->audio_codec=avcodec_find_encoder(CODEC_ID_MP2); 
+	sdata->audio_codec=&mp2_encoder;
 	} else 
 if(!strcasecmp(arg_audio_codec,"AC-3")){
 	sdata->audio_codec=avcodec_find_encoder(CODEC_ID_AC3); 
@@ -514,14 +520,25 @@ sdata->audio_codec_context.channels=sdata->alsa_param.channels;
 sdata->audio_codec_context.codec_id=sdata->audio_codec->id;
 sdata->audio_codec_context.sample_fmt=SAMPLE_FMT_S16;
 sdata->audio_codec_context.codec_type=sdata->audio_codec->type;
+sdata->audio_codec_context.frame_size=sdata->alsa_param.chunk_size/(2*sdata->alsa_param.channels);
 if(sdata->audio_codec->priv_data_size==0){
 	fprintf(stderr,"BUG: sdata->audio_codec->priv_data_size==0, fixing it\n");
-	sdata->audio_codec->priv_data_size=2*1024*1024; /* 2megs should be enough */
+	sdata->audio_codec->priv_data_size=1024*1024; /* 2megs should be enough */
 	}
-if(avcodec_open(&(sdata->audio_codec_context), sdata->audio_codec)<0){
+if(avcodec_open(&(sdata->audio_codec_context), sdata->audio_codec)!=0){
 	return 0;
 	}
-if(sdata->audio_codec_context.frame_size>1)
+fprintf(stderr,"audio_codec: bit_rate=%d sample_rate=%d frame_size=%d\n",
+	sdata->audio_codec_context.bit_rate,
+	sdata->audio_codec_context.sample_rate,
+	sdata->audio_codec_context.frame_size);
+
+if(sdata->audio_codec_context.frame_size==1){
+	fprintf(stderr,"BUG: sdata->audio_codec->frame_size==1, fixing it\n");
+	sdata->audio_codec_context.frame_size=1152; /* magic number from ../ffmpeg/libavcodec/mpegaudio.h */
+	}
+	
+if(sdata->audio_codec_context.frame_size>=1)
 	sdata->alsa_param.chunk_size=sdata->audio_codec_context.frame_size*2*sdata->alsa_param.channels;
 return 1;
 }
