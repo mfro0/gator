@@ -334,6 +334,8 @@ b=(352.0*288.0*25.0*FRAME_RATE_BASE);
 sdata->codec_context.bit_rate=rint(a/b);
 fprintf(stderr,"Using bitrate=%d, frame_rate=%d a=%g b=%g\n", sdata->codec_context.bit_rate, sdata->codec_context.frame_rate,a,b);
 sdata->codec_context.pix_fmt=PIX_FMT_YUV422;
+sdata->codec_context.flags=CODEC_FLAG_QSCALE;
+sdata->codec_context.quality=2;
 if(avcodec_open(&(sdata->codec_context), sdata->codec)<0){
 	close(sdata->fd_out);
 	free(sdata);
