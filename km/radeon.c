@@ -38,7 +38,7 @@ void radeon_start_transfer(KM_STRUCT *kms)
 u32 a;
 
 a=readl(kms->reg_aperture+RADEON_BUS_CNTL);
-printk("BUS_CNTL=0x%08x\n");
+printk("RADEON_BUS_CNTL=0x%08x\n");
 /* enable bus mastering */
 if(a & (1<<6)){ 
 	printk("Enabling bus mastering\n");

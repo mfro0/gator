@@ -1,0 +1,202 @@
+              Kernel multimedia architecture
+
+0) Motivation
+    v4l, v4l2 and Xv are all suffering from the same problem: attempt to fit 
+    existing multimedia devices into a fixed scheme. The use of pre-defined
+    structs to describe parameters of device is inherently wrong because
+    these parameters vary widely. This leads to either bloating of the control
+    structures with parameters used only by few devices, proliferation of
+    device-specific ioctl and/or struct versioning. This also makes it increasingly
+    hard to implement support for new parameters.
+
+    The solution, IMO, is to move away from hard-coded models of multimedia
+    devices and instead allow greater flexibility to driver developers by
+    providing _symbolic_ interface. 
+    
+    The specific details follow, but the core idea is as follows:
+    
+    a) for each hardware device/subsystem there is a "control" device
+     which user application can use to set/query parameters. For example,
+     to set hue it can issue a command like:
+      HUE=7\n
+     to be replied with
+     +\n
+     (indicating that the command succeeded)
+     or
+     -HUE=INVALID
+     if HUE attribute is not available.
+     To query picture size it can issue:
+     ?WIDTH,HEIGHT\n
+     To be replied with
+     +WIDTH=640,HEIGHT=480\n
+     In case the device supports it.
+     
+    b) for some devices (all capture or output devices) there is one (or more ?)
+       "data" device. 
+       
+       The data device is meant for high-speed transfer of data. The data is 
+       accessed by memory mapping the data device (the size is found out via
+       control device). 
+       
+       The beginning of the memory mapping is a control/status struct whose
+       primary use is exchange of information and synchronization between
+       application and kernel driver. 
+       
+       For example, for a frame grabber the control struct will have (at least)
+       three fields for each buffer: timestamp, number,  and busy. 
+       "busy" will be set when the buffer is acquiring new data,
+       "timestamp"  will be an integer value monotonically increasing with time 
+       and "number" will be the serial number of the captured frame.
+       
+       When capturing video the application will read data from the buffers
+       until it encounters one with smaller serial number and/or marked as busy.
+       It then has an option to do something else and/or issue a request
+       on control interface to notify when more data is available.
+       
+       The advantage of this scheme is elimination of context switches
+       due to ioctl and selects, but, more importantly, elimination of the
+       numereous ioctls whose sole purpose is to transfer data between 
+       application and the kernel.
+       
+    c) So far we replaced numerous ioctl with a control interface and a control struct.
+       However the question of the format of the control struct still remains.
+       The answer is that the format itself is quieried via control interface:
+       
+       ?GLOBAL_PARAM_OFFSET           returns the offset of the global parameter area
+       ?GLOBAL_PARAM_FORMAT           returns the interface class of the global
+                                      parameter area followed by the lists of fields
+				      and offsets within that area
+	?BUFFERS_COUNT                returns the number of buffers
+	?BUFFER_OFFSET,BUFFER=X       returns the offset of the buffer
+	?BUFFER_PARAM_OFFSET,BUFFER=X returns the offset of the buffer-specific
+	                              parameter area
+	?BUFFER_PARAM_FORMAT,BUFFER=X returns the interface class of the 
+	                               buffer specific parameter area
+				       followed by list of fields and offsets
+				       within that parameter area
+
+     d) Questions that occured to me while I was writing this:
+     
+              Q1) Should something that complex be in the kernel?
+	      A1) The control language is very simple. An example of
+	         something similar would be software modems and ISDN
+		 which must be able to parse AT command set.
+
+	      Q2) Is it really necessary to bloat video drivers with
+	          parsing functions
+	      A2) the idea is that there will be a library of functions
+	          used by all drivers simultaneously. The driver code
+		  will only need to declare it structures and let the
+		  library know about them - the actual interface code
+		  will be common to all drivers
+
+       
+1) User-space interface basics
+
+     /devfs/multimedia/devices   - a text file that enumerates known devices
+     /devfs/multimedia/control/deviceX - control devices
+     /devfs/multimedia/data/dataY    - high-speed data devices
+       (X and Y are numbers)     
+     
+     Protocol:
+     
+     a) user application reads /etc/fstab (/etc/mtab) to find out where /devfs
+      is mounted.
+      
+     b) user application reads /devfs/multimedia/devices to find out about
+        devices present
+	
+     c) to open a device it opens /devfs/multimeda/control/* and negotiates
+        parameters/performs control functions
+	
+     d) when data transfer is needed it queries /devfs/multimedia/control/deviceX
+        about port number for the data interface and opens
+	/devfs/multimedia/data/portY for R/W or R depending on intended purpose
+	
+	It then queries /devfs/multimedia/control/deviceX about the size of
+	data interface region of portY and memory maps the area with R/W or R
+	privileges. 
+	
+	Next it queries control deviceX about the size and format of control
+	section of data interface region of portY which is always located in
+	the beginning of data interface region.
+	
+	It obtains buffer information from the control section of data interface
+	region.
+	
+     e) to make actual transfer it uses interface specific protocol
+     
+2) User-space interface: control interface protocol
+
+control interfaces and /devfs/multimedia/devices are character based devices.
+The negotiation, command issue and query is conducted in the following fashion:
+Each request/query takes one line and is terminated by '\n'. The request
+consists of status character and several fields. Examples:
+
+a)
+?PCI_ID\n
+
+b)
+ REPORT_VSYNC=1\n
+(space)
+
+c)
+?FRAME_RATE,WIDTH=640,HEIGHT=480\n
+
+d)
++\n
+
+e)
+-PCI_ID=INVALID\n
+
+f)
+:VSYNC=4\n
+
+
+       Status character        Description
+------------------------------------------------------------------------------
+             ?                 Perform query, no device state is changed
+	     ' ' (space)       Execute. Parameters are set and/or action is 
+	                       performed.
+	     +                 Reply: query/command succeeded. Addition information
+	     			may follow (esp. in the case of query)
+	     -                 Reply: query/command failed. In particular this 
+	                       is returned if certain fields are not recognized
+			       by the driver. In this case the fields are always
+			       appended as in e) (for example this could be
+			       returned for a USB device).
+	     :                 Indicates out-of-sequence reply. Normally each
+	      			query/command is responded to with a + or -
+				reply. However, sometimes that driver needs to
+				report a state change (i.e. in example f it
+				reports that 4 interrupts occured since
+				last report) without propmting of user-space
+				application.
+				
+/devfs/multimedia/devices format
+
+Each line represents one device or subsystem of a device. The following fields
+are required:
+
+     DEVICE_ID                  an identifier specific to this device
+                                it should be the same if the device is
+				plugged into a different port or a different
+				computer
+     LOCATION_ID                an identifier specific to the location of the
+                                device. All devices plugged into the same
+				port should have the same LOCATION_ID.
+				Example: PCI_ID for PCI cards
+     INSTANCE_ID                an identifier specific to the device
+     			        it is required to be unique for each device
+				in the system
+All *_ID fields should be composed by attaching different strings with "-"
+so that the user can use pattern matching ala X fonts.
+
+     The following fields are optional:
+     
+      CONTROL                    specifies the number of the control 
+                                 interface used for this device
+      SUBSYSTEM_OF               specifies INSTANCE_ID of the device this one
+                                 is a subsystem of. Useful for devices that
+				 provide more then one hardware interface.
+
