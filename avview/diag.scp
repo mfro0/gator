@@ -56,11 +56,27 @@ grid $pane.f.text - $pane.f.vsb -sticky news
 grid $pane.f.hsb - - -sticky news
 grid columnconfig $pane.f 1 -weight 1
 grid rowconfig $pane.f 1 -weight 1
-$pane.f.refresh invoke
+global empty.$pane
+set empty.$pane true
+#
+# Delay obtaining diagnostic information until such
+# time as the window becomes visible
+#
+# This is because some the commands (like glxinfo)
+# can crash X when things go wrong (i.e. broken 3d)
+#
+bind $pane.f <Visibility> [subst -nocommands {
+	global empty.$pane
+	if { [set empty.$pane ] } {
+		set empty.$pane false
+		$pane.f.refresh invoke
+		}
+	} ]
 }
 
 
-foreach {command desc index} {xvinfo "XVideo extension information" 0.0
+foreach {command desc index} {
+	xvinfo "XVideo extension information" 0.0
 	glxinfo "GLx extension information" 0.0 
 	dmesg  "Linux kernel debug messages" end
 	xdpyinfo "X server information" 0.0 } {
