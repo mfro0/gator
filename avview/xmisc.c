@@ -504,12 +504,12 @@ if(xsi==NULL){
 	Tcl_AppendResult(interp,"ERROR: xmisc_xinerama_query_screens: could not obtain screen info", NULL);
 	return TCL_ERROR;	
 	}
-ans=Tcl_NewListObj(interp, NULL);
+ans=Tcl_NewListObj(0, NULL);
 for(i=0;i<num;i++){
 	Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("screen",-1));
 	Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj(xsi[i].screen_number));
 	Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("coords",-1));
-	l=Tcl_NewListObj(interp, NULL);
+	l=Tcl_NewListObj(0, NULL);
 	Tcl_ListObjAppendElement(interp, l, Tcl_NewIntObj(xsi[i].x_org));
 	Tcl_ListObjAppendElement(interp, l, Tcl_NewIntObj(xsi[i].y_org));
 	Tcl_ListObjAppendElement(interp, l, Tcl_NewIntObj(xsi[i].width));
