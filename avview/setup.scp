@@ -192,18 +192,18 @@ foreach {description type var} $args {
 			# use several colums when we have a lot of choices
 			#
 			set num_options [expr [llength $var]-1]
-			set height [expr round(sqrt($num_options))]
-			if { $height < 5 } { set height 5 }
+			set height [expr ceil(4*sqrt($num_options)/3)]
+			if { $height < 6 } { set height 6 }
 			if { $num_options < 10 } { set height $num_options } 
 			#
 			#
-			set i 0
+			set i 1
 			foreach choice [lrange $var 2 end] {
 				if { $i < $height } { 
 					set cb 0 
 					} { 
 					set cb 1
-					set i -1
+					set i 0
 					}
 				$menu add radiobutton -label "$choice" -variable "$choice_var" -value "$choice" \
 					-columnbreak $cb
