@@ -139,7 +139,8 @@ static Atom xvBrightness, xvColorKey, xvSaturation, xvDoubleBuffer,
 	     xvRedIntensity,xvGreenIntensity,xvBlueIntensity,
              xvEncoding, xvVolume, xvMute, xvFrequency, xvContrast, xvHue, xvColor,
 	     xv_autopaint_colorkey, xv_set_defaults,
-	     xvDecBrightness, xvDecContrast, xvDecHue, xvDecColor, xvDecSaturation;
+	     xvDecBrightness, xvDecContrast, xvDecHue, xvDecColor, xvDecSaturation,
+	     xvTunerStatus;
 
 
 
@@ -221,7 +222,7 @@ static XF86VideoFormatRec Formats[NUM_FORMATS] =
 };
 
 
-#define NUM_DEC_ATTRIBUTES 17+3
+#define NUM_DEC_ATTRIBUTES 18+3
 #define NUM_ATTRIBUTES 9+3
 
 static XF86AttributeRec Attributes[NUM_DEC_ATTRIBUTES+1] =
@@ -244,6 +245,7 @@ static XF86AttributeRec Attributes[NUM_DEC_ATTRIBUTES+1] =
    {XvSettable | XvGettable, -1000, 1000, "XV_DEC_HUE"},
    {XvSettable | XvGettable, 0, 12, "XV_ENCODING"},
    {XvSettable | XvGettable, 0, -1, "XV_FREQ"},
+   {XvGettable, -1000, 1000, "XV_TUNER_STATUS"},
    {XvSettable | XvGettable, 0x01, 0x7F, "XV_VOLUME"},
    {XvSettable | XvGettable, 0, 1, "XV_MUTE"},
    { 0, 0, 0, NULL}  /* just a place holder so I don't have to be fancy with commas */
@@ -628,6 +630,7 @@ void RADEONResetVideo(ScrnInfoPtr pScrn)
     xvDoubleBuffer = MAKE_ATOM("XV_DOUBLE_BUFFER");
     xvEncoding     = MAKE_ATOM("XV_ENCODING");
     xvFrequency    = MAKE_ATOM("XV_FREQ");
+    xvTunerStatus  = MAKE_ATOM("XV_TUNER_STATUS");
     xvVolume       = MAKE_ATOM("XV_VOLUME");
     xvMute         = MAKE_ATOM("XV_MUTE");
     xvHue          = MAKE_ATOM("XV_HUE");
@@ -2025,10 +2028,13 @@ RADEONSetPortAttribute(
   } else 
   if(attribute == xvFrequency) {
         pPriv->frequency = value;
-  	if(pPriv->fi1236 != NULL) xf86_FI1236_tune(pPriv->fi1236, value);
+	/* mute volume if it was not muted before */
+	if((pPriv->msp3430!=NULL)&& !pPriv->mute)xf86_MSP3430SetVolume(pPriv->msp3430, MSP3430_FAST_MUTE);
+  	if(pPriv->fi1236 != NULL) xf86_TUNER_set_frequency(pPriv->fi1236, value);
 /*        if(pPriv->theatre != NULL) RADEON_RT_SetEncoding(pPriv);  */
 	if((pPriv->msp3430 != NULL) && (pPriv->msp3430->recheck))
 		xf86_InitMSP3430(pPriv->msp3430);
+        if((pPriv->msp3430 != NULL)&& !pPriv->mute) xf86_MSP3430SetVolume(pPriv->msp3430, pPriv->volume);
   } else 
   if(attribute == xvMute) {
         pPriv->mute = value;
@@ -2107,6 +2113,14 @@ RADEONGetPortAttribute(
   } else 
   if(attribute == xvFrequency) {
         *value = pPriv->frequency;
+  } else 
+  if(attribute == xvTunerStatus) {
+  	if(pPriv->fi1236==NULL){
+		*value=FI1236_OFF;
+		} else
+		{
+	        *value = xf86_TUNER_get_afc_hint(pPriv->fi1236);
+		}
   } else 
   if(attribute == xvMute) {
         *value = pPriv->mute;

@@ -261,10 +261,18 @@ I2C_WriteRead(&(f->d), (I2CByte *)data, 2, NULL, 0);
 MT2032_wait_for_lock(f);
 }
 
-#define FI1236_TUNED   0
-#define FI1236_JUST_BELOW 1
-#define FI1236_JUST_ABOVE -1
-#define FI1236_OFF      4
+static int FI1236_get_afc_hint(FI1236Ptr f)
+{
+CARD8 out;
+CARD8 AFC;
+I2C_WriteRead(&(f->d), NULL, 0, &out, 1);
+AFC=out & 0x7;
+if(AFC==2)return FI1236_TUNED;
+if(AFC==3)return FI1236_JUST_BELOW;
+if(AFC==1)return FI1236_JUST_ABOVE;
+return FI1236_OFF;
+}
+
 
 static int MT2032_get_afc_hint(FI1236Ptr f)
 {
@@ -278,6 +286,14 @@ if(AFC==2)return FI1236_TUNED;
 if(AFC==3)return FI1236_JUST_BELOW;
 if(AFC==1)return FI1236_JUST_ABOVE;
 return FI1236_OFF;
+}
+
+int TUNER_get_afc_hint(FI1236Ptr f)
+{
+if(f->type==TUNER_TYPE_MT2032)
+	return MT2032_get_afc_hint(f);
+	else
+	return FI1236_get_afc_hint(f);
 }
 
 static void MT2032_dump_parameters(FI1236Ptr f, MT2032_parameters *m)
@@ -363,14 +379,6 @@ void FI1236_tune(FI1236Ptr f, CARD32 frequency)
     if(frequency < f->parm.min_freq) frequency = f->parm.min_freq;
     if(frequency > f->parm.max_freq) frequency = f->parm.max_freq;
 
-    f->afc_delta=0;
-    f->original_frequency=frequency;
-
-    if(f->type==TUNER_TYPE_MT2032){
-    	MT2032_tune_NTSC(f, (1.0*frequency)/16.0, 0.0625);
-	goto done;
-	}
-
     divider = (f->parm.fcar+(CARD16)frequency) & 0x7fff;
     f->tuner_data.div1 = (CARD8)((divider>>8)&0x7f);
     f->tuner_data.div2 = (CARD8)(divider & 0xff);
@@ -393,15 +401,32 @@ void FI1236_tune(FI1236Ptr f, CARD32 frequency)
     xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "Setting tuner frequency to %d\n", frequency);
 #endif    
     I2C_WriteRead(&(f->d), (I2CByte *)&(f->tuner_data), 4, NULL, 0);
-done:
-     if(!f->afc_timer_installed){
+}
+
+void TUNER_set_frequency(FI1236Ptr f, CARD32 frequency)
+{
+    CARD16 divider;
+
+    if(frequency < f->parm.min_freq) frequency = f->parm.min_freq;
+    if(frequency > f->parm.max_freq) frequency = f->parm.max_freq;
+
+    f->afc_delta=0;
+    f->original_frequency=frequency;
+
+    if(f->type==TUNER_TYPE_MT2032){
+    	MT2032_tune_NTSC(f, (1.0*frequency)/16.0, 0.0625);
+	} else {
+	FI1236_tune(f, frequency);
+	}
+    
+    if(!f->afc_timer_installed){
      	f->afc_timer_installed=TRUE;
-        xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "set AFC: f=%p\n", f);
 /*     	RegisterBlockAndWakeupHandlers(FI1236_BlockHandler, AFCWakeup, f); */
 	TimerSet(NULL, 0, 300, AFC_TimerCallback, f);
 	}
 	
 }
+
 
 int FI1236_AFC(FI1236Ptr f)
 {
@@ -417,6 +442,17 @@ int FI1236_AFC(FI1236Ptr f)
 		f->afc_delta+=afc_hint;
         xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "AFC: Setting tuner frequency to %g\n", (0.5*(2*f->original_frequency+f->afc_delta))/16.0);
     	MT2032_tune_NTSC(f, (1.0*f->original_frequency+0.5*f->afc_delta)/16.0, 0.03125);
+	if(afc_hint==FI1236_OFF)return 0;
+	return 1; /* call me again */
+	} else {
+    	afc_hint=FI1236_get_afc_hint(f);
+	if(afc_hint==FI1236_TUNED)return 0;
+	if(afc_hint==FI1236_OFF){
+		f->afc_delta=0;
+		} else
+		f->afc_delta+=afc_hint;
+        xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "AFC: Setting tuner frequency to %g\n", (0.5*(2*f->original_frequency+f->afc_delta))/16.0);
+	FI1236_tune(f, f->original_frequency+f->afc_delta);
 	if(afc_hint==FI1236_OFF)return 0;
 	return 1; /* call me again */
 	}

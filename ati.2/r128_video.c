@@ -63,7 +63,7 @@ static void R128VideoTimerCallback(ScrnInfoPtr pScrn, Time now);
 
 static Atom xvBrightness, xvColorKey, xvSaturation, xvColor, xvDoubleBuffer, 
           xvEncoding, xvVolume, xvMute, xvFrequency, xvContrast, xvHue,
-	  xv_autopaint_colorkey, xv_set_defaults;
+	  xv_autopaint_colorkey, xv_set_defaults, xvTunerStatus;
 
 typedef struct
 {
@@ -219,7 +219,7 @@ static XF86VideoFormatRec Formats[NUM_FORMATS] =
 };
 
 
-#define NUM_ATTRIBUTES 13
+#define NUM_ATTRIBUTES 14
 
 static XF86AttributeRec Attributes[NUM_ATTRIBUTES+1] =
 {
@@ -229,6 +229,7 @@ static XF86AttributeRec Attributes[NUM_ATTRIBUTES+1] =
    {XvSettable | XvGettable, 0, 1, "XV_DOUBLE_BUFFER"},
    {XvSettable | XvGettable, 0, 12, "XV_ENCODING"},
    {XvSettable | XvGettable, 0, -1, "XV_FREQ"},
+   {XvGettable, -1000, 1000, "XV_TUNER_STATUS"},
    {XvSettable | XvGettable, -1000, 1000, "XV_BRIGHTNESS"},
    {XvSettable | XvGettable, -1000, 1000, "XV_CONTRAST"},
    {XvSettable | XvGettable, -1000, 1000, "XV_SATURATION"},
@@ -363,6 +364,7 @@ R128ResetVideo(ScrnInfoPtr pScrn)
     xvColorKey     = MAKE_ATOM("XV_COLORKEY");
     xvDoubleBuffer = MAKE_ATOM("XV_DOUBLE_BUFFER");
     xvEncoding     = MAKE_ATOM("XV_ENCODING");
+    xvTunerStatus  = MAKE_ATOM("XV_TUNER_STATUS");
     xvFrequency    = MAKE_ATOM("XV_FREQ");
     xvVolume       = MAKE_ATOM("XV_VOLUME");
     xvMute         = MAKE_ATOM("XV_MUTE");
@@ -1622,7 +1624,7 @@ R128SetPortAttribute(
         pPriv->frequency = value;
 	save_mute = pPriv->mute;
 	R128MuteAudio(pPriv, TRUE);
-  	if(pPriv->fi1236 != NULL) xf86_FI1236_tune(pPriv->fi1236, value);
+  	if(pPriv->fi1236 != NULL) xf86_TUNER_set_frequency(pPriv->fi1236, value);
 	if((pPriv->msp3430 != NULL) && (pPriv->msp3430->recheck))
 		xf86_InitMSP3430(pPriv->msp3430);
 	R128MuteAudio(pPriv, save_mute);
@@ -1684,6 +1686,14 @@ R128GetPortAttribute(
   } else 
   if(attribute == xvFrequency) {
         *value = pPriv->frequency;
+  } else 
+  if(attribute == xvTunerStatus) {
+  	if(pPriv->fi1236==NULL){
+		*value=FI1236_OFF;
+		} else
+		{
+	        *value = xf86_TUNER_get_afc_hint(pPriv->fi1236);
+		}
   } else 
   if(attribute == xvMute) {
         *value = pPriv->mute;

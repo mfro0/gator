@@ -137,7 +137,7 @@ static void ATIVideoTimerCallback(ScrnInfoPtr pScrn, Time time);
 
 static Atom xvBrightness, xvColorKey, xvSaturation, xvColor, xvHue, xvContrast,
         xvDoubleBuffer, xvEncoding, xvVolume, xvMute, xvFrequency, xv_autopaint_colorkey,
-	xv_set_defaults;
+	xv_set_defaults, xvTunerStatus;
 
 typedef struct
 {
@@ -313,7 +313,7 @@ static XF86VideoFormatRec Formats[NUM_FORMATS] =
 };
 
 
-#define NUM_ATTRIBUTES 13
+#define NUM_ATTRIBUTES 14
 
 /* +1 for the NULL string.. it is not actually used */
 static XF86AttributeRec Attributes[NUM_ATTRIBUTES+1] =
@@ -324,6 +324,7 @@ static XF86AttributeRec Attributes[NUM_ATTRIBUTES+1] =
    {XvSettable | XvGettable, 0, 1, "XV_DOUBLE_BUFFER"},
    {XvSettable | XvGettable, 0, 12, "XV_ENCODING"},
    {XvSettable | XvGettable, 0, -1, "XV_FREQ"},
+   {XvGettable, -1000, 1000, "XV_TUNER_STATUS"},
    {XvSettable | XvGettable, 0, 1, "XV_MUTE"},
    {XvSettable | XvGettable, 0x01, 0x7F, "XV_VOLUME"},
    {XvSettable | XvGettable, -1000, 1000, "XV_BRIGHTNESS"},
@@ -342,6 +343,7 @@ static XF86AttributeRec AIWClassicAttributes[NUM_ATTRIBUTES] =
    {XvSettable | XvGettable, 0, 1, "XV_DOUBLE_BUFFER"},
    {XvSettable | XvGettable, 0, 12, "XV_ENCODING"},
    {XvSettable | XvGettable, 0, -1, "XV_FREQ"},
+   {XvGettable, -1000, 1000, "XV_TUNER_STATUS"},
    {XvSettable | XvGettable, 0, 1, "XV_MUTE"},
    {XvSettable | XvGettable, -1000, 1000, "XV_HUE"},
    {XvSettable | XvGettable, -1000, 1000, "XV_BRIGHTNESS"},
@@ -428,6 +430,7 @@ void ATIResetVideo(ScrnInfoPtr pScrn)
     xvDoubleBuffer = MAKE_ATOM("XV_DOUBLE_BUFFER");
     xvEncoding     = MAKE_ATOM("XV_ENCODING");
     xvFrequency    = MAKE_ATOM("XV_FREQ");
+    xvTunerStatus  = MAKE_ATOM("XV_TUNER_STATUS");
     xvVolume       = MAKE_ATOM("XV_VOLUME");
     xvMute         = MAKE_ATOM("XV_MUTE");
     xvHue          = MAKE_ATOM("XV_HUE");
@@ -1551,7 +1554,7 @@ ATISetPortAttribute(
   } else 
   if(attribute == xvFrequency) {
         pPriv->frequency = value;
-  	if(pPriv->fi1236 != NULL) xf86_FI1236_tune(pPriv->fi1236, value);
+  	if(pPriv->fi1236 != NULL) xf86_TUNER_set_frequency(pPriv->fi1236, value);
 	if((pPriv->msp3430 != NULL) && (pPriv->msp3430->recheck))
 		xf86_InitMSP3430(pPriv->msp3430);
   } else 
@@ -1609,6 +1612,14 @@ ATIGetPortAttribute(
   } else 
   if(attribute == xvFrequency) {
         *value = pPriv->frequency;
+  } else 
+  if(attribute == xvTunerStatus) {
+  	if(pPriv->fi1236==NULL){
+		*value=FI1236_OFF;
+		} else
+		{
+	        *value = xf86_TUNER_get_afc_hint(pPriv->fi1236);
+		}
   } else 
   if(attribute == xvMute) {
         *value = pPriv->mute;
