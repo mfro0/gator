@@ -8,7 +8,7 @@ DEFINES=
 
 CC=gcc -pipe -g $(INCLUDES) $(DEFINES)
 
-OBJS=xv.c frequencies.c
+OBJS=xv.c frequencies.c xmisc.c
 
 LIBS=-lm -ldl -L$(X11LIBS) -lX11 -lXext -lXv 
 

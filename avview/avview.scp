@@ -8,7 +8,6 @@
 #       
 
 
-
 set control_screen1 ""
 regexp "control=\[^ \]+" "$argv" control_screen1
 regsub "control=" "$control_screen1" "" control_screen
@@ -82,7 +81,11 @@ $current_channel_menu delete 0 end
 grid $c.channell $c.channelom -sticky news
 grid configure $c.channell -sticky nsw
 
-button $c.fullscreen -text "Fullscreen" -command "make_fullscreen"
+global fullscreen_mode
+set fullscreen_mode false
+
+checkbutton $c.fullscreen -text "Fullscreen"  \
+	-indicatoron false -variable fullscreen_mode
 button $c.half_size -text "Half size" -command "make_half_size"
 
 grid $c.fullscreen $c.half_size
@@ -361,14 +364,46 @@ if { [file exists "~/.avview"] } {
 	}
 }
 
-proc make_fullscreen {} {
+proc set_fullscreen {name1 name2 op} {
 global VIDEO_WINDOW
+global fullscreen_mode
+global saved_screensaver_mode
+global saved_main_window_geometry
+global saved_vw_width
+global saved_vw_height
 
-wm geometry . =[winfo screenwidth $VIDEO_WINDOW]x[winfo screenheight $VIDEO_WINDOW]+0+0
-$VIDEO_WINDOW configure -width [winfo screenwidth $VIDEO_WINDOW] \
-	-height [winfo screenheight $VIDEO_WINDOW]
+if { $fullscreen_mode } {
+	#
+	# Save current settings
+	#
+	set saved_main_window_geometry [wm geometry .]
+	set saved_screensaver_mode [xmisc_getscreensaver $VIDEO_WINDOW]
+	set saved_vw_width [$VIDEO_WINDOW cget -width]
+	set saved_vw_height [$VIDEO_WINDOW cget -height]
+	
+	wm geometry . =[winfo screenwidth $VIDEO_WINDOW]x[winfo screenheight $VIDEO_WINDOW]+0+0
+	$VIDEO_WINDOW configure -width [winfo screenwidth $VIDEO_WINDOW] \
+		-height [winfo screenheight $VIDEO_WINDOW]
 
-place $VIDEO_WINDOW.onscreen_display -x 20 -y 20
+	place $VIDEO_WINDOW.onscreen_display -x 20 -y 20
+	xmisc_setscreensaver $VIDEO_WINDOW 0 0 DontPreferBlanking AllowExposures \
+		0 0 0 0 off
+	} {
+	wm geometry . =$saved_main_window_geometry
+	$VIDEO_WINDOW configure -width $saved_vw_width -height $saved_vw_height
+	place $VIDEO_WINDOW.onscreen_display -x 20 -y 20
+	xmisc_setscreensaver $VIDEO_WINDOW [lindex $saved_screensaver_mode 0]\
+					   [lindex $saved_screensaver_mode 1]\
+					   [lindex $saved_screensaver_mode 2]\
+					   [lindex $saved_screensaver_mode 3]\
+					   [lindex $saved_screensaver_mode 4]\
+					   [lindex $saved_screensaver_mode 5]\
+					   [lindex $saved_screensaver_mode 6]\
+					   [lindex $saved_screensaver_mode 7]\
+					   [lindex $saved_screensaver_mode 8]\
+					   [lindex $saved_screensaver_mode 9]
+					   
+	}
 }
 
 proc make_half_size {} {
@@ -380,16 +415,17 @@ wm geometry . =[$VIDEO_WINDOW cget -width]x[$VIDEO_WINDOW cget -height]
 }
 
 global flash_counter
-set flash_counter 0
+set flash_counter -1
 
 proc fm_countdown {} {
 global flash_counter
 global VIDEO_WINDOW
 incr flash_counter -1
-if { $flash_counter<0} {
+if { $flash_counter<1} {
 	destroy $VIDEO_WINDOW.onscreen_display.message 
 	$VIDEO_WINDOW.onscreen_display configure -width 0 -height 0
 	display_video
+	incr flash_counter -1
 	} {
 	after 1000 fm_countdown
 	}
@@ -425,8 +461,8 @@ grid $m.l
 font delete message_font
 
 global flash_counter
+if { $flash_counter < 0 } { after 1000 fm_countdown }
 set flash_counter 14
-after 1000 fm_countdown
 adjust_message_font
 }
 
@@ -439,7 +475,8 @@ global current_table_name
 trace variable current_table_name w set_channel_table
 global current_channel
 trace variable current_channel w "set_channel"
-
+global fullscreen_mode
+trace variable fullscreen_mode w set_fullscreen
 
 bind $VIDEO_WINDOW <Configure> {
 	global $VIDEO_WINDOW
@@ -454,3 +491,4 @@ wm protocol . WM_DELETE_WINDOW { save_settings ; exit }
 wm protocol .controlwin WM_DELETE_WINDOW { save_settings ; exit }
 wm title . "AV Viewer"
 wm title .controlwin "AV Control"
+
