@@ -1,0 +1,13 @@
+#ifndef __CONFIG_H__
+#define __CONFIG_H__
+
+
+/*
+
+Include ffmpeg-dependent code
+
+*/
+#define USE_FFMPEG 	0
+
+
+#endif

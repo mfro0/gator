@@ -8,19 +8,33 @@ AC_PROG_CC
 
 AC_PATH_XTRA
 
+AC_ARG_WITH(ffmpeg, [  --with-ffmpeg=path      Path to compiled ffmpeg source tree])
+
 AC_CHECK_LIB([dl], [dlopen])
 AC_CHECK_LIB([m], [sin])
 AC_CHECK_LIB([X11], [XCreateSimpleWindow],,,[$X_LIBS])
 AC_CHECK_LIB([Xext], [XInitExtension],,,[$X_LIBS])
 AC_CHECK_LIB([Xv], [XvPutVideo],,,[$X_LIBS -lX11 -lXext])
-AC_CHECK_LIB([tcl], [Tcl_Init],,,[$X_LIBS])
-AC_CHECK_LIB([tk], [Tk_Init],,,[$X_LIBS])
+AC_CHECK_LIB([tcl8.3], [Tcl_Init],,,[$X_LIBS])
+AC_CHECK_LIB([tk8.3], [Tk_Init],,,[$X_LIBS])
 
 # Checks for header files.
 AC_SUBST(X_CFLAGS)
 AC_SUBST(X_LIBS)
 AC_SUBST(X_EXTRA_LIBS)
 AC_SUBST(X_PRE_LIBS)
+
+if ! test "$with_ffmpeg" = "" ; then
+AC_DEFINE(USE_FFMPEG)
+FFMPEG_LIBS="-L$with_ffmpeg/libav -L$with_ffmpeg/libavcodec -lav -lavcodec"
+FFMPEG_CFLAGS="-I$with_ffmpeg/libav -I$with_ffmpeg/libavcodec"
+else
+FFMPEG_LIBS=
+FFMPEG_CFLAGS=
+fi
+
+AC_SUBST(FFMPEG_LIBS)
+AC_SUBST(FFMPEG_CFLAGS)
 
 AC_HEADER_STDC
 AC_CHECK_HEADERS([errno.h fcntl.h stdlib.h string.h sys/ioctl.h unistd.h])
@@ -36,12 +50,18 @@ AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
 
 if test "no_x" = "yes" ; then
-	AC_MSG_ERROR(can not find X11)
+	AC_MSG_ERROR([can not find X11])
 fi
 
 echo ""
-echo "------------- Configuration ----------------"
+echo "------------------- Configuration -------------------"
 echo ""
-echo "  X11 libraries           $X_LIBS"
-echo "  X11 cflags              $X_CFLAGS"
+echo "  X11 libraries                    $X_LIBS"
+echo "  X11 cflags                       $X_CFLAGS"
+if test "with_ffmpeg" = "" ; then
+echo "  Movie recording                  disabled"
+else
+echo "  Movie recording                  enabled"
+echo "  Path to compiled ffmeg source    $with_ffmpeg"
+fi
 echo ""
