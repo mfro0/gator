@@ -35,6 +35,11 @@ foreach {variable value} {
 	current_v4l_rrate "as is"
 	current_v4l_device "none"
 	current_av_format "MPEG"
+	current_port "none"
+	current_encoding "none"
+	current_encoding_name "none"
+	current_table "none"
+	current_table_name "none"
 	} {
 	global $variable
 	set $variable $value
@@ -94,11 +99,6 @@ set c .controlwin.control
 
 global current_port_menu
 global current_encoding_menu
-global current_encoding
-global current_encoding_name
-global current_table
-set current_table -1
-set current_encoding -1
 
 #eval label $c.portl -text "\"Port: \"" [get_settings $c.portl AVview]
 #set current_port_menu [tk_optionMenu $c.port_optionmenu current_port  none]
@@ -316,11 +316,9 @@ xv_putvideo $VIDEO_WINDOW $current_port 0 0 [expr [lindex $port_size 0]-1] [expr
 
 
 proc set_encoding {name1 name2 op} {
-global current_encoding_name 
-global current_encoding
-global current_port
-global current_video_rate
-global VIDEO_WINDOW
+global current_encoding_name current_encoding current_port current_video_rate
+global current_table_name current_table VIDEO_WINDOW
+
 
 if { $current_port == "none" } { return }
 
@@ -339,6 +337,19 @@ if { $current_encoding > 0 } {
 			set current_video_rate 59.94
 			}			
 			
+	}
+if { $current_table_name == "none" } {
+	switch -glob -- "$current_encoding_name" \
+		"*pal*" {
+			set current_table_name "europe-west"
+			} \
+		"*secam*" {
+			set current_table_name "europe-west"
+			} \
+		"*ntsc*" {
+			set current_table_name "us-bcast"
+			}			
+	
 	}
 }
 
@@ -485,6 +496,7 @@ if { $fullscreen_mode } {
 		$VIDEO_WINDOW configure -width ${screen_width} \
 			-height ${screen_height}
 		wm geometry . =${screen_width}x${screen_height}+0+0
+		grab -global .
 #		}
 	} {
 	$VIDEO_WINDOW configure -width $saved_vw_width -height $saved_vw_height
@@ -506,6 +518,7 @@ if { $fullscreen_mode } {
 	update 
 	update idletasks
 	wm geometry . =$saved_main_window_geometry
+	grab release .
 	}
 }
 
@@ -635,7 +648,6 @@ trace variable current_v4l_device w  "set_v4l_device .controlwin.capture"
 global current_v4l_mode
 trace variable current_v4l_mode w {update_v4l_window_info .controlwin.capture ; skip_args3 }
 global v4l_capture_on
-set v4l_capture_on false
 trace variable v4l_capture_on w "on_v4l_capture_set .controlwin.capture"
 
 if {[alsa_present] == "yes" } {

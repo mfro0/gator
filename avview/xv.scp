@@ -223,6 +223,7 @@ global current_port
 global VIDEO_WINDOW
 global current_encoding_menu
 global current_encoding
+global current_encoding_name
 global attributes_window
 
 #

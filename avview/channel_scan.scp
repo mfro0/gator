@@ -114,7 +114,10 @@ for { set i 0 } { $i < $num_entries} { incr i } {
 
 proc next_encoding { dir } {
 global VIDEO_WINDOW current_port current_encoding_name current_channel
+if { $current_port == "none" } { return }
 set ENCODINGS [xv_port_encodings $VIDEO_WINDOW $current_port]
+set root "ntsc"
+set connector "tuner"
 regexp {^(.*)-(.*)$} $current_encoding_name "" root connector
 set L [list ]
 foreach encoding $ENCODINGS {
@@ -139,6 +142,7 @@ if { $connector == "tuner" } {
 
 proc current_connector {} {
 global current_port current_encoding_name
+set connector "not connected"
 regexp {^(.*)-(.*)$} $current_encoding_name "" root connector
 return $connector
 }
@@ -148,6 +152,7 @@ global current_channel_menu
 global current_port
 global current_table
 global is_favorite_channel
+if { $current_port == "none" } { return "none" }
 set CHANNEL_LIST [freq_get_channel_list $current_table]
 set answer [lindex $CHANNEL_LIST [expr $start_with+$dir]]
 if {$answer == "" } { set answer [lindex $CHANNEL_LIST 0] }
@@ -160,6 +165,7 @@ catch {
 			set answer [lindex $CHANNEL_LIST $i]
 			break;
 			}
+		if { $dir == 0 } { break }
 		}
 	}
 return $answer

@@ -1,7 +1,7 @@
 
            AV viewer
 	   
-	   (C) Vladimir Dergachev 2001
+	   (C) Vladimir Dergachev 2001-2002
 	   
 	  
    A viewer for TV capable cards.
@@ -13,7 +13,8 @@
 		  
 *** INSTALLATION ****
 
-Get ffmpeg from http://ffmpeg.sf.net/   (use version later than 0.4.5 or latest CVS)
+Get ffmpeg tarball corresponding to this version of AVview from http://gatos.sf.net/
+If you are compiling from CVS get the latest ffmpeg tarball from http://gatos.sf.net/
 
 Get ALSA libraries/drivers from http://www.alsa-project.org/ - latest 0.9.x.
 
@@ -38,3 +39,14 @@ Next run
 	 out to be screwed up I recommend making a tarbal of ffmpeg tree
 	 right after make clean - it is not that big and you would be able
 	 to untar it and continue as before if anything breaks.
+
+*** KEYBOARD BINDINGS ***
+
+	Control-F                toggles fullscreen
+	Keypad + or -  	         switches favorite channels
+	Control-Keypad + or -	 increases/decreases channel number
+	i                        switches between tuner/composite/svideo
+	Keypad *                 toggles mute
+	Arrow Up/Down            switches on-screen controls
+	Arrow Left/Right         adjusts on-screen control
+	Control-q or Escape      exits AVview

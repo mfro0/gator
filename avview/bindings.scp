@@ -146,6 +146,7 @@ proc next_control { dir } {
 global VIDEO_WINDOW
 global current_port
 global avview_current_control avview_controls avview_controls_layout
+if { $current_port == "none" } { return }
 if { [winfo exists $VIDEO_WINDOW.control ] } {
 	incr avview_current_control $dir
 	}
@@ -182,6 +183,7 @@ global VIDEO_WINDOW
 global current_port
 global avview_current_control avview_controls avview_controls_layout
 global change_control_in_progress
+if { $current_port == "none" } { return }
 if { $change_control_in_progress } { return }
 set change_control_in_progress true
 set N [llength $avview_controls_layout]
