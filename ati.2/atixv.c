@@ -1965,8 +1965,12 @@ ATIPutImage(
 
 	   /* We need to disable byte swapping, or the data gets mangled */
 	   mem_cntl = inr(MEM_CNTL);
-	   outr(MEM_CNTL, mem_cntl &
-		 ~(CTL_MEM_LOWER_APER_ENDIAN|CTL_MEM_UPPER_APER_ENDIAN));
+	   if(pATI->Chip < ATI_CHIP_264VTB)
+		   outr(MEM_CNTL, mem_cntl &
+			 ~(CTL_MEM_LOWER_APER_ENDIAN|CTL_MEM_UPPER_APER_ENDIAN));
+		    else
+		   outr(MEM_CNTL, (mem_cntl &
+			 ~(CTL_MEM_LOWER_APER_ENDIAN|CTL_MEM_UPPER_APER_ENDIAN))|(0xa<<24));
 #endif
 	ATICopyMungedData(buf + (top * srcPitch) + left, buf + s2offset,
 			   buf + s3offset, dst_start, srcPitch, srcPitch2,
