@@ -60,26 +60,52 @@ for(i=0;kmd->fields[i].type!=KM_FIELD_TYPE_EOL;i++){
 			kmd->br_free+=field_length;
 			break;
 		case KM_FIELD_TYPE_DYNAMIC_INT:
+			f->data.i.old_value=*(f->data.i.field);
 			field_length=strlen(f->name)+20;
 			if(kmd->br_free+field_length>=kmd->br_size)expand_buffer(kmd, field_length);
-			kmd->br_free+=sprintf(kmd->buffer_read+kmd->br_free, "%s=%d\n", f->name, *(f->data.i.field));
+			kmd->br_free+=sprintf(kmd->buffer_read+kmd->br_free, "%s=%d\n", f->name, (f->data.i.old_value));
 			break;
 		}
 	}
 
 }
 
+static void dump_changed_fields(KM_DEVICE *kmd)
+{
+int i;
+long field_length;
+u32 a;
+KM_FIELD *f;
+for(i=0;kmd->fields[i].type!=KM_FIELD_TYPE_EOL;i++){
+	f=&(kmd->fields[i]);
+/*	if(!(f->changed))continue; */
+	switch(f->type){
+		case KM_FIELD_TYPE_DYNAMIC_INT:
+			a=*(f->data.i.field);
+			if(a==f->data.i.old_value)continue;
+			f->data.i.old_value=a;
+			field_length=strlen(f->name)+20;
+			if(kmd->br_free+field_length>=kmd->br_size)expand_buffer(kmd, field_length);
+			kmd->br_free+=sprintf(kmd->buffer_read+kmd->br_free, "%s=%d\n", f->name, (f->data.i.old_value));
+			break;
+		}
+	}
+}
+
 static int km_control_read(char *page, char **start, off_t off, int count, int *eof, void *data)
 {
 KM_DEVICE *kmd=data;
+if(kmd->br_free==0){
+	dump_changed_fields(kmd);
+	}
 if(count>(kmd->br_free-kmd->br_read))count=kmd->br_free-kmd->br_read;
 if(count>0)memcpy(page, kmd->buffer_read+kmd->br_read, count); 
 kmd->br_read+=count;
 if(kmd->br_read==kmd->br_free){
-	/* put here code to handle out-of-sequence messages */
-	*eof=1;
 	kmd->br_free=0;
 	kmd->br_read=0;	
+	/* put here code to handle out-of-sequence messages */
+/*	*eof=1; */
 	}
 *start=page;
 return count;

@@ -33,6 +33,8 @@ typedef struct S_KM_STRUCT{
 	long irq;
 	struct pci_dev *dev;
 	long interrupt_count;
+	long vblank_count;
+	long vline_count;
 	long vsync_count;
 	unsigned char * reg_aperture;
 	int buf_read_from;
@@ -41,6 +43,9 @@ typedef struct S_KM_STRUCT{
 	wait_queue_head_t frameq;
 	long total_frames;
 	long overrun;
+	int (*init_hardware)(struct S_KM_STRUCT *kms);
+	void (*uninit_hardware)(struct S_KM_STRUCT *kms);
+	void (*irq_handler)(int irq, void *dev_id, struct pt_regs *regs);
 	int  (*is_capture_active)(struct S_KM_STRUCT *kms);
 	void (*get_window_parameters)(struct S_KM_STRUCT *kms, struct video_window *vwin);
 	void (*start_transfer)(struct S_KM_STRUCT *kms);

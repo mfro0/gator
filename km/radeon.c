@@ -257,9 +257,14 @@ while(1){
 /*			spin_unlock(&(kms->kms_lock)); */
 			return;
 			}
-		radeon_wait_for_idle(kms);
-		wmb();
-		if(status & (1<<30))acknowledge_dma(kms);
+		if(status & (1<<30)){
+			radeon_wait_for_idle(kms);
+			wmb();
+			acknowledge_dma(kms);
+			}
+		if(status & (1<<0))kms->vblank_count++;
+		if(status & (1<<1))kms->vline_count++;
+		if(status & (1<<2))kms->vsync_count++;
 		writel(status & mask, kms->reg_aperture+RADEON_GEN_INT_STATUS);
 		count--;
 		if(count<0){
@@ -371,3 +376,23 @@ for(i=0;i<(frame->buf_size/PAGE_SIZE);i++){
 return 0;
 }
 
+
+/* setup statistics counting.. */
+int radeon_init_hardware(KM_STRUCT *kms)
+{
+u32 a;
+
+a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
+writel(a|(7), kms->reg_aperture+RADEON_GEN_INT_CNTL);
+return 0;
+}
+
+/* setup statistics counting.. */
+int radeon_uninit_hardware(KM_STRUCT *kms)
+{
+u32 a;
+
+a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
+writel(a& ~((7)|(1<<30)), kms->reg_aperture+RADEON_GEN_INT_CNTL);
+return 0;
+}

@@ -126,6 +126,20 @@ KM_FIELD kmfl_template[]={
 	  priv: NULL,
 	  read_complete: NULL,
 	}, 
+	{ type: KM_FIELD_TYPE_DYNAMIC_INT,
+	  name: "VBLANK_COUNT",
+	  changed: 0,
+	  lock: NULL,
+	  priv: NULL,
+	  read_complete: NULL,
+	}, 
+	{ type: KM_FIELD_TYPE_DYNAMIC_INT,
+	  name: "VLINE_COUNT",
+	  changed: 0,
+	  lock: NULL,
+	  priv: NULL,
+	  read_complete: NULL,
+	}, 
 	{ type: KM_FIELD_TYPE_EOL
 	}
 	};
@@ -134,7 +148,6 @@ static int __devinit km_probe(struct pci_dev *dev, const struct pci_device_id *p
 {
 KM_STRUCT *kms;
 int result;
-void *irq_handler=NULL;
 char *tag;
 /* too many */
 if(num_devices>=MAX_DEVICES)return -1;
@@ -152,6 +165,7 @@ switch(pci_id->driver_data){
 	}
 		
 kms=&(km_devices[num_devices]);
+memset(kms, 0, sizeof(KM_STRUCT));
 kms->dev=dev;
 kms->irq=dev->irq;
 kms->frame.buffer=NULL;
@@ -159,6 +173,7 @@ kms->frame.dma_table=NULL;
 kms->frame_even.buffer=NULL;
 kms->frame_even.dma_table=NULL;
 kms->interrupt_count=0;
+kms->irq_handler=NULL;
 spin_lock_init(&(kms->kms_lock));
 printk("km: using irq %ld\n", kms->irq);
 init_waitqueue_head(&(kms->frameq));
@@ -175,7 +190,6 @@ if (!request_mem_region(pci_resource_start(dev,2),
 kms->reg_aperture=ioremap(pci_resource_start(dev, 2), pci_resource_len(dev, 2));
 printk("kms variables: reg_aperture=0x%p\n",
 	kms->reg_aperture);
-
 switch(pci_id->driver_data){
 	case HARDWARE_RADEON:
 		kms->is_capture_active=radeon_is_capture_active;
@@ -184,7 +198,9 @@ switch(pci_id->driver_data){
 		kms->stop_transfer=radeon_stop_transfer;
 		kms->allocate_single_frame_buffer=radeon_allocate_single_frame_buffer;
 		kms->deallocate_single_frame_buffer=generic_deallocate_single_frame_buffer;
-		irq_handler=radeon_km_irq;
+		kms->irq_handler=radeon_km_irq;
+		kms->init_hardware=radeon_init_hardware;
+		kms->uninit_hardware=radeon_uninit_hardware;
 		break;
 	case HARDWARE_MACH64:
 		kms->is_capture_active=mach64_is_capture_active;
@@ -193,7 +209,7 @@ switch(pci_id->driver_data){
 		kms->stop_transfer=mach64_stop_transfer;
 		kms->allocate_single_frame_buffer=mach64_allocate_single_frame_buffer;
 		kms->deallocate_single_frame_buffer=generic_deallocate_single_frame_buffer;
-		irq_handler=mach64_km_irq;
+		kms->irq_handler=mach64_km_irq;
 		break;
 	case HARDWARE_RAGE128:
 		kms->is_capture_active=rage128_is_capture_active;
@@ -202,17 +218,27 @@ switch(pci_id->driver_data){
 		kms->stop_transfer=rage128_stop_transfer;
 		kms->allocate_single_frame_buffer=rage128_allocate_single_frame_buffer;
 		kms->deallocate_single_frame_buffer=generic_deallocate_single_frame_buffer;
-		irq_handler=rage128_km_irq;
+		kms->irq_handler=rage128_km_irq;
 		break;
 	default:
 		printk("Unknown hardware type %ld\n", pci_id->driver_data);
 		}
-if((irq_handler==NULL) || (install_irq_handler(kms, irq_handler, tag)<0)){
+if((kms->irq_handler==NULL) || (install_irq_handler(kms, kms->irq_handler, tag)<0)){
 	iounmap(kms->reg_aperture);
 	release_mem_region(pci_resource_start(dev,2),
         	pci_resource_len(dev,2));
 	pci_set_drvdata(dev, NULL);
 	return -EIO;
+	}
+if(kms->init_hardware!=NULL){
+	if(kms->init_hardware(kms)<0){
+		free_irq(kms->irq, kms);
+		iounmap(kms->reg_aperture);
+		release_mem_region(pci_resource_start(dev,2),
+	       	 	pci_resource_len(dev,2));
+		pci_set_drvdata(dev, NULL);
+		return -EIO;		
+		}
 	}
 init_km_v4l(kms);
 printk("sizeof(kmfl_template)=%d sizeof(KM_FIELD)=%d\n", sizeof(kmfl_template), sizeof(KM_FIELD));
@@ -231,6 +257,10 @@ sprintf(kms->kmfl[2].data.c.string, "KM_DEVICE:%d", num_devices);
 
 kms->kmfl[3].data.i.field=&(kms->vsync_count);
 
+kms->kmfl[4].data.i.field=&(kms->vblank_count);
+
+kms->kmfl[5].data.i.field=&(kms->vline_count);
+
 kms->kmd=add_km_device(kms->kmfl, kms);
 printk("Device %s %s (0x%04x:0x%04x) corresponds to /dev/video%d\n",
 	dev->name, dev->slot_name, dev->vendor, dev->device, kms->vd.minor);
@@ -248,6 +278,7 @@ fail:
 static void __devexit km_remove(struct pci_dev *pci_dev, KM_STRUCT *kms)
 {
 printk("Removing Kmultimedia supported device /dev/video%d. Interrupt_count=%ld\n", kms->vd.minor,  kms->interrupt_count);
+if(kms->uninit_hardware!=NULL)kms->uninit_hardware(kms);
 remove_km_device(kms->kmd);
 cleanup_km_v4l(kms);
 free_irq(kms->irq, kms);
