@@ -7,11 +7,12 @@
 proc assign_default_bindings {} {
 
 foreach {action sequence} {
-	toggle_fullscreen "<Control-KeyPress-f>"
+	"toggle_fullscreen" "<Control-KeyPress-f>"
 	"next_fav_channel 1" "<Key-KP_Add>"
 	"next_fav_channel -1" "<Key-KP_Subtract>"
 	"next_channel 1" "<Control-Key-KP_Add>"
 	"next_channel -1" "<Control-Key-KP_Subtract>"
+	"toggle_mute" "<Key-KP_Multiply>"
 	} {
 	bind all $sequence $action
 	}
@@ -56,4 +57,23 @@ set num_entries [$current_channel_menu index end]
 set current_channel_index [lsearch $CHANNEL_LIST $current_channel]
 
 set current_channel [find_first_favorite_channel $current_channel_index $dir]
+}
+
+proc toggle_mute {} {
+global VIDEO_WINDOW
+global current_port
+if { $current_port == "none" } { return }
+set num_attributes [xv_num_port_attributes $VIDEO_WINDOW $current_port]
+for { set i 0 } { $i < $num_attributes } { incr i } {
+	set name [xv_port_attribute_name $VIDEO_WINDOW $current_port $i]
+	if { $name == "XV_MUTE" } {
+		set variable [find_attribute_variable $VIDEO_WINDOW $current_port $i]
+		global $variable
+		catch {
+			if { [set $variable] } { set $variable 0 } { set $variable 1 }
+			on_attribute_change XV_MUTE $variable a b
+			}
+		return
+		}
+	}
 }

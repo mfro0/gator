@@ -286,6 +286,7 @@ set CHANNEL_LIST [freq_get_channel_list $current_table]
 global channel_freq
 set channel_freq [freq_get_channel_value $current_table [lsearch -exact $CHANNEL_LIST "$current_channel" ]]
 flash_message " Channel $current_channel "
+update
 on_attribute_change XV_FREQ channel_freq a b
 }
 
