@@ -512,7 +512,5 @@ Bool RADEONCursorInit(ScreenPtr pScreen)
     RADEONTRACE(("RADEONCursorInit (0x%08x-0x%08x)\n",
 		 info->cursor_start, info->cursor_end));
 
-	xf86DrvMsg(pScrn->scrnIndex, X_INFO,
-		   "chkpt 1\n");
     return xf86InitCursor(pScreen, cursor);
 }
