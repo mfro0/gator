@@ -1539,6 +1539,15 @@ R128StopVideo(ScrnInfoPtr pScrn, pointer data, Bool cleanup)
 	if (info->cursor_start)
 	   xf86ForceHWCursor (pScrn->pScreen, FALSE);
      }
+    if(pPriv->video_stream_active) {
+	R128WaitForFifo(pScrn, 8); 
+        OUTPLL(R128_FCP_CNTL, 0x404);
+        OUTREG(R128_CAP0_TRIG_CNTL, 0x0);
+	R128ResetVideo(pScrn);
+	pPriv->video_stream_active = FALSE;
+        R128MuteAudio(pPriv, TRUE);
+        if(pPriv->i2c!=NULL) R128_board_setmisc(pPriv);
+     }
      if(pPriv->linear) {
 	xf86FreeOffscreenLinear(pPriv->linear);
 	pPriv->linear = NULL;
