@@ -18,6 +18,7 @@
 #include "xmisc.h"
 #include "v4l.h"
 #include "ffmpeg.h"
+#include "linux.h"
 #include <pthread.h>
 
 pthread_mutex_t  memory_mutex;
@@ -70,6 +71,7 @@ init_xmisc(interp);
 init_v4l(interp);
 init_ffmpeg(interp);
 init_alsa(interp);
+init_linux(interp);
 return TCL_OK;
 }
 
