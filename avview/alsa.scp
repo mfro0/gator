@@ -326,7 +326,7 @@ $alsa_device_menu add radiobutton -label "none"\
 for {set i [alsa_card_next -1]} {$i >= 0 } { set i [alsa_card_next $i] } {
 	set alsa_handle  "hw:CARD=$i"
 	alsa_card_load $alsa_handle
-	$alsa_device_menu add radiobutton -label "hw:CARD=$i [alsa_card_get_name $alsa_handle]"\
+	$alsa_device_menu add radiobutton -label "hw:CARD=$i [alsa_card_get_name $i]"\
 				-value $alsa_handle -variable $variable
 	}
 }
