@@ -405,8 +405,8 @@ dst_pitch=width*2;
 for(line=height-1;line>=0;line--){
 	s1=frame1+line*pitch;
 	s2=frame2+line*pitch;
-	t1=dest+line*dst_pitch*2;
-	t2=t1+dst_pitch;
+	t2=dest+line*dst_pitch*2;
+	t1=t2+dst_pitch;
 	memcpy(t1,s1,pitch);
 	memcpy(t2,s2,pitch);
 	}
