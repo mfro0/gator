@@ -580,7 +580,7 @@ int remove_km_device(int num)
 
 void km_api_cleanup_module(void);
 
-static int km_api_init_module(void)
+static int __init km_api_init_module(void)
 {
 	int result;
 
@@ -608,7 +608,7 @@ static int km_api_init_module(void)
 	return 0;
 }
 
-void km_api_cleanup_module(void)
+void __exit km_api_cleanup_module(void)
 {
 	if(devices!=NULL)kfree(devices);
 	if(km_root!=NULL)remove_proc_entry("km", &proc_root);

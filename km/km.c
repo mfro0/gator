@@ -354,7 +354,6 @@ void stop_video_capture(KM_STRUCT *kms)
 	if(kms->deallocate_dvb!=NULL){
 		kms->deallocate_dvb(&(kms->capture));
 		kmd_signal_state_change(kms->kmd);
-	} else {
 	}
 	kms->gdq_usage--;
 	if(kms->gdq_usage==0){
@@ -416,7 +415,6 @@ void stop_vbi_capture(KM_STRUCT *kms)
 	if(kms->deallocate_dvb!=NULL){
 		kms->deallocate_dvb(&(kms->vbi));
 		kmd_signal_state_change(kms->kmd);
-	} else {
 	}
 	kms->gdq_usage--;
 	if(kms->gdq_usage==0){
@@ -1059,7 +1057,7 @@ static struct pci_driver km_pci_driver = {
 
 
 #ifdef MODULE
-static int km_init_module(void)
+static int __init km_init_module(void)
 {
 
 	/* this does not do anything useful at the moment */
@@ -1074,7 +1072,7 @@ static int km_init_module(void)
 	return 0;
 }
 
-void km_cleanup_module(void)
+void __exit km_cleanup_module(void)
 {
 	pci_unregister_driver( &km_pci_driver );
 	return;

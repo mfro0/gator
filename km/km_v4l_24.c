@@ -134,7 +134,10 @@ switch(cmd){
 		struct video_window vwin;
 		strcpy(b.name,kms->vd->name);
 		b.type = VID_TYPE_CAPTURE;
-		if(kms->get_window_parameters==NULL)return -EINVAL;
+		if(kms->get_window_parameters==NULL) {
+			spin_unlock(&(kms->kms_lock));
+			return -EINVAL;
+		}
 		kms->get_window_parameters(kms, &(vwin));
 		spin_unlock(&(kms->kms_lock));
 
@@ -150,13 +153,14 @@ switch(cmd){
 		}
 	case VIDIOCGPICT:{
 		struct video_picture p;
+		spin_unlock(&(kms->kms_lock));
+
 		p.palette=VIDEO_PALETTE_YUV422;
 		p.brightness=32768;
 		p.hue=32768;
 		p.colour=32768;
 		p.whiteness=32768;
 		p.depth=16;
-		spin_unlock(&(kms->kms_lock));
 
 		if(copy_to_user(arg, &p, sizeof(p)))
 			return -EFAULT;
@@ -173,7 +177,10 @@ switch(cmd){
 		}
 	case VIDIOCGWIN:{
 		struct video_window vwin;
-		if(kms->get_window_parameters==NULL)return -EINVAL;
+		if(kms->get_window_parameters==NULL) {
+			spin_unlock(&(kms->kms_lock));
+			return -EINVAL;
+		}
 		kms->get_window_parameters(kms, &(vwin));
 		spin_unlock(&(kms->kms_lock));
 
@@ -183,7 +190,10 @@ switch(cmd){
 		}
 	case VIDIOCSWIN: {
 		struct video_window vwin, vwin1;
-		if(kms->get_window_parameters==NULL)return -EINVAL;
+		if(kms->get_window_parameters==NULL) {
+			spin_unlock(&(kms->kms_lock));
+			return -EINVAL;
+		}
 		kms->get_window_parameters(kms, &(vwin1));
 		spin_unlock(&(kms->kms_lock));
 
@@ -364,7 +374,10 @@ switch(cmd){
 		}
 	 case BTTV_VBISIZE:
 	 	spin_lock(&(kms->kms_lock));
-		if(kms->get_vbi_buf_size==NULL)return -ENOTSUPP;
+		if(kms->get_vbi_buf_size==NULL) {
+			spin_unlock(&(kms->kms_lock));
+			return -ENOTSUPP;
+		}
 		size=kms->get_vbi_buf_size(kms);
 		spin_unlock(&(kms->kms_lock));
 	 	return size;
@@ -478,15 +491,15 @@ static struct video_device km_v4l_vbi_template=
 
 int init_km_v4l(KM_STRUCT *kms)
 {
-kms->vd = rvmalloc(sizeof(km_v4l_template));
-if (NULL == kms->vd) return -1;
+kms->vd = kmalloc(sizeof(km_v4l_template));
+if (NULL == kms->vd) return -ENOMEM;
 memcpy(kms->vd, &km_v4l_template, sizeof(km_v4l_template));
 kms->vd->priv=kms;
 
-kms->vbi_vd = rvmalloc(sizeof(km_v4l_vbi_template));
+kms->vbi_vd = kvmalloc(sizeof(km_v4l_vbi_template));
 if (NULL == kms->vbi_vd) {
-	rvfree(kms->vd, sizeof(km_v4l_template));
-	return -1;
+	kfree(kms->vd);
+	return -ENOMEM;
 }
 memcpy(kms->vbi_vd, &km_v4l_vbi_template, sizeof(km_v4l_vbi_template));
 kms->vbi_vd->priv=kms;
@@ -504,6 +517,6 @@ if(kms->is_capture_active!=NULL)
 	video_unregister_device(kms->vd);
 if(kms->is_vbi_active!=NULL)
 	video_unregister_device(kms->vbi_vd);
-rvfree(kms->vbi_vd, sizeof(km_v4l_vbi_template));
-rvfree(kms->vd, sizeof(km_v4l_template));
+kfree(kms->vbi_vd);
+kfree(kms->vd);
 }

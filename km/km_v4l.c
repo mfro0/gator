@@ -105,7 +105,10 @@ static int km_v4l_ioctl(struct inode *inode, struct file *file, unsigned int cmd
 		struct video_window vwin;
 		strcpy(b.name,kms->vd->name);
 		b.type = VID_TYPE_CAPTURE;
-		if(kms->get_window_parameters==NULL)return -EINVAL;
+		if(kms->get_window_parameters==NULL) {
+			spin_unlock(&(kms->kms_lock));
+			return -EINVAL;
+		}
 		kms->get_window_parameters(kms, &(vwin));
 		spin_unlock(&(kms->kms_lock));
 
@@ -121,13 +124,14 @@ static int km_v4l_ioctl(struct inode *inode, struct file *file, unsigned int cmd
 	}
 	case VIDIOCGPICT:{
 		struct video_picture p;
+		spin_unlock(&(kms->kms_lock));
+
 		p.palette=VIDEO_PALETTE_YUV422;
 		p.brightness=32768;
 		p.hue=32768;
 		p.colour=32768;
 		p.whiteness=32768;
 		p.depth=16;
-		spin_unlock(&(kms->kms_lock));
 
 		if(copy_to_user(arg, &p, sizeof(p)))
 			return -EFAULT;
@@ -144,7 +148,10 @@ static int km_v4l_ioctl(struct inode *inode, struct file *file, unsigned int cmd
 	}
 	case VIDIOCGWIN:{
 		struct video_window vwin;
-		if(kms->get_window_parameters==NULL)return -EINVAL;
+		if(kms->get_window_parameters==NULL) {
+			spin_unlock(&(kms->kms_lock));
+			return -EINVAL;
+		}
 		kms->get_window_parameters(kms, &(vwin));
 		spin_unlock(&(kms->kms_lock));
 
@@ -154,7 +161,10 @@ static int km_v4l_ioctl(struct inode *inode, struct file *file, unsigned int cmd
 	}
 	case VIDIOCSWIN: {
 		struct video_window vwin, vwin1;
-		if(kms->get_window_parameters==NULL)return -EINVAL;
+		if(kms->get_window_parameters==NULL) {
+			spin_unlock(&(kms->kms_lock));
+			return -EINVAL;
+		}
 		kms->get_window_parameters(kms, &(vwin1));
 		spin_unlock(&(kms->kms_lock));
 
@@ -304,7 +314,10 @@ static int km_vbi_ioctl(struct inode *inode, struct file *file, unsigned int cmd
 	}
 	case BTTV_VBISIZE:
 	 	spin_lock(&(kms->kms_lock));
-		if(kms->get_vbi_buf_size==NULL)return -ENOTSUPP;
+		if(kms->get_vbi_buf_size==NULL) {
+			spin_unlock(&(kms->kms_lock));
+			return -ENOTSUPP;
+		}
 		size=kms->get_vbi_buf_size(kms);
 		spin_unlock(&(kms->kms_lock));
 	 	return size;
@@ -394,14 +407,14 @@ static struct video_device km_v4l_vbi_template=
 int init_km_v4l(KM_STRUCT *kms)
 {
 	kms->vd = video_device_alloc();
-	if (NULL == kms->vd) return -1;
+	if (NULL == kms->vd) return -ENOMEM;
 	memcpy(kms->vd, &km_v4l_template, sizeof(km_v4l_template));
 	video_set_drvdata(kms->vd, kms);
 
 	kms->vbi_vd = video_device_alloc();
 	if (NULL == kms->vbi_vd) {
 		video_device_release(kms->vd);
-		return -1;
+		return -ENOMEM;
 	}
 	memcpy(kms->vbi_vd, &km_v4l_vbi_template, sizeof(km_v4l_vbi_template));
 	video_set_drvdata(kms->vbi_vd, kms);
@@ -417,6 +430,11 @@ void cleanup_km_v4l(KM_STRUCT *kms)
 {
 	if(kms->is_capture_active!=NULL)
 		video_unregister_device(kms->vd);
+	else
+		km_vd_release(kms->vd);
+
 	if(kms->is_vbi_active!=NULL)
 		video_unregister_device(kms->vbi_vd);
+	else
+		km_vd_release(kms->vbi_vd);
 }

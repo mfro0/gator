@@ -44,8 +44,14 @@ KDU_FILE_PRIVATE_DATA* km_data_create_kdufpd(int data_unit)
 KM_DATA_UNIT *kdu;
 KDU_FILE_PRIVATE_DATA *kdufpd=NULL;
 spin_lock(&data_units_lock);
-if(data_unit<0)return NULL;
-if(data_unit>=du_free)return NULL;
+if(data_unit<0) {
+	spin_unlock(&data_units_lock);
+	return NULL;
+}
+if(data_unit>=du_free) {
+	spin_unlock(&data_units_lock);
+	return NULL;
+}
 kdu=&(data_units[data_unit]);
 #ifndef LINUX_2_6
 MOD_INC_USE_COUNT;
@@ -330,18 +336,21 @@ for(i=0;i<du_free;i++){
 	if(data_units[i].use_count<=0){k=i; break;}
 	}
 if(k<0){
+	spin_lock(&(data_units_lock));
 	k=du_free;
 	if(du_free>=du_size){
-		du_size+=du_size+10;
-		p=kmalloc(du_size*sizeof(KM_DATA_UNIT), GFP_KERNEL);
+		p=kmalloc((du_size+10)*sizeof(KM_DATA_UNIT), GFP_ATOMIC);
 		if(p==NULL){
+			spin_unlock(&(data_units_lock));
 			return -ENOMEM;
 			}
+		du_size+=10;
 		if(du_free>0)memcpy(p, data_units, du_free*sizeof(KM_DATA_UNIT));
 		kfree(data_units);
 		data_units=p;
 		}
 	du_free++;
+	spin_unlock(&(data_units_lock));
 	}
 #ifndef LINUX_2_6
 MOD_INC_USE_COUNT;
@@ -410,7 +419,10 @@ char temp[32];
 KM_DATA_UNIT *kdu;
 if(data_unit<0)return;
 spin_lock(&data_units_lock);
-if(data_unit>=du_free)return;
+if(data_unit>=du_free) {
+	spin_unlock(&data_units_lock);
+	return;
+}
 kdu=&(data_units[data_unit]);
 spin_lock(&(kdu->lock));
 spin_unlock(&data_units_lock);
