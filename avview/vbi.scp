@@ -92,9 +92,16 @@ puts "vbi event $a $b"
 if { [ catch {
 switch -exact -- $a {
 	"caption"  {	
+	        # signal that it is likely that we have received
+		# data for the particular CC channel
+		.video_menu.cc_menu entryconfigure $b -foreground #008000 -label "$b (available)"
 		global on_screen_cc_page
-		if { $b != $on_screen_cc_page } { continue }	
-		set cc_page [vbi_get_cc_page primary 1]
+		if { $b != $on_screen_cc_page } { 
+			update
+			update idletasks
+			continue 
+			}	
+		set cc_page [vbi_get_cc_page primary $b]
 		set width [lindex $cc_page 0]
 		set height [lindex $cc_page 1]
 		.video delete cc_text
@@ -102,6 +109,7 @@ switch -exact -- $a {
 			render_vbi_line .video cc_text [winfo width .video] [winfo height .video] $width $height $line
 			}
 		update
+		update idletasks
 		}
 	}
 	} err ] } {

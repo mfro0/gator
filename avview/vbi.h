@@ -21,6 +21,7 @@ typedef struct {
 	char *event_command;
 	Tcl_Interp *interp;
 	pthread_t vbi_loop;
+	char *device;
 	} VBI_DATA;
 
 void init_vbi(Tcl_Interp *interp);

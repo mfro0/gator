@@ -330,6 +330,9 @@ flash_message " Channel $current_channel "
 update
 on_attribute_change XV_FREQ channel_freq a b
 vbi_new_channel primary
+for { set i 1 } { $i <= 8 } { incr i } {
+	.video_menu.cc_menu entryconfigure $i -foreground black -label "$i"
+	}
 }
 
 proc display_video {} {

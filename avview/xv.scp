@@ -267,6 +267,7 @@ generate_attributes_window .controlwin.allattributes
 
 display_video
 update_primary_globals
+xv_set_attribute_defaults
 }
 
 proc xv_pick_defaults {} {
@@ -304,3 +305,29 @@ set atom [xv_getportattribute $VIDEO_WINDOW $current_port "XV_LOCATION_ID"]
 return [winfo atomname $atom]
 }
 
+proc set_attribute_by_index { index value } {
+global VIDEO_WINDOW current_port
+set success false
+catch {
+	set variable [find_attribute_variable $VIDEO_WINDOW $current_port $i]
+	global $variable
+	set $variable $value
+	on_attribute_change $attribute $variable a b
+	set success true
+	}
+return $success
+}
+
+proc xv_set_attribute_defaults {} {
+global VIDEO_WINDOW current_port
+set num_attributes [xv_num_port_attributes $VIDEO_WINDOW $current_port]
+for {set i 0 } { $i < $num_attributes} { incr i } {
+	set attr_name [xv_port_attribute_name $VIDEO_WINDOW $current_port $i]
+	set range [xv_port_attribute_range $VIDEO_WINDOW $current_port $i]
+	switch -exact -- $attr_name {
+		"XV_AUTOPAINT_COLORKEY"  {
+			set_attribute_by_index $i 0
+			}
+		}
+	}
+}

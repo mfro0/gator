@@ -174,15 +174,19 @@ i=add_string(vbi_sc, (char*)argv[1]);
 if(vbi_sc->data[i]!=NULL){
 	data=(VBI_DATA*) vbi_sc->data[i];
 	pthread_mutex_lock(&(data->mutex));	
-	Tcl_DeleteFileHandler(data->fd[0]);
+	if(!strcmp(data->device, argv[2])){
+		pthread_mutex_unlock(&(data->mutex));
+		return TCL_OK; /* device has been already opened */
+		}
 	close(data->fd[0]);
 	close(data->fd[1]);
 	vbi_capture_delete(data->cap);
 	vbi_decoder_delete(data->dec);
 	if(data->event_command!=NULL)free(data->event_command);
+	if(data->device!=NULL)free(data->device);
 	pthread_mutex_unlock(&(data->mutex));
 	pthread_cancel(data->vbi_loop);
-	pthread_join(data->vbi_loop, NULL);
+	/* pthread_join(data->vbi_loop, NULL); */
 	} else {
 	vbi_sc->data[i]=do_alloc(1, sizeof(VBI_DATA));
 	}
@@ -272,6 +276,7 @@ if(pthread_create(&(data->vbi_loop), NULL, vbi_loop, data)!=0){
 	Tcl_AppendResult(interp, "failure during open of VBI device: cannot create loop thread:", strerror(errno), NULL);
 	return TCL_ERROR;
 	}
+data->device=strdup(argv[2]);
 return TCL_OK;
 }
 
@@ -766,6 +771,8 @@ vbi_decoder_delete(data->dec);
 data->cap=NULL;
 data->dec=NULL;
 if(data->event_command!=NULL)free(data->event_command);
+if(data->device!=NULL)free(data->device);
+data->device=NULL;
 pthread_mutex_unlock(&(data->mutex));
 pthread_cancel(data->vbi_loop);
 
