@@ -4,10 +4,15 @@ CC=gcc
 
 KM_OBJS=km.o km_v4l.o km_memory.o radeon.o mach64.o rage128.o
 
+KM_API_OBJS=km_api.o
+
 all: km_drv.o
 
 km.o:	km.c 
 	$(CC) $(CFLAGS) -DMODULE -D__KERNEL__ -DLINUX -I/usr/src/linux/include -c km.c
+
+km_api.o:	km_api.c 
+	$(CC) $(CFLAGS) -DMODULE -D__KERNEL__ -DLINUX -I/usr/src/linux/include -c km_api.c
 
 km_drv.o: $(KM_OBJS)
 	ld -r $(KM_OBJS) -o km_drv.o
@@ -27,8 +32,9 @@ mach64.o:	mach64.c
 rage128.o:	rage128.c
 	$(CC) $(CFLAGS) -DMODULE -D__KERNEL__ -DLINUX -I/usr/src/linux/include -c rage128.c
 
-test: km_drv.o
+test: km_drv.o km_api.o
 	sync
+	insmod ./km_api.o
 	insmod ./km_drv.o 
 
 install:
@@ -37,6 +43,10 @@ install:
 
 tarball:
 	(cd .. ; tar cvf - km/*.[c,h] km/Makefile km/README | gzip - ) > km.tgz
+
+remove:
+	rmmod km_drv
+	rmmod km_api
 
 clean:
 	rm -f *.o *.bck *.bak core

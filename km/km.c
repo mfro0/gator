@@ -24,7 +24,7 @@
 MODULE_LICENSE("GPL");
 #endif
 
-MODULE_DESCRIPTION("kmultimedia");
+MODULE_DESCRIPTION("km_ati");
 MODULE_PARM(km_debug, "i");
 MODULE_PARM_DESC(km_debug, "kmultimedia debugging level");
 

@@ -3,7 +3,7 @@
 
 #include <linux/videodev.h>
 
-#define KM_VERSION      "alpha-1.0"
+#define KM_VERSION      "alpha-2.0"
 
 typedef struct {
 	u32 from_addr;

@@ -145,11 +145,15 @@ switch(cmd){
 		return 0;
 		}
 	case VIDIOCGPICT:{
-		#if 0 /* ignore for now */
 		struct video_picture p;
+		p.palette=VIDEO_PALETTE_YUV422;
+		p.brightness=32768;
+		p.hue=32768;
+		p.colour=32768;
+		p.whiteness=32768;
+		p.depth=16;
 		if(copy_to_user(arg, &p, sizeof(p)))
 			return -EFAULT;
-		#endif
 		return 0;
 		}
 	case VIDIOCSPICT:{
