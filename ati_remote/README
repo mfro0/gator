@@ -19,6 +19,7 @@
      will tell ati_remote to ignore signals coming from remote controls
      transmitting on channel 4 (16=2^4). To mask out more channels just
      add 2^channel_number values. Default is 0 (respond to all channels).
+     Bit 0 and bits 17-32 of this parameter are unused.
      
      You can change the channel by pressing and holding the hand icon until
      it starts to blink. When it stops input channel code (from 1 to 16)
