@@ -884,8 +884,6 @@ Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj(((1000*sdata->audio_sample_t
 
 Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("luma_hist", -1));
 
-fprintf(stderr, "%d %d\n", sdata->audio_sample_top_left, sdata->audio_sample_top_right);
-
 list=Tcl_NewListObj(0, NULL);
 total=0;
 b=0;
