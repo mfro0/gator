@@ -58,6 +58,21 @@ typedef struct {
 	KM_FIELD_DATA *kfd;
 	} KM_FILE_PRIVATE_DATA;
 
+#define KM_MODULUS	255
+#define KM_MULTIPLE	23
+
+unsigned  km_command_hash(char *s, int length)
+{
+int i;
+unsigned r;
+r=0;
+for(i=0;(i<length)&& s[i] && (s[i]!=' ') && (s[i]!='\n') && (s[i]!='=');i++){
+	r=(r*KM_MULTIPLE+s[i]) % KM_MODULUS;
+	} 
+return r;
+}
+
+
 static void expand_buffer(KM_FILE_PRIVATE_DATA *kmfpd, long increment)
 {
 char *b;
@@ -155,6 +170,8 @@ i=simple_strtol(filename+7, NULL, 10);
 if(i<0)return -EINVAL;
 if(i>=devices_free)return -EINVAL;
 
+MOD_INC_USE_COUNT;
+
 kmd=&(devices[i]);
 spin_lock(&(kmd->lock));
 kmfpd=kmalloc(sizeof(KM_FILE_PRIVATE_DATA), GFP_KERNEL);
@@ -183,6 +200,7 @@ static int km_fo_control_release(struct inode * inode, struct file * file)
 {
 KM_FILE_PRIVATE_DATA *kmfpd=file->private_data;
 KM_DEVICE *kmd=kmfpd->kmd;
+
 kfree(kmfpd->field_flags);
 kfree(kmfpd->kfd);
 kfree(kmfpd->buffer_read);
@@ -191,6 +209,9 @@ file->private_data=NULL;
 spin_lock(&(kmd->lock));
 kmd->use_count--;
 spin_unlock(&(kmd->lock));
+
+MOD_DEC_USE_COUNT;
+
 return 0;
 }
 
@@ -252,7 +273,7 @@ if(!strncmp("STATUS\n", buffer, 7)){
 	kmfpd->request_flags|=STATUS_REQUESTED;
 	kmd_signal_state_change(kmd->number);
 	} else
-if(!strncmp("REPORT=", buffer, 7)){
+if(!strncmp("REPORT ", buffer, 7)){
 	field_length=count-8; /* exclude trailing \n */
 	if(field_length<=0)return count; /* bogus command */
 	for(i=0;i<kmd->num_fields;i++){
@@ -289,10 +310,12 @@ struct file_operations km_control_file_operations={
 
 int add_km_device(KM_FIELD *kmfl, void *priv)
 {
-long i,num;
+long i,h,num;
 char temp[32];
 KM_DEVICE * kmd=NULL;
+KM_FIELD *kf=NULL;
 num=-1;
+MOD_INC_USE_COUNT;
 for(i=0;(num<0)&&(i<devices_free);i++){
 	spin_lock(&(devices[i].lock));
 	if(devices[i].use_count<1)num=i;
@@ -307,7 +330,20 @@ memset(kmd, sizeof(KM_DEVICE), 0);
 kmd->number=num;
 kmd->fields=kmfl;
 kmd->num_fields=0;
-while(kmd->fields[kmd->num_fields].type!=KM_FIELD_TYPE_EOL)kmd->num_fields++;
+kmd->command_hash=kmalloc(sizeof(*(kmd->command_hash))*KM_MODULUS, GFP_KERNEL);
+for(i=0;i<KM_MODULUS;i++)kmd->command_hash[i]=-1;
+while((kf=&(kmd->fields[kmd->num_fields]))->type!=KM_FIELD_TYPE_EOL){
+	kmd->num_fields++;
+	if(kf->type==KM_FIELD_TYPE_PROGRAMMABLE){
+		h=km_command_hash(kf->name, 10000); /*names longer than that are bogus, really ! */
+		i=kmd->command_hash[h];
+		if(i<0)kmd->command_hash[h]=kmd->num_fields;
+			else {
+			while(kmd->fields[i].next_command>=0)i=kmd->fields[i].next_command;
+			kmd->fields[i].next_command=kmd->num_fields;
+			}
+		}
+	}
 kmd->priv=priv;
 spin_lock_init(&(kmd->lock));
 init_waitqueue_head(&(kmd->wait));
@@ -324,7 +360,6 @@ kmd->control->proc_fops=&km_control_file_operations;
 kmd->data->data=kmd;
 kmd->use_count=1;
 devices_free++;
-MOD_INC_USE_COUNT;
 return num;
 }
 
@@ -346,6 +381,8 @@ sprintf(temp, "control%d", num);
 remove_proc_entry(temp, km_root);
 sprintf(temp, "data%d", num);
 remove_proc_entry(temp, km_root);
+kfree(devices[num].command_hash);
+devices[num].command_hash=NULL;
 devices[num].control=NULL;
 devices[num].data=NULL;
 devices[num].fields=NULL;

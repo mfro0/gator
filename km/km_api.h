@@ -70,6 +70,7 @@ typedef struct S_KM_FIELD {
 		KM_FIELD_PROGRAMMABLE	p;
 		KM_FIELD_MEMORY_AREA    m;
 		} data;
+	int next_command;
 	} KM_FIELD;
 
 typedef struct {
@@ -82,6 +83,7 @@ typedef struct {
 	KM_FIELD *fields;
 	long num_fields;
 	void *priv;
+	int *command_hash;
 	} KM_DEVICE;
 
 typedef struct {

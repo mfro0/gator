@@ -4,7 +4,7 @@ set file [open "/proc/km/control0" w+]
 
 puts $file "STATUS"
 flush $file
-puts $file "REPORT=VSYNC_COUNT"
+puts $file "REPORT VSYNC_COUNT"
 flush $file
 
 while { 1} {
