@@ -66,7 +66,6 @@ struct ati_remote {
 	struct input_dev dev[16];
 	struct urb irq, out;
 	wait_queue_head_t wait;
-	devrequest dr;
 	int open;
 	int send_flags;
 };
@@ -417,10 +416,6 @@ static void *ati_remote_probe(struct usb_device *dev, unsigned int ifnum,
 		}
 	init_waitqueue_head(&ati_remote->wait);
 
-	ati_remote->dr.requesttype = USB_TYPE_VENDOR | USB_DIR_IN | USB_RECIP_INTERFACE;
-	ati_remote->dr.index = 0;
-	ati_remote->dr.length = 16;
-	
 	printk("bInterval=%d\n", endpoint->bInterval);
 	FILL_INT_URB(&ati_remote->irq, dev, pipe, ati_remote->data, maxp > 8 ? 8 : maxp,
 		ati_remote_irq, ati_remote, endpoint->bInterval);
