@@ -4,7 +4,6 @@ proc find_attribute_widget {video_window port attribute} {
 set type1  [xv_port_attribute_type $video_window $port $attribute]
 set range [xv_port_attribute_range $video_window $port $attribute]
 set name [xv_port_attribute_name $video_window $port $attribute]
-if {$name == "XV_SET_DEFAULTS" } { return "button" }
 if { [regexp {^XV_(LOCATION_ID|DEVICE_ID|INSTANCE_ID|ENCODING|AUTOPAINT_COLORKEY|COLORKEY)$} $name] } { return "none"}
 if {$name == "XV_TUNER_STATUS" } { 
 	global tuner_status_present_$port
@@ -19,7 +18,12 @@ if {$name == "XV_FREQ" } {
 	global tuner_freq_present_$port
 	set tuner_freq_present_$port true
 	}
-if { [lsearch $type1 "gettable"] < 0 } { return "unreadable" }
+if { [lsearch $type1 "gettable"] < 0 } { 
+	if { ("$range" == "0 1") && ([lsearch $type1 "settable"] >=0 ) } {
+		return "button"
+		}
+	return "unreadable" 
+	}
 if { [lsearch $type1 "settable"] < 0 } { return "label" }
 if { "$range" == "0 1" } { return "toggle" }
 if { [lindex $range 1] > 1000000 } { return "entry" }
@@ -34,8 +38,8 @@ if { $name == "XV_DEC_BRIGHTNESS" } { return "Capture brightness"}
 if { $name == "XV_DEC_CONTRAST" } { return "Capture contrast"}
 if { $name == "XV_DEC_SATURATION" } { return "Capture saturation"}
 if { $name == "XV_DEC_HUE" } { return "Capture hue"}
-regsub "XV_" "$name" "" name1
-regsub "_" "$name1" " " name1
+regsub "^XV_" "$name" "" name1
+regsub -all "_" "$name1" " " name1
 set name2 [string tolower $name1 1 end]
 set name3 [string toupper $name2 0 0]
 return $name3
@@ -119,7 +123,7 @@ switch  $type {
 		}
 	}
 incr attr_count
-if { $type != "button" } {
+if { ($type != "button") && ($type != "unreadable") } {
 	trace vdelete $attr_var w "on_attribute_change $name"
 	set $attr_var [xv_getportattribute $video_window $port "$name"]
 	trace variable $attr_var w "on_attribute_change $name"
