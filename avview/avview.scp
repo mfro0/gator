@@ -47,6 +47,7 @@ foreach {variable value} {
 	dpms_off_on_fullscreen_power_off "false"
 	disable_fullscreen_switching "false"
 	message_visible_secs	14
+	save_settings_on_exit	"unset"
 	} {
 	global $variable
 	set $variable $value
@@ -419,7 +420,7 @@ foreach variable {current_port current_encoding_name current_table_name
 	 show_control_window always_start_fullscreen remember_fullscreen_state
 	display_setup_window_on_startup file_save_path dpms_off_on_fullscreen_power_off
 	disable_fullscreen_switching use_physical_screen_size message_visible_secs
-	on_screen_cc_page } {
+	on_screen_cc_page save_settings_on_exit } {
 	global $variable
 	puts $fileid "\nglobal $variable"
 	puts $fileid "set $variable \"[set $variable]\""
@@ -490,6 +491,17 @@ if { $avview_version != $saved_avview_version } {
 		after idle {switch_to_pane "/Video device parameters"}
 		}
 	}
+global save_settings_on_exit
+if { $save_settings_on_exit == "unset" } { set save_settings_on_exit "true" }
+}
+
+proc exit_avview {} {
+global save_settings_on_exit
+if { [ffmpeg_present] == "yes" } {
+	ffmpeg_stop_encoding
+        }
+if { $save_settings_on_exit == "true" } { save_settings }
+exit
 }
 
 proc check_mapped_state {} {
@@ -722,7 +734,7 @@ menu .video_menu.cc_menu -type normal -tearoff false
 .video_menu add separator
 .video_menu add cascade -menu .video_menu.interface_menu -label "User interface"
 .video_menu add separator
-.video_menu add command -label "Exit AVview" -command { save_settings; exit }
+.video_menu add command -label "Exit AVview" -command exit_avview
 .video_menu add separator
 .video_menu add command -label "Dismiss this menu"
 
@@ -816,13 +828,8 @@ bind $VIDEO_WINDOW <Configure> {
 
 
 
-wm protocol . WM_DELETE_WINDOW { 
-        if { [ffmpeg_present] == "yes" } {
-                ffmpeg_stop_encoding
-                }
-	save_settings  
-	exit 
-	}
+wm protocol . WM_DELETE_WINDOW exit_avview
+
 #wm protocol .controlwin WM_DELETE_WINDOW {
 #        if { [ffmpeg_present] == "yes" } {
 #                ffmpeg_stop_encoding
