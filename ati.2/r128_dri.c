@@ -307,10 +307,10 @@ static void R128LeaveServer(ScreenPtr pScreen)
 	    info->sc_top      = INREG(R128_SC_TOP);
 	    info->sc_bottom   = INREG(R128_SC_BOTTOM);
 	    info->aux_sc_cntl = INREG(R128_SC_BOTTOM);
-	} else {
-	  R128CCEFlushIndirect(pScrn);
-	  R128CCEReleaseIndirect(pScrn);
 	}
+    } else {
+      R128CCEFlushIndirect(pScrn);
+      R128CCEReleaseIndirect(pScrn);
     }
 }
 
