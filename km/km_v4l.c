@@ -24,10 +24,7 @@ static int km_open(struct video_device *dev, int flags)
 u32 buf_size;
 int result;
 KM_STRUCT *kms=(KM_STRUCT *)dev;
-if(spin_is_locked(&(kms->kms_lock))){
-	printk("Locked\n");
-	return -1;
-	}
+
 spin_lock(&(kms->kms_lock));
 if(!kms->is_capture_active(kms)){
 	printk("km: no data is available until xawtv is started\n");
