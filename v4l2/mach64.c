@@ -531,15 +531,7 @@ void mach64_enable_capture(GENERIC_CARD *card)
 
 /* vbi stuff here we use oneshot to record vbi info */
 MACH64_VBI_START_END = XY(20,6);
-/* okay ccdecoder thinks lines are 2048 long and it expects cc data on
-line 11,  11 * 2048 = 22528
-But we are capturing from line 10 to line 20 and cc data is on line 17
-So we have to make the width for 7 lines = 22528
-22528 / 7 = 3218 which is 0xC92 so we use that for the width
-or we can just start capturing from line 6... */
-//MACH64_VBI_WIDTH = 0x00000C92; /* 3218 */
-MACH64_VBI_WIDTH = 2048; /* 3218 */
-//MACH64_ONESHOT_BUF_OFFSET = card->vbibuffer; /* set it to store to vbibuffer*/
+MACH64_VBI_WIDTH = 2048; 
 
 /* set capture size, should be using card->width card->height */
   MACH64_CAPTURE_X_WIDTH    = XY(2*card->width,0);

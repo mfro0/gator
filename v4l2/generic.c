@@ -894,13 +894,17 @@ unsigned long page,pos;
       }
     }
     while (size > 0){
-      page = kvirt_to_pa(pos);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
+      page = kvirt_to_pa(pos);
       if (remap_page_range(start,page,PAGE_SIZE, PAGE_SHARED)) {
 #else
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,10)
+      page = kvirt_to_pa(pos);
       if (remap_page_range(vma,start,page,PAGE_SIZE, PAGE_SHARED)) {
-//      page = page_to_pfn(vmalloc_to_page((void *)pos));
-//      if (remap_pfn_range(vma,start,page,PAGE_SIZE, PAGE_SHARED)) {	      
+#else
+      page = page_to_pfn(vmalloc_to_page((void *)pos));
+      if (remap_pfn_range(vma,start,page,PAGE_SIZE, PAGE_SHARED)) {	      
+#endif
 #endif
         printk(KERN_INFO "remap page range failed");
         up(&card->lock);
@@ -1162,28 +1166,26 @@ format_by_fourcc(int fourcc)
 
 void generic_vbi_setlines(GENERIC_FH *fh, GENERIC_CARD *card, int lines)
 {
-        int vdelay;
+  int vdelay;
 
-        if (lines < 1)
-                lines = 1;
-        if (lines > VBI_MAXLINES)
-                lines = VBI_MAXLINES;
-        fh->lines = lines;
+  if (lines < 1)
+    lines = 1;
+  if (lines > VBI_MAXLINES)
+    lines = VBI_MAXLINES;
+  fh->lines = lines;
 
-        vdelay = BTREAD(card,BT829_VDELAY_LO);
-        if (vdelay < lines*2) {
-                vdelay = lines*2;
-                BTWRITE(card,BT829_VDELAY_LO,vdelay);
-        }
+  vdelay = BTREAD(card,BT829_VDELAY_LO);
+  if (vdelay < lines*2) {
+    vdelay = lines*2;
+    BTWRITE(card,BT829_VDELAY_LO,vdelay);
+  }
 }
 
-
-
-void generic_vbi_get_fmt(GENERIC_FH *fh, struct v4l2_format *f)
+void generic_vbi_get_fmt(GENERIC_FH *fh, GENERIC_CARD *card, struct v4l2_format *f)
 {
         memset(f,0,sizeof(*f));
         f->type = V4L2_BUF_TYPE_VBI_CAPTURE;
-        f->fmt.vbi.sampling_rate    = 35468950;
+        f->fmt.vbi.sampling_rate    = generic_tvnorms[card->tvnorm].Fsc;
         f->fmt.vbi.samples_per_line = 2048;
         f->fmt.vbi.sample_format    = V4L2_PIX_FMT_GREY;
         f->fmt.vbi.offset           = 244;
@@ -1203,12 +1205,12 @@ void generic_vbi_get_fmt(GENERIC_FH *fh, struct v4l2_format *f)
         }
 }
 
-void generic_vbi_try_fmt(GENERIC_FH *fh, struct v4l2_format *f)
+void generic_vbi_try_fmt(GENERIC_FH *fh, GENERIC_CARD *card, struct v4l2_format *f)
 {
         u32 start0,start1,count;
 
         f->type = V4L2_BUF_TYPE_VBI_CAPTURE;
-        f->fmt.vbi.sampling_rate    = 35468950;
+        f->fmt.vbi.sampling_rate    = generic_tvnorms[card->tvnorm].Fsc;
         f->fmt.vbi.samples_per_line = 2048;
         f->fmt.vbi.sample_format    = V4L2_PIX_FMT_GREY;
         f->fmt.vbi.offset           = 244;
@@ -1254,6 +1256,7 @@ static int generic_g_fmt(GENERIC_FH *fh, struct v4l2_format *f)
                         f->fmt.pix.height * f->fmt.pix.bytesperline;
                 return 0;
         case V4L2_BUF_TYPE_VBI_CAPTURE:
+                generic_vbi_get_fmt(fh,card,f);
                 return 0;
         default:
                 return -EINVAL;
@@ -1632,20 +1635,28 @@ dprintk(2,"card(%d) VIDIOCMCAPTURE called %dx%d\n",card->cardnum, vm->width, vm-
     case VIDIOCGVBIFMT:
      {
       struct vbi_format *fmt = (void *) arg;
+      struct v4l2_format fmt2;
+
+/* check if we are in capture mode and switch to vbi mode?? */
+
+      generic_vbi_get_fmt(fh,card, &fmt2);
 
       /* no idea what these numbers are :) 
       i will just try to make it work with ntsc for now */
-      fmt->sampling_rate = 35468950;
-      fmt->samples_per_line = 2048;
+      memset(fmt,0,sizeof(*fmt));
+      fmt->sampling_rate = fmt2.fmt.vbi.sampling_rate;
+      fmt->samples_per_line = fmt2.fmt.vbi.samples_per_line;
       fmt->sample_format    = VIDEO_PALETTE_RAW;
-      fmt->start[0] = 10;
-      fmt->count[0] = 16;
-      fmt->start[1] = 273;
-      fmt->count[1] = 16;
-      fmt->flags = 0;
-      /* use card->tvnorm to set different starts for pal/secam */
+      fmt->start[0] = fmt2.fmt.vbi.start[0];
+      fmt->count[0] = fmt2.fmt.vbi.count[0]; 
+      fmt->start[1] = fmt2.fmt.vbi.start[1];
+      fmt->count[1] = fmt2.fmt.vbi.count[1]; 
+//      if (fmt2.fmt.vbi.flags & VBI_UNSYNC)
+//        fmt->flags   |= V4L2_VBI_UNSYNC;
+//      if (fmt2.fmt.vbi.flags & VBI_INTERLACED)
+//        fmt->flags   |= V4L2_VBI_INTERLACED;
 
-dprintk(1,"card(%d) VIDIOCGVBIFMT called (not done yet)\n",card->cardnum);
+dprintk(1,"card(%d) VIDIOCGVBIFMT called \n",card->cardnum);
       return 0;
      }
 
@@ -1921,10 +1932,13 @@ dprintk(2,"card(%d) vcap in VIDIOC_S_FMT x %d y %d fmt %d\n",card->cardnum,f->fm
         }
 	break;
 	case V4L2_BUF_TYPE_VBI_CAPTURE:
-dprintk(1,"card(%d) V4L2_BUF_TYPE_VBI_CAPTURE inside VIDIOC_S_FMT (not done)\n",card->cardnum);
+dprintk(1,"card(%d) V4L2_BUF_TYPE_VBI_CAPTURE inside VIDIOC_S_FMT\n",card->cardnum);
+        generic_vbi_try_fmt(fh,card,f);
+        generic_vbi_setlines(fh,card,f->fmt.vbi.count[0]);
+        generic_vbi_get_fmt(fh,card,f);
 	break;
         default:
-       return -EINVAL;
+          return -EINVAL;
       }
 
       return 0;

@@ -406,7 +406,7 @@ int generic_do_ioctl(struct inode *inode, struct file *file,
                          unsigned int cmd, void *arg);
 void i2c_vidiocschan(GENERIC_CARD *card);
 int set_tvnorm(GENERIC_CARD *card, unsigned int norm);
-void generic_vbi_try_fmt(GENERIC_FH *fh, struct v4l2_format *f);
+void generic_vbi_try_fmt(GENERIC_FH *fh, GENERIC_CARD *card, struct v4l2_format *f);
 void generic_enable_vbi(GENERIC_CARD *card);
 void generic_disable_vbi(GENERIC_CARD *card);
 void generic_enable_capture(GENERIC_CARD *card);
