@@ -6,6 +6,10 @@
        
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stdlib.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -36,6 +40,8 @@
 #include "formats.h"
 #include "packet_stream.h"
 #include "alsa.h"
+
+typedef void *(*pthread_start_fn)(void *);
 
 typedef struct {
 	long type;
@@ -79,7 +85,7 @@ FFMPEG_ENCODING_DATA *sdata=NULL;
 
 /* #define DEBUG_TIMESTAMPS   */
 
-int ffmpeg_present(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int ffmpeg_present(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tcl_ResetResult(interp);
 Tcl_AppendResult(interp,"yes", NULL);
@@ -263,7 +269,7 @@ while(1){
 	pthread_mutex_unlock(&(s->ctr_mutex));
 	while((f!=NULL)&& !(s->stop_stream & STOP_PRODUCER_THREAD)){
 		ffmpeg_gather_audio_stats(f);
-		ob_free=avcodec_encode_audio(&(sdata->audio_codec_context), out_buf, ob_size, f->buf);	
+		ob_free=avcodec_encode_audio(&(sdata->audio_codec_context), out_buf, ob_size, (short *) f->buf);	
 		if(ob_free>0){
 			sdata->encoded_stream_size+=ob_free; 
 			ob_written=0;
@@ -320,8 +326,9 @@ pthread_mutex_unlock(&(s->ctr_mutex));
 
 
 
-static int file_write(FFMPEG_ENCODING_DATA *sdata, unsigned char *buf, int size)
+static void file_write(void *opaque, unsigned char *buf, int size)
 {
+FFMPEG_ENCODING_DATA *sdata = (FFMPEG_ENCODING_DATA *) opaque;
 int a;
 int done;
 done=0;
@@ -334,27 +341,27 @@ while(done<size){
 		sleep(1);
 		}
 	}
-return 1;
 }
 
-offset_t file_seek(FFMPEG_ENCODING_DATA *sdata, offset_t pos, int whence)
+int file_seek(void *opaque, offset_t pos, int whence)
 {
+FFMPEG_ENCODING_DATA *sdata = (FFMPEG_ENCODING_DATA *) opaque;
 fprintf(stderr,"file_seek pos=%lld whence=%d\n", pos, whence);
 return lseek64(sdata->fd_out, pos, whence);
 }
 
-int ffmpeg_create_video_codec(Tcl_Interp* interp, int argc, char * argv[])
+int ffmpeg_create_video_codec(Tcl_Interp* interp, int argc, const char * argv[])
 {
 V4L_DATA *data;
-char *arg_v4l_handle;
-char *arg_video_codec;
-char *arg_v4l_mode;
-char *arg_v4l_rate;
-char *arg_video_bitrate;
-char *arg_deinterlace_mode;
-char *arg_step_frames;
-char *arg_video_quality;
-char *arg_video_bitrate_control;
+const char *arg_v4l_handle;
+const char *arg_video_codec;
+const char *arg_v4l_mode;
+const char *arg_v4l_rate;
+const char *arg_video_bitrate;
+const char *arg_deinterlace_mode;
+const char *arg_step_frames;
+const char *arg_video_quality;
+const char *arg_video_bitrate_control;
 struct video_picture vpic;
 double a,b;
 
@@ -372,7 +379,7 @@ arg_video_bitrate_control=get_value(argc, argv, "-video_bitrate_control");
 
 if((arg_v4l_handle==NULL)||
 	(!strcmp(arg_v4l_handle, "none"))||
-	((data=get_v4l_device_from_handle(arg_v4l_handle))==NULL))return 0;
+	((data=get_v4l_device_from_handle((char*)arg_v4l_handle))==NULL))return 0;
 
 if(data->priv!=NULL){
 	Tcl_AppendResult(interp,"ERROR: ffmpeg_encode_v4l_stream: v4l device busy", NULL);
@@ -432,7 +439,7 @@ if(!strcmp("MJPEG", arg_video_codec)){
 	sdata->video_codec=avcodec_find_encoder(CODEC_ID_MJPEG);
 	} else
 if(!strcmp("MSMPEG-4", arg_video_codec)){
-	sdata->video_codec=avcodec_find_encoder(CODEC_ID_MSMPEG4);
+	sdata->video_codec=avcodec_find_encoder(CODEC_ID_MSMPEG4V3);
 	qmin=3;
 	} else
 if(!strcmp("H263", arg_video_codec)){
@@ -524,11 +531,11 @@ sdata->v4l_device=data;
 return 1;
 }
 
-int ffmpeg_create_audio_codec(Tcl_Interp* interp, int argc, char * argv[])
+int ffmpeg_create_audio_codec(Tcl_Interp* interp, int argc, const char * argv[])
 {
-char *arg_audio_codec;
-char *arg_audio_bitrate;
-char *arg_audio_rate;
+const char *arg_audio_codec;
+const char *arg_audio_bitrate;
+const char *arg_audio_rate;
 if(alsa_setup_reader_thread(sdata->audio_s, argc, argv, &(sdata->alsa_param))<0){
 	return 0;
 	}
@@ -590,11 +597,11 @@ sdata->audio_s->consume_func=ffmpeg_audio_encoding_thread;
 return 1;
 }
 
-int ffmpeg_encode_v4l_stream(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int ffmpeg_encode_v4l_stream(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 int i,k;
-char *arg_filename;
-char *arg_av_format;
+const char *arg_filename;
+const char *arg_av_format;
 
 Tcl_ResetResult(interp);
 
@@ -711,7 +718,7 @@ if(sdata->format_context.oformat!=NULL){
 	}
 if(sdata->audio_stream_num>=0){
 	sdata->audio_s->producer_thread_running=1;
-	if(pthread_create(&(sdata->audio_reader_thread), NULL, alsa_reader_thread, sdata->audio_s)!=0){
+	if(pthread_create(&(sdata->audio_reader_thread), NULL, (pthread_start_fn) alsa_reader_thread, sdata->audio_s)!=0){
 		sdata->audio_s->producer_thread_running=0;
 		} 
 	}
@@ -719,7 +726,7 @@ sdata->video_s->stop_stream &= ~STOP_CONSUMER_THREAD;
 return 0;
 }
 
-int ffmpeg_switch_file(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int ffmpeg_switch_file(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tcl_ResetResult(interp);
 if(argc<2){
@@ -730,7 +737,7 @@ fprintf(stderr, "Switching recording to file \"%s\"\n", argv[1]);
 return TCL_OK;
 }
 
-int ffmpeg_stop_encoding(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int ffmpeg_stop_encoding(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 
 Tcl_ResetResult(interp);
@@ -754,7 +761,7 @@ if(sdata->video_s!=NULL)v4l_detach_output_stream(sdata->v4l_device, sdata->video
 return 0;
 }
 
-int ffmpeg_incoming_fifo_size(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int ffmpeg_incoming_fifo_size(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 long total;
 
@@ -825,7 +832,7 @@ fprintf(stderr,"total=%ld sdata=%p\n", total, sdata);
 return TCL_OK;
 }
 
-int ffmpeg_encoding_status(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int ffmpeg_encoding_status(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 long total_fifo;
 int i;

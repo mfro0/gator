@@ -23,7 +23,7 @@ typedef struct {
 	} STRING_CACHE;
 	
 STRING_CACHE * new_string_cache(void);
-long lookup_string(STRING_CACHE *sc, char * string);
+long lookup_string(STRING_CACHE *sc, const char * string);
 long add_string(STRING_CACHE *sc, char *string);
 int valid_id(STRING_CACHE *sc, long string_id);
 

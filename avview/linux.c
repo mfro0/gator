@@ -6,6 +6,9 @@
        
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include <unistd.h>
 #include <sys/mman.h>
@@ -20,7 +23,7 @@
 #include <tcl.h>
 
 
-int linux_getrlimit(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int linux_getrlimit(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tcl_Obj *ans;
 int resource;

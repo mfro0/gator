@@ -6,6 +6,10 @@
        
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/mman.h>
@@ -27,9 +31,11 @@
 #include "formats.h"
 #include "v4l.h"
 
+typedef void *(*pthread_start_fn)(void *);
+
 STRING_CACHE *v4l_sc=NULL;
 
-int v4l_open_device(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int v4l_open_device(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 long i;
 V4L_DATA *data;
@@ -40,7 +46,7 @@ if(argc<3){
 	Tcl_AppendResult(interp,"ERROR: v4l_open_device requires two arguments", NULL);
 	return TCL_ERROR;
 	}
-i=add_string(v4l_sc, argv[1]);
+i=add_string(v4l_sc, (char*)argv[1]);
 if(v4l_sc->data[i]!=NULL){
 	data=(V4L_DATA*) v4l_sc->data[i];
 	close(data->fd);
@@ -147,7 +153,7 @@ s->producer_thread_running++;
 pthread_mutex_unlock(&(s->ctr_mutex));
 if(data->streams_out_free==1){
 	/* start reader thread */
-	if(pthread_create(&(data->v4l_reader_thread), NULL, v4l_reader_thread, data)!=0){	
+	if(pthread_create(&(data->v4l_reader_thread), NULL, (pthread_start_fn) v4l_reader_thread, data)!=0){	
 		fprintf(stderr,"Error creating v4l reader thread:");
 		perror("");
 		}
@@ -174,7 +180,7 @@ data->streams_out_free--;
 pthread_mutex_unlock(&data->streams_out_mutex);
 }
 
-int v4l_close_device(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int v4l_close_device(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 long i;
 V4L_DATA *data;
@@ -202,7 +208,7 @@ v4l_sc->data[i]=NULL;
 return 0;
 }
 
-int v4l_device_type(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int v4l_device_type(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 long i;
 V4L_DATA *data;
@@ -246,7 +252,7 @@ Tcl_SetObjResult(interp, ans);
 return 0;
 }
 
-int v4l_device_name(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int v4l_device_name(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 long i;
 V4L_DATA *data;
@@ -302,8 +308,9 @@ typedef struct {
 
 V4L_SNAPSHOT_DATA *snapshot_data=NULL;
 
-void v4l_snapshot_timer_callback(V4L_DATA *data)
+void v4l_snapshot_timer_callback(ClientData clientData)
 {
+V4L_DATA *data = (V4L_DATA *) clientData;
 char *p=NULL;
 PACKET *f1,*f2;
 if((snapshot_data==NULL)||(snapshot_data->type!=V4L_SNAPSHOT_KEY)){
@@ -384,7 +391,7 @@ free(snapshot_data);
 snapshot_data=NULL;
 }
 
-int v4l_capture_snapshot(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int v4l_capture_snapshot(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 long i;
 V4L_DATA *data;
@@ -514,7 +521,7 @@ v4l_snapshot_timer_callback(data);
 return 0;
 }
 
-int v4l_get_current_window(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int v4l_get_current_window(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 long i;
 V4L_DATA *data;
@@ -553,7 +560,7 @@ Tcl_SetObjResult(interp, ans);
 return 0;
 }
 
-int v4l_set_current_window(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int v4l_set_current_window(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 long i;
 V4L_DATA *data;
@@ -591,7 +598,7 @@ if(ioctl(data->fd, VIDIOCSWIN, &vwin)<0){
 return 0;
 }
 
-int get_deinterlacing_methods(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int get_deinterlacing_methods(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tcl_Obj *ans;
 Tcl_ResetResult(interp);
@@ -691,14 +698,15 @@ while(1){
 	}
 }
 
-void monitor_pipe_handler(MONITOR_INFO *minfo, int mask)
+void monitor_pipe_handler(ClientData clientData, int mask)
 {
+MONITOR_INFO *minfo=(MONITOR_INFO *) clientData;
 char a;
 fprintf(stderr,"Q");
 read(minfo->filedes[0], &a, 1);
 }
 
-int start_monitor(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int start_monitor(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 V4L_DATA *data;
 Tcl_ResetResult(interp);
@@ -706,7 +714,7 @@ if(argc<3){
 	Tcl_AppendResult(interp, "start_monitor requires at least two arguments\n", NULL);
 	return TCL_ERROR;
 	}
-data=get_v4l_device_from_handle(argv[1]);
+data=get_v4l_device_from_handle((char*)argv[1]);
 if(data==NULL){
 	Tcl_AppendResult(interp, "start_monitor: v4l device not open\n", NULL);
 	return TCL_OK;
@@ -733,7 +741,7 @@ v4l_attach_output_stream(data, minfo->s);
 return TCL_OK;
 }
 
-int stop_monitor(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int stop_monitor(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 return TCL_OK;
 }

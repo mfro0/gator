@@ -6,6 +6,10 @@
        
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -48,7 +52,7 @@ free(a);
 pthread_mutex_unlock(&memory_mutex);
 }
 
-char *get_value(int argc, char *argv[], char *key)
+const char *get_value(int argc, const char *argv[], char *key)
 {
 int i;
 for(i=0;i<argc;i++){
@@ -63,7 +67,7 @@ return NULL;
 #error "please regenerate ./configure file and run it again"
 #endif
 
-int avview_version(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int avview_version(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tcl_ResetResult(interp);
 Tcl_AppendResult(interp, AVVIEW_VERSION, NULL);

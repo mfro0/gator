@@ -6,6 +6,10 @@
        
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/mman.h>
@@ -26,7 +30,7 @@ void xv_notify_handler(void *p, XEvent *xev)
 fprintf(stderr,"type=%d+\n", xev->type);
 }
 
-int xv_numadaptors(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int xv_numadaptors(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tk_Window tkwin;
 Window win;
@@ -66,7 +70,7 @@ XvFreeAdaptorInfo(xvi);
 return 0;
 }
 
-int xv_adaptor_name(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int xv_adaptor_name(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tk_Window tkwin;
 Window win;
@@ -113,7 +117,7 @@ XvFreeAdaptorInfo(xvi);
 return 0;
 }
 
-int xv_adaptor_type(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int xv_adaptor_type(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tk_Window tkwin;
 Window win;
@@ -170,7 +174,7 @@ XvFreeAdaptorInfo(xvi);
 return 0;
 }
 
-int xv_adaptor_ports(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int xv_adaptor_ports(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tk_Window tkwin;
 Window win;
@@ -223,7 +227,7 @@ XvFreeAdaptorInfo(xvi);
 return 0;
 }
 
-int xv_num_port_encodings(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int xv_num_port_encodings(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tk_Window tkwin;
 Window win;
@@ -270,7 +274,7 @@ XvFreeEncodingInfo(xei);
 return 0;
 }
 
-int xv_port_encodings(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int xv_port_encodings(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tk_Window tkwin;
 Window win;
@@ -324,7 +328,7 @@ XvFreeEncodingInfo(xei);
 return 0;
 }
 
-int xv_port_encoding_name(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int xv_port_encoding_name(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tk_Window tkwin;
 Window win;
@@ -379,7 +383,7 @@ XvFreeEncodingInfo(xei);
 return 0;
 }
 
-int xv_port_encoding_id(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int xv_port_encoding_id(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tk_Window tkwin;
 Window win;
@@ -435,7 +439,7 @@ XvFreeEncodingInfo(xei);
 return 0;
 }
 
-int xv_port_encoding_size(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int xv_port_encoding_size(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tk_Window tkwin;
 Window win;
@@ -497,7 +501,7 @@ return 0;
 }
 
 
-int xv_num_port_attributes(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int xv_num_port_attributes(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tk_Window tkwin;
 Window win;
@@ -544,7 +548,7 @@ if(xa)XFree(xa);
 return 0;
 }
 
-int xv_port_attribute_name(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int xv_port_attribute_name(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tk_Window tkwin;
 Window win;
@@ -599,7 +603,7 @@ if(xa)XFree(xa);
 return 0;
 }
 
-int xv_port_attribute_type(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int xv_port_attribute_type(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tk_Window tkwin;
 Window win;
@@ -663,7 +667,7 @@ if(xa)XFree(xa);
 return 0;
 }
 
-int xv_port_attribute_range(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int xv_port_attribute_range(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tk_Window tkwin;
 Window win;
@@ -729,7 +733,7 @@ return 0;
 
 
 
-int xv_putvideo(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int xv_putvideo(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tk_Window tkwin;
 Window win;
@@ -780,15 +784,12 @@ Tk_FreeGC(d, gc);
 return 0;
 }
 
-int xv_stopvideo(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int xv_stopvideo(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tk_Window tkwin;
 Window win;
 Display *d;
 XvPortID port;
-long x,y,w,h;
-XGCValues xgcv;
-GC gc;
 
 Tcl_ResetResult(interp);
 
@@ -819,15 +820,12 @@ XvStopVideo(d, port, win);
 return TCL_OK;
 }
 
-int xv_grabport(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int xv_grabport(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tk_Window tkwin;
 Window win;
 Display *d;
 XvPortID port;
-long x,y,w,h;
-XGCValues xgcv;
-GC gc;
 
 Tcl_ResetResult(interp);
 
@@ -862,15 +860,12 @@ if(XvGrabPort(d, port, CurrentTime)==Success){
 return TCL_OK;
 }
 
-int xv_ungrabport(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int xv_ungrabport(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tk_Window tkwin;
 Window win;
 Display *d;
 XvPortID port;
-long x,y,w,h;
-XGCValues xgcv;
-GC gc;
 
 Tcl_ResetResult(interp);
 
@@ -905,7 +900,7 @@ if(XvUngrabPort(d, port, CurrentTime)){
 return TCL_OK;
 }
 
-int xv_getportattribute(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int xv_getportattribute(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tk_Window tkwin;
 Window win;
@@ -945,7 +940,7 @@ Tcl_SetObjResult(interp, Tcl_NewIntObj(value));
 return 0;
 }
 
-int xv_setportattribute(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int xv_setportattribute(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tk_Window tkwin;
 Window win;
@@ -984,7 +979,7 @@ XvSetPortAttribute(d, port, attr_atom, value);
 return 0;
 }
 
-int xv_getwindowbackgroundpixel(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int xv_getwindowbackgroundpixel(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tk_Window tkwin;
 XSetWindowAttributes *xswa;

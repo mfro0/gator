@@ -6,12 +6,18 @@
        
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
 #include "packet_stream.h"
 #include "global.h"
+
+typedef void *(*pthread_start_fn)(void *);
 
 PACKET_STREAM *new_packet_stream(void)
 {
@@ -76,7 +82,7 @@ do_free(p);
 void start_consumer_thread(PACKET_STREAM *s)
 {
 if(!s->consumer_thread_running && (s->consume_func!=NULL)) {
-	if(pthread_create(&(s->consumer_thread_id), NULL, s->consume_func, s)!=0){
+	if(pthread_create(&(s->consumer_thread_id), NULL, (pthread_start_fn)s->consume_func, s)!=0){
 		fprintf(stderr, "packet_stream: cannot create thread (s=%p s->consume_func=%p s->total=%d): ",
 			s, s->consume_func, s->total);
 		perror("");

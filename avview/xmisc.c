@@ -6,6 +6,10 @@
        
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/mman.h>
@@ -22,7 +26,7 @@
 #include <tcl.h>
 #include <tk.h>
 
-int xmisc_getscreensaver(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int xmisc_getscreensaver(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tk_Window tkwin;
 Window win;
@@ -99,7 +103,7 @@ Tcl_SetObjResult(interp, ans);
 return 0;
 }
 
-int xmisc_setscreensaver(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int xmisc_setscreensaver(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tk_Window tkwin;
 Window win;
@@ -163,7 +167,7 @@ if(b && (a!=dpms_current_level))DPMSForceLevel(d, dpms_current_level);
 return 0;
 }
 
-int xmisc_hidecursor(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int xmisc_hidecursor(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tk_Window tkwin;
 Tk_Cursor cursor;
@@ -207,7 +211,7 @@ Tk_DefineCursor(tkwin, cursor);
 return 0;
 }
 
-int xmisc_setfullscreen(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int xmisc_setfullscreen(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tk_Window tkwin;
 Window win;
@@ -277,14 +281,12 @@ struct {
 	};
 #endif
 
-int xmisc_seticon(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int xmisc_seticon(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tk_Window tkwin;
 Window win,win2;
 Display *d;
 Screen *s;
-XWindowAttributes xwa;
-XSetWindowAttributes xswa;
 int i,j;
 Atom property, type;
 Tk_PhotoImageBlock pib;
@@ -346,20 +348,17 @@ if(win2==0)win2=win;
 property=Tk_InternAtom(tkwin, "_NET_WM_ICON");
 type=Tk_InternAtom(tkwin, "CARDINAL");
 XSync(d, False);
-XChangeProperty(d, win2, property, type, 32, PropModeReplace, data, pib.width*pib.height+2);
+XChangeProperty(d, win2, property, type, 32, PropModeReplace, (unsigned char *)data, pib.width*pib.height+2);
 XSync(d, False);
 return TCL_OK;
 }
 
-int xmisc_settextproperty(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int xmisc_settextproperty(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tk_Window tkwin;
 Window win;
 Display *d;
 Screen *s;
-XWindowAttributes xwa;
-XSetWindowAttributes xswa;
-int icon;
 Atom property;
 XTextProperty xtp;
 
@@ -382,12 +381,12 @@ d=Tk_Display(tkwin);
 win=Tk_WindowId(tkwin);
 s=Tk_Screen(tkwin);
 fprintf(stderr,"%d %d\n", Tk_IsTopLevel(tkwin), Tk_IsEmbedded(tkwin));
-if((d==NULL)||(win==(Window)NULL)||(s==NULL)){
+if((d==NULL)||(win==None)||(s==NULL)){
 	Tcl_AppendResult(interp,"ERROR: xmisc_settextproperty: first argument must be a mapped toplevel or frame window", NULL);
 	return TCL_ERROR;
 	}
 property=Tk_InternAtom(tkwin, argv[2]);
-XStringListToTextProperty(&(argv[3]), argc-3, &xtp);
+XStringListToTextProperty((char **)&(argv[3]), argc-3, &xtp);
 XSync(d, False);
 XSetTextProperty(d, win, &xtp, property);
 XSync(d, False);
@@ -396,16 +395,13 @@ return TCL_OK;
 }
 
 
-int xmisc_querytree(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int xmisc_querytree(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tk_Window tkwin;
 Window win,win2;
 Display *d;
 Screen *s;
-XWindowAttributes xwa;
-XSetWindowAttributes xswa;
 int i;
-Atom property, type;
 Window root, parent, *children;
 unsigned int n_children;
 Tcl_Obj *ans, *c;
@@ -430,9 +426,9 @@ if((d==NULL)||(win==(Window)NULL)||(s==NULL)){
 	Tcl_AppendResult(interp,"ERROR: xmisc_seticon: first argument must be a mapped toplevel or frame window", NULL);
 	return TCL_ERROR;
 	}
-win2=NULL;
+win2=None;
 if(argc>2)win2=atol(argv[2]);
-if(win2==NULL)win2=win;
+if(win2==None)win2=win;
 if(!XQueryTree(d, win2, &root, &parent, &children, &n_children)){
 	Tcl_AppendResult(interp,"ERROR: xmisc_seticon: XQueryTree failed", NULL);
 	return TCL_ERROR;

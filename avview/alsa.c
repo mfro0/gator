@@ -6,6 +6,9 @@
        
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include <unistd.h>
 #include <sys/mman.h>
@@ -56,7 +59,7 @@ typedef struct {
 	} ALSA_DATA;
 
 
-int alsa_card_get_name(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int alsa_card_get_name(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 char *card_name;
 int a;
@@ -74,7 +77,7 @@ Tcl_AppendResult(interp, card_name, NULL);
 return 0;
 }
 
-int alsa_card_next(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int alsa_card_next(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 int next_card;
 int a;
@@ -93,7 +96,7 @@ Tcl_SetObjResult(interp, Tcl_NewIntObj(next_card));
 return 0;
 }
 
-int alsa_card_get_longname(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int alsa_card_get_longname(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 char *card_longname;
 int a;
@@ -111,7 +114,7 @@ Tcl_AppendResult(interp, card_longname, NULL);
 return 0;
 }
 
-int alsa_card_load(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int alsa_card_load(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 int a;
 Tcl_ResetResult(interp);
@@ -128,7 +131,7 @@ Tcl_SetObjResult(interp, Tcl_NewIntObj(a));
 return 0;
 }
 
-int alsa_hctl_open(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int alsa_hctl_open(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 int a,i;
 int mode;
@@ -139,7 +142,7 @@ if(argc<3){
 	Tcl_AppendResult(interp,"ERROR: alsa_hctl_open requires two arguments", NULL);
 	return TCL_ERROR;
 	}
-i=add_string(alsa_sc, argv[1]);
+i=add_string(alsa_sc, (char*)argv[1]);
 if(alsa_sc->data[i]!=NULL){
 	ad=(ALSA_DATA*)alsa_sc->data[i];
 	ad->use_count++;
@@ -197,7 +200,7 @@ alsa_sc->data[i]=NULL;
 fprintf(stderr,"Closed ALSA device %s index %ld\n", alsa_sc->string[i], i);
 }
 
-int alsa_hctl_close(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int alsa_hctl_close(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 int i;
 
@@ -211,7 +214,7 @@ close_alsa_connection(i);
 return TCL_OK;
 }
 
-int alsa_hctl_get_elements_info(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int alsa_hctl_get_elements_info(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 int a,i,j,k,items;
 ALSA_DATA *ad;
@@ -304,7 +307,7 @@ Tcl_SetObjResult(interp, ans);
 return TCL_OK;
 }
 
-int alsa_hctl_get_element_value(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int alsa_hctl_get_element_value(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 long i,e;
 int a,k;
@@ -368,7 +371,7 @@ Tcl_SetObjResult(interp, ans);
 return TCL_OK;
 }
 
-int alsa_hctl_set_element_value(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int alsa_hctl_set_element_value(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 long i,j,e;
 int a,k;
@@ -505,15 +508,15 @@ close_alsa_connection(data->index);
 pthread_exit(NULL);
 }
 
-int alsa_setup_reader_thread(PACKET_STREAM *s, int argc, char *argv[], ALSA_PARAMETERS *param)
+int alsa_setup_reader_thread(PACKET_STREAM *s, int argc, const char *argv[], ALSA_PARAMETERS *param)
 {
 int a;
 ALSA_DATA *ad;
 long i;
 snd_pcm_hw_params_t *hwparams;
 snd_pcm_sw_params_t *swparams;
-char *arg_audio_device;
-char *arg_audio_rate;
+const char *arg_audio_device;
+const char *arg_audio_rate;
 long rate;
 unsigned int buffer_time;
 int dir;
@@ -601,7 +604,7 @@ if(a<0){
      	fprintf(stderr, "Unable to obtain current sw paramams: %s\n", snd_strerror(a));
      	return -1;
 	}
-fprintf(stderr,"stop_threshhold:%d pid:%d\n",
+fprintf(stderr,"stop_threshhold:%ld pid:%d\n",
 	snd_pcm_sw_params_get_stop_threshold(swparams),
         getpid());
 
@@ -622,7 +625,7 @@ if(a<0){
      	fprintf(stderr, "Unable to obtain current software params: %s\n", snd_strerror(a));
      	return -1;
  	}
-fprintf(stderr,"stop_threshhold:%d pid:%d\n",
+fprintf(stderr,"stop_threshhold:%ld pid:%d\n",
 	snd_pcm_sw_params_get_stop_threshold(swparams),
         getpid());
 
@@ -631,7 +634,7 @@ ad->priv=s;
 return 0;
 }
 
-int alsa_present(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int alsa_present(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tcl_ResetResult(interp);
 Tcl_AppendResult(interp,"yes", NULL);
@@ -677,12 +680,12 @@ pthread_mutex_unlock(&(s->ctr_mutex));
 }
 
 
-int alsa_setup_reader_thread(PACKET_STREAM *s, int argc, char *argv[], ALSA_PARAMETERS *param)
+int alsa_setup_reader_thread(PACKET_STREAM *s, int argc, const char *argv[], ALSA_PARAMETERS *param)
 {
 return -1;
 }
 
-int alsa_present(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int alsa_present(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tcl_ResetResult(interp);
 Tcl_AppendResult(interp,"no", NULL);

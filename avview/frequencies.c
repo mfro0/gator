@@ -4,6 +4,10 @@ Borrowed from xawtv
 
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #define __FREQUENCIES_C__
 
 #include <stdlib.h>
@@ -1282,7 +1286,7 @@ int                chantab   = 5;
 struct CHANLIST   *chanlist  = europe_west;
 int                chancount = CHAN_COUNT(europe_west);
 
-int freq_get_table_list(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int freq_get_table_list(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tcl_Obj *ans;
 int i;
@@ -1297,7 +1301,7 @@ Tcl_SetObjResult(interp, ans);
 return 0;
 }
 
-int freq_get_channel_list(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int freq_get_channel_list(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 Tcl_Obj *ans;
 int i;
@@ -1323,7 +1327,7 @@ Tcl_SetObjResult(interp, ans);
 return 0;
 }
 
-int freq_get_channel_value(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+int freq_get_channel_value(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 int table;
 int channel;

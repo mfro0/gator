@@ -8,6 +8,10 @@
 	  
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -63,10 +67,10 @@ generate_sc_hash(sc);
 return sc;
 }
 
-long lookup_string(STRING_CACHE *sc, char * string)
+long lookup_string(STRING_CACHE *sc, const char * string)
 {
 long i, hash;
-hash=string_hash(sc, string) % sc->string_hash_size;
+hash=string_hash(sc, (char*)string) % sc->string_hash_size;
 i=sc->string_hash[hash];
 while(i>=0){
 	if(!strcmp(sc->string[i], string))return i;
