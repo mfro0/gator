@@ -1954,7 +1954,7 @@ RADEONSetPortAttribute(
         RADEONSetPortAttribute(pScrn, xvVolume,   0, data);
         RADEONSetPortAttribute(pScrn, xvMute,   1, data);
         RADEONSetPortAttribute(pScrn, xvSAP,   0, data);
-        RADEONSetPortAttribute(pScrn, xvDoubleBuffer,   0, data);
+        RADEONSetPortAttribute(pScrn, xvDoubleBuffer,   1, data);
   } else
   if(attribute == xvBrightness) {
 	pPriv->brightness = value;

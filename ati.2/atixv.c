@@ -1505,7 +1505,7 @@ ATISetPortAttribute(
         ATISetPortAttribute(pScrn, xvHue,   0, data);
         ATISetPortAttribute(pScrn, xvVolume,   0, data);
         ATISetPortAttribute(pScrn, xvMute,   1, data);
-        ATISetPortAttribute(pScrn, xvDoubleBuffer,   0, data);
+        ATISetPortAttribute(pScrn, xvDoubleBuffer,   1, data);
   } else
   if(attribute == xvBrightness) {
         if(value < -1000)value = -1000;

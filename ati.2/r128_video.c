@@ -1577,7 +1577,7 @@ R128SetPortAttribute(
         R128SetPortAttribute(pScrn, xvVolume,   0, data);
         R128SetPortAttribute(pScrn, xvMute,   1, data);
         R128SetPortAttribute(pScrn, xvSAP,   0, data);
-        R128SetPortAttribute(pScrn, xvDoubleBuffer,   0, data);
+        R128SetPortAttribute(pScrn, xvDoubleBuffer,   1, data);
   } else
   if(attribute == xvBrightness) {
         if(value < -1000)value = -1000;
