@@ -56,6 +56,7 @@ static int  RADEONQueryImageAttributes(ScrnInfoPtr, int, unsigned short *,
 static void RADEONResetVideo(ScrnInfoPtr);
 
 static void RADEONVideoTimerCallback(ScrnInfoPtr pScrn, Time now);
+static void RADEONSetOverlayAlpha(ScrnInfoPtr pScrn, int ov_alpha, int gr_alpha, int alpha_mode);
 static int RADEONPutVideo(ScrnInfoPtr pScrn, short src_x, short src_y, short drw_x, short drw_y,
                         short src_w, short src_h, short drw_w, short drw_h, 
 			RegionPtr clipBoxes, pointer data);
@@ -70,6 +71,7 @@ static Atom xvContrast, xvHue, xvColor, xvAutopaintColorkey, xvSetDefaults,
 	     xvTunerStatus, xvSAP, xvOverlayDeinterlacingMethod,
 	     xvLocationID, xvDeviceID, xvInstanceID, xvDumpStatus,
 	     xvAdjustment;
+static Atom xvOvAlpha, xvGrAlpha, xvAlphaMode;
 
 typedef struct
 {
@@ -95,6 +97,12 @@ typedef struct {
    int           green_intensity;
    int           blue_intensity;
    int		 ecp_div;   
+
+	/* overlay composition mode */
+   int		 alpha_mode; /* 0 = key mode, 1 = global mode */
+   int		 ov_alpha;
+   int		 gr_alpha;
+  
 
    int           dec_brightness;
    int           dec_saturation;
@@ -257,8 +265,8 @@ static XF86VideoFormatRec Formats[NUM_FORMATS] =
    {15, DirectColor}, {16, DirectColor}, {24, DirectColor}
 };
 
-#define NUM_DEC_ATTRIBUTES 20+4+4
-#define NUM_ATTRIBUTES 9+4+4
+#define NUM_DEC_ATTRIBUTES 20+4+4+3
+#define NUM_ATTRIBUTES 9+4+4+3
 
 static XF86AttributeRec Attributes[NUM_DEC_ATTRIBUTES+1] =
 {
@@ -270,6 +278,9 @@ static XF86AttributeRec Attributes[NUM_DEC_ATTRIBUTES+1] =
    {XvSettable | XvGettable, 0, 1, "XV_AUTOPAINT_COLORKEY"},
    {XvSettable | XvGettable, 0, ~0, "XV_COLORKEY"},
    {XvSettable | XvGettable, 0, 1, "XV_DOUBLE_BUFFER"},
+   {XvSettable | XvGettable,     0,  255, "XV_OVERLAY_ALPHA"},
+   {XvSettable | XvGettable,     0,  255, "XV_GRAPHICS_ALPHA"},
+   {XvSettable | XvGettable,     0,    1, "XV_ALPHA_MODE"},
    {XvSettable | XvGettable, -1000, 1000, "XV_BRIGHTNESS"},
    {XvSettable | XvGettable, -1000, 1000, "XV_CONTRAST"},
    {XvSettable | XvGettable, -1000, 1000, "XV_SATURATION"},
@@ -619,6 +630,58 @@ static void RADEONSetTransform (ScrnInfoPtr pScrn,
     OUTREG(RADEON_OV0_LIN_TRANS_F, dwOvBOff | dwOvBCr);
 }
 
+static void RADEONSetOverlayAlpha(ScrnInfoPtr pScrn, int ov_alpha, int gr_alpha, int alpha_mode)
+{
+    RADEONInfoPtr info = RADEONPTR(pScrn);
+    unsigned char *RADEONMMIO = info->MMIO;
+
+    if (alpha_mode == 0) { /* key mode */
+    	OUTREG(RADEON_OV0_KEY_CNTL, 
+		RADEON_GRAPHIC_KEY_FN_EQ | /* what does this do? */
+		RADEON_VIDEO_KEY_FN_FALSE | /* what does this do? */
+		RADEON_CMP_MIX_OR);
+    	/* crtc 1 */
+    	OUTREG(RADEON_DISP_MERGE_CNTL,
+		(RADEON_DISP_ALPHA_MODE_KEY & 
+		RADEON_DISP_ALPHA_MODE_MASK) |
+		((gr_alpha << 0x00000010) & 
+		RADEON_DISP_GRPH_ALPHA_MASK) |
+		((ov_alpha << 0x00000018) & 
+		RADEON_DISP_OV0_ALPHA_MASK));
+    	/* crtc 2 */
+    	OUTREG(RADEON_DISP2_MERGE_CNTL,
+		(RADEON_DISP_ALPHA_MODE_KEY & 
+		RADEON_DISP_ALPHA_MODE_MASK) |
+		((gr_alpha << 0x00000010) & 
+		RADEON_DISP_GRPH_ALPHA_MASK) |
+		((ov_alpha << 0x00000018) & 
+		RADEON_DISP_OV0_ALPHA_MASK));
+    } else { /* global mode */
+    	OUTREG(RADEON_OV0_KEY_CNTL, 
+		RADEON_GRAPHIC_KEY_FN_FALSE |   /* what does this do? */
+		RADEON_VIDEO_KEY_FN_FALSE |   /* what does this do? */
+		RADEON_CMP_MIX_AND);
+    	/* crtc 2 */
+    	OUTREG(RADEON_DISP2_MERGE_CNTL,
+		(RADEON_DISP_ALPHA_MODE_GLOBAL & 
+		RADEON_DISP_ALPHA_MODE_MASK) |
+		((gr_alpha << 0x00000010) & 
+		RADEON_DISP_GRPH_ALPHA_MASK) |
+		((ov_alpha << 0x00000018) & 
+		RADEON_DISP_OV0_ALPHA_MASK));
+    	/* crtc 1 */
+    	OUTREG(RADEON_DISP_MERGE_CNTL,
+		(RADEON_DISP_ALPHA_MODE_GLOBAL & 
+		RADEON_DISP_ALPHA_MODE_MASK) |
+		((gr_alpha << 0x00000010) & 
+		RADEON_DISP_GRPH_ALPHA_MASK) |
+		((ov_alpha << 0x00000018) & 
+		RADEON_DISP_OV0_ALPHA_MASK));
+    }
+     /* per-pixel mode - RADEON_DISP_ALPHA_MODE_PER_PIXEL */
+     /* not yet supported */
+}
+
 static void RADEONSetColorKey(ScrnInfoPtr pScrn, CARD32 colorKey)
 {
     RADEONInfoPtr info = RADEONPTR(pScrn);
@@ -724,6 +787,10 @@ RADEONResetVideo(ScrnInfoPtr pScrn)
     xvDecColor        = MAKE_ATOM("XV_DEC_COLOR");
     xvDecContrast     = MAKE_ATOM("XV_DEC_CONTRAST");
     xvDecHue          = MAKE_ATOM("XV_DEC_HUE");
+
+    xvOvAlpha	     = MAKE_ATOM("XV_OVERLAY_ALPHA");
+    xvGrAlpha	     = MAKE_ATOM("XV_GRAPHICS_ALPHA");
+    xvAlphaMode      = MAKE_ATOM("XV_ALPHA_MODE");
     
     xvAdjustment      = MAKE_ATOM("XV_ADJUSTMENT");
 
@@ -1773,6 +1840,9 @@ RADEONAllocAdaptor(ScrnInfoPtr pScrn)
     pPriv->red_intensity = 0;
     pPriv->green_intensity = 0;
     pPriv->blue_intensity = 0;
+    pPriv->ov_alpha = 255;
+    pPriv->gr_alpha = 255;
+    pPriv->alpha_mode = 0;
     pPriv->hue = 0;
     pPriv->currentBuffer = 0;
     pPriv->autopaint_colorkey = TRUE;
@@ -2108,6 +2178,7 @@ RADEONSetPortAttribute(ScrnInfoPtr  pScrn,
     RADEONInfoPtr	info = RADEONPTR(pScrn);
     RADEONPortPrivPtr	pPriv = (RADEONPortPrivPtr)data;
     Bool		setTransform = FALSE;
+    Bool		setAlpha = FALSE;
     unsigned char *RADEONMMIO = info->MMIO;
 
     info->accel->Sync(pScrn);
@@ -2133,6 +2204,9 @@ RADEONSetPortAttribute(ScrnInfoPtr  pScrn,
 	pPriv->red_intensity = 0;
 	pPriv->green_intensity = 0;
 	pPriv->blue_intensity = 0;
+	pPriv->ov_alpha = 255;
+	pPriv->gr_alpha = 255;
+	pPriv->alpha_mode = 0;
         RADEONSetPortAttribute(pScrn, xvDecBrightness, 0, data);
         RADEONSetPortAttribute(pScrn, xvDecSaturation, 0, data);
         RADEONSetPortAttribute(pScrn, xvDecContrast,   0, data);
@@ -2179,6 +2253,21 @@ RADEONSetPortAttribute(ScrnInfoPtr  pScrn,
 	pPriv->blue_intensity = ClipValue (value, -1000, 1000);
 	setTransform = TRUE;
     } 
+    else if(attribute == xvOvAlpha) 
+    {
+	pPriv->ov_alpha = ClipValue (value, 0, 255);
+	setAlpha = TRUE;
+    }
+    else if(attribute == xvGrAlpha) 
+    {
+	pPriv->gr_alpha = ClipValue (value, 0, 255);
+	setAlpha = TRUE;
+    } 
+    else if(attribute == xvAlphaMode) 
+    {
+	pPriv->alpha_mode = ClipValue (value, 0, 1);
+	setAlpha = TRUE;
+    }
     else if(attribute == xvDoubleBuffer) 
     {
 	pPriv->doubleBuffer = ClipValue (value, 0, 1);
@@ -2302,6 +2391,11 @@ RADEONSetPortAttribute(ScrnInfoPtr  pScrn,
 			   RTFIntensity(pPriv->blue_intensity),
 			   pPriv->transform_index);
     }
+
+    if (setAlpha)
+    {
+	RADEONSetOverlayAlpha(pScrn, pPriv->ov_alpha, pPriv->gr_alpha, pPriv->alpha_mode);
+    }
 	
     return Success;
 }
@@ -2333,6 +2427,12 @@ RADEONGetPortAttribute(ScrnInfoPtr  pScrn,
 	*value = pPriv->green_intensity;
     else if(attribute == xvBlueIntensity)
 	*value = pPriv->blue_intensity;
+    else if(attribute == xvOvAlpha)
+	*value = pPriv->ov_alpha;
+    else if(attribute == xvGrAlpha)
+	*value = pPriv->gr_alpha;
+    else if(attribute == xvAlphaMode)
+	*value = pPriv->alpha_mode;
     else if(attribute == xvDoubleBuffer)
 	*value = pPriv->doubleBuffer ? 1 : 0;
     else if(attribute == xvColorKey)

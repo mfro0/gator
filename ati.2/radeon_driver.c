@@ -5281,7 +5281,7 @@ static Bool RADEONInitCrtc2Registers(ScrnInfoPtr pScrn, RADEONSavePtr save,
 	save->crtc2_gen_cntl      = (RADEON_CRTC2_EN | (format << 8));
 	save->fp2_h_sync_strt_wid = save->crtc2_h_sync_strt_wid;
 	save->fp2_v_sync_strt_wid = save->crtc2_v_sync_strt_wid;
-	save->fp2_gen_cntl        = (RADEON_FP2_SEL_CRTC2 |
+	save->fp2_gen_cntl        = (RADEON_FP2_SRC_SEL_CRTC2 |
 				     RADEON_FP2_PANEL_FORMAT |
 				     RADEON_FP2_ON);
 
