@@ -538,23 +538,27 @@ if { $flash_counter<1} {
 
 proc adjust_message_font {} {
 global VIDEO_WINDOW
-set x_size  [expr [$VIDEO_WINDOW cget -width]/20]
-set y_size [expr [$VIDEO_WINDOW cget -height]/8]
+set x_size  [expr [winfo width $VIDEO_WINDOW]/20]
+set y_size [expr [winfo height $VIDEO_WINDOW]/8]
 
 if { $x_size > $y_size } {
 	set f_size $y_size
 	} {
 	set f_size $x_size
 	}
+catch {
+	font delete message_font
+	}
 font create message_font -size -$f_size -family Helvetica -slant roman -weight normal
-font delete message_font
 }
 
 proc flash_message { message } {
 global VIDEO_WINDOW
 set bg [$VIDEO_WINDOW cget -background]
 set f_size 0
-set message_font_id [font create message_font -size -$f_size -family Helvetica -slant roman -weight bold]
+#font delete message_font
+adjust_message_font
+#set message_font_id [font create message_font -size -$f_size -family Helvetica -slant roman -weight bold]
 
 set m $VIDEO_WINDOW.onscreen_display.message
 destroy $m
@@ -564,12 +568,10 @@ grid $m
 label $m.l -text "$message" -font message_font -background black -foreground "#FFAA88"
 grid $m.l
 
-font delete message_font
 
 global flash_counter
 if { $flash_counter < 0 } { after 1000 fm_countdown }
 set flash_counter 14
-adjust_message_font
 }
 
 menu .video_menu -type normal -tearoff false

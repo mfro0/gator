@@ -14,9 +14,11 @@ set avview_bindings {
 	"next_channel -1" "<Control-Key-KP_Subtract>"
 	"toggle_mute" "<Key-KP_Multiply>"
 	"next_control 1" "<Key-Up>"
-	"next_control -1" "<Key-Left>"
+	"next_control -1" "<Key-Down>"
 	"change_control 1" "<Key-Right>"
 	"change_control -1" "<Key-Left>"
+	"save_settings ; exit" "<Control-Key-q>"
+	"save_settings ; exit" "<Key-Escape>"
 	}
 set avview_bindings_layout {action default_sequence}
 
@@ -88,7 +90,103 @@ for { set i 0 } { $i < $num_attributes } { incr i } {
 	}
 }
 
-global avview_controls avview_controls_layout
+global avview_controls avview_controls_layout avview_current_control
 set avview_controls {
-	"XV_BRIGTNESS" "Brightness"
+	"XV_VOLUME"  " Volume "
+	"XV_BRIGHTNESS" " Brightness "
+	"XV_CONTRAST" " Contrast "
+	"XV_SATURATION" " Saturation "
 	}
+set avview_controls_layout { attribute name }
+set avview_current_control 0
+
+proc display_control { name value min max } {
+global VIDEO_WINDOW
+set C $VIDEO_WINDOW.control
+destroy $C
+canvas $C -background [$VIDEO_WINDOW cget -background] -borderwidth 0
+place $C -relx 0.05 -rely 0.95 -relwidth 0.9 -relheight 0.2 -anchor sw
+update
+adjust_message_font
+$C create text 5 5 -text $name -anchor nw -tag name \
+	-fill "#BBBBFF" -font message_font
+set bbox [$C bbox name]
+$C create rectangle $bbox -fill black -tag name_bkg
+$C lower name_bkg
+set width [expr 1+[winfo height $C]/100]
+$C create rectangle [expr [lindex $bbox 0]+$width/2] [expr [lindex $bbox 3]+2+$width/2] [expr [winfo width $C]-1-$width/2] [expr [winfo height $C]-1-$width/2] \
+	-fill "black" -width $width -outline yellow
+$C create rectangle [expr [lindex $bbox 0]+$width] [expr [lindex $bbox 3]+2+$width] [expr ([winfo width $C]-1-$width)*($value-$min)/($max-$min)] [expr [winfo height $C]-1-$width] \
+	-fill "blue" -width 0
+}
+	
+proc next_control { dir } {
+global VIDEO_WINDOW
+global current_port
+global avview_current_control avview_controls avview_controls_layout
+incr avview_current_control $dir
+set N [llength $avview_controls_layout]
+set last_control [expr [llength $avview_controls]/$N-1]
+if { $avview_current_control < 0 } {
+	set avview_current_control $last_control
+	}
+if { $avview_current_control > $last_control } {
+	set avview_current_control 0
+	}
+set control [lrange $avview_controls [expr $avview_current_control*$N] [expr $avview_current_control*$N+$N-1]]
+foreach var $avview_controls_layout value $control {
+	set $var $value
+	}
+set num_attributes [xv_num_port_attributes $VIDEO_WINDOW $current_port]
+for {set i 0 } { $i < $num_attributes} { incr i } {
+	set attr_name [xv_port_attribute_name $VIDEO_WINDOW $current_port $i]
+	if { $attribute == $attr_name } {
+		set range [xv_port_attribute_range $VIDEO_WINDOW $current_port $i]
+		display_control $name [xv_getportattribute $VIDEO_WINDOW $current_port $attribute] [lindex $range 0] [lindex $range 1]
+		update
+		return
+		}
+	}
+}
+
+global change_control_in_progress
+set change_control_in_progress false
+
+proc change_control { dir } {
+global VIDEO_WINDOW
+global current_port
+global avview_current_control avview_controls avview_controls_layout
+global change_control_in_progress
+if { $change_control_in_progress } { return }
+set change_control_in_progress true
+set N [llength $avview_controls_layout]
+set last_control [expr [llength $avview_controls]/$N-1]
+set control [lrange $avview_controls [expr $avview_current_control*$N] [expr $avview_current_control*$N+$N-1]]
+foreach var $avview_controls_layout value $control {
+	set $var $value
+	}
+set num_attributes [xv_num_port_attributes $VIDEO_WINDOW $current_port]
+for {set i 0 } { $i < $num_attributes} { incr i } {
+	set attr_name [xv_port_attribute_name $VIDEO_WINDOW $current_port $i]
+	if { $attribute == $attr_name } {
+		set range [xv_port_attribute_range $VIDEO_WINDOW $current_port $i]
+		set value [xv_getportattribute $VIDEO_WINDOW $current_port $attribute]
+		set increment [expr round(([lindex $range 1]-[lindex $range 0])*0.01)]
+		if { $increment < 1 } { set increment 1 }
+		set value [expr $value+$increment*$dir]
+		if { $value > [lindex $range 1] } { set $value [lindex $range 1] }
+		if { $value < [lindex $range 0] } { set $value [lindex $range 0] }
+		display_control $name  $value [lindex $range 0] [lindex $range 1]
+		update
+		catch {
+			set variable [find_attribute_variable $VIDEO_WINDOW $current_port $i]
+			global $variable
+			set $variable $value
+			on_attribute_change $attribute $variable a b
+			}
+		set change_control_in_progress false
+		return
+		}
+	}
+set change_control_in_progress false
+}
