@@ -298,13 +298,13 @@ if { $current_encoding > 0 } {
 	on_attribute_change XV_ENCODING current_encoding a b
 	switch -glob -- "$current_encoding_name" \
 		"*pal*" {
-			set current_video_rate 50
+			set current_video_rate 50.00
 			} \
 		"*secam*" {
-			set current_video_rate 50
+			set current_video_rate 50.00
 			} \
 		"*ntsc*" {
-			set current_video_rate 60
+			set current_video_rate 59.94
 			}			
 			
 	}

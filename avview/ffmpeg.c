@@ -466,7 +466,7 @@ switch(data->mode){
 		break;
 	}
 sdata->video_codec_context.frame_rate=0;
-if(arg_v4l_rate!=NULL)sdata->video_codec_context.frame_rate=atol(arg_v4l_rate)*FRAME_RATE_BASE;
+if(arg_v4l_rate!=NULL)sdata->video_codec_context.frame_rate=rint(atof(arg_v4l_rate)*FRAME_RATE_BASE);
 if(sdata->video_codec_context.frame_rate<=0)sdata->video_codec_context.frame_rate=60*FRAME_RATE_BASE;
 if(sdata->step_frames>0)sdata->video_codec_context.frame_rate=sdata->video_codec_context.frame_rate/sdata->step_frames;
 a=(((800000.0*vwin.width)*vwin.height)*sdata->video_codec_context.frame_rate);

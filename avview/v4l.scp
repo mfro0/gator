@@ -5,7 +5,7 @@
 global fifo_limit
 set fifo_limit 32
 global current_video_rate
-set current_video_rate 60
+set current_video_rate 59.94
 global current_video_bitrate 
 set current_video_bitrate 300000
 global current_audio_rate 
@@ -80,14 +80,14 @@ if {[ffmpeg_present] == "yes"} {
 	grid configure $cw.vcodecl -sticky nws
 	grid configure $cw.vcodec_optionmenu -sticky news
 
-	eval label $cw.video_ratel -text "\"Video rate:\"" [get_settings $cw.video_ratel Capture V4L]
+	eval label $cw.video_ratel -text "\"V4L device framerate:\"" [get_settings $cw.video_ratel Capture V4L]
 	entry $cw.video_rate_entry -textvariable current_video_rate
 	eval $cw.video_rate_entry configure [get_settings $cw.video_rate_entry Capture V4L]
 	grid $cw.video_ratel $cw.video_rate_entry
 	grid configure $cw.video_ratel -sticky nws
 	grid configure $cw.video_rate_entry -sticky news
 
-	eval label $cw.video_bitratel -text "\"Video bitrate:\"" [get_settings $cw.video_bitratel Capture V4L]
+	eval label $cw.video_bitratel -text "\"Video bitrate (bits/sec):\"" [get_settings $cw.video_bitratel Capture V4L]
 	entry $cw.video_bitrate_entry -textvariable current_video_bitrate 
 	button $cw.video_bitrate_button -command recompute_video_bitrate -text "Default"
 	eval $cw.video_bitrate_entry configure [get_settings $cw.video_bitrate_entry Capture V4L]
@@ -103,7 +103,7 @@ if {[ffmpeg_present] == "yes"} {
 	grid configure $cw.acodecl -sticky nws
 	grid configure $cw.acodec_optionmenu -sticky news
 
-	eval label $cw.aratel -text "\"Audio rate (s/sec):\"" [get_settings $cw.aratel Capture V4L]
+	eval label $cw.aratel -text "\"Audio rate (samples/sec):\"" [get_settings $cw.aratel Capture V4L]
 	set menu [tk_optionMenu $cw.arate_optionmenu current_audio_rate "48000" "41000" "32000" "24000" "20500" "16000"]
 	eval $cw.arate_optionmenu configure [get_settings $cw.arate_optionmenu Capture V4L]
 	eval $menu configure [get_settings $menu Capture V4L menu]
@@ -111,7 +111,7 @@ if {[ffmpeg_present] == "yes"} {
 	grid configure $cw.aratel -sticky nws
 	grid configure $cw.arate_optionmenu -sticky news
 
-	eval label $cw.audio_bitratel -text "\"Audio bitrate:\"" [get_settings $cw.audio_bitratel Capture V4L]
+	eval label $cw.audio_bitratel -text "\"Audio bitrate (bits/sec):\"" [get_settings $cw.audio_bitratel Capture V4L]
 	set menu [tk_optionMenu $cw.audio_bitrate_optionmenu current_audio_bitrate "384000" "320000" "256000" "224000" "192000" "160000" "128000" "112000" "96000" "80000" "64000" "56000" "48000" "32000"]
 	eval $cw.audio_bitrate_optionmenu configure [get_settings $cw.audio_bitrate_optionmenu Capture V4L]
 	eval $menu configure [get_settings $menu Capture V4L menu]
