@@ -12,11 +12,11 @@ global theme_name
 global theme_settings_cache
 puts $fileid "#\n# Theme settings\n#"
 puts $fileid "global theme_name"
-puts $fileid "global theme_settings_cache"
+#puts $fileid "global theme_settings_cache"
 puts $fileid "set theme_name \"$theme_name\""
-if { [array exists theme_settings_cache] } {
-	puts $fileid "array set theme_settings_cache \[list [array get theme_settings_cache]\]"
-	}
+#if { [array exists theme_settings_cache] } {
+#	puts $fileid "array set theme_settings_cache \[list [array get theme_settings_cache]\]"
+#	}
 puts $fileid "reset_theme \"$theme_name\""
 puts $fileid "#\n# End of theme settings\n#"
 }
