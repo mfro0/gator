@@ -1773,12 +1773,11 @@ void RT_SetConnector (TheatrePtr t, CARD16 wConnector, int tunerFlag)
      xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre Checkpoint 1\n");
     /* Get the contrast value - make sure we are viewing a visible line*/
     counter=0;
-    while (!((ReadRT_fld (fld_VS_LINE_COUNT)> 1) && (ReadRT_fld (fld_VS_LINE_COUNT)<20)) && (counter < 100)){
+    while (!((ReadRT_fld (fld_VS_LINE_COUNT)> 1) && (ReadRT_fld (fld_VS_LINE_COUNT)<20)) && (counter < 100000)){
     	counter++;
-	usleep(10);
 	}
     xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre Checkpoint 2, counter=%ld\n", counter);
-    if(counter>=100)xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre: timeout waiting for line count (%d)\n", ReadRT_fld (fld_VS_LINE_COUNT));
+    if(counter>=100000)xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre: timeout waiting for line count (%d)\n", ReadRT_fld (fld_VS_LINE_COUNT));
 
     dwTempContrast = ReadRT_fld (fld_LP_CONTRAST);
 
@@ -1814,23 +1813,21 @@ void RT_SetConnector (TheatrePtr t, CARD16 wConnector, int tunerFlag)
     WriteRT_fld (fld_COMB_CNTL1, ReadRT_fld (fld_COMB_CNTL1) ^ 0x100);
 
     /* wait at most 1 sec here */
-    i = 100000;
+    i = 1000000;
     
     xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre Checkpoint 3\n");
     while ((i>=0) && (! ReadRT_fld (fld_HS_GENLOCKED)))
     {
-      usleep(10);
       i--;
     }
     if(i<0) xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre: waiting for fld_HS_GENLOCKED failed\n");
     xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre Checkpoint 4 i=%d\n",i);
     counter = 0;
-    while (!((ReadRT_fld (fld_VS_LINE_COUNT)> 1) && (ReadRT_fld (fld_VS_LINE_COUNT)<20)) && (counter < 100)){
+    while (!((ReadRT_fld (fld_VS_LINE_COUNT)> 1) && (ReadRT_fld (fld_VS_LINE_COUNT)<20)) && (counter < 100000)){
     	counter++;
-	usleep(10);
 	}
     xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre Checkpoint 5 counter=%d\n", counter);
-    if(counter>=9999)xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre: timeout waiting for line count (%d)\n", ReadRT_fld (fld_VS_LINE_COUNT));
+    if(counter>=100000)xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre: timeout waiting for line count (%d)\n", ReadRT_fld (fld_VS_LINE_COUNT));
 
     WriteRT_fld (fld_LP_CONTRAST, dwTempContrast);
 
@@ -1865,6 +1862,10 @@ void InitTheatre(TheatrePtr t)
     /* 2.
      Set HW_DEBUG to 0xF000 before setting the standards registers */
     RT_regw (VIP_HW_DEBUG, 0x0000F000);
+    
+    /* wait for things to settle */
+    usleep(100000);
+    
     RT_SetStandard(t, t->wStandard);
 
     /* 3.

@@ -468,9 +468,8 @@ static CARD8 R128_I2C_WaitForAck (ScrnInfoPtr pScrn, R128PortPrivPtr pPriv)
 	{
 	    return (I2C_DONE);
 	}
-	usleep(10000);
 	counter++;
-	if(counter>100)
+	if(counter>1000000)
 	{
 		xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Timeout condition on rage128 i2c bus\n");
 		return (I2C_HALT);
@@ -497,9 +496,8 @@ static void R128_I2C_Halt (ScrnInfoPtr pScrn)
     /* wait for GO bit to go low */
     while (INREG8 (R128_I2C_CNTL_0 + 1) & (I2C_GO >> 8))
     {
-       usleep(1000);
        counter++;
-       if(counter>100)return;
+       if(counter>1000000)return;
     }
 
 } 
@@ -570,8 +568,6 @@ static Bool R128I2CWriteRead(I2CDevPtr d, I2CByte *WriteBuffer, int nWrite,
       while(INREG8(R128_I2C_CNTL_0+1) & (I2C_GO >> 8));
 
       status=R128_I2C_WaitForAck(pScrn,pPriv);
-
-      usleep(1000);
 
       /* Write Value into the buffer */
       for (loop = 0; loop < nRead; loop++)
@@ -947,7 +943,7 @@ static Bool R128VIP_read(GENERIC_BUS_Ptr b, CARD32 address, CARD32 count, CARD8 
    }
    
    OUTREG(VIPH_REG_ADDR, address | 0x2000);
-   while(VIP_BUSY == (status = R128VIP_idle(b)))usleep(10);
+   while(VIP_BUSY == (status = R128VIP_idle(b)));
    if(VIP_IDLE != status) return FALSE;
    
 /*
@@ -963,7 +959,7 @@ static Bool R128VIP_read(GENERIC_BUS_Ptr b, CARD32 address, CARD32 count, CARD8 
 */
     INREG(VIPH_REG_DATA);
     
-    while(VIP_BUSY == (status = R128VIP_idle(b)))usleep(10);
+    while(VIP_BUSY == (status = R128VIP_idle(b)));
     if(VIP_IDLE != status) return FALSE;
 /*
         set VIPH_REGR_DIS so that the read won't take too long.
@@ -980,7 +976,7 @@ static Bool R128VIP_read(GENERIC_BUS_Ptr b, CARD32 address, CARD32 count, CARD8 
 	     *(CARD32 *)buffer=(CARD32) ( INREG(VIPH_REG_DATA) & 0xffffffff);
 	     break;
 	}
-     while(VIP_BUSY == (status = R128VIP_idle(b)))usleep(10);
+     while(VIP_BUSY == (status = R128VIP_idle(b)));
      if(VIP_IDLE != status) return FALSE;
  /*	
  so that reading VIPH_REG_DATA would not trigger unnecessary vip cycles.
@@ -1005,7 +1001,7 @@ static Bool R128VIP_write(GENERIC_BUS_Ptr b, CARD32 address, CARD32 count, CARD8
     }
     
     OUTREG(VIPH_REG_ADDR, address & (~0x2000));
-    while(VIP_BUSY == (status = R128VIP_idle(b)))usleep(10);
+    while(VIP_BUSY == (status = R128VIP_idle(b)));
     
     if(VIP_IDLE != status) return FALSE;
     

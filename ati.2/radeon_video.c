@@ -829,9 +829,8 @@ static CARD8 RADEON_I2C_WaitForAck (ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
         {
             return I2C_DONE;
         }       
-        usleep(10000);
         counter++;
-        if(counter>100)
+        if(counter>1000000)
         {
              xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Timeout condition on Radeon i2c bus\n");
              return I2C_HALT;
@@ -861,9 +860,8 @@ static void RADEON_I2C_Halt (ScrnInfoPtr pScrn)
     RADEONWaitForIdleMMIO(pScrn);
     while (INREG8 (RADEON_I2C_CNTL_0 + 0) & I2C_GO)
     {
-      usleep(1000);
       counter++;
-      if(counter>1000)return;
+      if(counter>1000000)return;
     }
 } 
 
@@ -936,8 +934,6 @@ static Bool RADEONI2CWriteRead(I2CDevPtr d, I2CByte *WriteBuffer, int nWrite,
 
        status=RADEON_I2C_WaitForAck(pScrn,pPriv);
   
-       usleep(1000);
-
        /* Write Value into the buffer */
        for (loop = 0; loop < nRead; loop++)
        {
@@ -1029,8 +1025,6 @@ static Bool R200_I2CWriteRead(I2CDevPtr d, I2CByte *WriteBuffer, int nWrite,
 
        status=RADEON_I2C_WaitForAck(pScrn,pPriv);
   
-       usleep(1000);
-
        RADEONWaitForIdleMMIO(pScrn);
        /* Write Value into the buffer */
        for (loop = 0; loop < nRead; loop++)
@@ -1429,7 +1423,7 @@ static Bool RADEONVIP_read(GENERIC_BUS_Ptr b, CARD32 address, CARD32 count, CARD
              *(CARD32 *)buffer=(CARD32) ( INREG(VIPH_REG_DATA) & 0xffffffff);
              break;
         }
-     while(VIP_BUSY == (status = RADEONVIP_idle(b)))usleep(100);
+     while(VIP_BUSY == (status = RADEONVIP_idle(b)));
      if(VIP_IDLE != status) return FALSE;
  /*     
  so that reading VIPH_REG_DATA would not trigger unnecessary vip cycles.
@@ -1456,7 +1450,7 @@ static Bool RADEONVIP_write(GENERIC_BUS_Ptr b, CARD32 address, CARD32 count, CAR
     
     RADEONWaitForFifo(pScrn, 2);
     OUTREG(VIPH_REG_ADDR, address & (~0x2000));
-    while(VIP_BUSY == (status = RADEONVIP_idle(b)))usleep(100);
+    while(VIP_BUSY == (status = RADEONVIP_idle(b)));
     
     if(VIP_IDLE != status) return FALSE;
     
@@ -1467,7 +1461,7 @@ static Bool RADEONVIP_write(GENERIC_BUS_Ptr b, CARD32 address, CARD32 count, CAR
              break;
         }
     write_mem_barrier();
-    while(VIP_BUSY == (status = RADEONVIP_idle(b)))usleep(100);
+    while(VIP_BUSY == (status = RADEONVIP_idle(b)));
     if(VIP_IDLE != status) return FALSE;
     return TRUE;
 }
