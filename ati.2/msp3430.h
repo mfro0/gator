@@ -3,12 +3,19 @@
 
 #include "xf86i2c.h"
 
+#define MSP_DEBUG
+
 typedef struct {
         I2CDevRec d;
 	
 	int standard;
 	int connector;
 	int mode;
+
+        CARD8 hardware_version, major_revision, product_code, rom_version;
+#ifdef MSP_DEBUG
+	CARD8 registers_present[256];
+#endif
 
 	CARD16 chip_id;
 	CARD8  chip_family;
@@ -47,7 +54,8 @@ typedef struct {
 #define MSPFAMILY_UNKNOWN	0	
 #define MSPFAMILY_34x0D		1
 #define MSPFAMILY_34x5D		2
-#define MSPFAMILY_34xxG		3
+#define MSPFAMILY_34x0G		3
+#define MSPFAMILY_34x5G		4
 
 /* values for MSP standard */
 #define MSPSTANDARD_UNKNOWN	0x00

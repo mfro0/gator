@@ -955,6 +955,8 @@
 #define RADEON_OV0_GAMMA_10_1F			  0x0d44
 #define RADEON_OV0_GAMMA_20_3F			  0x0d48
 #define RADEON_OV0_GAMMA_40_7F			  0x0d4c
+/* the registers that control gamma in the 80-37f range do not
+   exist on pre-R200 radeons */
 #define RADEON_OV0_GAMMA_80_BF			  0x0e00
 #define RADEON_OV0_GAMMA_C0_FF			  0x0e04
 #define RADEON_OV0_GAMMA_100_13F			  0x0e08

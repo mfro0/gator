@@ -43,6 +43,12 @@ static void SetMSP3430Data(MSP3430Ptr m, CARD8 RegAddress, CARD8 RegSubAddressHi
      CARD8 RegValueHigh, CARD8 RegValueLow)
 {
    I2CByte data[5];
+#ifdef MSP_DEBUG
+   if(!m->registers_present[RegSubAddressLow]){
+   	xf86DrvMsg(m->d.pI2CBus->scrnIndex,X_ERROR, "Attempt to access non-existent register in MSP34xxX: 0x%02x 0x%02x 0x%02x <- 0x%02x 0x%02x\n",
+		RegAddress, RegSubAddressHigh, RegSubAddressLow, RegValueHigh, RegValueLow);
+   	}
+#endif
    
    data[0] = RegAddress;
    data[1] = RegSubAddressHigh;
@@ -69,11 +75,30 @@ static void GetMSP3430Data(MSP3430Ptr m, CARD8 RegAddress, CARD8 RegSubAddressHi
    *RegValueLow = receive[1];
 }
 
+static void MSP3430DumpStatus(MSP3430Ptr m)
+{
+CARD8 status_hi, status_lo;
+
+GetMSP3430Data(m, RD_DSP, 0x02, 0x00, &status_hi, &status_lo);
+xf86DrvMsg(m->d.pI2CBus->scrnIndex, X_INFO, "MSP34xx: SAP(8)=%d mono/NICAM(7)=%d stereo=%d %s O_1=%d O_0=%d 2nd car=%d 1st car=%d\n",
+		status_hi & 1, (status_lo>>7) & 1, (status_lo>>6)&1, 
+		(status_lo>>5)? ( (status_hi>>1)&1? "bad NICAM reception" : "NICAM" ) : 
+		                ((status_hi>>1)&1 ? "bogus" : "ANALOG FM/AM") , 
+		(status_lo>>4)&1, (status_lo>>3)&1, (status_lo>>2)&1, (status_lo>>1)&1);
+
+GetMSP3430Data(m, RD_DSP, 0x00, 0x7E, &status_hi, &status_lo);
+xf86DrvMsg(m->d.pI2CBus->scrnIndex, X_INFO, "MSP34xx: standard result=0x%02x%02x\n",
+		status_hi, status_lo);
+}
+
 /* wrapper */
 void InitMSP3430(MSP3430Ptr m)
 {
 	switch (m->chip_family) {
-		case MSPFAMILY_34xxG:
+		case MSPFAMILY_34x0G:
+			InitMSP34xxG(m);
+			break;
+		case MSPFAMILY_34x5G:
 			InitMSP34xxG(m);
 			break;
 		case MSPFAMILY_34x5D:
@@ -127,6 +152,11 @@ MSP3430Ptr DetectMSP3430(I2CBusPtr b, I2CSlaveAddr addr)
 
    GetMSP3430Data(m, RD_DSP, 0x00, 0x1E, &hardware_version, &major_revision);
    GetMSP3430Data(m, RD_DSP, 0x00, 0x1F, &product_code, &rom_version);
+   m->hardware_version=hardware_version;
+   m->major_revision=major_revision;
+   m->product_code=product_code;
+   m->rom_version=rom_version;
+
    m->chip_id=((major_revision << 8) | product_code);
    
    supported=FALSE;
@@ -144,9 +174,43 @@ MSP3430Ptr DetectMSP3430(I2CBusPtr b, I2CSlaveAddr addr)
       }
 	  break;
    case 7:	/* 34xxG */
-	  	m->chip_family=MSPFAMILY_34xxG;
-		supported=TRUE;
-		break;
+   	switch(product_code){
+		case 0x00:
+		case 0x0A:
+		case 0x1E:
+		case 0x28:
+		case 0x32:
+		  	m->chip_family=MSPFAMILY_34x0G;
+			supported=TRUE;
+			break;
+		case 0x0f:
+		case 0x19:
+		case 0x2d:
+		case 0x37:
+		case 0x41:
+		  	m->chip_family=MSPFAMILY_34x5G;
+			supported=TRUE;
+			#ifdef MSP_DEBUG
+			memset(m->registers_present, 0, 256);
+			#define A(num) m->registers_present[(num)]=1;
+			#define B(num1, num2) memset(&(m->registers_present[num1]), 1, num2-num1);
+			A(0x20)
+			A(0x30)
+			A(0x40)
+			A(0x00)
+			B(0x01, 0x08)
+			B(0x0B, 0x0E)
+			A(0x10)
+			B(0x12,0x14)
+			A(0x16)
+			A(0x29)
+			#undef B
+			#undef A
+			#endif
+			break;
+		default:
+		  	m->chip_family=MSPFAMILY_UNKNOWN;
+		}
    default:
 	  	m->chip_family=MSPFAMILY_UNKNOWN;
    }
@@ -186,6 +250,7 @@ void MSP3430SetVolume (MSP3430Ptr m, CARD8 value)
     SetMSP3430Data(m, WR_DSP, 0x00, 0x07, value, 0);
 	m->volume=value;
 
+    MSP3430DumpStatus(m);
 #if __MSPDEBUG__ > 2
     GetMSP3430Data(m, RD_DSP, 0x00, 0x00, &old_volume, &result);
     xf86DrvMsg(m->d.pI2CBus->scrnIndex, X_INFO, "MSP3430 volume 0x%02x\n",value);
@@ -265,8 +330,8 @@ void InitMSP34xxG(MSP3430Ptr m)
    } else {
       SetMSP3430Data(m, WR_DEM, 0x00, 0x30, 0x20, 0x03);
       /* standard selection is M-BTSC-Stereo */
-      SetMSP3430Data(m, WR_DEM, 0x00, 0x20, 0x00, 0x20);
-   }  
+      SetMSP3430Data(m, WR_DEM, 0x00, 0x20, 0x00, 0x20); 
+   }
    
    switch(m->connector){
          case MSP3430_CONNECTOR_1:

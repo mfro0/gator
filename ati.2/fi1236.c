@@ -110,7 +110,7 @@ static int MT2032_no_spur_in_band(MT2032_parameters *m)
 {
 int n_max, n1, n2;
 double f_test;
-n_max=6;
+n_max=5;
 n1=1;
 while(1){
 	n2=-n1;
@@ -118,11 +118,11 @@ while(1){
 	while(1){
 		n2--;
 		f_test=f_test-m->f_lo2;
-/*		xf86DrvMsg(0, X_INFO, "testing f_test=%g n1=%d n2=%d f_lo1=%g f_lo2=%g f_if2=%g\n", f_test, n1, n2, m->f_lo1, m->f_lo2, m->f_if2); */
+		xf86DrvMsg(0, X_INFO, "testing f_test=%g n1=%d n2=%d f_lo1=%g f_lo2=%g f_if2=%g\n", f_test, n1, n2, m->f_lo1, m->f_lo2, m->f_if2); 
 		if((fabs(fabs(f_test)-m->f_if2)*2.0)<=m->f_ifbw)return 0;
 		if(n2<=-n_max)break;
   		/* this line in the manual is bogus. I say it is faster
-		to go over all harmonics.. */
+		and more correct to go over all harmonics.. */
 /*		if(f_test<(m->f_lo2-m->f_if2-m->f_ifbw))break; */
 		}
 	n1++;
@@ -160,7 +160,7 @@ while(n<3){
 	m->f_lo2=m->f_lo1-f_rf-f_if2;
 	n++;
 	}
-
+xf86DrvMsg(0, X_INFO, "MT2032: n=%d\n", n);
 /* select VCO */
 
 /* m->f_lo1>1100.0 */
@@ -189,11 +189,11 @@ CARD8 value;
 
 n=12;
 while(1){
-	usleep(1);
 	data[0]=0x0e; /* register number 7, status */
 	I2C_WriteRead(&(f->d), (I2CByte *)data, 1, &value, 1);
 	xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: LO1LK=%d LO2LK=%d\n", (value & 0x04)>>2, (value & 0x02)>>1);
 	if((value & 6)==6) break;
+	usleep(1);
 	n--;
 	if(n<0)break;
 	}
