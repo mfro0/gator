@@ -584,7 +584,7 @@ ad->param=param;
 fprintf(stderr,"Using sample rate %ld Hz frame_size=%ld\n", param->sample_rate, ad->frame_size);
         /* set buffer time */
 buffer_time=100000;
-dir=0;
+dir=1;
 a=snd_pcm_hw_params_set_buffer_time_min(ad->recording_handle, hwparams, &buffer_time, &dir);
 if(a<0){
        fprintf(stderr,"Unable to set buffer time %u for recording: %s\n", buffer_time, snd_strerror(a));
