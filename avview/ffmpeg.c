@@ -32,14 +32,6 @@
 #include "formats.h"
 #include "packet_stream.h"
 
-typedef struct S_FFMPEG_INCOMING_FRAME{
-	struct S_FFMPEG_INCOMING_FRAME *next;
-	struct S_FFMPEG_INCOMING_FRAME *prev;
-	char *data;
-	long size;
-	long free;
-	} FFMPEG_INCOMING_FRAME;
-
 typedef struct {
 	long type;
 	long width;
@@ -62,42 +54,6 @@ Tcl_ResetResult(interp);
 Tcl_AppendResult(interp,"yes", NULL);
 return 0;
 }
-
-FFMPEG_INCOMING_FRAME *ffmpeg_allocate_frame(long size)
-{
-FFMPEG_INCOMING_FRAME *f;
-
-f=calloc(1, sizeof(FFMPEG_INCOMING_FRAME));
-if(f==NULL)return NULL;
-f->next=NULL;
-f->prev=NULL;
-f->size=size;
-f->free=0;
-f->data=malloc(size);
-if(f->data==NULL){
-	free(f);
-	return NULL;
-	}
-return f;
-}
-
-#if 0
-void free_frame_list(FFMPEG_INCOMING_FRAME *f1)
-{
-FFMPEG_INCOMING_FRAME *f;
-f=f1;
-if(f==NULL)return;
-while(f->prev!=NULL)f=f->prev;
-while(f->next!=NULL){
-	free(f->data);
-	f=f->next;
-	free(f->prev);
-	f->prev=NULL;
-	}
-free(f->data);
-free(f);
-}
-#endif
 
 void ffmpeg_preprocess_frame(V4L_DATA *data, FFMPEG_V4L_ENCODING_DATA *sdata, 
 		PACKET *f, AVPicture *picture)
@@ -179,54 +135,6 @@ while(1){
 	}
 pthread_exit(NULL);
 }
-
-#if 0
-
-void ffmpeg_transfer_handler(V4L_DATA *data, int mask)
-{
-long status;
-FFMPEG_V4L_ENCODING_DATA *sdata;
-FFMPEG_INCOMING_FRAME *f;
-
-if(!(mask & TCL_READABLE))return;
-
-sdata=(FFMPEG_V4L_ENCODING_DATA *)data->priv;
-if((sdata==NULL)||(sdata->type!=FFMPEG_V4L_CAPTURE_KEY)){
-	fprintf(stderr,"INTERNAL ERROR: incorrect data->priv in ffmpeg_transfer_callback\n");
-	Tcl_DeleteFileHandler(data->fd);
-	return;
-	}
-f=sdata->first;
-if(f->free==f->size){
-	/* frame complete */
-	if(sdata->unused==NULL){
-		f=ffmpeg_allocate_frame(sdata->size);
-		while(f==NULL){
-			Tcl_DoOneEvent(TCL_WINDOW_EVENTS|TCL_TIMER_EVENTS|TCL_IDLE_EVENTS|TCL_DONT_WAIT);	
-			f=ffmpeg_allocate_frame(sdata->size);	
-			}
-		sdata->frame_count++;
-		} else {
-		f=sdata->unused;
-		sdata->unused=NULL;
-		}
-	f->next=sdata->first;
-	sdata->first->prev=f;
-	sdata->first=f;
-	/* wake up encoding thread */
-	pthread_mutex_unlock(&(sdata->incoming_wait));
-	pthread_mutex_lock(&(sdata->incoming_wait)); 
-	#if 0
-	fprintf(stderr,"fifo size %ld\n", sdata->size*sdata->frame_count);
-	#endif
-	Tcl_DoOneEvent(TCL_WINDOW_EVENTS|TCL_TIMER_EVENTS|TCL_IDLE_EVENTS|TCL_DONT_WAIT);
-	}
-status=read(data->fd, f->data+f->free, f->size-f->free);
-if(status<0)return;
-f->free+=status;
-}
-
-#endif
 
 void v4l_reader_thread(V4L_DATA *data)
 {
