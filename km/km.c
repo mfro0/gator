@@ -531,6 +531,8 @@ switch(pci_id->driver_data){
 		kms->get_vbi_buf_size=radeon_get_vbi_buf_size;
 		kms->start_transfer=radeon_start_transfer;
 		kms->stop_transfer=radeon_stop_transfer;
+		kms->start_transfer=radeon_start_vbi_transfer;
+		kms->stop_transfer=radeon_stop_vbi_transfer;
 		kms->allocate_dvb=generic_allocate_dvb;
 		kms->deallocate_dvb=generic_deallocate_dvb;
 		kms->irq_handler=radeon_km_irq;

@@ -210,8 +210,10 @@ u32 a;
 /* stop interrupts */
 a=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
 writel(a & ~0x30, kms->reg_aperture+RADEON_CAP_INT_CNTL);
+#if 0
 a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
 writel(a & ~(1<<30), kms->reg_aperture+RADEON_GEN_INT_CNTL);
+#endif
 wmb();
 /* stop outstanding DMA transfers */
 a=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
@@ -437,6 +439,12 @@ u32 a;
 
 a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
 writel(a|(7), kms->reg_aperture+RADEON_GEN_INT_CNTL);
+/* turn off any capture related interrupts 
+   km should be the only code that uses it
+   Note that there is a separate bit 30 in GEN_INT_CNTL
+   that determines whether any of bits of CAP_INT_CNTL
+   cause an interrupt */
+writel(0, kms->reg_aperture+RADEON_CAP_INT_CNTL);
 return 0;
 }
 
