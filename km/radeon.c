@@ -128,13 +128,15 @@ printk("radeon_get_window_parameters: width=%d height=%d\n", vwin->width, vwin->
 long radeon_get_vbi_buf_size(KM_STRUCT *kms)
 {
 u32 h_window, v_window;
+radeon_wait_for_idle(kms);
+wmb();
 h_window=readl(kms->reg_aperture+RADEON_CAP0_VBI_H_WINDOW);
 v_window=readl(kms->reg_aperture+RADEON_CAP0_VBI_V_WINDOW);
 kms->vbi0_offset=readl(kms->reg_aperture+RADEON_CAP0_VBI0_OFFSET);
 kms->vbi1_offset=readl(kms->reg_aperture+RADEON_CAP0_VBI1_OFFSET);
 kms->vbi_width=(h_window>>16);
 kms->vbi_height=(v_window>>16)-(v_window & 0xffff)+1;
-kms->vbi_start=(v_window & 0xffff)+2; /* Rage Theatre has an off by 1 count */
+kms->vbi_start=(v_window & 0xffff)+2; /* Rage Theatre has an off by 2 count */
 return (kms->vbi_width*kms->vbi_height);
 }
 
@@ -336,7 +338,7 @@ if(!(status & (1<<8)))return 0;
 status=readl(kms->reg_aperture+RADEON_CAP_INT_STATUS);
 mask=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
 KM_DEBUG("CAP_INT_STATUS=0x%08x mask=0x%08x\n", status, mask);
-status&=mask;
+status&=0x3f & mask; /* be nice to other users */
 if(!status)return 0;
 /*radeon_wait_for_idle(kms); */
 wmb();
@@ -357,7 +359,6 @@ KM_STRUCT *kms;
 long status, mask;
 int count;
 
-/* spin_lock(&(kms->kms_lock)); */
 kms=dev_id;
 kms->interrupt_count++;
 
@@ -370,7 +371,6 @@ while(1){
 		status=readl(kms->reg_aperture+RADEON_GEN_INT_STATUS);
 		mask=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL) & ((1<<30)|7);
 		if(!(status & mask)){
-/*			spin_unlock(&(kms->kms_lock)); */
 			return;
 			}
 		if(status & (1<<30)){
@@ -391,6 +391,7 @@ while(1){
 	}
 }
 
+/* this is now done in ati.2 XFree86 driver */
 void radeon_update_base_addr(KM_STRUCT *kms)
 {
 u32 aperture, aperture_size;
@@ -471,4 +472,6 @@ u32 a;
 
 a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
 writel(a& ~((7)|(1<<30)), kms->reg_aperture+RADEON_GEN_INT_CNTL);
+
+writel(0, kms->reg_aperture+RADEON_CAP_INT_CNTL);
 }
