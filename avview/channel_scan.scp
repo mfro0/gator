@@ -48,9 +48,10 @@ foreach channel $CHANNEL_LIST {
 		set row 0
 		}
 	incr ch_scan_progress
-	update
-	update idletasks
+#	update
+#	update idletasks
 	}
+reflect_favorite_channels
 }
 
 proc do_scan {} {
@@ -83,7 +84,26 @@ global is_favorite_channel
 puts $fileid "#\n# Favorite channel settings\n#"
 puts $fileid "global is_favorite_channel"
 if { [array exists is_favorite_channel] } {
-	puts $fileid "array set is_favorite_channel \[list [array get is_favorite_channel]\]"
+	puts $fileid "array set is_favorite_channel \[list [array get is_favorite_channel]\]"	
 	}
+puts $fileid "reflect_favorite_channels"
 puts $fileid "#\n# End of favorite channel settings\n#"
+}
+
+proc reflect_favorite_channels {} {
+global current_channel_menu
+global current_port
+global current_table
+global is_favorite_channel
+set num_entries [$current_channel_menu index end]
+for { set i 0 } { $i < $num_entries} { incr i } {
+	$current_channel_menu entryconfigure $i -foreground #505050
+	.video_menu.channel_menu entryconfigure $i -foreground #505050
+	catch {
+		if { [set is_favorite_channel(${current_port}_${current_table}_$i)] } {
+			$current_channel_menu entryconfigure $i -foreground black
+			.video_menu.channel_menu entryconfigure $i -foreground black
+			}
+		}
+	}
 }
