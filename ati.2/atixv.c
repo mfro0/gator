@@ -1074,26 +1074,28 @@ void ATIReadMM_TABLE(ScrnInfoPtr pScrn, ATIPortPrivPtr pPriv)
      CARD16 mm_table;
      CARD16 bios_header;
 
-     if(pATI->VBIOS==NULL){
-     	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Cannot access BIOS: info->VBIOS==NULL.\n");
-     	}
-
-     xf86DrvMsg(pScrn->scrnIndex, X_INFO, "0x%02x 0x%02x\n", pATI->VBIOS[0],
-               pATI->VBIOS[1]);	
-     bios_header=pATI->VBIOS[0x48];
-     bios_header+=(((int)pATI->VBIOS[0x49]+0)<<8);	     
-
-	/* mach64 table is at different address than r128 one */	
-     mm_table=pATI->VBIOS[bios_header+0x46];
-     if(mm_table==0)
+     if(pATI->VBIOS==NULL)
      {
-         xf86DrvMsg(pScrn->scrnIndex,X_INFO,"No MM_TABLE found\n",bios_header,mm_table);
-	 pPriv->MM_TABLE_valid = FALSE;
-	 return;
-     }    
-     mm_table+=(((int)pATI->VBIOS[bios_header+0x47]+0)<<8)-2;
+     	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Cannot access BIOS: info->VBIOS==NULL.\n");
+	mm_table=0;
+     	} else {
+        xf86DrvMsg(pScrn->scrnIndex, X_INFO, "0x%02x 0x%02x\n", pATI->VBIOS[0],
+                   pATI->VBIOS[1]);	
+        bios_header=pATI->VBIOS[0x48];
+        bios_header+=(((int)pATI->VBIOS[0x49]+0)<<8);	     
 
-     xf86DrvMsg(pScrn->scrnIndex,X_INFO,"VIDEO BIOS TABLE OFFSETS: bios_header=0x%04x mm_table=0x%04x\n",bios_header,mm_table);
+	  /* mach64 table is at different address than r128 one */	
+        mm_table=pATI->VBIOS[bios_header+0x46];
+        if(mm_table==0)
+        {
+            xf86DrvMsg(pScrn->scrnIndex,X_INFO,"No MM_TABLE found\n",bios_header,mm_table);
+	    pPriv->MM_TABLE_valid = FALSE;
+	    return;
+        }    
+        mm_table+=(((int)pATI->VBIOS[bios_header+0x47]+0)<<8)-2;
+
+        xf86DrvMsg(pScrn->scrnIndex,X_INFO,"VIDEO BIOS TABLE OFFSETS: bios_header=0x%04x mm_table=0x%04x\n",bios_header,mm_table);
+     }
 
      if(mm_table>0)
      {
