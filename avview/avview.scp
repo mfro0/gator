@@ -56,6 +56,15 @@ foreach {variable value} {
 global TABLE_LIST
 set TABLE_LIST [freq_get_table_list]
 
+proc skip_args3 { a b c } {
+}
+
+proc no_editing {a} {
+if { $a < 0 } { return 1 }
+return 0
+}
+
+
 foreach file {xmisc.scp tree.scp setup.scp themes.scp alsa.scp
 	v4l.scp xv.scp channel_scan.scp ffmpeg.scp 
 	video_device.scp diag.scp bindings.scp vbi.scp km.scp} {
@@ -63,9 +72,6 @@ foreach file {xmisc.scp tree.scp setup.scp themes.scp alsa.scp
 	}
 
 
-
-proc skip_args3 { a b c } {
-}
 
 global VIDEO_WINDOW
 

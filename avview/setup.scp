@@ -173,7 +173,7 @@ foreach {description type var} $args {
 			}
 		"ro_entry" {
 			label $A.label$param_count -text "$description" -wraplength 300
-			entry $A.entry$param_count -textvariable $var -state disabled -disabledforeground black
+			entry $A.entry$param_count -textvariable $var -validate key -validatecommand "no_editing %d"
 			grid $A.label$param_count $A.entry$param_count -sticky new -padx 2 -pady 2 
 			grid configure $A.label$param_count -sticky nw
 			}
