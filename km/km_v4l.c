@@ -166,8 +166,18 @@ switch(cmd){
 			return -EFAULT;
 		return 0;
 		}
-	case VIDIOCSWIN:
+	case VIDIOCSWIN: {
+		struct video_window vwin, vwin1;
+		kms->get_window_parameters(kms, &(vwin1));
+		if(copy_from_user(&vwin, arg, sizeof(vwin)))
+			return -EFAULT;
+		if((vwin.width!=vwin1.width)||(vwin.height!=vwin1.height)){
+			printk("km: /dev/video%d uses frame format %dx%d\n",
+				kms->vd.minor, vwin1.width, vwin1.height);
+			return -EINVAL;
+			}
 		return 0;
+		}
 	}
 return -EINVAL;
 }
