@@ -15,6 +15,7 @@ s->last=NULL;
 s->total=0;
 s->threshhold=0;
 s->consumer_thread_running=0;
+s->stop_stream=0;
 s->consume_func=0;
 s->priv=NULL;
 pthread_mutex_init(&(s->ctr_mutex), NULL);
@@ -49,13 +50,14 @@ free(p);
 
 void deliver_packet(PACKET_STREAM *s, PACKET *p)
 {
+pthread_mutex_lock(&(s->ctr_mutex));
 /* put the packet into the queue */
 p->next=NULL;
 p->prev=s->last;
 if(s->last!=NULL)s->last->next=p;
 s->last=p;
+if(s->first==NULL)s->first=p;
 /* update total count and see if we need to spawn consumer thread*/
-pthread_mutex_lock(&(s->ctr_mutex));
 s->total+=p->free;
 if((s->total>s->threshhold) && 
 	!s->consumer_thread_running &&
@@ -65,7 +67,7 @@ if((s->total>s->threshhold) &&
 		fprintf(stderr, "packet_stream: cannot create thread: ");
 		perror("");
 		} else {
-		s->consumer_thread_running=0;
+		s->consumer_thread_running=1;
 		}
 		
 	}
@@ -76,10 +78,11 @@ void discard_packets(PACKET_STREAM *s)
 {
 PACKET *p;
 pthread_mutex_lock(&(s->ctr_mutex));
-while(s->first->discard){
+while((s->first!=NULL) && (s->first->discard)){
 	p=s->first;
 	s->first=p->next;
-	s->first->prev=NULL;
+	if(s->first!=NULL)s->first->prev=NULL;
+	s->total-=p->free;
 	if(p->free_func!=NULL)p->free_func(p);
 	}
 pthread_mutex_unlock(&(s->ctr_mutex));

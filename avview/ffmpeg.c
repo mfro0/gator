@@ -30,6 +30,7 @@
 #include "avcodec.h"
 #include "v4l.h"
 #include "formats.h"
+#include "packet_stream.h"
 
 typedef struct S_FFMPEG_INCOMING_FRAME{
 	struct S_FFMPEG_INCOMING_FRAME *next;
@@ -51,10 +52,8 @@ typedef struct {
 	int fd_out;
 	AVCodec *codec;
 	AVCodecContext codec_context;
-	pthread_mutex_t  incoming_wait;
-	FFMPEG_INCOMING_FRAME *first;
-	FFMPEG_INCOMING_FRAME *last;
-	FFMPEG_INCOMING_FRAME *unused;
+	PACKET_STREAM *s;
+	pthread_t reader_thread;
 	} FFMPEG_V4L_ENCODING_DATA;
 
 int ffmpeg_present(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
@@ -82,6 +81,7 @@ if(f->data==NULL){
 return f;
 }
 
+#if 0
 void free_frame_list(FFMPEG_INCOMING_FRAME *f1)
 {
 FFMPEG_INCOMING_FRAME *f;
@@ -97,36 +97,39 @@ while(f->next!=NULL){
 free(f->data);
 free(f);
 }
+#endif
 
 void ffmpeg_preprocess_frame(V4L_DATA *data, FFMPEG_V4L_ENCODING_DATA *sdata, 
-		FFMPEG_INCOMING_FRAME *f, AVPicture *picture)
+		PACKET *f, AVPicture *picture)
 {
 switch(data->mode){
 	case MODE_SINGLE_FRAME:
 		break;
 	case MODE_DEINTERLACE_BOB:
 	case MODE_DEINTERLACE_WEAVE:
-		deinterlace_422_bob_to_420p(sdata->width, sdata->height, sdata->width*2, f->data, picture->data[0]);
+		deinterlace_422_bob_to_420p(sdata->width, sdata->height, sdata->width*2, f->buf, picture->data[0]);
 		break;
 	case MODE_DEINTERLACE_HALF_WIDTH:
-		deinterlace_422_half_width_to_420p(sdata->width, sdata->height, sdata->width*2, f->data, picture->data[0]);
+		deinterlace_422_half_width_to_420p(sdata->width, sdata->height, sdata->width*2, f->buf, picture->data[0]);
 		break;
 	}
 }
 
-void *ffmpeg_v4l_encoding_thread(V4L_DATA *data)
+void ffmpeg_v4l_encoding_thread(PACKET_STREAM *s)
 {
 int i;
 int retval;
 FFMPEG_V4L_ENCODING_DATA *sdata;
-FFMPEG_INCOMING_FRAME *f,*fn;
+PACKET *f,*fn;
+V4L_DATA *data;
 AVPicture picture;
 char *output_buf;
 long ob_size, ob_free, ob_written;
 long incoming_frames_count=0;
 
-sdata=(FFMPEG_V4L_ENCODING_DATA *)data->priv;
-if((sdata==NULL)||(sdata->type!=FFMPEG_V4L_CAPTURE_KEY))pthread_exit(NULL);
+data=(V4L_DATA *)s->priv;
+if((data==NULL)||((sdata=(FFMPEG_V4L_ENCODING_DATA *)data->priv)==NULL)||(sdata->type!=FFMPEG_V4L_CAPTURE_KEY)||(sdata->s==NULL))pthread_exit(NULL);
+s=sdata->s;
 ob_size=1000000;
 ob_free=0;
 output_buf=do_alloc(ob_size, sizeof(char));
@@ -139,9 +142,9 @@ picture.linesize[2]=sdata->codec_context.width/2;
 while(1){
 	/* wait for data to arrive */
 /*	sleep(1); */
-	f=sdata->last;
-	fprintf(stderr,"frame_count=%d  stop=%d\n", sdata->frame_count, sdata->stop);
-	while((f!=NULL)&&(f->free==f->size)&&(f->prev!=NULL)){
+	f=s->first;
+	fprintf(stderr,"total=%d  stop=%d\n", s->total, s->stop_stream);
+	while((f!=NULL)&&(f->next!=NULL)){
 		if(!sdata->step_frames || !(incoming_frames_count % sdata->step_frames)){
 			/* encode frame */
 			ffmpeg_preprocess_frame(data, sdata, f, &picture);
@@ -155,39 +158,29 @@ while(1){
 			}
 		incoming_frames_count++;
 		/* get next one */
-		fn=f->prev;
-		if(sdata->unused==NULL){
-			f->prev=NULL;
-			f->next=NULL;
-			f->free=0;
-			sdata->unused=f;
-			} else {
-			free(f->data);
-			free(f);
-			sdata->frame_count--;
-			}
-		f=fn;
-		sdata->last=f;
-		f->next=NULL;
+		f->discard=1;
+		discard_packets(s);
+		f=s->first;
 		}
 #if 0
 	fprintf(stderr,"frame_count=%d  stop=%d\n", sdata->frame_count, sdata->stop);
 #endif
-	if(sdata->stop){
+	if(s->stop_stream){
 		avcodec_close(&(sdata->codec_context));
 		close(sdata->fd_out);
 		data->priv=NULL;
-		free_frame_list(sdata->last);
-		free_frame_list(sdata->unused);
+		for(f=s->first;f!=NULL;f=f->next)f->discard=1;
+		discard_packets(s);
+		free(s);
 		free(sdata);
 		fprintf(stderr,"Recording finished\n");
 		pthread_exit(NULL);
 		}
-	pthread_mutex_lock(&(sdata->incoming_wait));
-	pthread_mutex_unlock(&(sdata->incoming_wait));
 	}
 pthread_exit(NULL);
 }
+
+#if 0
 
 void ffmpeg_transfer_handler(V4L_DATA *data, int mask)
 {
@@ -231,6 +224,44 @@ if(f->free==f->size){
 status=read(data->fd, f->data+f->free, f->size-f->free);
 if(status<0)return;
 f->free+=status;
+}
+
+#endif
+
+void v4l_reader_thread(V4L_DATA *data)
+{
+FFMPEG_V4L_ENCODING_DATA *sdata=(FFMPEG_V4L_ENCODING_DATA *)data->priv;
+PACKET *p;
+PACKET_STREAM *s=sdata->s;
+fd_set read_fds;
+int a;
+/* lock mutex before testing s->stop_stream */
+p=new_generic_packet(sdata->size);
+pthread_mutex_lock(&(s->ctr_mutex));
+while(!s->stop_stream){
+	pthread_mutex_unlock(&(s->ctr_mutex));
+	
+	/* do the reading */
+	if((a=read(data->fd, p->buf+p->free, p->size-p->free))>0){
+		p->free+=a;
+		if(p->free==p->size){ /* deliver packet */
+			deliver_packet(s, p);
+			p=new_generic_packet(sdata->size);
+			}
+		} else
+	if(a<0){
+		FD_ZERO(&read_fds);
+		FD_SET(data->fd, &read_fds);
+		a=select(data->fd+1, &read_fds, NULL, NULL, NULL);
+		#if 0
+		fprintf(stderr,"a=%d\n", a);
+		perror("");
+		#endif
+		} 
+	pthread_mutex_lock(&(s->ctr_mutex));
+	}
+pthread_mutex_unlock(&(s->ctr_mutex));
+pthread_exit(NULL);
 }
 
 int ffmpeg_encode_v4l_stream(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
@@ -281,7 +312,6 @@ sdata->stop=0;
 sdata->width=vwin.width;
 sdata->height=vwin.height;
 sdata->size=vwin.width*vwin.height*2;
-sdata->unused=NULL;
 sdata->frame_count=1;
 sdata->frames_encoded=0;
 sdata->step_frames=0;
@@ -353,24 +383,12 @@ if(avcodec_open(&(sdata->codec_context), sdata->codec)<0){
 	return TCL_ERROR;
 	}
 data->priv=sdata;
-sdata->first=ffmpeg_allocate_frame(sdata->size);
-while(sdata->first==NULL){
-	sleep(1);
-	sdata->first=ffmpeg_allocate_frame(sdata->size);
-	}
-sdata->last=sdata->first;
-pthread_mutex_init(&(sdata->incoming_wait), NULL);
-pthread_mutex_lock(&(sdata->incoming_wait));
-if(pthread_create(&thread, NULL, ffmpeg_v4l_encoding_thread, data)<0){
-	free_frame_list(sdata->first);
-	avcodec_close(&(sdata->codec_context));
-	close(sdata->fd_out);
-	free(sdata);
-	Tcl_AppendResult(interp,"ERROR: ffmpeg_encode_v4l_stream: error creating encoding thread, ", NULL);
-	Tcl_AppendResult(interp, strerror(errno), NULL);
-	return TCL_ERROR;
-	}
-Tcl_CreateFileHandler(data->fd, TCL_READABLE, ffmpeg_transfer_handler, data);
+sdata->s=new_packet_stream();
+sdata->s->priv=data;
+sdata->s->consume_func=ffmpeg_v4l_encoding_thread;
+/* set threshhold to two frames worth of data */
+sdata->s->threshhold=sdata->size*2;
+pthread_create(&(sdata->reader_thread), NULL, v4l_reader_thread, data);
 return 0;
 }
 
@@ -398,9 +416,9 @@ sdata=(FFMPEG_V4L_ENCODING_DATA *)data->priv;
 if((sdata==NULL)||(sdata->type!=FFMPEG_V4L_CAPTURE_KEY)){
 	return 0;
 	}
-Tcl_DeleteFileHandler(data->fd);
-sdata->stop=1;
-pthread_mutex_unlock(&(sdata->incoming_wait));
+pthread_mutex_lock(&(sdata->s->ctr_mutex));
+sdata->s->stop_stream=1;
+pthread_mutex_unlock(&(sdata->s->ctr_mutex));
 return 0;
 }
 
@@ -430,7 +448,7 @@ if((sdata==NULL)||(sdata->type!=FFMPEG_V4L_CAPTURE_KEY)){
 	return 0;
 	}
 
-Tcl_SetObjResult(interp, Tcl_NewIntObj(sdata->size*sdata->frame_count));
+Tcl_SetObjResult(interp, Tcl_NewIntObj(sdata->s->total));
 return 0;
 }
 

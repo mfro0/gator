@@ -51,8 +51,7 @@ if(v4l_sc->data[i]!=NULL){
 	}
 data=(V4L_DATA*) v4l_sc->data[i];
 data->fd=open(argv[2], O_RDONLY);
-if((data->fd<0)||
-	(fcntl(data->fd, F_SETFL, O_NONBLOCK)<0)){
+if((data->fd<0)){
 	free(data);
 	v4l_sc->data[i]=NULL;
 	Tcl_AppendResult(interp,"failed: ", NULL);

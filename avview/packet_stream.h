@@ -12,6 +12,8 @@
 #include <pthread.h>
 
 /* consumer threads should NEVER touch packet with p->next==NULL */
+/* for now s->ctr_mutex protects the whole PACKET_STREAM not just the fields
+   indicated in comments */
 
 typedef struct S_PACKET{
 	struct S_PACKET *next, *prev;   
@@ -29,6 +31,7 @@ typedef struct S_PACKET_STREAM {
 	size_t total;
 	size_t threshhold;
 	int  consumer_thread_running; /* ctr */
+	int  stop_stream;
 	pthread_t consumer_thread_id;  /* cti */
 	pthread_mutex_t ctr_mutex;  /* protects ctr , cti and total values */
 	void (*consume_func)(struct S_PACKET_STREAM *);
