@@ -83,6 +83,8 @@ if(!s->consumer_thread_running && (s->consume_func!=NULL)) {
 		} else {
 		s->consumer_thread_running=1;
 		}
+	} else {
+	pthread_cond_broadcast(&(s->suspend_consumer_thread));
 	}
 }
 
