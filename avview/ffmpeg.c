@@ -343,6 +343,8 @@ char *arg_step_frames;
 struct video_picture vpic;
 double a,b;
 
+int qmin=2;
+
 arg_v4l_handle=get_value(argc, argv, "-v4l_handle");
 arg_video_codec=get_value(argc, argv, "-video_codec");
 arg_v4l_mode=get_value(argc, argv, "-v4l_mode");
@@ -414,15 +416,18 @@ if(!strcmp("MJPEG", arg_video_codec)){
 	} else
 if(!strcmp("MSMPEG-4", arg_video_codec)){
 	sdata->video_codec=avcodec_find_encoder(CODEC_ID_MSMPEG4);
+	qmin=3;
 	} else
 if(!strcmp("H263", arg_video_codec)){
 	sdata->video_codec=avcodec_find_encoder(CODEC_ID_H263);
+	qmin=3;
 	} else
 if(!strcmp("RV10", arg_video_codec)){
 	sdata->video_codec=avcodec_find_encoder(CODEC_ID_RV10);
 	} else
 if(!strcmp("H263P", arg_video_codec)){
 	sdata->video_codec=avcodec_find_encoder(CODEC_ID_H263P);
+	qmin=3;
 	} else
 if(!strcmp("H263I", arg_video_codec)){
 	sdata->video_codec=avcodec_find_encoder(CODEC_ID_H263I);
@@ -465,6 +470,12 @@ fprintf(stderr,"video: using bitrate=%d, frame_rate=%d\n", sdata->video_codec_co
 sdata->video_codec_context.pix_fmt=PIX_FMT_YUV422;
 sdata->video_codec_context.flags=CODEC_FLAG_QSCALE;
 sdata->video_codec_context.quality=2;
+sdata->video_codec_context.qmin=qmin;
+sdata->video_codec_context.quality=qmin;
+sdata->video_codec_context.qmax=15;
+sdata->video_codec_context.max_qdiff=3;
+sdata->video_codec_context.aspect_ratio_info=FF_ASPECT_4_3_625;
+sdata->video_codec_context.me_method=4;
 if(sdata->video_codec->priv_data_size==0){
 	fprintf(stderr,"BUG: sdata->video_codec->priv_data_size==0, fixing it\n");
 	sdata->video_codec->priv_data_size=64*1024; /* 64K should be enough */
