@@ -158,10 +158,12 @@ if {[ffmpeg_present] == "yes"} {
 
 	button $cw.snapshot_button -text "Snapshot" -command capture_snapshot -state disabled
 	eval $cw.snapshot_button configure [get_settings $cw.snapshot_button Capture V4L]
+	button $cw.monitor_button -text "Monitor" -command "create_monitor_window $cw"
+	eval $cw.monitor_button configure [get_settings $cw.monitor_button Capture V4L]
 	checkbutton $cw.record_button -text "Record" -variable v4l_capture_on \
 		-indicatoron false 
 	eval $cw.record_button configure [get_settings $cw.record_button Capture V4L]
-	grid x $cw.snapshot_button $cw.record_button -sticky ns -padx 5
+	grid $cw.snapshot_button $cw.monitor_button $cw.record_button -sticky ns -padx 5
 
 	frame $cw.video_stats 
 	eval $cw.video_stats configure [get_settings $cw.video_stats Capture V4L]
@@ -436,7 +438,6 @@ global v4l_capture_on
 if { [ffmpeg_present] == "no" } { return }
 catch {
 	set status [ffmpeg_encoding_status]
-	puts "status=$status"
 	if { "$status" == "" } {
 		reset_video_stats $cw.video_stats
 		return
@@ -619,4 +620,18 @@ catch {
 		"one quarter" { set current_video_bitrate [expr $current_video_bitrate / 2] }
 		}
 	}
+}
+
+proc create_monitor_window {cw} {
+set mw $cw.monitor
+if { [winfo exists $mw] } {
+	raise $mw
+	return
+	}
+toplevel $mw
+canvas $mw.canvas
+grid $mw.canvas -sticky news
+puts "starting monitor ---"
+set status [start_monitor current_v4l_handle $mw.canvas]
+puts "status=$status"
 }

@@ -128,6 +128,7 @@ PACKET *f;
 pthread_mutex_lock(&(s->ctr_mutex));
 f=get_packet(s);
 while((f!=NULL)&&(s->total>(s->threshold+f->free))){
+	f->free_func(f);
 	f=get_packet(s);
 	}
 s->consumer_thread_running=0;

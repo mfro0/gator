@@ -354,6 +354,8 @@ int v4l_capture_snapshot(ClientData client_data,Tcl_Interp* interp,int argc,char
 long i;
 V4L_DATA *data;
 struct video_picture vpic;
+struct timespec timeout;
+PACKET *f1;
 
 Tcl_ResetResult(interp);
 
@@ -447,9 +449,33 @@ snapshot_data->transfer_read=0;
 snapshot_data->read_buffer=do_alloc(snapshot_data->transfer_size, 1);
 snapshot_data->stm=new_packet_stream();
 snapshot_data->stm->threshold=2*snapshot_data->transfer_size;
-snapshot_data->stm->consume_func=trim_excess_consumer;
 v4l_attach_output_stream(data, snapshot_data->stm);
-snapshot_data->timer=Tcl_CreateTimerHandler(30, v4l_snapshot_timer_callback, data);
+
+/* wait for data to arrive */
+timeout.tv_sec=time(NULL)+1;
+timeout.tv_nsec=0;
+pthread_mutex_lock(&(snapshot_data->stm->ctr_mutex));
+pthread_cond_timedwait(&(snapshot_data->stm->suspend_consumer_thread), &(snapshot_data->stm->ctr_mutex), &timeout);
+/* Do we have enough data ? */
+if(snapshot_data->stm->total < snapshot_data->stm->threshold){
+	/* timer expired, free structure and report failure */
+	if(snapshot_data->read_buffer!=NULL){
+		free(snapshot_data->read_buffer);
+		snapshot_data->read_buffer=NULL;
+		}
+	if(snapshot_data->transfer_complete_script!=NULL)free(snapshot_data->transfer_complete_script);
+	if(snapshot_data->transfer_failed_script!=NULL)free(snapshot_data->transfer_failed_script);
+	while((f1=get_packet(snapshot_data->stm))!=NULL)f1->free_func(f1);
+	snapshot_data->stm->consumer_thread_running=0;
+	pthread_mutex_unlock(&(snapshot_data->stm->ctr_mutex));
+	free(snapshot_data);
+	snapshot_data=NULL;
+	if(argc>=6)Tcl_Eval(interp, argv[5]);	
+	return 0;
+	}
+pthread_mutex_unlock(&(snapshot_data->stm->ctr_mutex));
+/* process arrived data */
+v4l_snapshot_timer_callback(data);
 return 0;
 }
 
@@ -601,6 +627,82 @@ fprintf(stderr,"v4l_reader_thread finished\n");
 pthread_exit(NULL);
 }
 
+typedef struct {
+	char *window;
+	PACKET_STREAM *s;
+	int filedes[2];  /* we cannot call Tcl interpreter from another thread directly.. */
+	} MONITOR_INFO;
+	
+MONITOR_INFO *minfo;
+
+void monitor_consumer(PACKET_STREAM *s)
+{
+char a=1;
+MONITOR_INFO *m;
+m=(MONITOR_INFO *)s->priv;
+/* get rid of older packets */
+while(1){
+	fprintf(stderr,"X");
+	trim_excess_consumer(s); 
+	fprintf(stderr,"Y");
+	write(m->filedes[1], &a, 1); /* signal TCL to do something about this */
+	fprintf(stderr,"Z");
+	pthread_mutex_lock(&(s->ctr_mutex));
+	pthread_cond_wait(&(s->suspend_consumer_thread), &(s->ctr_mutex));
+	if(s->stop_stream & STOP_CONSUMER_THREAD){
+		pthread_mutex_unlock(&(s->ctr_mutex));
+		pthread_exit(NULL);
+		}
+	pthread_mutex_unlock(&(s->ctr_mutex));
+	}
+}
+
+void monitor_pipe_handler(MONITOR_INFO *minfo, int mask)
+{
+char a;
+fprintf(stderr,"Q");
+read(minfo->filedes[0], &a, 1);
+}
+
+int start_monitor(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+{
+V4L_DATA *data;
+Tcl_ResetResult(interp);
+if(argc<3){
+	Tcl_AppendResult(interp, "start_monitor requires at least two arguments\n", NULL);
+	return TCL_ERROR;
+	}
+data=get_v4l_device_from_handle(argv[1]);
+if(data==NULL){
+	Tcl_AppendResult(interp, "start_monitor: v4l device not open\n", NULL);
+	return TCL_OK;
+	}
+if(minfo!=NULL){
+	Tcl_AppendResult(interp, "start_monitor: busy\n", NULL);
+	return TCL_OK;
+	}
+minfo=do_alloc(1, sizeof(*minfo));
+minfo->window=strdup(argv[2]);
+fprintf(stderr,"Monitoring %s\n", minfo->window);
+if(pipe(minfo->filedes)<0){
+	free(minfo->window);
+	free(minfo);
+	minfo=NULL;
+	return TCL_OK;
+	}
+minfo->s=new_packet_stream();
+minfo->s->priv=minfo;
+minfo->s->consume_func=monitor_consumer;
+minfo->s->threshold=2*data->video_size;
+Tcl_CreateFileHandler(minfo->filedes[0],TCL_READABLE,monitor_pipe_handler, minfo);
+v4l_attach_output_stream(data, minfo->s);
+return TCL_OK;
+}
+
+int stop_monitor(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+{
+return TCL_OK;
+}
 
 struct {
 	char *name;
@@ -614,6 +716,8 @@ struct {
 	{"v4l_get_current_window", v4l_get_current_window},
 	{"v4l_set_current_window", v4l_set_current_window},
 	{"get_deinterlacing_methods", get_deinterlacing_methods},
+	{"start_monitor", start_monitor},
+	{"stop_monitor", stop_monitor},
 	{NULL, NULL}
 	};
 
@@ -623,6 +727,7 @@ long i;
 
 v4l_sc=new_string_cache();
 snapshot_data=NULL;
+minfo=NULL;
 
 for(i=0;v4l_commands[i].name!=NULL;i++)
 	Tcl_CreateCommand(interp, v4l_commands[i].name, v4l_commands[i].command, (ClientData)0, NULL);
