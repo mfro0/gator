@@ -8,9 +8,11 @@
    
           * Xv support
 	  
-   Requirements: TV input capable card with Xv support, Tcl/Tk 8.4.x or later. 
+   Requirements: TV input capable card with Xv support
+		 Tcl/Tk 8.4.x or later
 		 libzvbi from http://zapping.sf.net/
 		 ffmpeg-0.4.6 from http://ffmpeg.sf.net/
+		 LIRC (optional) from http://www.lirc.org/
 		  
 	
 *** NOTES ***
@@ -68,3 +70,30 @@
 	Right-click		 bring up popup menu
 	MouseWheel		 adjust on-screen control
 	
+*** LIRC CONFIGURATION ***
+
+       * LIRC (Linux Infrared Remote Control) commands are defined in
+	 file ~/.lircrc, see
+	 <http://www.lirc.org/html/configure.html#lircrc_format> for
+	 description of the file format. Each entry in the file has
+	 prog field telling which application should handle the button
+	 press. For AVview this field is 'avview' (without the
+	 apostrophes). The following commands are recogniced as config
+	 field values:
+
+	 fullscreen		 toggle fullscreen mode
+	 next_channel val     	 switch between favourite channels.
+				 val is the number of channels to 
+				 skip, can be negative
+	 mute			 toggle mute
+	 exit			 exit AVview
+	 volume val		 change volume by amount val
+	 next_control val	 switch on-screen control. val is the
+				 number of controls to skip, can be
+				 negative
+	 change_control val	 change the value of on-screen control
+				 by amount val
+	 next_encoding		 change xv port encoding (PAL, NTSC, ...)
+	 remote_power_off	 exit or toggle screensaver
+	 channel val		 select channel val. val is channel
+				 name (e.g. E5)
