@@ -26,8 +26,8 @@ void mach64_get_window_parameters(KM_STRUCT *kms, struct video_window *vwin)
 u32 a;
 vwin->x=0;
 vwin->y=0;
-a=readl(kms->reg_aperture+MACH64_CAP0_BUF_PITCH);
-vwin->width=a/2;
+a=readl(kms->reg_aperture+MACH64_CAP0_X_WIDTH);
+vwin->width=(a>>16)/2;
 a=readl(kms->reg_aperture+MACH64_CAP0_V_WINDOW);
 vwin->height=(((a>>16)& 0xffff)-(a & 0xffff))+1;
 printk("mach64_get_window_parameters: width=%d height=%d\n", vwin->width, vwin->height);
