@@ -107,11 +107,10 @@ char *output_buf;
 long ob_size, ob_free, ob_written;
 
 /* encode in the background */
-fprintf(stderr,"Enter 1\n");
 nice(1);
 data=(V4L_DATA *)s->priv;
 if((data==NULL)||(sdata==NULL)||(sdata->type!=FFMPEG_CAPTURE_KEY)||(sdata->video_s==NULL)){
-	fprintf(stderr,"Exit 5\n");
+	fprintf(stderr,"INTERNAL ERROR: Exit 5\n");
 	pthread_mutex_lock(&(s->ctr_mutex));
 	s->consumer_thread_running=0;
 	pthread_mutex_unlock(&(s->ctr_mutex));
@@ -126,7 +125,6 @@ picture.data[2]=picture.data[1]+(sdata->video_codec_context.width*sdata->video_c
 picture.linesize[0]=sdata->video_codec_context.width;
 picture.linesize[1]=sdata->video_codec_context.width/2;
 picture.linesize[2]=sdata->video_codec_context.width/2;
-fprintf(stderr,"Enter 2\n");
 while(1){
 	pthread_mutex_lock(&(s->ctr_mutex));
 	f=s->first;
@@ -136,7 +134,6 @@ while(1){
 		do_free(output_buf);
 		s->consumer_thread_running=0;
 		pthread_mutex_unlock(&(s->ctr_mutex));
-		fprintf(stderr,"Exit 1, s->ctr=%d\n", s->consumer_thread_running);
 		pthread_exit(NULL);
 		}
 	pthread_mutex_unlock(&(s->ctr_mutex));
@@ -203,7 +200,6 @@ while(1){
 			do_free(output_buf);
 			s->consumer_thread_running=0;
 			pthread_mutex_unlock(&(s->ctr_mutex));
-			fprintf(stderr,"Exit 2\n");
 			pthread_exit(NULL);
 			break;
 			}
@@ -224,12 +220,10 @@ while(1){
 		s->consumer_thread_running=0;
 		pthread_mutex_unlock(&(s->ctr_mutex));
 		fprintf(stderr,"Video encoding finished\n");
-		fprintf(stderr,"Exit 3\n");
 		pthread_exit(NULL);
 		}
 	pthread_mutex_unlock(&(s->ctr_mutex));
 	}
-fprintf(stderr,"Exit 4\n");
 s->consumer_thread_running=0;
 pthread_exit(NULL);
 }
@@ -335,7 +329,6 @@ while(!(s->stop_stream & STOP_PRODUCER_THREAD)){
 			if(!(s->stop_stream & STOP_PRODUCER_THREAD) &&
 				(!sdata->step_frames || !(incoming_frames_count % sdata->step_frames))){
 				deliver_packet(s, p);
-				fprintf(stderr,"                          s->stop_stream=%d s->ctr=%d\n", s->stop_stream, s->consumer_thread_running);
 				pthread_mutex_unlock(&(s->ctr_mutex));
 				p=new_generic_packet(s, sdata->video_size);
 				} else {
