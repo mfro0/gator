@@ -601,6 +601,14 @@ grid $cw.windowl $cw.window $cw.windowb
 grid configure $cw.windowl -sticky nws
 grid configure $cw.windowb -sticky news
 
+if {[ffmpeg_present] == "yes"} {
+	label $cw.codecl -text "Recording format:"
+	tk_optionMenu $cw.codecom current_codec "MPEG-4"
+	grid $cw.codecl $cw.codecom
+	grid configure $cw.codecl -sticky nws
+	grid configure $cw.codecom -sticky news
+}
+
 button $cw.snapshotb -text "Snapshot" -command capture_snapshot
 grid x $cw.snapshotb
 rescan_v4l_devices

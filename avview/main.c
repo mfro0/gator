@@ -17,6 +17,7 @@
 #include "xv.h"
 #include "xmisc.h"
 #include "v4l.h"
+#include "ffmpeg.h"
 
 void * do_alloc(long a, long b)
 {
@@ -44,6 +45,7 @@ init_freq(interp);
 init_xv(interp);
 init_xmisc(interp);
 init_v4l(interp);
+init_ffmpeg(interp);
 return TCL_OK;
 }
 

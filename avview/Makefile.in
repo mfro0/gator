@@ -8,7 +8,7 @@ DEFINES=
 
 CC=gcc -pipe -g $(INCLUDES) $(DEFINES)
 
-SRCS=xv.c frequencies.c xmisc.c string_cache.c v4l.c formats.c
+SRCS=xv.c frequencies.c xmisc.c string_cache.c v4l.c formats.c ffmpeg.c
 
 LIBS=-lm -ldl $(X11LIBS) @FFMPEG_LIBS@
 
