@@ -21,6 +21,8 @@
 #include <tcl.h>
 #include <tk.h>
 
+#if USE_ALSA
+
 #include <alsa/asoundlib.h>
 
 #include "string_cache.h"
@@ -71,6 +73,17 @@ struct {
 	{"alsa_card_get_longname", alsa_card_get_longname},
 	{NULL, NULL}
 	};
+
+#else /* USE_ALSA */
+
+struct {
+	char *name;
+	Tcl_CmdProc *command;
+	} alsa_commands[]={
+	{NULL, NULL}
+	};
+
+#endif /* USE_ALSA */
 
 void init_alsa(Tcl_Interp *interp)
 {
