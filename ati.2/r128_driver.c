@@ -2069,6 +2069,7 @@ Bool R128ScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 #ifdef XF86DRI
 				/* Turn off the CCE for now. */
     info->CCEInUse     = FALSE;
+    info->indirectBuffer = NULL;
 #endif
 
     if (!R128MapMem(pScrn)) return FALSE;
