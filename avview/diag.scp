@@ -6,23 +6,30 @@ add_parameter_pane "/Diagnostics" "Diagnostics" \
 	"Tcl version"  ro_entry "tcl_patchLevel" \
 	"Tk version" ro_entry "tk_patchLevel" \
 	"Additional diagnostics" heading "" \
-	"Show XVideo information" command {switch_to_pane "/Diagnostics/xvinfo"
+	"Show XVideo information" command {switch_to_pane "/Diagnostics/commands/xvinfo"
 		Tree:open .setup.tree "/Diagnostics"
-		set xvinfo_pane [get_pane_frame "/Diagnostics/xvinfo"]
+		Tree:open .setup.tree "/Diagnostics/commands"
+		set xvinfo_pane [get_pane_frame "/Diagnostics/commands/xvinfo"]
 		$xvinfo_pane.f.refresh invoke} \
-	"Show kernel debug messages" command {switch_to_pane "/Diagnostics/dmesg"
+	"Show kernel debug messages" command {switch_to_pane "/Diagnostics/commands/dmesg"
 		Tree:open .setup.tree "/Diagnostics"
-		set dmesg_pane [get_pane_frame "/Diagnostics/dmesg"]
+		Tree:open .setup.tree "/Diagnostics/commands"
+		set dmesg_pane [get_pane_frame "/Diagnostics/commandsdmesg"]
 		$dmesg_pane.f.refresh invoke} \
-	"Show loaded kernel modules" command {switch_to_pane "/Diagnostics/modules"
+	"Show loaded kernel modules" command {switch_to_pane "/Diagnostics/proc/modules"
 		Tree:open .setup.tree "/Diagnostics"
-		set dmesg_pane [get_pane_frame "/Diagnostics/modules"]
+		Tree:open .setup.tree "/Diagnostics/proc"
+		set dmesg_pane [get_pane_frame "/Diagnostics/proc/modules"]
+		$dmesg_pane.f.refresh invoke} \
+	"Show interrupt handlers" command {switch_to_pane "/Diagnostics/proc/interrupts"
+		Tree:open .setup.tree "/Diagnostics"
+		Tree:open .setup.tree "/Diagnostics/proc"
+		set dmesg_pane [get_pane_frame "/Diagnostics/proc/interrupts"]
 		$dmesg_pane.f.refresh invoke}
 	
 
-add_pane "/Diagnostics/xvinfo" "XVideo extension information" 
-add_pane "/Diagnostics/dmesg" "Kernel debug messages"
-add_pane "/Diagnostics/modules" "Loaded modules"
+add_pane "/Diagnostics/proc" "Runtime Linux kernel data"
+add_pane "/Diagnostics/commands" "Output of diagnostic commands"
 
 add_parameter_pane "/Information" "Information" \
 	"Show README file" command {switch_to_pane "/Information/README"
@@ -53,60 +60,58 @@ $pane.f.refresh invoke
 }
 
 
-set xvinfo_pane [get_pane_frame "/Diagnostics/xvinfo"]
+foreach {command desc index} {xvinfo "XVideo extension information" 0.0
+	glxinfo "GLx extension information" 0.0 
+	dmesg  "Linux kernel debug messages" end
+	xdpyinfo "X server information" 0.0 } {
 
-make_text_holder $xvinfo_pane {
-	set a "Failed to run xvinfo"
-	catch {
-		set a [exec xvinfo]
-		} b
-	set xvinfo_pane [get_pane_frame "/Diagnostics/xvinfo"]
-	$xvinfo_pane.f.text delete 0.0 end
-	if { $a != "Failed to run xvinfo" } {
-		$xvinfo_pane.f.text insert end $a
-		$xvinfo_pane.f.text insert end "-------------------------------------"
-		}
-	regsub {child process exited abnormally.?.?.?$} $b "" c
-	$xvinfo_pane.f.text insert end $c
-	$xvinfo_pane.f.text see 0.0
+	add_pane "/Diagnostics/commands/$command" $desc
+
+	set pane [get_pane_frame "/Diagnostics/commands/$command"]
+
+	make_text_holder $pane [subst -nocommands {
+		set a "Failed to run $command"
+		catch {
+			set a [exec $command]
+			} b
+		$pane.f.text delete 0.0 end
+		if { \$a != "Failed to run $command" } {
+			$pane.f.text insert end \$a
+			$pane.f.text insert end "\n-------------------------------------\n"
+			}
+		regsub {child process exited abnormally.?.?.?$} \$b "" c
+		$pane.f.text insert end \$c
+		$pane.f.text see $index
+		} ]
 	}
 
-set dmesg_pane [get_pane_frame "/Diagnostics/dmesg"]
+foreach {unit desc} {modules "Loaded modules"
+	interrupts "Interrupt handlers"
+	dma "DMA"
+	ioports "IO ports"
+	meminfo "Memory information"
+	mtrr "MTRR"
+	pci "PCI devices"} {
 
-make_text_holder $dmesg_pane {
-	set a "Failed to run dmesg"
-	catch {
-		set a [exec dmesg]
-		} b
-	set dmesg_pane [get_pane_frame "/Diagnostics/dmesg"]
-	$dmesg_pane.f.text delete 0.0 end
-	if { $a != "Failed to run dmesg" } {
-		$dmesg_pane.f.text insert end $a
-		$dmesg_pane.f.text insert end "-------------------------------------"
-		}
-	regsub {child process exited abnormally.?.?.?$} $b "" c
-	$dmesg_pane.f.text insert end $c
-	$dmesg_pane.f.text insert end "\n"
-	$dmesg_pane.f.text see end
-	}
+	add_pane "/Diagnostics/proc/$unit" $desc
 
-set modules_pane [get_pane_frame "/Diagnostics/modules"]
+	set pane [get_pane_frame "/Diagnostics/proc/$unit"]
 
-make_text_holder $modules_pane {
-	set a "Failed to read /proc/modules"
-	catch {
-		set FILE [open "/proc/modules" "r"]
-		set a [read $FILE]
-		close $FILE
-		} b
-	set modules_pane [get_pane_frame "/Diagnostics/modules"]
-	$modules_pane.f.text delete 0.0 end
-	if { $a != "Failed to read /proc/modules" } {
-		$modules_pane.f.text insert end $a
-		$modules_pane.f.text insert end "-------------------------------------"
-		}
-	$modules_pane.f.text insert end $b
-	$modules_pane.f.text see 0.0
+	make_text_holder $pane [subst -nocommands {
+		set a "Failed to read /proc/$unit"
+		catch {
+			set FILE [open "/proc/$unit" "r"]
+			set a [read \$FILE]
+			close \$FILE
+			} b
+		$pane.f.text delete 0.0 end
+		if { \$a != "Failed to read /proc/$unit" } {
+			$pane.f.text insert end \$a
+			$pane.f.text insert end "\n-------------------------------------\n"
+			}
+		$pane.f.text insert end \$b
+		$pane.f.text see 0.0
+		} ]
 	}
 
 set readme_pane [get_pane_frame "/Information/README"]
