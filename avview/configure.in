@@ -62,7 +62,7 @@ AC_SUBST(LIBS)
 
 if ! test "$with_ffmpeg" = "" ; then
 AC_DEFINE(USE_FFMPEG)
-FFMPEG_LIBS="-L$with_ffmpeg/libav -L$with_ffmpeg/libavcodec -lav -lavcodec -lpthread"
+FFMPEG_LIBS="-L$with_ffmpeg/libav -L$with_ffmpeg/libavcodec -lavformat -lavcodec -lpthread"
 FFMPEG_CFLAGS="-I$with_ffmpeg/libav -I$with_ffmpeg/libavcodec"
 else
 FFMPEG_LIBS=
