@@ -17,11 +17,6 @@
 
 
 
-/*
-MODULE_PARM(irq_num, "i");
-MODULE_PARM_DESC(irq_num, "interrupt request number");
-*/
-
 static int allocate_single_frame_buffer(KM_STRUCT *kms, SINGLE_FRAME *frame, long size)
 {
 int i;
@@ -79,6 +74,7 @@ return 0;
 static void start_frame_transfer_buf0(KM_STRUCT *kms)
 {
 long offset, status;
+kms->frame.timestamp=jiffies;
 offset=readl(kms->reg_aperture+CAP0_BUF0_OFFSET);
 setup_single_frame_buffer(kms, &(kms->frame), offset);
 /* wait for at least one available queue */
@@ -101,6 +97,7 @@ printk("start_frame_transfer_buf0\n");
 static void start_frame_transfer_buf0_even(KM_STRUCT *kms)
 {
 long offset, status;
+kms->frame_even.timestamp=jiffies;
 offset=readl(kms->reg_aperture+CAP0_BUF0_EVEN_OFFSET);
 setup_single_frame_buffer(kms, &(kms->frame_even), offset);
 /* wait for at least one available queue */
@@ -136,7 +133,9 @@ if(kms->frame_even.dma_active){
 		if(kms->buf_read_from==1)wake_up_interruptible(&(kms->frameq));
 		}
 	}
+return 0;
 }
+
 
 static int is_capture_irq_active(int irq, KM_STRUCT *kms)
 {
@@ -149,7 +148,7 @@ if(!(status & mask))return 0;
 writel(status & mask, kms->reg_aperture+CAP_INT_STATUS);
 printk("CAP_INT_STATUS=0x%08x\n", status);
 if(status & 1)start_frame_transfer_buf0(kms);
-if(status & 2)start_frame_transfer_buf0_even(kms);
+if(status & 2)start_frame_transfer_buf0_even(kms); 
 return 1;
 }
 

@@ -126,10 +126,23 @@ switch(cmd){
 		#endif
 		return 0;
 		}
-	case VIDIOCSPICT:
+	case VIDIOCSPICT:{
+		struct video_picture p;
+		if(copy_from_user(&p, arg,sizeof(p)))
+			return -EFAULT;
+		if(p.palette!=VIDEO_PALETTE_YUV422)return -EINVAL;
 		return 0;
-	case VIDIOCGWIN:
+		}
+	case VIDIOCGWIN:{
+		struct video_window vwin;
+		vwin.x=0;
+		vwin.y=0;
+		vwin.width=640;
+		vwin.height=240;
+		if(copy_to_user(arg,&vwin,sizeof(vwin)))
+			return -EFAULT;
 		return 0;
+		}
 	case VIDIOCSWIN:
 		return 0;
 	}

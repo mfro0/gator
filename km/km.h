@@ -14,6 +14,7 @@ typedef struct {
 
 typedef struct {
 	char *buffer;
+	long timestamp;
 	long buf_size;
 	long buf_ptr;
 	long buf_free;
