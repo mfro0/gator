@@ -334,6 +334,8 @@ if((hash==kmd->report_hash)&& (count>8) && !strncmp("REPORT ", command, 7)){
 	switch(kmd->fields[i].type){
 		case KM_FIELD_TYPE_PROGRAMMABLE:
 			break;
+		case KM_FIELD_TYPE_LEVEL_TRIGGER:
+			break;
 		}
 	}
 }
@@ -403,17 +405,21 @@ kmd->report_hash=km_command_hash("REPORT", 6);
 kmd->command_hash=kmalloc(sizeof(*(kmd->command_hash))*KM_MODULUS, GFP_KERNEL);
 for(i=0;i<KM_MODULUS;i++)kmd->command_hash[i]=-1;
 while((kf=&(kmd->fields[kmd->num_fields]))->type!=KM_FIELD_TYPE_EOL){
-	kmd->num_fields++;
-	kmd->fields[i].next_command=-1;
-	if(kf->type==KM_FIELD_TYPE_PROGRAMMABLE){
-		h=km_command_hash(kf->name, 10000); /*names longer than that are bogus, really ! */
-		i=kmd->command_hash[h];
-		if(i<0)kmd->command_hash[h]=kmd->num_fields;
-			else {
-			while(kmd->fields[i].next_command>=0)i=kmd->fields[i].next_command;
-			kmd->fields[i].next_command=kmd->num_fields;
-			}
+	kf->next_command=-1;
+	kf->length=strlen(kf->name);
+	switch(kf->type){
+		case KM_FIELD_TYPE_PROGRAMMABLE:
+		case KM_FIELD_TYPE_LEVEL_TRIGGER:
+			h=km_command_hash(kf->name, kf->length);
+			i=kmd->command_hash[h];
+			if(i<0)kmd->command_hash[h]=kmd->num_fields;
+				else {
+				while(kmd->fields[i].next_command>=0)i=kmd->fields[i].next_command;
+				kmd->fields[i].next_command=kmd->num_fields;
+				}
+			break;
 		}
+	kmd->num_fields++;
 	}
 kmd->priv=priv;
 spin_lock_init(&(kmd->lock));

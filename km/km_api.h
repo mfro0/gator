@@ -75,6 +75,7 @@ typedef struct {
 typedef struct S_KM_FIELD {
 	int type;
 	char *name;
+	int length;
 	int changed;
 	spinlock_t *lock;
 	void *priv;
