@@ -748,13 +748,13 @@ static void R128InitI2C(ScrnInfoPtr pScrn, R128PortPrivPtr pPriv)
       }
       if(pPriv->bt829 != NULL)
       {
-         if(pPriv->MM_TABLE_valid)
+	 pPriv->bt829->tunertype = pPriv->board_info & 0x0f;
+         if(xf86_bt829_ATIInit(pPriv->bt829) < 0)pPriv->bt829 = NULL; /* disable it */
+         if(pPriv->MM_TABLE_valid && (pPriv->bt829!=NULL))
          {
            xf86_bt829_SetP_IO(pPriv->bt829, 0x02); /* mute */
            xf86_bt829_SetOUT_EN(pPriv->bt829, 1);
          }
-	 pPriv->bt829->tunertype = pPriv->board_info & 0x0f;
-         if(xf86_bt829_ATIInit(pPriv->bt829) < 0)pPriv->bt829 = NULL; /* disable it */
       }
     }
 
