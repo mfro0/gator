@@ -54,6 +54,12 @@
 /* Define if you have the <sys/ioctl.h> header file. */
 #undef HAVE_SYS_IOCTL_H
 
+/* Define if you have the <tcl.h> header file. */
+#undef HAVE_TCL_H
+
+/* Define if you have the <tk.h> header file. */
+#undef HAVE_TK_H
+
 /* Define if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
 

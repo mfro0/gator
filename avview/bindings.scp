@@ -243,5 +243,5 @@ foreach $avview_controls_layout $avview_controls {
 #  Attempt to load AVview modmap
 #
 catch {
-	exec xmodmap avview.modmap
+	exec xmodmap $avview_directory/avview.modmap
 	}
