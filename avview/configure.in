@@ -16,6 +16,23 @@ AC_CHECK_LIB([dl], [dlopen])
 AC_CHECK_LIB([m], [sin])
 AC_CHECK_LIB([pthread], [pthread_create])
 AC_CHECK_LIB([asound], [snd_card_get_name])
+
+ALSA_PRESENT=no
+if test "$ac_cv_lib_asound_snd_card_get_name" = "yes" ; then
+AC_TRY_LINK([#include <alsa/asoundlib.h> 
+	     #if (SND_LIB_MAJOR != 0) || (SND_LIB_MINOR < 9)  
+	     #error "Avview requires ALSA version 0.9.x" 
+	     #endif], ,AC_DEFINE(USE_ALSA) ALSA_PRESENT=yes,)
+fi
+
+if test "$ALSA_PRESENT" = "no" ; then
+echo "** Avview requires ALSA version 0.9.x"
+fi
+
+echo -n "checking for video4linux... "
+AC_CHECK_HEADER(linux/videodex.h, ,echo "Avview requires video4linux support. You may want to upgrade to Linux 2.4.x."; exit)
+echo "present"
+
 AC_CHECK_LIB([X11], [XCreateSimpleWindow],,,[$X_LIBS])
 AC_CHECK_LIB([Xext], [XInitExtension],,,[$X_LIBS])
 AC_CHECK_LIB([Xv], [XvPutVideo],,,[$X_LIBS -lX11 -lXext])
@@ -37,10 +54,6 @@ FFMPEG_CFLAGS="-I$with_ffmpeg/libav -I$with_ffmpeg/libavcodec"
 else
 FFMPEG_LIBS=
 FFMPEG_CFLAGS=
-fi
-
-if test "$ac_cv_lib_asound_snd_card_get_name" = "yes" ; then
-AC_DEFINE(USE_ALSA)
 fi
 
 AC_SUBST(FFMPEG_LIBS)
@@ -68,7 +81,7 @@ echo "------------------- Configuration -------------------"
 echo ""
 echo "  X11 libraries                    $X_LIBS"
 echo "  X11 cflags                       $X_CFLAGS"
-echo "  ALSA support                     $ac_cv_lib_asound_snd_card_get_name"
+echo "  ALSA support                     $ALSA_PRESENT"
 if test "$with_ffmpeg" = "" ; then
 echo "  Movie recording                  disabled"
 echo "         to enable specify --with-ffmpeg=/path/to/compiled/ffmpeg/source"
