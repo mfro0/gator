@@ -1,12 +1,12 @@
 			*** INSTALLATION ****
 
 Requirements:
-	Tcl/Tk 8.3 or 8.4
+	Tcl/Tk 8.4
 	libzvbi 0.2.3 (http://zapping.sf.net/)
-	Alsa 0.9.0 drivers and library (optional) (http://www.alsa-project.org/)
-	FFmpeg 0.4.6 (optional, http://ffmpeg.sf.net/)
+	Alsa 1.0.0 drivers and library (optional) (http://www.alsa-project.org/)
+	FFmpeg 0.4.8 (optional, http://ffmpeg.sf.net/)
 	autoconf 2.57 or later (if compiling from CVS) (http://www.gnu.org/)
-	automake 1.6.3 (if compiling from CVS) (http://www.gnu.org)	
+	automake 1.7.8 (if compiling from CVS) (http://www.gnu.org)
 	
 To compile:
 
