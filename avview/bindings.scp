@@ -4,17 +4,27 @@
 #  Default bindings
 #
 #
-proc assign_default_bindings {} {
 
-foreach {action sequence} {
+global avview_bindings avview_bindings_layout
+set avview_bindings {
 	"toggle_fullscreen" "<Control-KeyPress-f>"
 	"next_fav_channel 1" "<Key-KP_Add>"
 	"next_fav_channel -1" "<Key-KP_Subtract>"
 	"next_channel 1" "<Control-Key-KP_Add>"
 	"next_channel -1" "<Control-Key-KP_Subtract>"
 	"toggle_mute" "<Key-KP_Multiply>"
-	} {
-	bind all $sequence $action
+	"next_control 1" "<Key-Up>"
+	"next_control -1" "<Key-Left>"
+	"change_control 1" "<Key-Right>"
+	"change_control -1" "<Key-Left>"
+	}
+set avview_bindings_layout {action default_sequence}
+
+proc assign_default_bindings {} {
+global avview_bindings avview_bindings_layout
+
+foreach $avview_bindings_layout $avview_bindings {
+	bind all $default_sequence $action
 	}
 }
 	
@@ -70,10 +80,15 @@ for { set i 0 } { $i < $num_attributes } { incr i } {
 		set variable [find_attribute_variable $VIDEO_WINDOW $current_port $i]
 		global $variable
 		catch {
-			if { [set $variable] } { set $variable 0 } { set $variable 1 }
+			if { [xv_getportattribute $VIDEO_WINDOW $current_port $name] } { set $variable 0 } { set $variable 1 }
 			on_attribute_change XV_MUTE $variable a b
 			}
 		return
 		}
 	}
 }
+
+global avview_controls avview_controls_layout
+set avview_controls {
+	"XV_BRIGTNESS" "Brightness"
+	}

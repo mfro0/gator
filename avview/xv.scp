@@ -252,6 +252,7 @@ if { $current_encoding >= 0 } {
 	set current_encoding_name [lindex [xv_port_encodings $VIDEO_WINDOW $current_port] $current_encoding]
 	}
 
+update_attribute_variables
 generate_attributes_window .controlwin.allattributes
 
 display_video
