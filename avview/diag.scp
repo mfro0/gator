@@ -24,6 +24,21 @@ add_pane "/Diagnostics/xvinfo" "XVideo extension information"
 add_pane "/Diagnostics/dmesg" "Kernel debug messages"
 add_pane "/Diagnostics/modules" "Loaded modules"
 
+add_parameter_pane "/Information" "Information" \
+	"Show README file" command {switch_to_pane "/Information/README"
+		Tree:open .setup.tree "/Information/README"
+		set pane [get_pane_frame "/Information/README"]
+		$pane.f.refresh invoke} \
+	"Show INSTALL file" command {switch_to_pane "/Information/INSTALL"
+		Tree:open .setup.tree "/Information/INSTALL"
+		set pane [get_pane_frame "/Information/INSTALL"]
+		$pane.f.refresh invoke} 
+
+add_pane "/Information/README" "README file"	
+add_pane "/Information/INSTALL" "INSTALL file"	
+Tree:open .setup.tree "/Information"
+
+
 proc make_text_holder { pane refresh_cmd} {
 button $pane.f.refresh -text "Refresh" -command $refresh_cmd
 grid $pane.f.refresh -pady 3 -padx 3
@@ -33,7 +48,7 @@ text $pane.f.text -xscrollcommand "$pane.f.hsb set" -yscrollcommand "$pane.f.vsb
 grid $pane.f.text - $pane.f.vsb -sticky news
 grid $pane.f.hsb - - -sticky news
 grid columnconfig $pane.f 1 -weight 1
-
+grid rowconfig $pane.f 1 -weight 1
 $pane.f.refresh invoke
 }
 
@@ -92,5 +107,45 @@ make_text_holder $modules_pane {
 		}
 	$modules_pane.f.text insert end $b
 	$modules_pane.f.text see 0.0
+	}
+
+set readme_pane [get_pane_frame "/Information/README"]
+
+make_text_holder $readme_pane {
+	global avview_directory
+	set a "Failed to read $avview_directory/README"
+	catch {
+		set FILE [open "$avview_directory/README" "r"]
+		set a [read $FILE]
+		close $FILE
+		} b
+	set readme_pane [get_pane_frame "/Information/README"]
+	$readme_pane.f.text delete 0.0 end
+	if { $a != "Failed to read $avview_directory/README" } {
+		$readme_pane.f.text insert end $a
+		$readme_pane.f.text insert end "-------------------------------------"
+		}
+	$readme_pane.f.text insert end $b
+	$readme_pane.f.text see 0.0
+	}
+
+set install_pane [get_pane_frame "/Information/INSTALL"]
+
+make_text_holder $install_pane {
+	global avview_directory
+	set a "Failed to read $avview_directory/INSTALL"
+	catch {
+		set FILE [open "$avview_directory/INSTALL" "r"]
+		set a [read $FILE]
+		close $FILE
+		} b
+	set install_pane [get_pane_frame "/Information/INSTALL"]
+	$install_pane.f.text delete 0.0 end
+	if { $a != "Failed to read $avview_directory/INSTALL" } {
+		$install_pane.f.text insert end $a
+		$install_pane.f.text insert end "-------------------------------------"
+		}
+	$install_pane.f.text insert end $b
+	$install_pane.f.text see 0.0
 	}
 
