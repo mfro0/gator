@@ -1709,7 +1709,10 @@ RADEONSetupImageVideo(ScreenPtr pScreen)
 	return NULL;
     } 
     xf86LoaderReqSymbols(TheatreSymbolsList, NULL);
-    pPriv->theatre=xf86_DetectTheatre(pPriv->VIP);
+    if(info->Chipset!=PCI_CHIP_RADEON_LY)
+	    pPriv->theatre=xf86_DetectTheatre(pPriv->VIP);
+	    else
+	    pPriv->theatre=NULL;
     if((pPriv->theatre!=NULL) && !RADEONSetupTheatre(pScrn,pPriv,pPriv->theatre))
     {
     	free(pPriv->theatre);
