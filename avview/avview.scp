@@ -171,14 +171,6 @@ set c .controlwin.control
 global current_port_menu
 global current_encoding_menu
 
-#eval label $c.portl -text "\"Port: \"" [get_settings $c.portl AVview]
-#set current_port_menu [tk_optionMenu $c.port_optionmenu current_port  none]
-#eval $c.port_optionmenu configure [get_settings $c.port_optionmenu AVview]
-#eval $current_port_menu configure [get_settings $current_port_menu AVview menu]
-#$current_port_menu delete 0 end
-#grid $c.portl $c.port_optionmenu -sticky news
-#grid configure $c.portl -sticky nws
-
 eval label $c.encodingl -text {{Encoding: }} [get_settings $c.encodingl AVview]
 set current_encoding_menu [tk_optionMenu $c.encoding_optionmenu current_encoding_name  none]
 eval $c.encoding_optionmenu configure [get_settings $c.encoding_optionmenu AVview]
@@ -186,17 +178,6 @@ eval $current_encoding_menu configure [get_settings $current_encoding_menu AVvie
 $current_encoding_menu delete 0 end
 grid $c.encodingl $c.encoding_optionmenu -sticky news
 grid configure $c.encodingl -sticky nws
-
-#eval label $c.tablel -text "\"Channel table: \"" [get_settings $c.tablel AVview]
-#set current_table_menu [tk_optionMenu $c.table_optionmenu current_table_name none]
-#eval $c.table_optionmenu configure [get_settings $c.table_optionmenu AVview]
-#eval $current_table_menu configure [get_settings $current_table_menu AVview menu]
-#$current_table_menu delete 0 end
-#foreach table $TABLE_LIST {
-#	$current_table_menu add radiobutton -label "$table" -value "$table" -variable current_table_name 
-#	}
-#grid $c.tablel $c.table_optionmenu -sticky news
-#grid configure $c.tablel -sticky nws
 
 eval label $c.channell -text {{Channel: }} [get_settings $c.channell]
 set current_channel_menu [tk_optionMenu $c.channel_optionmenu current_channel none]
@@ -215,35 +196,6 @@ grid $c.alsa_attr -row 0 -column 4 -padx 2 -pady 2
 
 eval button $c.setup_window -text {{Setup window}} -command create_setup_window
 grid $c.setup_window -row 1 -column 2 -padx 2 -pady 2
-
-#eval checkbutton $c.fullscreen_checkbutton -text "Fullscreen"  \
-#	-indicatoron false -variable fullscreen_mode [get_settings $c.fullscreen_checkbutton]
-#eval button $c.half_size_button -text \"Half size\" -command "make_half_size" [get_settings $c.half_size_button]
-
-#eval menubutton $c.interface_menubutton -text "Interface" -relief raised -menu $c.interface_menubutton.menu [get_settings $c.interface_menubutton]
-#eval menu $c.interface_menubutton.menu [get_settings $c.interface_menubutton.menu AVview]
-#$c.interface_menubutton.menu add checkbutton -label "Show main control window" -variable show_control_window
-#$c.interface_menubutton.menu add checkbutton -label "Attributes" -variable attributes_window
-#$c.interface_menubutton.menu add checkbutton -label "Capture (V4L)" -variable capture_window
-#if { [alsa_present] == "yes" } {
-#	$c.interface_menubutton.menu add checkbutton -label "Audio mixer (ALSA)" -variable alsa_window
-#	} 
-#$c.interface_menubutton.menu add separator
-#$c.interface_menubutton.menu add command -label "Favorite channel editor" -command scan_channels
-#eval menu $c.interface_menubutton.menu.theme [get_settings $c.interface_menubutton.menu.theme AVview]
-#$c.interface_menubutton.menu add cascade -menu $c.interface_menubutton.menu.theme -label "Theme"
-#$c.interface_menubutton.menu add separator
-#$c.interface_menubutton.menu add command -label "Exit" -command {
-#	ffmpeg_stop_encoding
-#	save_settings
-#	exit
-#	}
-
-#grid $c.fullscreen_checkbutton $c.half_size_button $c.interface_menubutton -padx 5 -pady 5 -sticky ns
-
-# pack $c -expand yes -fill both
-# pack .controlwin.allattributes -expand yes -fill both -pady 5 
-# pack .controlwin.capture -after .controlwin.allattributes -expand yes -fill both -pady 5 -side right
 
 grid $c - - -sticky nw
 grid .controlwin.allattributes -column 0 -row 1 -rowspan 2 -sticky news -pady 2 
@@ -310,22 +262,6 @@ bind $window <Motion> "global hct_$window;\
 }
 
 set_hiding_cursor .video left_ptr
-
-#set NUM_ADAPTORS [xv_numadaptors $VIDEO_WINDOW]
-#puts "NUM_ADAPTORS=$NUM_ADAPTORS"
-
-#for { set i 0 } { $i < $NUM_ADAPTORS } { incr i 1 } { 
-#	puts "Adaptor $i: [xv_adaptor_name $VIDEO_WINDOW $i]"
-#	puts "\t\ttype [xv_adaptor_type $VIDEO_WINDOW $i]"
-#	puts "\t\tports [xv_adaptor_ports $VIDEO_WINDOW $i]"
-#	if { ([lsearch -exact [xv_adaptor_type $VIDEO_WINDOW $i] input] != -1) } {
-#		set adaptor_name "[xv_adaptor_name $VIDEO_WINDOW $i]"
-#		foreach port [xv_adaptor_ports $VIDEO_WINDOW $i] {
-#			puts "$port $adaptor_name"
-#			$current_port_menu add radiobutton -label "$adaptor_name: $port" -value "$port" -variable current_port
-#			}
-#		}
-#	}
 
 proc set_channel_table {name1 name2 op} {
 global TABLE_LIST
