@@ -476,8 +476,14 @@ if { $avview_version != $saved_avview_version } {
 	raise .setup
 	update
 	update idletasks
-	tk_messageBox -parent .setup -icon info\
-		-type ok -message "It appears you have not run AVview $avview_version before.\nPlease verify that all settings are correct."
+	if { $saved_avview_version != "" } {
+		tk_messageBox -parent .setup -icon info\
+			-type ok -message "It appears you have not run AVview $avview_version before.\nPlease verify that all settings are correct."
+		} {
+		tk_messageBox -parent .setup -icon info\
+			-type ok -message "It appears you have not run AVview $avview_version before.\nPlease go through all settings and adjust them as appropriate."
+		after idle {switch_to_pane "/Video device parameters"}
+		}
 	}
 }
 
