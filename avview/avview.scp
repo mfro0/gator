@@ -420,6 +420,9 @@ after 300 check_mapped_state
 # For debugging
 #check_mapped_state
 
+global in_set_fullscreen
+set in_set_fullscreen false
+
 proc set_fullscreen {} {
 global VIDEO_WINDOW
 global fullscreen_mode
@@ -427,6 +430,10 @@ global saved_screensaver_mode
 global saved_main_window_geometry
 global saved_vw_width
 global saved_vw_height
+global in_set_fullscreen
+
+if { $in_set_fullscreen } { return }
+set in_set_fullscreen true
 
 if { $fullscreen_mode } {
 	#
@@ -437,6 +444,8 @@ if { $fullscreen_mode } {
 	set saved_vw_width [$VIDEO_WINDOW cget -width]
 	set saved_vw_height [$VIDEO_WINDOW cget -height]
 
+	xmisc_setscreensaver $VIDEO_WINDOW 0 0 DontPreferBlanking AllowExposures \
+		0 0 0 0 off
 	
 	wm withdraw .
 	wm overrideredirect . true
@@ -444,6 +453,7 @@ if { $fullscreen_mode } {
 #	after idle {
 		while { [wm state .] != "normal" } {
 			wm state . normal
+			after 100
 			update
 			update idletasks
 			}
@@ -462,13 +472,12 @@ if { $fullscreen_mode } {
 	#		-height $screen_height  -background red
 		$VIDEO_WINDOW configure -width ${screen_width} \
 			-height ${screen_height}
-		xmisc_setscreensaver $VIDEO_WINDOW 0 0 DontPreferBlanking AllowExposures \
-			0 0 0 0 off
 		display_video
 		update
 #		puts "1. state=[wm state .]"
 		while { [wm state .] != "normal" } {
 #			puts "2. state=[wm state .]"
+			after 100
 			wm state . normal
 			update
 			update idletasks
@@ -503,6 +512,7 @@ if { $fullscreen_mode } {
 	grab release .
 	focus -force .
 	}
+set in_set_fullscreen false
 }
 
 proc make_half_size {} {
