@@ -8,6 +8,6 @@
    
           * Xv support
 	  
-   Requirements: TV input capable card with Xv support, Tcl/Tk 8.x.x or 
+   Requirements: TV input capable card with Xv support, Tcl/Tk 8.3.x or 
                  later. 
 		  
