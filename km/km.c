@@ -18,6 +18,7 @@
 #include <linux/config.h>
 #include <linux/version.h>
 #include <linux/module.h>
+#include <linux/kmod.h>
 #include <linux/kernel.h>
 #include <linux/sched.h>
 #include <linux/init.h>
@@ -839,6 +840,11 @@ static int __init init_module(void)
 int result;
 struct pci_dev *pdev;
 const struct pci_device_id *pdid;
+
+/* this does not do anything useful at the moment */
+request_module("km_api_drv");
+request_module("videodev");
+
 printk("Kmultimedia module version %s loaded\n", KM_VERSION);
 printk("Page size is %ld sizeof(bm_list_descriptor)=%d sizeof(KM_STRUCT)=%d\n", PAGE_SIZE, sizeof(bm_list_descriptor), sizeof(KM_STRUCT));
 num_devices=0;
@@ -849,6 +855,7 @@ pci_for_each_dev(pdev){
 		}
 	}
 if(result<0)printk("km: **** no supported devices found ****\n");
+
 return result;
 }
 
