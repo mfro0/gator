@@ -147,8 +147,8 @@ static struct {
 	{KIND_FILTERED, 0xce, 0x09, EV_KEY, KEY_VOLUMEDOWN, 1},  
 	{KIND_FILTERED, 0xcd, 0x08, EV_KEY, KEY_VOLUMEUP, 1},   
 	{KIND_FILTERED, 0xcf, 0x0a, EV_KEY, KEY_MUTE, 1},   
-	{KIND_FILTERED, 0xd1, 0x0c, EV_KEY, KEY_PAGEDOWN, 1},    /* prev channel*/
-	{KIND_FILTERED, 0xd0, 0x0b, EV_KEY, KEY_PAGEUP, 1},   /* next channel */
+	{KIND_FILTERED, 0xd1, 0x0c, EV_KEY, KEY_PAGEUP, 1},    /* next channel*/
+	{KIND_FILTERED, 0xd0, 0x0b, EV_KEY, KEY_PAGEDOWN, 1},   /* prev channel */
 	
 	{KIND_FILTERED, 0xec, 0x27, EV_KEY, KEY_RECORD, 1},   
 	{KIND_FILTERED, 0xea, 0x25, EV_KEY, KEY_PLAYCD, 1},   /* ke pay */
