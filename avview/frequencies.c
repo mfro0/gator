@@ -6,7 +6,7 @@ Borrowed from xawtv
 
 #define __FREQUENCIES_C__
 
-
+#include <stdlib.h>
 #include <X11/X.h>
 #include <X11/Xlib.h>
 #include <tcl.h>
@@ -1024,8 +1024,6 @@ return 0;
 
 int freq_get_channel_value(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
 {
-Tcl_Obj *ans;
-int i;
 int table;
 int channel;
 

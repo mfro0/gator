@@ -6,7 +6,7 @@
        
 */
 
-
+#include <stdlib.h>
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/types.h>
@@ -105,8 +105,7 @@ Window win;
 Display *d;
 int timeout, interval, pb, ae;
 CARD16 dpms_standby,dpms_suspend,dpms_off,dpms_current_level,a;
-BOOL dpms_enabled,b;
-Tcl_Obj *ans;
+BOOL b;
 
 Tcl_ResetResult(interp);
 
@@ -169,10 +168,6 @@ Tk_Window tkwin;
 Tk_Cursor cursor;
 Window win;
 Display *d;
-int timeout, interval, pb, ae;
-Tcl_Obj *ans;
-CARD16 dpms_standby,dpms_suspend,dpms_off,dpms_current_level;
-BOOL dpms_enabled;
 char bits,mask;
 
 Tcl_ResetResult(interp);
@@ -216,10 +211,6 @@ int xmisc_setfullscreen(ClientData client_data,Tcl_Interp* interp,int argc,char 
 Tk_Window tkwin;
 Window win;
 Display *d;
-int timeout, interval, pb, ae;
-Tcl_Obj *ans;
-CARD16 dpms_standby,dpms_suspend,dpms_off,dpms_current_level;
-BOOL dpms_enabled;
 
 Tcl_ResetResult(interp);
 

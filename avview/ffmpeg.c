@@ -29,6 +29,7 @@
 
 #include <sys/time.h>
 #include <pthread.h>
+#include <assert.h>
 #include "avcodec.h"
 #include "avformat.h"
 #include "v4l.h"
@@ -81,7 +82,6 @@ return 0;
 void ffmpeg_preprocess_frame(V4L_DATA *data, FFMPEG_ENCODING_DATA *sdata, 
 		PACKET *f, AVPicture *picture)
 {
-char *p;
 switch(data->mode){
 	case MODE_SINGLE_FRAME:
 		convert_422_to_420p(sdata->width, sdata->height, sdata->width*2, f->buf, picture->data[0]);
@@ -99,8 +99,7 @@ switch(data->mode){
 void ffmpeg_v4l_encoding_thread(PACKET_STREAM *s)
 {
 int i;
-int retval;
-PACKET *f,*fn;
+PACKET *f;
 V4L_DATA *data;
 AVPicture picture;
 char *output_buf;
@@ -189,8 +188,8 @@ while(1){
 			}
 		pthread_mutex_unlock(&(s->ctr_mutex));
 		}
-#if 1
-	fprintf(stderr,"frame_count=%d  stop=%d\n", 
+#if 0
+	fprintf(stderr,"frame_count=%ld  stop=%d\n", 
 		sdata->frame_count, 
 		s->stop_stream);
 #endif
@@ -216,7 +215,6 @@ void ffmpeg_audio_encoding_thread(PACKET_STREAM *s)
 {
 unsigned char *out_buf;
 long ob_size, ob_free, ob_written, i;
-int frame_size;
 PACKET *f;
 ob_size=sdata->alsa_param.chunk_size;
 out_buf=do_alloc(ob_size, 1);
@@ -352,7 +350,7 @@ return 1;
 
 offset_t file_seek(FFMPEG_ENCODING_DATA *sdata, offset_t pos, int whence)
 {
-fprintf(stderr,"file_seek pos=%ld whence=%d\n", (int)pos, whence);
+fprintf(stderr,"file_seek pos=%d whence=%d\n", (int)pos, whence);
 return lseek(sdata->fd_out, pos, whence);
 }
 
@@ -677,10 +675,6 @@ return 0;
 
 int ffmpeg_stop_encoding(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
 {
-V4L_DATA *data;
-pthread_t thread;
-struct video_picture vpic;
-struct video_window vwin;
 
 Tcl_ResetResult(interp);
 
@@ -690,12 +684,6 @@ if(argc<2){
 	Tcl_AppendResult(interp,"ERROR: ffmpeg_stop_encoding requires one argument", NULL);
 	return TCL_ERROR;
 	}
-#if 0
-data=get_v4l_device_from_handle(argv[1]);
-if(data==NULL){
-	return 0;
-	}
-#endif
 if((sdata==NULL)||(sdata->type!=FFMPEG_CAPTURE_KEY)){
 	return 0;
 	}
@@ -710,12 +698,7 @@ return 0;
 
 int ffmpeg_incoming_fifo_size(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
 {
-V4L_DATA *data;
-pthread_t thread;
-struct video_picture vpic;
-struct video_window vwin;
 long total;
-PACKET *f;
 
 Tcl_ResetResult(interp);
 /* Report 0 bytes when no such device exists or it is not capturing */
@@ -724,13 +707,6 @@ if(argc<2){
 	Tcl_AppendResult(interp,"ERROR: ffmpeg_incoming_fifo_size requires one argument", NULL);
 	return TCL_ERROR;
 	}
-#if 0  /* not necessary now */
-data=get_v4l_device_from_handle(argv[1]);
-if(data==NULL){
-	Tcl_SetObjResult(interp, Tcl_NewIntObj(0));
-	return 0;
-	}
-#endif
 if((sdata==NULL)||(sdata->type!=FFMPEG_CAPTURE_KEY)){
 	Tcl_SetObjResult(interp, Tcl_NewIntObj(0));
 	return 0;
@@ -745,9 +721,6 @@ if((sdata->video_s!=NULL) && (sdata->video_s->stop_stream & STOP_PRODUCER_THREAD
 	!sdata->video_s->consumer_thread_running &&
 	!sdata->video_s->producer_thread_running &&
 	(sdata->video_s->total==0)){
-	#if 0 /* not necessary now */
-	data->priv=NULL;
-	#endif
 	free(sdata->video_s);
 	sdata->video_s=NULL;
 	}
@@ -790,7 +763,7 @@ if(sdata->video_s!=NULL){
 if(sdata->audio_s!=NULL){
 	pthread_mutex_unlock(&(sdata->audio_s->ctr_mutex));
 	}
-fprintf(stderr,"total=%d sdata=%p\n", total, sdata);
+fprintf(stderr,"total=%ld sdata=%p\n", total, sdata);
 return TCL_OK;
 }
 

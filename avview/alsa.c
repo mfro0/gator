@@ -133,7 +133,6 @@ int alsa_hctl_open(ClientData client_data,Tcl_Interp* interp,int argc,char *argv
 int a,i;
 int mode;
 ALSA_DATA *ad;
-Tcl_Obj *ans;
 
 Tcl_ResetResult(interp);
 if(argc<3){
@@ -195,17 +194,12 @@ if(ad->elem_count>0){
 snd_hctl_close(ad->hctl);
 free(ad);
 alsa_sc->data[i]=NULL;
-fprintf(stderr,"Closed ALSA device %s index %d\n", alsa_sc->string[i], i);
+fprintf(stderr,"Closed ALSA device %s index %ld\n", alsa_sc->string[i], i);
 }
 
 int alsa_hctl_close(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
 {
-int a,i,j,k,items;
-int mode;
-ALSA_DATA *ad;
-Tcl_Obj *ans,*list,*list2;
-int count;
-snd_hctl_elem_t *elem;
+int i;
 
 Tcl_ResetResult(interp);
 if(argc<2){
@@ -220,7 +214,6 @@ return TCL_OK;
 int alsa_hctl_get_elements_info(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
 {
 int a,i,j,k,items;
-int mode;
 ALSA_DATA *ad;
 Tcl_Obj *ans,*list,*list2;
 int count;
@@ -301,6 +294,7 @@ for(elem=snd_hctl_first_elem(ad->hctl);elem!=NULL;elem=snd_hctl_elem_next(elem))
 				}
 			Tcl_ListObjAppendElement(interp,list,list2);
 			break;
+		default:
 		}
 	Tcl_ListObjAppendElement(interp, ans, list);
 	j++;
@@ -380,7 +374,6 @@ long i,j,e;
 int a,k;
 ALSA_DATA *ad;
 snd_ctl_elem_value_t *value;
-Tcl_Obj *ans;
 Tcl_ResetResult(interp);
 if(argc<5){
 	Tcl_AppendResult(interp,"ERROR: alsa_hctl_set_element_value requires four arguments", NULL);
@@ -544,7 +537,7 @@ if((a=snd_pcm_open(&(ad->recording_handle), arg_audio_device, SND_PCM_STREAM_CAP
 	}
 fprintf(stderr,"Checkpoint 2.2.1.2\n");
 if((a=snd_pcm_hw_params_any(ad->recording_handle, hwparams))<0){
-	fprintf(stderr,"Error device %s has no configurations available: \n", arg_audio_device, snd_strerror(a));
+	fprintf(stderr,"Error device %s has no configurations available: %s\n", arg_audio_device, snd_strerror(a));
 	return -1;
 	}
 fprintf(stderr,"Checkpoint 2.2.1.3\n");
@@ -576,7 +569,7 @@ if(a<0){
         /* set the stream rate */
 a=snd_pcm_hw_params_set_rate_near(ad->recording_handle, hwparams, rate, 0);
 if(a<0){
-        fprintf(stderr,"Rate %iHz not available for recording: %s\n", rate, snd_strerror(a));
+        fprintf(stderr,"Rate %ldHz not available for recording: %s\n", rate, snd_strerror(a));
         return -1;
         }
 param->sample_rate=a;
@@ -585,7 +578,7 @@ ad->recording_chunk_size=4096*ad->frame_size; /* multiple of pages this way */
 if(a>40960)ad->recording_chunk_size=(a*ad->frame_size)/10;
 param->chunk_size=ad->recording_chunk_size; /* suggest chunk size.. */
 ad->param=param;
-fprintf(stderr,"Using sample rate %ld Hz frame_size=%d\n", param->sample_rate, ad->frame_size);
+fprintf(stderr,"Using sample rate %ld Hz frame_size=%ld\n", param->sample_rate, ad->frame_size);
 #if 0 /* don't know what to do with this */
         /* set buffer time */
 a=snd_pcm_hw_params_set_buffer_time_near(ad->recording_handle, hwparams, buffer_time, &dir);

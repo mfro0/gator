@@ -6,7 +6,7 @@
        
 */
 
-
+#include <stdlib.h>
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/types.h>
@@ -231,7 +231,6 @@ Display *d;
 int num_encodings;
 int port;
 XvEncodingInfo *xei;
-Tcl_Obj *ans;
 
 Tcl_ResetResult(interp);
 
@@ -334,7 +333,6 @@ int encoding;
 int num_encodings;
 int port;
 XvEncodingInfo *xei;
-Tcl_Obj *ans;
 
 Tcl_ResetResult(interp);
 
@@ -390,7 +388,6 @@ int encoding;
 int num_encodings;
 int port;
 XvEncodingInfo *xei;
-Tcl_Obj *ans;
 
 Tcl_ResetResult(interp);
 
@@ -508,8 +505,6 @@ Display *d;
 int num_attributes;
 int port;
 XvAttribute *xa;
-Tcl_Obj *ans;
-int i;
 
 Tcl_ResetResult(interp);
 
@@ -558,7 +553,6 @@ int attribute;
 int num_attributes;
 int port;
 XvAttribute *xa;
-Tcl_Obj *ans;
 
 Tcl_ResetResult(interp);
 
@@ -744,8 +738,6 @@ XvPortID port;
 long x,y,w,h;
 XGCValues xgcv;
 GC gc;
-int r;
-XRectangle rect;
 
 Tcl_ResetResult(interp);
 
@@ -871,10 +863,6 @@ return 0;
 int xv_getwindowbackgroundpixel(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
 {
 Tk_Window tkwin;
-Window win;
-Display *d;
-Screen *s;
-int value;
 XSetWindowAttributes *xswa;
 
 Tcl_ResetResult(interp);

@@ -6,7 +6,7 @@
        
 */
 
-
+#include <stdlib.h>
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/types.h>
@@ -168,7 +168,6 @@ int v4l_device_name(ClientData client_data,Tcl_Interp* interp,int argc,char *arg
 {
 long i;
 V4L_DATA *data;
-Tcl_Obj *ans;
 
 Tcl_ResetResult(interp);
 
@@ -320,7 +319,6 @@ int v4l_capture_snapshot(ClientData client_data,Tcl_Interp* interp,int argc,char
 {
 long i;
 V4L_DATA *data;
-Tcl_Obj *ans;
 struct video_picture vpic;
 struct video_window vwin;
 V4L_SNAPSHOT_DATA *sdata;
@@ -458,7 +456,6 @@ int v4l_set_current_window(ClientData client_data,Tcl_Interp* interp,int argc,ch
 {
 long i;
 V4L_DATA *data;
-Tcl_Obj *ans;
 struct video_window vwin;
 
 Tcl_ResetResult(interp);

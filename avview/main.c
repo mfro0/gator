@@ -8,6 +8,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <X11/X.h>
 #include <X11/Xlib.h>
 #include <tcl.h>
@@ -19,6 +20,7 @@
 #include "v4l.h"
 #include "ffmpeg.h"
 #include "linux.h"
+#include "alsa.h"
 #include <pthread.h>
 
 pthread_mutex_t  memory_mutex;
@@ -31,7 +33,7 @@ if(a<=0)a=1;
 if(b<=0)b=1;
 r=calloc(a, b);
 while(r==NULL){
-	fprintf(stderr,"Could not allocate %ld chunks of %ld bytes (%ld bytes total)\n", a, b);
+	fprintf(stderr,"Could not allocate %ld chunks of %ld bytes (%ld bytes total)\n", a, b, a*b);
 	sleep(1);
 	r=calloc(a,b);
 	}

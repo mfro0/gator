@@ -274,7 +274,7 @@ void vcvt_420p_bgr32(int width, int height, int plus, void *src, void *dst)
 void vcvt_422(int width, int height, int plus, unsigned char *src, unsigned char *dst, int push)
 {
 	int line, col, pitch;
-	int y, u, v, yy, vr = 0, ug = 0, vg = 0, ub = 0;
+	int u, v, yy, vr = 0, ug = 0, vg = 0, ub = 0;
 	int r, g, b;
 	unsigned char *sy, *su, *sv;
 
@@ -446,7 +446,6 @@ void deinterlace_422_bob_to_420p(long width, long height, long pitch, char *fram
 {
 long line;
 long pixel;
-long dst_pitch;
 unsigned char *t1,*t2,*t3;
 unsigned char *s1;
 char y1,y2,v1,u1;
@@ -476,7 +475,6 @@ void deinterlace_422_half_width_to_420p(long width, long height, long pitch, cha
 {
 long line;
 long pixel;
-long dst_pitch;
 unsigned char *t1,*t2,*t3;
 unsigned char *s1;
 int y1,y2,y3,y4,v1,v2,u1,u2;
@@ -510,7 +508,6 @@ void convert_422_to_420p(long width, long height, long pitch, char *frame1, char
 {
 long line;
 long pixel;
-long dst_pitch;
 unsigned char *t1,*t2,*t3;
 unsigned char *s1;
 char y1,y2,v1,u1;
