@@ -11,8 +11,10 @@
 
 #include <pthread.h>
 
+/* consumer threads should NEVER touch packet with p->next==NULL */
+
 typedef struct S_PACKET{
-	struct S_PACKET *next, *prev;
+	struct S_PACKET *next, *prev;   
 	size_t size;
 	size_t free;
 	int discard;
@@ -27,7 +29,8 @@ typedef struct S_PACKET_STREAM {
 	size_t total;
 	size_t threshhold;
 	int  consumer_thread_running; /* ctr */
-	pthread_mutex_t ctr_mutex;
+	pthread_t consumer_thread_id;  /* cti */
+	pthread_mutex_t ctr_mutex;  /* protects ctr , cti and total values */
 	void (*consume_func)(struct S_PACKET_STREAM *);
 	void *priv;   
 	} PACKET_STREAM;
@@ -35,5 +38,8 @@ typedef struct S_PACKET_STREAM {
 PACKET_STREAM *new_packet_stream(void);
 PACKET *new_generic_packet(size_t size);
 void free_generic_packet(PACKET *p);
+void deliver_packet(PACKET_STREAM *s, PACKET *p);
+void discard_packets(PACKET_STREAM *s);
+
 
 #endif
