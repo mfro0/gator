@@ -49,6 +49,7 @@ typedef struct {
 	CARD32 original_frequency;
 	Bool afc_timer_installed;
 	int afc_count;
+	int last_afc_hint;
 	
 	FI1236_parameters parm;
 	
