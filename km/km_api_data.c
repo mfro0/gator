@@ -155,8 +155,14 @@ void km_free_private_data_virtual_block(KM_DATA_UNIT *kdu)
 {
 int i;
 KM_DATA_VIRTUAL_BLOCK *dvb;
+if(kdu->type!=KDU_TYPE_VIRTUAL_BLOCK){
+	printk(KERN_ERR "km_api_data.km_free_private_data_virtual_block: attempt to free non virtual_block kdu\n");
+	}
 dvb=(KM_DATA_VIRTUAL_BLOCK *)kdu->data_private;
 for(i=0;i<dvb->n;i++)rvfree(dvb->ptr[i],dvb->size);
+kdu->type=KDU_TYPE_GENERIC;
+kdu->data_private=NULL;
+kdu->free_private=NULL;
 }
 
 int km_allocate_data_virtual_block(KM_DATA_VIRTUAL_BLOCK *dvb, mode_t mode)
