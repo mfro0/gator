@@ -451,6 +451,7 @@ int radeon_do_cp_idle( drm_radeon_private_t *dev_priv )
 {
 	RING_LOCALS;
 	DRM_DEBUG( "%s\n", __FUNCTION__ );
+	printk("radeon_do_cp_idle\n");
 
 	BEGIN_RING( 6 );
 
@@ -520,6 +521,8 @@ static int radeon_do_engine_reset( drm_device_t *dev )
 	drm_radeon_private_t *dev_priv = dev->dev_private;
 	u32 clock_cntl_index, mclk_cntl, rbbm_soft_reset;
 	DRM_DEBUG( "%s\n", __FUNCTION__ );
+
+	printk("radeon_do_engine_reset\n");
 
 	radeon_do_pixcache_flush( dev_priv );
 
@@ -665,6 +668,7 @@ static int radeon_do_init_cp( drm_device_t *dev, drm_radeon_init_t *init )
 	u32 tmp;
 	DRM_DEBUG( "%s\n", __FUNCTION__ );
 
+	printk("radeon_do_init_cp\n");
 	dev_priv = DRM(alloc)( sizeof(drm_radeon_private_t), DRM_MEM_DRIVER );
 	if ( dev_priv == NULL )
 		return -ENOMEM;
@@ -748,11 +752,11 @@ static int radeon_do_init_cp( drm_device_t *dev, drm_radeon_init_t *init )
 		dev_priv->back_offset, dev_priv->depth_offset);
 
 	dev_priv->front_pitch_offset = (((dev_priv->front_pitch/64) << 22) |
-					(((dev_priv->front_offset+dev_priv->fb->offset) >> 10)&0x3FFFFF));
+					(((dev_priv->front_offset) >> 10)&0x3FFFFF));
 	dev_priv->back_pitch_offset = (((dev_priv->back_pitch/64) << 22) |
-				       (((dev_priv->back_offset+dev_priv->fb->offset) >> 10)&0x3FFFFF));
+				       (((dev_priv->back_offset) >> 10)&0x3FFFFF));
 	dev_priv->depth_pitch_offset = (((dev_priv->depth_pitch/64) << 22) |
-					(((dev_priv->depth_offset+dev_priv->fb->offset) >> 10)&0x3FFFFF));
+					(((dev_priv->depth_offset) >> 10)&0x3FFFFF));
 
 	/* Hardware state for depth clears.  Remove this if/when we no
 	 * longer clear the depth buffer with a 3D rectangle.  Hard-code
@@ -1168,7 +1172,8 @@ static int radeon_do_init_pageflip( drm_device_t *dev )
 {
 	drm_radeon_private_t *dev_priv = dev->dev_private;
 	DRM_DEBUG( "%s\n", __FUNCTION__ );
-
+	
+	printk("radeon_do_init_pageflip\n");
 	dev_priv->crtc_offset =      RADEON_READ( RADEON_CRTC_OFFSET );
 	dev_priv->crtc_offset_cntl = RADEON_READ( RADEON_CRTC_OFFSET_CNTL );
 

@@ -65,8 +65,9 @@ static inline void radeon_emit_context( drm_radeon_private_t *dev_priv )
 	RING_LOCALS;
 	DRM_DEBUG( "    %s\n", __FUNCTION__ );
 
-        printk("radeon_emit_context dp=0x%08x, do=0x%08x, cp=0x%08x\n",
-		ctx->rb3d_depthpitch, ctx->rb3d_depthoffset, ctx->rb3d_colorpitch);
+        printk("radeon_emit_context dp=0x%08x, do=0x%08x, cp=0x%08x, co=0x%08x\n",
+		ctx->rb3d_depthpitch, ctx->rb3d_depthoffset, ctx->rb3d_colorpitch,
+		ctx->rb3d_coloroffset);
 
 	BEGIN_RING( 14 );
 
@@ -82,7 +83,7 @@ static inline void radeon_emit_context( drm_radeon_private_t *dev_priv )
 	OUT_RING( CP_PACKET0( RADEON_PP_CNTL, 2 ) );
 	OUT_RING( ctx->pp_cntl );
 	OUT_RING( ctx->rb3d_cntl );
-	OUT_RING( ctx->rb3d_coloroffset );
+	OUT_RING( ctx->rb3d_coloroffset);
 
 	OUT_RING( CP_PACKET0( RADEON_RB3D_COLORPITCH, 0 ) );
 	OUT_RING( ctx->rb3d_colorpitch );
@@ -150,6 +151,7 @@ static inline void radeon_emit_masks( drm_radeon_private_t *dev_priv )
 	RING_LOCALS;
 	DRM_DEBUG( "    %s\n", __FUNCTION__ );
 
+	printk("radeon_emit_masks\n");
 	BEGIN_RING( 4 );
 
 	OUT_RING( CP_PACKET0( RADEON_RB3D_STENCILREFMASK, 2 ) );
@@ -167,6 +169,7 @@ static inline void radeon_emit_viewport( drm_radeon_private_t *dev_priv )
 	RING_LOCALS;
 	DRM_DEBUG( "    %s\n", __FUNCTION__ );
 
+	printk("radeon_emit_viewport\n");
 	BEGIN_RING( 7 );
 
 	OUT_RING( CP_PACKET0( RADEON_SE_VPORT_XSCALE, 5 ) );
@@ -264,6 +267,7 @@ static inline void radeon_emit_tex0( drm_radeon_private_t *dev_priv )
 	RING_LOCALS;
 	DRM_DEBUG( "    %s: offset=0x%x\n", __FUNCTION__, tex->pp_txoffset );
 
+	printk("radeon_emit_tex0 tex->pp_txoffset=0x%08x\n", tex->pp_txoffset);
 	BEGIN_RING( 9 );
 
 	OUT_RING( CP_PACKET0( RADEON_PP_TXFILTER_0, 5 ) );
@@ -287,6 +291,7 @@ static inline void radeon_emit_tex1( drm_radeon_private_t *dev_priv )
 	RING_LOCALS;
 	DRM_DEBUG( "    %s: offset=0x%x\n", __FUNCTION__, tex->pp_txoffset );
 
+	printk("radeon_emit_tex1 tex->pp_txoffset=0x%08x\n", tex->pp_txoffset);
 	BEGIN_RING( 9 );
 
 	OUT_RING( CP_PACKET0( RADEON_PP_TXFILTER_1, 5 ) );
@@ -331,6 +336,7 @@ static inline void radeon_emit_state( drm_radeon_private_t *dev_priv )
 	drm_radeon_sarea_t *sarea_priv = dev_priv->sarea_priv;
 	unsigned int dirty = sarea_priv->dirty;
 
+	printk("radeon_emit_state\n");
 	DRM_DEBUG( "%s: dirty=0x%08x\n", __FUNCTION__, dirty );
 
 	if ( dirty & RADEON_UPLOAD_CONTEXT ) {
@@ -712,6 +718,7 @@ static void radeon_cp_dispatch_swap( drm_device_t *dev )
 	 * performing the swapbuffer ioctl.
 	 */
 	dev_priv->sarea_priv->last_frame++;
+        printk("sarea_priv->last_frame=0x%08x\n", dev_priv->sarea_priv->last_frame);
 
 	BEGIN_RING( 4 );
 
@@ -742,10 +749,10 @@ static void radeon_cp_dispatch_flip( drm_device_t *dev )
 	OUT_RING( CP_PACKET0( RADEON_CRTC_OFFSET, 0 ) );
 
 	if ( dev_priv->current_page == 0 ) {
-		OUT_RING( dev_priv->back_offset + dev_priv->fb->offset);
+		OUT_RING( dev_priv->back_offset);
 		dev_priv->current_page = 1;
 	} else {
-		OUT_RING( dev_priv->front_offset + dev_priv->fb->offset);
+		OUT_RING( dev_priv->front_offset);
 		dev_priv->current_page = 0;
 	}
 
@@ -855,6 +862,7 @@ static void radeon_cp_dispatch_indirect( drm_device_t *dev,
 			      + buf->offset + start+dev_priv->fb->offset);
 		int dwords = (end - start + 3) / sizeof(u32);
 
+		printk("   offset=0x%08x\n", offset);
 		/* Indirect buffer data must be an even number of
 		 * dwords, so if we've been given an odd number we must
 		 * pad the data with a Type-2 CP packet.
