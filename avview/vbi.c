@@ -395,7 +395,7 @@ if(data==NULL){
 	}
 pageno=atoi(argv[2]);
 if((pageno<1)||(pageno>8)){
-	Tcl_AppendResult(interp,"ERROR: vbi_draw_CC_page no such handle", NULL);
+	Tcl_AppendResult(interp,"ERROR: vbi_draw_CC_page no such page", NULL);
 	return TCL_ERROR;	
 	}
 ph=Tk_FindPhoto(interp, argv[3]);
@@ -484,6 +484,229 @@ free(pib.pixelPtr);
 return TCL_OK;
 }
 
+char *vbi_char_attr(vbi_char *c)
+{
+char s[200];
+int i;
+
+i=0;
+if(c->underline){
+	s[i]='u';
+	i++;
+	}
+if(c->bold){
+	s[i]='b';
+	i++;
+	}
+if(c->italic){
+	s[i]='i';
+	i++;
+	}
+s[i]='-';
+i++;
+if(c->flash){
+	s[i]='f';
+	i++;
+	}
+if(c->conceal){
+	s[i]='c';
+	i++;
+	}
+s[i]='-';
+i++;
+switch(c->size){
+	case VBI_DOUBLE_WIDTH:
+			i+=sprintf(s+i,"double_width-");
+			break;
+	case VBI_DOUBLE_HEIGHT:
+			i+=sprintf(s+i,"double_height-");
+			break;
+	case VBI_DOUBLE_SIZE:
+			i+=sprintf(s+i,"double_size-");
+			break;
+	case VBI_OVER_TOP:
+			i+=sprintf(s+i,"over_top-");
+			break;
+	case VBI_OVER_BOTTOM:
+			i+=sprintf(s+i,"over_bottom-");
+			break;
+	case VBI_DOUBLE_HEIGHT2:
+			i+=sprintf(s+i,"double_h2-");
+			break;
+	case VBI_DOUBLE_SIZE2:
+			i+=sprintf(s+i,"double_s2-");
+			break;
+	case VBI_NORMAL_SIZE:
+		default:
+			i+=sprintf(s+i,"normal-");
+			break;
+	}
+switch(c->opacity){
+	case VBI_TRANSPARENT_SPACE:
+			i+=sprintf(s+i,"space-");
+			break;
+	case VBI_TRANSPARENT_FULL:
+			i+=sprintf(s+i,"full-");
+			break;
+	case VBI_SEMI_TRANSPARENT:
+			i+=sprintf(s+i,"semi-");
+			break;
+	case VBI_OPAQUE:
+			i+=sprintf(s+i,"opaque-");
+			break;
+	}
+switch(c->foreground){
+	case VBI_RED:
+			i+=sprintf(s+i,"red-");
+			break;
+	case VBI_GREEN:
+			i+=sprintf(s+i,"green-");
+			break;
+	case VBI_YELLOW:
+			i+=sprintf(s+i,"yellow-");
+			break;
+	case VBI_BLUE:
+			i+=sprintf(s+i,"blue-");
+			break;
+	case VBI_MAGENTA:
+			i+=sprintf(s+i,"magenta-");
+			break;
+	case VBI_CYAN:
+			i+=sprintf(s+i,"cyan-");
+			break;
+	case VBI_WHITE:
+			i+=sprintf(s+i,"white-");
+			break;
+	case VBI_BLACK:
+		default:
+			i+=sprintf(s+i,"black-");
+			break;
+	}
+switch(c->background){
+	case VBI_RED:
+			i+=sprintf(s+i,"red-");
+			break;
+	case VBI_GREEN:
+			i+=sprintf(s+i,"green-");
+			break;
+	case VBI_YELLOW:
+			i+=sprintf(s+i,"yellow-");
+			break;
+	case VBI_BLUE:
+			i+=sprintf(s+i,"blue-");
+			break;
+	case VBI_MAGENTA:
+			i+=sprintf(s+i,"magenta-");
+			break;
+	case VBI_CYAN:
+			i+=sprintf(s+i,"cyan-");
+			break;
+	case VBI_WHITE:
+			i+=sprintf(s+i,"white-");
+			break;
+	case VBI_BLACK:
+		default:
+			i+=sprintf(s+i,"black-");
+			break;
+	}
+s[i]=0;
+return strdup(s);
+}
+
+int vbi_get_cc_page(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
+{
+long i,k,l;
+VBI_DATA *data;
+int pageno;
+vbi_page page;
+vbi_char *c;
+char *vca_previous, *vca_current;
+Tcl_UniChar s[1000];
+int s_count;
+Tcl_Obj *lines;
+Tcl_Obj *a;
+int prev_x, prev_y;
+
+Tcl_ResetResult(interp);
+
+if(argc<3){
+	Tcl_AppendResult(interp,"ERROR: vbi_new_channel requires two arguments", NULL);
+	return TCL_ERROR;
+	}
+
+i=lookup_string(vbi_sc, argv[1]);
+if(i<0){
+	Tcl_AppendResult(interp,"ERROR: vbi_draw_CC_page no such handle", NULL);
+	return TCL_ERROR;
+	}
+data=(VBI_DATA *)vbi_sc->data[i];	
+if(data==NULL){
+	Tcl_AppendResult(interp,"ERROR: vbi_draw_CC_page no such handle", NULL);
+	return TCL_ERROR;
+	}
+pageno=atoi(argv[2]);
+if((pageno<1)||(pageno>8)){
+	Tcl_AppendResult(interp,"ERROR: vbi_draw_CC_page no such page", NULL);
+	return TCL_ERROR;	
+	}
+pthread_mutex_lock(&(data->mutex));
+vbi_fetch_cc_page(data->dec, &page, pageno, FALSE);
+pthread_mutex_unlock(&(data->mutex));
+
+vca_previous=strdup("");
+vca_current=NULL;
+lines=Tcl_NewListObj(0,NULL);
+Tcl_ListObjAppendElement(interp, lines, Tcl_NewIntObj(page.columns));
+Tcl_ListObjAppendElement(interp, lines, Tcl_NewIntObj(page.rows));
+a=NULL;
+prev_x=-1;
+prev_y=-1;
+s_count=0;
+for(k=0;k<page.rows;k++){
+	for(l=0;l<page.columns;l++){
+		c=&(page.text[l+k*page.columns]);
+		vca_current=vbi_char_attr(c);
+		if((c->opacity!=VBI_TRANSPARENT_SPACE) && !strcmp(vca_current, vca_previous)){
+			s[s_count]=c->unicode;
+			s_count++;
+			free(vca_current);
+			continue;
+			}
+		if(s_count!=0){
+			a=Tcl_NewListObj(0,NULL);
+			Tcl_ListObjAppendElement(interp,a,Tcl_NewIntObj(prev_x));
+			Tcl_ListObjAppendElement(interp,a,Tcl_NewIntObj(prev_y));
+			Tcl_ListObjAppendElement(interp,a,Tcl_NewStringObj(vca_previous,-1));
+			Tcl_ListObjAppendElement(interp,a,Tcl_NewUnicodeObj(s,s_count));
+
+			Tcl_ListObjAppendElement(interp, lines, a);
+			}
+		free(vca_previous);
+		vca_previous=vca_current;
+		s[0]=c->unicode;
+		if(c->opacity!=VBI_TRANSPARENT_SPACE)
+			s_count=1;
+			else 
+			s_count=0;
+		prev_x=l;
+		prev_y=k;
+		}
+	if(s_count!=0){
+		a=Tcl_NewListObj(0,NULL);
+		Tcl_ListObjAppendElement(interp,a,Tcl_NewIntObj(prev_x));
+		Tcl_ListObjAppendElement(interp,a,Tcl_NewIntObj(prev_y));
+		Tcl_ListObjAppendElement(interp,a,Tcl_NewStringObj(vca_previous,-1));
+		Tcl_ListObjAppendElement(interp,a,Tcl_NewUnicodeObj(s,s_count));
+		Tcl_ListObjAppendElement(interp, lines, a);
+		}
+	s_count=0;
+	free(vca_previous);
+	vca_previous=strdup("");
+	}
+Tcl_SetObjResult(interp, lines);
+return TCL_OK;
+}
+
 int vbi_close_device(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 long i;
@@ -526,6 +749,7 @@ struct {
 	{"vbi_set_event_handler", vbi_set_event_handler},
 	{"vbi_draw_cc_page", vbi_draw_cc_page2},
 	{"vbi_draw_cc_page_scaled", vbi_draw_cc_page_scaled},
+	{"vbi_get_cc_page", vbi_get_cc_page},
 	{"vbi_close_device", vbi_close_device},
 	{NULL, NULL}
 	};

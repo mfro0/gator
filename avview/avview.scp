@@ -58,7 +58,7 @@ set TABLE_LIST [freq_get_table_list]
 
 foreach file {xmisc.scp tree.scp setup.scp themes.scp alsa.scp
 	v4l.scp xv.scp channel_scan.scp ffmpeg.scp 
-	video_device.scp diag.scp bindings.scp} {
+	video_device.scp diag.scp bindings.scp vbi.scp km.scp} {
 	source $avview_directory/$file
 	}
 
@@ -77,7 +77,7 @@ destroy .video
 . configure -width 320 -height 240 -background black
 
 #frame .video -background #102030
-eval frame .video [get_settings .video AVview]
+eval canvas .video [get_settings .video AVview]
 .video configure -borderwidth 0
 place .video -relx 0.0 -rely 0.0 -relwidth 1.0 -relheight 1.0 -anchor nw
 

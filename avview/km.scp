@@ -18,4 +18,38 @@ while { "$s" != "+END_STATUS" } {
 puts "$r"
 }
 
-get_km_status "/proc/km/control0"
+proc find_km_device { location_id } {
+puts "Looking for km device that corresponds to $location_id"
+set km_devs [list ]
+catch {
+	set km_devs [split [exec ls -1 /proc/km] "\n"]
+	}
+puts "km_devs=$km_devs"
+set LOCATION_ID ""
+foreach file $km_devs {
+	if { ! [regexp {^control} $file] } { continue }
+	set attrs [list ]
+	catch {
+		set FILE [open /proc/km/$file "w+"]
+		fconfigure $FILE -buffersize 65536
+		puts -nonewline $FILE "STATUS\n"
+		flush $FILE
+		while {1} {
+			gets $FILE line
+			puts "read line=$line"
+			if { [regexp {^(.*)=(.*)} $line {} var value] } { 
+				set $var $value
+				lappend attrs $var $value
+				}
+			if { [regexp {END_STATUS} $line] } { break }
+			}
+		}
+	if { $LOCATION_ID == $location_id } {
+		return [list $file $attrs]
+		}
+	}
+}
+
+after 1000 {
+	puts "[find_km_device [get_location_id]]"
+	}

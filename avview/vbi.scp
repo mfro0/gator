@@ -3,7 +3,7 @@ global vbi_caption_images
 
 proc skip_args3 { a b c } {}
 
-proc vbi_event_handler { a b } {
+proc vbi_event_handler_scaled { a b } {
 puts "$a $b"
 switch -exact -- $a {
 	"caption" {
@@ -44,7 +44,73 @@ $W.c configure -width [image width $W.c.vbi_image] -height [image height $W.c.vb
 trace variable $var w "puts \"+\" ; global vbi_caption_images $var; set vbi_caption_images($W.c) \[set $var\] ; skip_args3"
 }
 
-vbi_open_device primary /dev/vbi0
-vbi_set_event_handler primary vbi_event_handler
+proc render_vbi_line { canvas tag width height columns rows line } {
+puts "line=$line"
+foreach var {x y attr str} value $line {
+	set $var $value
+	}
+set fontsize [expr $height/$rows]
+foreach var {style effect size opacity foreground background} value [split $attr -] {
+	set $var $value
+	}
+puts "fontsize=$fontsize"
+switch -exact -- $style {
+	""  {
+		set font [font create -family Helvetica -size -$fontsize -slant roman -underline false -weight normal]
+		}
+	"u"  {
+		set font [font create -family Helvetica -size -$fontsize -slant roman -underline true -weight normal]
+		}
+	"b"  {
+		set font [font create -family Helvetica -size -$fontsize -slant roman -underline false -weight bold]
+		}
+	"ub"  {
+		set font [font create -family Helvetica -size -$fontsize -slant roman -underline true -weight bold]
+		}
+	"i"  {
+		set font [font create -family Helvetica -size -$fontsize -slant italic -underline false -weight normal]
+		}
+	"ui"  {
+		set font [font create -family Helvetica -size -$fontsize -slant italic -underline true -weight normal]
+		}
+	"bi"  {
+		set font [font create -family Helvetica -size -$fontsize -slant italic -underline false -weight bold]
+		}
+	"ubi"  {
+		set font [font create -family Helvetica -size -$fontsize -slant italic -underline true -weight bold]
+		}
+	}
+set a [$canvas create text [expr ($x*$width)/$columns] [expr ($y*$height)/$rows] -font $font -text $str -anchor nw \
+	-fill $foreground ]
+$canvas addtag $tag withtag $a
+set bbox [$canvas bbox $a]
+set b [$canvas create rectangle $bbox -fill $background]
+$canvas raise $a
+$canvas addtag $tag withtag $b
+}
 
-new_vbi_window
+proc vbi_event_handler_on_screen {a b} {
+puts "vbi event $a $b"
+catch {
+switch -exact -- $a {
+	"caption"  {		
+		set cc_page [vbi_get_cc_page primary 1]
+		set width [lindex $cc_page 0]
+		set height [lindex $cc_page 1]
+		puts "$width x $height"
+		.video delete cc_text
+		puts "info=[place info .video]"
+		foreach line [lrange $cc_page 2 end] {
+			render_vbi_line .video cc_text [.video cget -width] [.video cget -height] $width $height $line
+			}
+		puts "ZXY"
+		update
+		}
+	}
+	} err
+puts "err=$err"
+}
+
+#vbi_open_device primary /dev/vbi0
+#vbi_set_event_handler primary vbi_event_handler_on_screen
+
