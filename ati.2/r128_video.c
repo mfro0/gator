@@ -1541,6 +1541,7 @@ R128SetPortAttribute(
   R128InfoPtr info = R128PTR(pScrn);
   unsigned char *R128MMIO = info->MMIO;
   R128PortPrivPtr pPriv = (R128PortPrivPtr)data;
+  Bool save_mute;
 
   info->accel->Sync(pScrn);
 
@@ -1619,9 +1620,12 @@ R128SetPortAttribute(
   } else 
   if(attribute == xvFrequency) {
         pPriv->frequency = value;
+	save_mute = pPriv->mute;
+	R128MuteAudio(pPriv, TRUE);
   	if(pPriv->fi1236 != NULL) xf86_FI1236_tune(pPriv->fi1236, value);
 	if((pPriv->msp3430 != NULL) && (pPriv->msp3430->recheck))
 		xf86_InitMSP3430(pPriv->msp3430);
+	R128MuteAudio(pPriv, save_mute);
   } else 
   if(attribute == xvMute) {
         pPriv->mute = value;
