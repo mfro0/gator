@@ -2654,8 +2654,20 @@ RADEONQueryImageAttributes(
 	if(offsets) offsets[2] = size;
 	size += tmp;
 	break;
+    case FOURCC_RGBA32:
+	size = *w << 2;
+	if(pitches) pitches[0] = size;
+	size *= *h;
+    	break;
+    case FOURCC_RGB24:
+	size = (*w) *3;
+	if(pitches) pitches[0] = size;
+	size *= *h;
+    	break;
     case FOURCC_UYVY:
     case FOURCC_YUY2:
+    case FOURCC_RGBT16:
+    case FOURCC_RGB16:
     default:
 	size = *w << 1;
 	if(pitches) pitches[0] = size;
