@@ -69,7 +69,7 @@ typedef struct {
 
 FFMPEG_ENCODING_DATA *sdata=NULL;
 
-#define DEBUG_TIMESTAMPS
+/* #define DEBUG_TIMESTAMPS */
 
 int ffmpeg_present(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
 {
@@ -107,9 +107,16 @@ char *output_buf;
 long ob_size, ob_free, ob_written;
 
 /* encode in the background */
+fprintf(stderr,"Enter 1\n");
 nice(1);
 data=(V4L_DATA *)s->priv;
-if((data==NULL)||(sdata==NULL)||(sdata->type!=FFMPEG_CAPTURE_KEY)||(sdata->video_s==NULL))pthread_exit(NULL);
+if((data==NULL)||(sdata==NULL)||(sdata->type!=FFMPEG_CAPTURE_KEY)||(sdata->video_s==NULL)){
+	fprintf(stderr,"Exit 5\n");
+	pthread_mutex_lock(&(s->ctr_mutex));
+	s->consumer_thread_running=0;
+	pthread_mutex_unlock(&(s->ctr_mutex));
+	pthread_exit(NULL);
+	}
 ob_size=1024*1024;
 ob_free=0;
 output_buf=do_alloc(ob_size, sizeof(char));
@@ -119,6 +126,7 @@ picture.data[2]=picture.data[1]+(sdata->video_codec_context.width*sdata->video_c
 picture.linesize[0]=sdata->video_codec_context.width;
 picture.linesize[1]=sdata->video_codec_context.width/2;
 picture.linesize[2]=sdata->video_codec_context.width/2;
+fprintf(stderr,"Enter 2\n");
 while(1){
 	pthread_mutex_lock(&(s->ctr_mutex));
 	f=s->first;
@@ -128,7 +136,7 @@ while(1){
 		do_free(output_buf);
 		s->consumer_thread_running=0;
 		pthread_mutex_unlock(&(s->ctr_mutex));
-		fprintf(stderr,"Exit 1\n");
+		fprintf(stderr,"Exit 1, s->ctr=%d\n", s->consumer_thread_running);
 		pthread_exit(NULL);
 		}
 	pthread_mutex_unlock(&(s->ctr_mutex));
@@ -165,7 +173,7 @@ while(1){
 						sdata->audio_s->stop_stream &= ~STOP_CONSUMER_THREAD;
 						if(!sdata->audio_s->consumer_thread_running &&
 							!sdata->audio_s->producer_thread_running){
-							if(pthread_create(&(sdata->audio_s->consumer_thread_id), NULL, sdata->audio_s->consume_func, sdata->audio_s)>=0){
+							if(pthread_create(&(sdata->audio_s->consumer_thread_id), NULL, sdata->audio_s->consume_func, sdata->audio_s)!=0){
 								sdata->audio_s->consumer_thread_running=1;
 								} else {
 								perror("pthread");
@@ -195,6 +203,7 @@ while(1){
 			do_free(output_buf);
 			s->consumer_thread_running=0;
 			pthread_mutex_unlock(&(s->ctr_mutex));
+			fprintf(stderr,"Exit 2\n");
 			pthread_exit(NULL);
 			break;
 			}
@@ -215,10 +224,13 @@ while(1){
 		s->consumer_thread_running=0;
 		pthread_mutex_unlock(&(s->ctr_mutex));
 		fprintf(stderr,"Video encoding finished\n");
+		fprintf(stderr,"Exit 3\n");
 		pthread_exit(NULL);
 		}
 	pthread_mutex_unlock(&(s->ctr_mutex));
 	}
+fprintf(stderr,"Exit 4\n");
+s->consumer_thread_running=0;
 pthread_exit(NULL);
 }
 
@@ -323,6 +335,7 @@ while(!(s->stop_stream & STOP_PRODUCER_THREAD)){
 			if(!(s->stop_stream & STOP_PRODUCER_THREAD) &&
 				(!sdata->step_frames || !(incoming_frames_count % sdata->step_frames))){
 				deliver_packet(s, p);
+				fprintf(stderr,"                          s->stop_stream=%d s->ctr=%d\n", s->stop_stream, s->consumer_thread_running);
 				pthread_mutex_unlock(&(s->ctr_mutex));
 				p=new_generic_packet(s, sdata->video_size);
 				} else {
@@ -654,11 +667,15 @@ sdata->audio_s->consume_func=ffmpeg_audio_encoding_thread;
 sdata->video_s->threshold=sdata->video_size*2;
 if(sdata->video_stream_num>=0){
 	sdata->video_s->producer_thread_running=1;
-	pthread_create(&(sdata->video_reader_thread), NULL, v4l_reader_thread, sdata->v4l_data); 
+	if(pthread_create(&(sdata->video_reader_thread), NULL, v4l_reader_thread, sdata->v4l_data)!=0){
+		sdata->video_s->producer_thread_running=0;
+		}
 	}
 if(sdata->audio_stream_num>=0){
 	sdata->audio_s->producer_thread_running=1;
-	pthread_create(&(sdata->audio_reader_thread), NULL, alsa_reader_thread, sdata->audio_s); 
+	if(pthread_create(&(sdata->audio_reader_thread), NULL, alsa_reader_thread, sdata->audio_s)!=0){
+		sdata->audio_s->producer_thread_running=0;
+		} 
 	}
 return 0;
 }

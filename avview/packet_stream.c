@@ -102,7 +102,7 @@ if((s->total>s->threshold) &&
 	!(s->stop_stream & STOP_CONSUMER_THREAD) &&
 	(s->consume_func!=NULL)){
 	/* start consumer thread */
-	if(pthread_create(&(s->consumer_thread_id), NULL, s->consume_func, s)<0){
+	if(pthread_create(&(s->consumer_thread_id), NULL, s->consume_func, s)!=0){
 		fprintf(stderr, "packet_stream: cannot create thread: ");
 		perror("");
 		} else {
