@@ -97,7 +97,8 @@ Tcl_GetVersion(&major, &minor, &patchlevel, &type);
 if((major!=TCL_MAJOR_VERSION)||(minor!=TCL_MINOR_VERSION)){
 	fprintf(stderr,"ERROR: detected mismatched between library and header version.\n");
 	fprintf(stderr,"ERROR: this is most likely caused by installation of two Tcl/Tk versions\n");
-	fprintf(stderr,"ERROR: and configure mistake. Report to gatos-devel@lists.sf.net\n");
+	fprintf(stderr,"ERROR: and configure mistake. Rerun configure.\n");
+	fprintf(stderr,"ERROR: If does not help report to gatos-devel@lists.sf.net\n");
 	exit(-1);
 	}
 
