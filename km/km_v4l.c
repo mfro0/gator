@@ -42,6 +42,7 @@ if(!kms->is_capture_active(kms)){
 	}
 
 kms->v4l_buf_read_from=0;
+kms->v4l_buf_parity=0;
 kms->buf_age=0;
 kms->total_frames=0;
 kms->overrun=0;
@@ -104,14 +105,20 @@ if(kms->v4l_buf_read_from<0){
 	spin_unlock(&(kms->kms_lock));
 	return -EIO;
 	}
-while((kms->buf_ptr==kms->v4l_free[kms->v4l_buf_read_from])){
+while((kms->buf_ptr==kms->v4l_free[kms->v4l_buf_read_from])||((kms->fi[q].flag & 1)!=kms->v4l_buf_parity)){
 	q=kms->fi[kms->v4l_buf_read_from].next;
 	if((q>=0) && (kms->buf_age<kms->fi[q].age)){
 		kms->v4l_buf_read_from=q;
-		kms->buf_ptr=0;
 		kms->buf_age=kms->fi[q].age;
-		printk("Reading buf %d flag=%d age=%d\n", q, kms->fi[q].flag, kms->buf_age);
-		break;
+		if((kms->fi[q].flag&1)!=kms->v4l_buf_parity){
+			kms->buf_ptr=kms->v4l_free[q];
+			KM_DEBUG("Skipping buf %d flag=%d age=%d\n", q, kms->fi[q].flag, kms->buf_age);
+			continue;
+			} else {
+			kms->buf_ptr=0;
+			KM_DEBUG("Reading buf %d flag=%d age=%d\n", q, kms->fi[q].flag, kms->buf_age);
+			break;
+			}
 		}
 	if(nonblock){
 		spin_unlock(&(kms->kms_lock));
@@ -143,6 +150,7 @@ while(todo>0){
 	kms->buf_ptr+=q;
 	buf+=q;
 	if(kms->buf_ptr>=kms->v4l_free[kms->v4l_buf_read_from]){
+		kms->v4l_buf_parity=!kms->v4l_buf_parity;
 		break;
 		}
 	}

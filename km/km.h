@@ -54,6 +54,7 @@ typedef struct S_KM_STRUCT {
 	long next_cap_buf;
 	
 	int v4l_buf_read_from;
+	int v4l_buf_parity;
 	long buf_ptr;
 	long buf_age;
 

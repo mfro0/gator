@@ -212,7 +212,6 @@ switch(field){
 	default:
 		printk("Internal error %s %s %d\n", __FILE__, __FUNCTION__, __LINE__);
 	}
-printk("buf=%d field=%d\n", buffer, field);
 KM_DEBUG("buf=%d field=%d\n", buffer, field);
 kms->fi[buffer].timestamp_start=jiffies;
 radeon_setup_dma_table(kms, (kms->dma_table[buffer]), offset, kms->v4l_free[buffer]);
