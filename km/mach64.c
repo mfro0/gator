@@ -190,8 +190,8 @@ while(1){
 	if(!mach64_is_capture_irq_active(kms)){
 		status=readl(kms->reg_aperture+MACH64_CRTC_INT_CNTL);
 		printk("mach64: status=0x%08x\n", status);
-		acknowledge_dma(kms);
 		if(!(status & MACH64_BUSMASTER_INT_ACK))return;
+		acknowledge_dma(kms);
 		writel((status|MACH64_BUSMASTER_INT_ACK) & ~(MACH64_ACKS_MASK & ~MACH64_BUSMASTER_INT_ACK), kms->reg_aperture+MACH64_CRTC_INT_CNTL);
 		}
 	}
