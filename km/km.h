@@ -12,6 +12,7 @@
 #include <linux/videodev.h>
 #include <linux/spinlock.h>
 #include "km_api.h"
+#include "km_api_data.h"
 
 #define KM_VERSION      "alpha-2.0"
 
@@ -47,10 +48,18 @@ typedef struct S_KM_STRUCT{
 	long overrun;
 	unsigned char * reg_aperture;
 	int buf_read_from;
-#define FRAME_ODD 	0
-#define FRAME_EVEN 	1
-#define FRAME_BUFF_NUM 	2
-	SINGLE_FRAME frame_info[FRAME_BUFF_NUM];
+
+#define FRAME_ODD 		0
+#define FRAME_EVEN 		1
+#define MAX_FRAME_BUFF_NUM 	10
+
+	SINGLE_FRAME frame_info[MAX_FRAME_BUFF_NUM];
+	KM_DATA_VIRTUAL_BLOCK v4l_dvb;
+	void *v4l_ptr[MAX_FRAME_BUFF_NUM];
+	long *v4l_free[MAX_FRAME_BUFF_NUM];
+	int v4l_du;
+	int num_buffers;
+
 	int capture_active;
 	long kmd;
 	KM_FIELD *kmfl;
@@ -61,6 +70,7 @@ typedef struct S_KM_STRUCT{
 	void (*get_window_parameters)(struct S_KM_STRUCT *kms, struct video_window *vwin);
 	void (*start_transfer)(struct S_KM_STRUCT *kms);
 	void (*stop_transfer)(struct S_KM_STRUCT *kms);
+	int (*allocate_v4l_dvb)(struct S_KM_STRUCT *kms);
 	int (*allocate_single_frame_buffer)(struct S_KM_STRUCT *kms, SINGLE_FRAME *frame, long size);
 	void (*deallocate_single_frame_buffer)(struct S_KM_STRUCT *kms, SINGLE_FRAME *frame);
 	} KM_STRUCT;

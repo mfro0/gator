@@ -191,7 +191,7 @@ return k;
 }
 
 
-void km_deallocate_data(long data_unit)
+void km_deallocate_data(int data_unit)
 {
 char temp[32];
 KM_DATA_UNIT *kdu;
@@ -206,7 +206,7 @@ if(kdu->use_count>0){
 	return; /* something is still using it */
 	}
 /* free the data */
-sprintf(temp, "data%ld", data_unit);
+sprintf(temp, "data%d", data_unit);
 if(kdu->data!=NULL){
 	remove_proc_entry(temp, km_root);
 	kdu->data=NULL;
