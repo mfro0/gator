@@ -620,7 +620,7 @@ set ffmpeg_vars {
 	ffmpeg_max_fifo_size ffmpeg_recording_chunk_size 
 	}
 
-foreach variable [concat [list current_v4l_mode current_v4l_rrate] $ffmpeg_vars ] {
+foreach variable [concat [list current_v4l_mode current_v4l_rrate current_alsa_capture_device] $ffmpeg_vars ] {
 	catch {
 		global $variable
 		puts $fileid "\nglobal $variable"
