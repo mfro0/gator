@@ -190,6 +190,7 @@ spin_lock_irq(&(kmtq->lock));
 last=kmtq->last;
 if(kmtq->request[last].flag!=KM_TRANSFER_NOP){
 	spin_unlock_irq(&(kmtq->lock));
+	printk("km: GUI_DMA queue is full\n");
 	return -1;
 	}
 

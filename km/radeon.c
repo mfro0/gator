@@ -311,16 +311,17 @@ km_add_transfer_request(&(kms->gui_dma_queue),
 
 static int radeon_is_capture_irq_active(KM_STRUCT *kms)
 {
-long status, mask;
+u32 status, mask;
 status=readl(kms->reg_aperture+RADEON_GEN_INT_STATUS);
 if(!(status & (1<<8)))return 0;
 status=readl(kms->reg_aperture+RADEON_CAP_INT_STATUS);
 mask=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
-if(!(status & mask))return 0;
+KM_DEBUG("CAP_INT_STATUS=0x%08x\n", status);
+status&=mask;
+if(!status)return 0;
 /*radeon_wait_for_idle(kms); */
 wmb();
-writel(status & mask, kms->reg_aperture+RADEON_CAP_INT_STATUS);
-KM_DEBUG("CAP_INT_STATUS=0x%08x\n", status);
+writel(status, kms->reg_aperture+RADEON_CAP_INT_STATUS);
 
 if(status & 1)radeon_schedule_request(kms, &(kms->capture), 0);
 if(status & 2)radeon_schedule_request(kms, &(kms->capture), 1);
