@@ -948,22 +948,22 @@ static void RADEON_I2C_Halt (ScrnInfoPtr pScrn)
 
     /* reset status flags */
     RADEONWaitForIdleMMIO(pScrn);
-    reg = INREG8 (RADEON_I2C_CNTL_0 + 0) & 0xF8;
+    reg = INREG8 (RADEON_I2C_CNTL_0 + 0) & ~(I2C_DONE|I2C_NACK|I2C_HALT);
     OUTREG8 (RADEON_I2C_CNTL_0 + 0, reg);
 
     /* issue ABORT call */
     RADEONWaitForIdleMMIO(pScrn);
     reg = INREG8 (RADEON_I2C_CNTL_0 + 1) & 0xE7;
-    OUTREG8 (RADEON_I2C_CNTL_0 + 1, (reg | 0x18));
+    OUTREG8 (RADEON_I2C_CNTL_0 + 1, (reg |((I2C_GO|I2C_ABORT) >> 8)));
 
     /* wait for GO bit to go low */
     RADEONWaitForIdleMMIO(pScrn);
-    while (INREG8 (RADEON_I2C_CNTL_0 + 0) & I2C_GO)
+    while (INREG8 (RADEON_I2C_CNTL_0 + 1) & (I2C_GO>>8))
     {
       counter++;
       if(counter>1000000)return;
     }
-} 
+}
 
 
 static Bool RADEONI2CWriteRead(I2CDevPtr d, I2CByte *WriteBuffer, int nWrite,
