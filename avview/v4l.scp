@@ -10,8 +10,8 @@ global current_video_rate
 set current_video_rate 59.94
 global ffmpeg_video_bitrate 
 set ffmpeg_video_bitrate 300000
-global current_audio_rate 
-set current_audio_rate 48000
+global ffmpeg_audio_sample_rate 
+set ffmpeg_audio_sample_rate 48000
 global ffmpeg_audio_bitrate 
 set ffmpeg_audio_bitrate 64000
 global ffmpeg_video_quality 
@@ -127,7 +127,7 @@ if {[ffmpeg_present] == "yes"} {
 #	grid configure $cw.acodec_optionmenu -sticky news
 
 #	eval label $cw.aratel -text "\"Audio rate (samples/sec):\"" [get_settings $cw.aratel Capture V4L]
-#	set menu [tk_optionMenu $cw.arate_optionmenu current_audio_rate "48000" "44100" "32000" "24000" "22050" "16000"]
+#	set menu [tk_optionMenu $cw.arate_optionmenu ffmpeg_audio_sample_rate "48000" "44100" "32000" "24000" "22050" "16000"]
 #	eval $cw.arate_optionmenu configure [get_settings $cw.arate_optionmenu Capture V4L]
 #	eval $menu configure [get_settings $menu Capture V4L menu]
 #	grid $cw.aratel $cw.arate_optionmenu
@@ -435,7 +435,7 @@ global ffmpeg_file_format
 global current_capture_filename
 global current_alsa_device
 global file_save_path
-global current_audio_rate
+global ffmpeg_audio_sample_rate
 global current_video_rate
 global ffmpeg_audio_bitrate
 global ffmpeg_video_bitrate
@@ -454,7 +454,7 @@ if { $v4l_capture_on } {
 				-step_frames $current_v4l_rrate \
 				-av_format $ffmpeg_file_format \
 				-audio_device "$current_alsa_device" \
-				-audio_rate "$current_audio_rate" \
+				-audio_rate "$ffmpeg_audio_sample_rate" \
 				-audio_bitrate "$ffmpeg_audio_bitrate" \
 				-v4l_rate "$current_video_rate" \
 				-video_bitrate "$ffmpeg_video_bitrate" \
@@ -642,7 +642,7 @@ global current_v4l_mode
 global ffmpeg_file_format
 global ffmpeg_video_codec
 global ffmpeg_audio_codec
-global current_audio_rate
+global ffmpeg_audio_sample_rate
 global ffmpeg_video_bitrate
 global ffmpeg_video_quality
 global ffmpeg_audio_bitrate
@@ -657,7 +657,7 @@ puts $fileid "global current_v4l_rrate"
 puts $fileid "global ffmpeg_file_format"
 puts $fileid "global ffmpeg_video_codec"
 puts $fileid "global ffmpeg_audio_codec"
-puts $fileid "global current_audio_rate"
+puts $fileid "global ffmpeg_audio_sample_rate"
 puts $fileid "global ffmpeg_audio_bitrate"
 puts $fileid "global ffmpeg_video_bitrate"
 puts $fileid "global ffmpeg_video_quality"
@@ -670,7 +670,7 @@ puts $fileid "set ffmpeg_audio_codec \"$ffmpeg_audio_codec\""
 puts $fileid "set current_v4l_mode \"$current_v4l_mode\""
 puts $fileid "set current_v4l_rrate \"$current_v4l_rrate\""
 puts $fileid "set ffmpeg_file_format \"$ffmpeg_file_format\""
-puts $fileid "set current_audio_rate \"$current_audio_rate\""
+puts $fileid "set ffmpeg_audio_sample_rate \"$ffmpeg_audio_sample_rate\""
 puts $fileid "set ffmpeg_audio_bitrate \"$ffmpeg_audio_bitrate\""
 puts $fileid "set ffmpeg_video_bitrate \"$ffmpeg_video_bitrate\""
 puts $fileid "set ffmpeg_video_quality \"$ffmpeg_video_quality\""

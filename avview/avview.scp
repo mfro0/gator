@@ -32,7 +32,6 @@ source channel_scan.scp
 source ffmpeg.scp
 source video_device.scp
 
-
 global show_control_window
 set show_control_window 1
 
@@ -674,11 +673,14 @@ if { [alsa_present] } {
 		"Display capture(V4L) subsection" checkbutton capture_window \
 	}
 
+replace_parameter_choices "/Video device parameters" 0 a
+
 after 200 {
 	read_settings
 	if { $display_setup_window_on_startup } {
 		wm deiconify .setup
 		global SETUP_MAIN
+		switch_to_pane "/User interface settings"
 		resize_frames
 		}	
 	}	

@@ -202,6 +202,14 @@ bind $PANE_FRAME <Map> "resize_parameter_pane $PANE_FRAME $A"
 
 }
 
+proc replace_parameter_choices {key parameter_index choices} {
+catch {
+	set PANE_FRAME [get_pane_frame "$key"]
+	set A $PANE_FRAME.f.canvas.f
+	puts "[$A.optionmenu$parameter_index cget -menu]"
+	}
+}
+
 proc resize_parameter_pane {PANE_FRAME A} {
 update idletasks
 set L [grid bbox $PANE_FRAME.f 0 0]
