@@ -16,6 +16,13 @@
 
 #define KM_VERSION      "alpha-3.0"
 
+#ifndef LINUX_2_6
+typedef void irqreturn_t;
+#define IRQ_NONE
+#define IRQ_HANDLED
+#define IRQ_RETVAL(x)
+#endif
+
 typedef struct {
 	u32 from_addr;
 	u32 to_addr;
@@ -125,7 +132,7 @@ typedef struct S_KM_STRUCT {
 	KM_FIELD *kmfl;
 	int (*init_hardware)(struct S_KM_STRUCT *kms);
 	void (*uninit_hardware)(struct S_KM_STRUCT *kms);
-	void (*irq_handler)(int irq, void *dev_id, struct pt_regs *regs);
+	irqreturn_t (*irq_handler)(int irq, void *dev_id, struct pt_regs *regs);
 	int  (*is_capture_active)(struct S_KM_STRUCT *kms);
 	int (*is_vbi_active)(struct S_KM_STRUCT *kms);
 	void (*get_window_parameters)(struct S_KM_STRUCT *kms, struct video_window *vwin);
