@@ -895,11 +895,14 @@ if { $v4l_capture_on } {
 		}
 	puts "status=$status"
 	} {
-	ffmpeg_stop_encoding current_v4l_handle
+	if { [ffmpeg_present] == "yes" } {
+		ffmpeg_stop_encoding current_v4l_handle
+		}
 	}
 }
 
 proc check_fifo { cw } {
+if { [ffmpeg_present] == "no" } { return }
 catch {
 	set size [ffmpeg_incoming_fifo_size current_v4l_handle]
 	$cw.fifov configure -text "[expr $size/(1024*1024)] Mb"

@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 
 
@@ -21,9 +23,9 @@ if(argc<3){
 	fprintf(stderr,"Usage: %s filename megabytes\n", argv[0]);
 	return -1;
 	}
-fd=open(argv[1], O_WRONLY);
+fd=open(argv[1], O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR);
 if(fd<0){
-	fprintf(stderr,"Could not open file \"%s\" for writing:", argv[1]);
+	fprintf(stderr,"Could not open file \"%s\" for writing: ", argv[1]);
 	perror("");
 	return -1;
 	}
@@ -41,6 +43,7 @@ while(count>0){
 			return -1;
 			}
 		}
+	count--;
 	}
 close(fd);
 }
