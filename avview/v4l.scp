@@ -78,13 +78,16 @@ if {[ffmpeg_present] == "yes"} {
 	eval entry $cw.filename_entry -textvariable current_capture_filename [get_settings $cw.filename_entry Capture V4L]
 	button $cw.filename_button -text "Change" -command {
 		global current_capture_filename; 
-		set result [tk_getSaveFile -initialfile "$current_capture_filename" \
+		global file_save_path;
+		set result [tk_getSaveFile -initialfile "[file tail "$current_capture_filename"]" \
 			-parent .controlwin -title "Specify file to hold recorded video"  \
 			-filetypes { {"All files" { * } } { "Mpeg streams" { *.mpg *.MPG} } \
 				{ "\"AVI streams\"" { *.avi *.AVI} } }\
+				-initialdir "$file_save_path" \
 			] ; 
 		if { "$result" != "" } { 
-			set current_capture_filename "$result" 
+			set current_capture_filename [file tail "$result"]
+			set file_save_path [file dirname "$result"]
 			}
 		}
 	eval $cw.filename_button configure [get_settings $cw.filename_button Capture V4L]
@@ -287,6 +290,7 @@ global current_v4l_rrate
 global current_av_format
 global current_capture_filename
 global current_alsa_device
+global file_save_path
 if { $v4l_capture_on } {
 	set status [ffmpeg_encode_v4l_stream -v4l_handle current_v4l_handle \
 				-video_codec $current_video_codec \
@@ -296,7 +300,7 @@ if { $v4l_capture_on } {
 				-av_format $current_av_format \
 				-audio_device "$current_alsa_device" \
 				-audio_rate 48000 \
-				-filename "$current_capture_filename"]
+				-filename "$file_save_path/$current_capture_filename"]
 	if { "$status" == "" } { 
 		after cancel "check_fifo $cw"
 		after 800 "check_fifo $cw"

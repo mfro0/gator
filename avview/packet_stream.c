@@ -12,8 +12,10 @@ PACKET_STREAM *s;
 s=do_alloc(1, sizeof(PACKET_STREAM));
 s->first=NULL;
 s->last=NULL;
+s->unused=NULL;
 s->total=0;
-s->threshhold=0;
+s->unused_total=0;
+s->threshold=0;
 s->consumer_thread_running=0;
 s->producer_thread_running=0;
 s->stop_stream=0;
@@ -23,15 +25,46 @@ pthread_mutex_init(&(s->ctr_mutex), NULL);
 return s;
 }
 
-PACKET *new_generic_packet(size_t size)
+PACKET *new_generic_packet(PACKET_STREAM *s, size_t size)
 {
 PACKET *p;
+
+if(s!=NULL){
+	pthread_mutex_lock(&(s->ctr_mutex));
+	p=s->unused;
+	while(p!=NULL){
+		if((size>=p->size)&&(size<2*p->size)){
+			/* found good one */
+			/* unlink it */
+			if(p->prev!=NULL){
+				p->prev->next=p->next;
+				}
+			if(p->next!=NULL){
+				p->next->prev=p->prev;
+				}
+			if(p==s->unused){
+				s->unused=p->next;
+				}
+			/* clean it up */
+			p->prev=NULL;
+			p->next=NULL;
+			p->free=0;
+			p->discard=0;
+			s->unused_total-=p->size;
+			pthread_mutex_unlock(&(s->ctr_mutex));
+			return p;
+			}
+		p=p->next;
+		}
+	pthread_mutex_unlock(&(s->ctr_mutex));
+	}
 
 p=do_alloc(1, sizeof(PACKET));
 p->next=NULL;
 p->prev=NULL;
 p->size=size;
 p->free=0;
+p->recycle=1;
 if(size>0){
 	p->buf=do_alloc(size,1);
 	while(p->buf==NULL){
@@ -64,7 +97,7 @@ s->last=p;
 if(s->first==NULL)s->first=p;
 /* update total count and see if we need to spawn consumer thread*/
 s->total+=p->free;
-if((s->total>s->threshhold) && 
+if((s->total>s->threshold) && 
 	!s->consumer_thread_running &&
 	(s->consume_func!=NULL)){
 	/* start consumer thread */
@@ -86,6 +119,12 @@ while((s->first!=NULL) && (s->first->discard) && (s->first->next!=NULL)){
 	s->first=p->next;
 	if(s->first!=NULL)s->first->prev=NULL;
 	s->total-=p->free;
+	if(p->recycle && !s->stop_stream && (s->unused_total<=(s->total+s->threshold+2*p->size)/2)){
+		p->next=s->unused;
+		p->prev=NULL;
+		s->unused=p;
+		s->unused_total+=p->size;
+		} else
 	if(p->free_func!=NULL)p->free_func(p);
 	}
 if((s->first!=NULL) && (s->first->discard) && (s->first->next==s->last)){
@@ -93,6 +132,26 @@ if((s->first!=NULL) && (s->first->discard) && (s->first->next==s->last)){
 	s->first=NULL;
 	s->last=NULL;
 	s->total-=p->free;
+	if((s->unused_total<=(s->total+s->threshold+2*p->size)/2)&&(p->recycle)){
+		p->next=s->unused;
+		p->prev=NULL;
+		s->unused=p;
+		s->unused_total+=p->size;
+		} else
+	if(p->free_func!=NULL)p->free_func(p);
+	}
+while((s->unused_total>=2*(s->total+s->threshold))
+      ||(s->stop_stream && (s->unused!=NULL))){
+	if(s->unused==NULL){
+		fprintf(stderr,"INTERNAL ERROR: unused_total non-zero while unused==NULL\n");
+		break;
+		}
+	p=s->unused;
+	s->unused_total-=p->size;
+	s->unused=p->next;
+	if(p->next!=NULL){
+		p->next->prev=NULL;
+		}
 	if(p->free_func!=NULL)p->free_func(p);
 	}
 }

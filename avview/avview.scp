@@ -24,6 +24,9 @@ puts "control_screen=$control_screen"
 global TABLE_LIST
 set TABLE_LIST [freq_get_table_list]
 
+global file_save_path
+set file_save_path "."
+
 proc skip_args3 { a b c } {
 }
 
@@ -467,6 +470,7 @@ global current_alsa_device
 global current_v4l_rrate
 global current_v4l_mode
 global current_av_format
+global file_save_path
 catch {
 	set fileid [open "~/.avview_state" w]
 	}
@@ -506,6 +510,9 @@ puts $fileid "set alsa_window $alsa_window"
 puts $fileid "set current_alsa_device1 \"$current_alsa_device\""
 
 save_theme $fileid
+
+puts $fileid "global file_save_path"
+puts $fileid "set file_save_path \"$file_save_path\""
 
 close $fileid
 }

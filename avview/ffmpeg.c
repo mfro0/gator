@@ -226,7 +226,7 @@ PACKET_STREAM *s=sdata->video_s;
 fd_set read_fds;
 int a;
 /* lock mutex before testing s->stop_stream */
-p=new_generic_packet(sdata->video_size);
+p=new_generic_packet(s, sdata->video_size);
 pthread_mutex_lock(&(s->ctr_mutex));
 while(!s->stop_stream){
 	pthread_mutex_unlock(&(s->ctr_mutex));
@@ -238,9 +238,12 @@ while(!s->stop_stream){
 			pthread_mutex_lock(&(s->ctr_mutex));
 			if(!s->stop_stream){
 				deliver_packet(s, p);
-				p=new_generic_packet(sdata->video_size);
+				pthread_mutex_unlock(&(s->ctr_mutex));
+				p=new_generic_packet(s, sdata->video_size);
+				} else {
+				p->free=0;
+				pthread_mutex_unlock(&(s->ctr_mutex));
 				}
-			pthread_mutex_unlock(&(s->ctr_mutex));
 			}
 		} else
 	if(a<0){
@@ -551,8 +554,8 @@ sdata->video_s=new_packet_stream();
 sdata->video_s->priv=sdata->v4l_data;
 sdata->video_s->consume_func=ffmpeg_v4l_encoding_thread;
 sdata->audio_s->consume_func=ffmpeg_audio_encoding_thread;
-/* set threshhold to two frames worth of data */
-sdata->video_s->threshhold=sdata->video_size*2;
+/* set threshold to two frames worth of data */
+sdata->video_s->threshold=sdata->video_size*2;
 if(sdata->video_stream_num>=0){
 	sdata->video_s->producer_thread_running=1;
 	pthread_create(&(sdata->video_reader_thread), NULL, v4l_reader_thread, sdata->v4l_data); 
@@ -645,11 +648,15 @@ if((sdata->audio_s!=NULL) && sdata->audio_s->stop_stream &&
 total=0;
 if(sdata->video_s!=NULL){
 	total+=sdata->video_s->total;
-	fprintf(stderr,"video fifo size=%d\n", sdata->video_s->total);
+	total+=sdata->video_s->unused_total;
+	fprintf(stderr,"video: fifo size=%d recycling fifo size=%d\n", 
+		sdata->video_s->total, sdata->video_s->unused_total);
 	}
 if(sdata->audio_s!=NULL){
 	total+=sdata->audio_s->total;
-	fprintf(stderr,"audio fifo size=%d\n", sdata->audio_s->total);
+	total+=sdata->audio_s->unused_total;
+	fprintf(stderr,"audio: fifo size=%d recycling fifo size=%d\n", 
+		sdata->audio_s->total, sdata->audio_s->unused_total);
 	}
 
 Tcl_SetObjResult(interp, Tcl_NewIntObj(total));

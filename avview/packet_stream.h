@@ -20,6 +20,7 @@ typedef struct S_PACKET{
 	size_t size;
 	size_t free;
 	int discard;
+	int recycle;
 	unsigned char *buf;
 	void (*free_func)(struct S_PACKET *);
 	char *type;
@@ -27,9 +28,10 @@ typedef struct S_PACKET{
 	} PACKET;
 
 typedef struct S_PACKET_STREAM {
-	struct S_PACKET *first, *last;
+	struct S_PACKET *first, *last, *unused;
 	size_t total;
-	size_t threshhold;
+	size_t unused_total;
+	size_t threshold;
 	int  consumer_thread_running; /* ctr */
 	int  producer_thread_running;
 	int  stop_stream;
@@ -40,7 +42,7 @@ typedef struct S_PACKET_STREAM {
 	} PACKET_STREAM;
 	
 PACKET_STREAM *new_packet_stream(void);
-PACKET *new_generic_packet(size_t size);
+PACKET *new_generic_packet(PACKET_STREAM *s, size_t size);
 void free_generic_packet(PACKET *p);
 void deliver_packet(PACKET_STREAM *s, PACKET *p);
 void discard_packets(PACKET_STREAM *s);

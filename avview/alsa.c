@@ -445,7 +445,7 @@ int a;
 int frames_to_read;
 /* lock mutex before testing s->stop_stream */
 data->recording_chunk_size=data->param->chunk_size;
-p=new_generic_packet(data->recording_chunk_size); 
+p=new_generic_packet(s, data->recording_chunk_size); 
 pthread_mutex_lock(&(s->ctr_mutex));
 while(!s->stop_stream){
 	pthread_mutex_unlock(&(s->ctr_mutex));
@@ -463,9 +463,12 @@ while(!s->stop_stream){
 			pthread_mutex_lock(&(s->ctr_mutex));
 			if(!s->stop_stream){
 				deliver_packet(s, p);
-				p=new_generic_packet(data->recording_chunk_size);
-				} else p->free=0;
-			pthread_mutex_unlock(&(s->ctr_mutex));
+				pthread_mutex_unlock(&(s->ctr_mutex));
+				p=new_generic_packet(s, data->recording_chunk_size);
+				} else {
+				p->free=0;
+				pthread_mutex_unlock(&(s->ctr_mutex));
+				}
 			}
 		} else
 	if(a==-EPIPE){
