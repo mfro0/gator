@@ -24,7 +24,7 @@ set avview_bindings {
 	"save_settings ; exit" "<Control-Key-q>"
 	"save_settings ; exit" "<Key-Escape>"
 	"save_settings ; exit" "<Key-XF86PowerOff>"
-	"next_encoding 1" "<Key-i>"
+	"next_encoding 1" "<Control-Key-i>"
 	"switch_to_control XV_VOLUME; change_control 1" "<Key-XF86AudioRaiseVolume>"
 	"switch_to_control XV_VOLUME; change_control -1" "<Key-XF86AudioLowerVolume>"
 	}
@@ -33,7 +33,7 @@ set avview_bindings_layout {action default_sequence}
 proc assign_default_bindings {} {
 global avview_bindings avview_bindings_layout VIDEO_WINDOW
 
-bind . <Key> "input_channel %k %K"
+bind . <Key> "input_channel %s %K"
 
 foreach $avview_bindings_layout $avview_bindings {
 	bind all $default_sequence $action
@@ -255,11 +255,41 @@ bell
 global current_ch_input
 set current_ch_input ""
 
-proc input_channel { keycode keysym} {
+proc input_channel { state keysym} {
 global current_ch_input current_table
+if { ($state & (1<<2)) != 0 } { return }
 if { $keysym == "Return" || $keysym == "KP_Enter" } {
 	switch_to_channel $current_ch_input
 	set current_ch_input ""
+	}
+if { $keysym == "Delete" || $keysym == "KP_Delete" } {
+	global current_channel
+	flash_message " Channel $current_channel "
+	set current_ch_input ""
+	return
+	}
+if { $keysym == "BackSpace" } {
+	set current_ch_input [string range $current_ch_input 0 end-1]
+	flash_message " $current_ch_input "
+	return
+	}
+# translate keypad keysyms
+foreach {keysym2 translation} {
+	KP_End  1
+	KP_Down 2
+	KP_Next 3
+	KP_Left 4
+	KP_Begin 5
+	KP_Right 6
+	KP_Home 7
+	KP_Up 8
+	KP_Prior 9
+	KP_Insert 0
+	} {
+	if { $keysym == $keysym2 } {
+		set keysym $translation
+		break
+		}
 	}
 # we are only interested in single letters 
 if { [string length $keysym] > 1 } { return }
