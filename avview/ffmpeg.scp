@@ -10,9 +10,9 @@ if { [ffmpeg_present] } {
 		"Audio codec parameters" heading "" \
 		"Audio sample rate" choice {ffmpeg_audio_sample_rate "48000" "44100" "32000" "24000" "22050" "16000" } \
 		"Audio bitrate" choice {ffmpeg_audio_bitrate "384000" "320000" "256000" "224000" "192000" "160000" "128000" "112000" "96000" "80000" "64000" "56000" "48000" "32000" } \
-		"Audio codec" choice {ffmpeg_audio_codec "PCM" "MPEG-2" "AC3" } \
+		"Audio codec" choice {ffmpeg_audio_codec "PCM" "MPEG-2" "AC3" "MPEG-3" "VORBIS"} \
 		"File format parameters" heading "" \
-		"File format" choice {ffmpeg_file_format "none" "AVI" "ASF" "MPEG" } \
+		"File format" choice {ffmpeg_file_format "none" "AVI" "ASF" "MPEG" "DV" "RM"} \
 		"Stop capture when fifo exceeds (MB)" entry ffmpeg_max_fifo_size
 #		"Record in chunks of (MB)" entry ffmpeg_recording_chunk_size 
 		

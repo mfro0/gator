@@ -738,6 +738,12 @@ if(!strcasecmp("mpg", arg_av_format)){
 if(!strcasecmp("mpeg", arg_av_format)){
 	sdata->format_context.oformat=guess_format("mpeg", NULL, NULL);
 	} else
+if(!strcasecmp("dv", arg_av_format)){
+	sdata->format_context.oformat=guess_format("dv", NULL, NULL);
+	} else
+if(!strcasecmp("rm", arg_av_format)){
+	sdata->format_context.oformat=guess_format("rm", NULL, NULL);
+	} else
 if(!strcasecmp("mov", arg_av_format)){
 	sdata->format_context.oformat=guess_format("mov", NULL, NULL);
 	}
