@@ -470,7 +470,7 @@ while(!s->stop_stream){
 		} else
 	if(a==-EPIPE){
 		fprintf(stderr,"Audio reader: overrun occurred, resetting pcm device\n");
-		snd_pcm_reset(data->recording_handle);
+		snd_pcm_prepare(data->recording_handle);
 		} else
 	if(a<0){		
 		fprintf(stderr,"snd_pcm_readi error: %s\n", snd_strerror(a));
