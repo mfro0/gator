@@ -14,6 +14,7 @@ source themes.scp
 source alsa.scp
 source v4l.scp
 source xv.scp
+source channel_scan.scp
 
 global control_screen
 global show_control_window
@@ -127,6 +128,7 @@ if { [alsa_present] == "yes" } {
 	$c.interface_menubutton.menu add checkbutton -label "Audio mixer (ALSA)" -variable alsa_window
 	} 
 $c.interface_menubutton.menu add separator
+$c.interface_menubutton.menu add command -label "Favorite channel editor" -command scan_channels
 eval menu $c.interface_menubutton.menu.theme [get_settings $c.interface_menubutton.menu.theme AVview]
 $c.interface_menubutton.menu add cascade -menu $c.interface_menubutton.menu.theme -label "Theme"
 $c.interface_menubutton.menu add separator
@@ -165,18 +167,21 @@ global show_control_window
 if { $show_control_window } {
 	after idle { wm deiconify .controlwin }
 	} {
-	if { "[winfo screen .controlwin]" != "[winfo screen . ]" } {
-		set ans [tk_dialog .controlwin.withdraw_question "Hide main control window ?" \
-			"The main control window is displayed on the monitor different from main viewer window. If you hide it you will only be able to restore it from the main viewer window. Perhaps you would prefer to iconify control window?" "" 0 "Iconify" "Hide" "Never mind" ]
-		update
-		update idletasks
-		switch "$ans" \
-			"0"  { after idle {wm iconify .controlwin ; set show_control_window 1 } } \
-			"1"  { after idle { wm withdraw .controlwin } } \
-			"2"  { set show_control_window 1 }
-		update
-		} {
-		after idle { wm withdraw .controlwin }
+	after idle {
+		global show_control_window
+		if { "[winfo screen .controlwin]" != "[winfo screen . ]" } {
+			set ans [tk_dialog .controlwin.withdraw_question "Hide main control window ?" \
+				"The main control window is displayed on the monitor different from main viewer window. If you hide it you will only be able to restore it from the main viewer window. Perhaps you would prefer to iconify control window?" "" 0 "Iconify" "Hide" "Never mind" ]
+			update
+			update idletasks
+			switch "$ans" \
+				"0"  { after idle {wm iconify .controlwin ; set show_control_window 1 } } \
+				"1"  { after idle { wm withdraw .controlwin } } \
+				"2"  { set show_control_window 1 }
+			update
+			} {
+			after idle { wm withdraw .controlwin }
+			}
 		}
 	}
 } 
@@ -356,6 +361,8 @@ puts $fileid "set show_control_window \"$show_control_window\""
 save_theme $fileid
 puts $fileid ""
 save_v4l_capture $fileid
+puts $fileid ""
+save_favorite_channels $fileid
 
 puts $fileid "global file_save_path"
 puts $fileid "set file_save_path \"$file_save_path\""
@@ -593,3 +600,4 @@ foreach theme [lsort -ascii [array names theme_list]] {
 		-value "$theme" -variable theme_name \
 		-command {global theme_name ; reset_theme $theme_name}
 	}
+

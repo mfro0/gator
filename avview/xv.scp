@@ -8,6 +8,7 @@ if {$name == "XV_ENCODING" } { return "none" }
 if {$name == "XV_AUTOPAINT_COLORKEY" } { return "none" }
 if {$name == "XV_SET_DEFAULTS" } { return "button" }
 if {$name == "XV_COLORKEY" } { return "none" }
+if {$name == "XV_TUNER_STATUS" } { return "none" }
 if { [lsearch $type1 "gettable"] < 0 } { return "unreadable" }
 if { [lsearch $type1 "settable"] < 0 } { return "label" }
 if { "$range" == "0 1" } { return "toggle" }
@@ -62,6 +63,14 @@ puts "$name $range $type"
 switch  $type {
 	"none" {
 		return
+		}
+	"label" {
+		label $widget.label$suffix -text [translate_attribute_name $name]
+		entry $widget.entry$suffix -textvariable $attr_var -state disabled
+		eval $widget.label$suffix configure [get_settings $widget.label$suffix AVview XVideo attribute $port $attribute $attr_count]
+		eval $widget.entry$suffix configure [get_settings $widget.entry$suffix AVview XVideo attribute $port $attribute $attr_count]
+		grid $widget.label$suffix $widget.entry$suffix -sticky news
+		grid configure $widget.label$suffix -sticky news 
 		}
 	"entry" {     
 		label $widget.label$suffix -text [translate_attribute_name $name]

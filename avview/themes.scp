@@ -194,6 +194,22 @@ switch -glob -- "$widget $args1" \
 			return "-background #FFAAAA";
 			}
 		} \
+	*.sel*ChannelList* { \
+		set i [lindex $args1 2]
+		if { [expr ($i/2) % 2] } {
+			return "-background #FFCCCC";
+			} {
+			return "-background #FFAAAA";
+			}
+		} \
+	*.cch*ChannelList* { \
+		set i [lindex $args1 2]
+		if { [expr ($i/2) % 2] } {
+			return "-background #FFCCCC";
+			} {
+			return "-background #FFAAAA";
+			}
+		} \
 	*optionmenu*\ menu {  \
 		return "-background #FFCCCC -activebackground #FFDDDD";
 		} \
@@ -299,6 +315,14 @@ switch -glob -- "$widget $args1" \
 	*.allattributes.*XVideo*attribute* {  \
 		set i [lindex $args1 5]
 		if { [expr $i % 2] } {
+			return "-background #DDDDDD";
+			} {
+			return "-background #BBBBBB";
+			}
+		} \
+	*.sel*ChannelList* { \
+		set i [lindex $args1 2]
+		if { [expr ($i/2) % 2] } {
 			return "-background #DDDDDD";
 			} {
 			return "-background #BBBBBB";

@@ -1,0 +1,89 @@
+#!avview_shell
+
+proc scan_channels {} {
+global current_table
+global VIDEO_WINDOW 
+global current_port
+global current_channel
+if { "$current_table" == "none" } {
+	return
+	}
+set CHANNEL_LIST [freq_get_channel_list $current_table]
+set A .controlwin.channel_scan
+if { [winfo exists $A] } {
+	raise $A
+	foreach win [grid slaves $A] {
+		destroy $win
+		}	
+	} {
+	toplevel .controlwin.channel_scan
+	wm title .controlwin.channel_scan "Favorite channel editor"
+	eval $A configure [get_settings $A ChannelList]
+	}
+frame $A.ch_list
+eval $A.ch_list configure [get_settings $A.ch_list ChannelList]
+grid $A.ch_list - -padx 5 -pady 5
+scale $A.progress_scale -from 0 -to [llength $CHANNEL_LIST] -variable ch_scan_progress -orient horizontal \
+	-showvalue false
+eval $A.progress_scale configure [get_settings $A.progress_scale ChannelList]
+button $A.scan_now_button -text "Scan" -command do_scan
+eval $A.scan_now_button configure [get_settings $A.scan_now_button ChannelList]
+grid $A.progress_scale $A.scan_now_button -padx 2
+global ch_scan_progress
+set ch_scan_progress 0
+
+set column 0
+set row 0
+foreach channel $CHANNEL_LIST {
+	checkbutton $A.ch_list.sel_${ch_scan_progress} -variable "is_favorite_channel(${current_port}_${current_table}_${ch_scan_progress})"
+	radiobutton $A.ch_list.cch_${ch_scan_progress} -indicatoron false -text " [lindex $CHANNEL_LIST $ch_scan_progress] " \
+		-value "[lindex $CHANNEL_LIST $ch_scan_progress]" -variable current_channel
+	eval $A.ch_list.sel_${ch_scan_progress} configure [get_settings $A.ch_list.sel_${ch_scan_progress} ChannelList $row $column $ch_scan_progress]
+	eval $A.ch_list.cch_${ch_scan_progress} configure [get_settings $A.ch_list.cch_${ch_scan_progress} ChannelList $row [expr $column+1] $ch_scan_progress]
+	grid $A.ch_list.sel_${ch_scan_progress} -row $row -column $column -sticky news
+	grid $A.ch_list.cch_${ch_scan_progress} -row $row -column [expr $column+1] -sticky news
+	incr row
+	if { $row >= 15 } {
+		incr column 2
+		set row 0
+		}
+	incr ch_scan_progress
+	update
+	update idletasks
+	}
+}
+
+proc do_scan {} {
+global current_table
+global VIDEO_WINDOW 
+global current_port
+global current_channel
+global ch_scan_progress
+set ch_scan_progress 0
+set prev_channel $current_channel
+set A .controlwin.channel_scan
+set CHANNEL_LIST [freq_get_channel_list $current_table]
+foreach channel $CHANNEL_LIST {
+	set current_channel "$channel"
+	set AFC [xv_getportattribute $VIDEO_WINDOW $current_port "XV_TUNER_STATUS"]
+	if { $AFC == 4 } {
+		$A.ch_list.sel_${ch_scan_progress} deselect
+		} {
+		$A.ch_list.sel_${ch_scan_progress} select
+		}
+	incr ch_scan_progress
+	update
+	update idletasks
+	}
+set current_channel $prev_channel
+}
+
+proc save_favorite_channels {fileid} {
+global is_favorite_channel
+puts $fileid "#\n# Favorite channel settings\n#"
+puts $fileid "global is_favorite_channel"
+if { [array exists is_favorite_channel] } {
+	puts $fileid "array set is_favorite_channel \[list [array get is_favorite_channel]\]"
+	}
+puts $fileid "#\n# End of favorite channel settings\n#"
+}
