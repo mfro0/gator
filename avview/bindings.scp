@@ -166,6 +166,7 @@ for {set i 0 } { $i < $num_attributes} { incr i } {
 		return
 		}
 	}
+display_control " $name is unsupported " 0 0 1
 }
 
 global change_control_in_progress
@@ -207,5 +208,6 @@ for {set i 0 } { $i < $num_attributes} { incr i } {
 		return
 		}
 	}
+display_control " unsupported " 0 0 1
 set change_control_in_progress false
 }
