@@ -1773,12 +1773,13 @@ RADEONAllocAdaptor(ScrnInfoPtr pScrn)
     pPriv->mute = TRUE;
     pPriv->v = 0;
     pPriv->overlay_deinterlacing_method = METHOD_BOB;
-    pPriv->capture_vbi_data = 1;
+    pPriv->capture_vbi_data = 0;
     pPriv->dec_brightness = 0;
     pPriv->dec_saturation = 0;
     pPriv->dec_contrast = 0;
     pPriv->dec_hue = 0;
     
+    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "VBI data capture is only supported for NTSC Tuner at the moment\n");
 
     /*
      * Unlike older Mach64 chips, RADEON has only two ECP settings: 
@@ -3193,6 +3194,10 @@ void RADEON_board_setmisc(RADEONPortPrivPtr pPriv)
            pPriv->fi1236->parm.band_high = 0x33;
         }
     }
+    
+    /* Disable VBI capture for anything but TV tuner */
+    if(pPriv->encoding==5)pPriv->capture_vbi_data=1;
+    	else pPriv->capture_vbi_data=0;
 }
 
 void RADEON_RT_SetEncoding(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
