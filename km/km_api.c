@@ -201,6 +201,15 @@ memset(kmfpd->field_flags, 0, sizeof(*(kmfpd->field_flags))*kmd->num_fields);
 kmfpd->kfd=kmalloc(sizeof(*(kmfpd->kfd))*kmd->num_fields, GFP_KERNEL);
 memset(kmfpd->kfd, 0, sizeof(*(kmfpd->kfd))*kmd->num_fields);
 
+/* initialize field values */
+for(i=0;i<kmd->num_fields;i++)
+	switch(kmd->fields[i].type){
+		case KM_FIELD_TYPE_LEVEL_TRIGGER:
+			kmfpd->kfd[i].t.requested=0;
+			kmfpd->kfd[i].t.old_count=0;
+			break;
+		}
+
 spin_lock_init(&(kmfpd->lock));
 
 file->private_data=kmfpd;
@@ -215,6 +224,20 @@ static int km_fo_control_release(struct inode * inode, struct file * file)
 char temp[32];
 KM_FILE_PRIVATE_DATA *kmfpd=file->private_data;
 KM_DEVICE *kmd=kmfpd->kmd;
+int i;
+
+spin_lock(&(kmd->lock));
+/* cleanup first, as some fields need to relinquish their state */
+for(i=0;i<kmd->num_fields;i++){
+	switch(kmd->fields[i].type){
+		case KM_FIELD_TYPE_LEVEL_TRIGGER:
+			if(kmfpd->kfd[i].t.requested){
+				kmd->fields[i].data.t.count--;
+				if(!kmd->fields[i].data.t.count)kmd->fields[i].data.t.one2zero(&(kmd->fields[i]));				
+				}
+			break;
+		}
+	}
 
 kfree(kmfpd->field_flags);
 kmfpd->field_flags=NULL;
@@ -225,7 +248,6 @@ kmfpd->buffer_read=NULL;
 kfree(kmfpd);
 kmfpd=NULL;
 file->private_data=NULL;
-spin_lock(&(kmd->lock));
 kmd->use_count--;
 if(kmd->use_count<=0){
 	devices[kmd->number]=NULL;
@@ -301,9 +323,14 @@ return 0;
 void km_fo_control_perform_command(KM_FILE_PRIVATE_DATA *kmfpd, const char *command, size_t count)
 {
 KM_DEVICE *kmd=kmfpd->kmd;
-int i;
+int i,j;
 int field_length;
 unsigned hash;
+char *value;
+KM_FIELD *kf;
+KM_FIELD_DATA *kfd;
+
+spin_lock(&(kmd->lock));
 hash=km_command_hash(command, count);
 if((hash==kmd->status_hash) && !strncmp("STATUS\n", command, count)){
 	spin_lock(&(kmfpd->lock));
@@ -313,7 +340,7 @@ if((hash==kmd->status_hash) && !strncmp("STATUS\n", command, count)){
 	} else
 if((hash==kmd->report_hash)&& (count>8) && !strncmp("REPORT ", command, 7)){
 	field_length=count-8; /* exclude trailing \n */
-	if(field_length<=0)return; /* bogus command */
+	if(field_length<=0)goto exit; /* bogus command */
 	for(i=0;i<kmd->num_fields;i++){
 		if(!strncmp(command+7, kmd->fields[i].name, field_length)&&
 			!kmd->fields[i].name[field_length]){
@@ -322,22 +349,50 @@ if((hash==kmd->report_hash)&& (count>8) && !strncmp("REPORT ", command, 7)){
 			spin_unlock(&(kmfpd->lock));
 			kmd_signal_state_change(kmd->number);
 			printk("Reporting field %d = %s\n", i, kmd->fields[i].name);
-			return;
+			goto exit;
 			}
 		}
 	} else {
 	i=kmd->command_hash[hash];
 	while((i>=0) && strncmp(kmd->fields[i].name, command, count))i=kmd->fields[i].next_command;
-	if(i<0)return; /* nothing matched */
+	if(i<0)goto exit; /* nothing matched */
 	
-	printk("Performing action %s [not implemented]\n", kmd->fields[i].name);
-	switch(kmd->fields[i].type){
+	kf=&(kmd->fields[i]);
+	kfd=&(kmfpd->kfd[i]);
+
+	value=&(command[kf->length]);
+	j=count-kf->length;
+	while((*value=='=')||(*value==' ')||(*value=='\t')){
+		j--;
+		value++;
+		if(!j){
+			break;
+			}
+		}
+	switch(kf->type){
 		case KM_FIELD_TYPE_PROGRAMMABLE:
+			printk("Performing KM_FIELD_PROGRAMMABLE action \"%s\" is not implemented [yet]\n", kmd->fields[i].name);
 			break;
 		case KM_FIELD_TYPE_LEVEL_TRIGGER:
+			if(!j || (*value=='0')){
+				/* trigger lowered */
+				if(!kfd->t.requested){ goto exit; /* redundant */ }
+				kfd->t.requested=0;
+				kf->data.t.count--;
+				if(!kf->data.t.count)kf->data.t.one2zero(kf);
+				} else {
+				/* trigger raised */
+				if(kfd->t.requested){ goto exit; /* redundant */ }
+				kfd->t.requested=1;
+				kf->data.t.count++;
+				if(!kf->data.t.count)kf->data.t.zero2one(kf);
+				}
 			break;
 		}
 	}
+
+exit:
+spin_unlock(&(kmd->lock));
 }
 
 static ssize_t km_fo_control_write(struct file * file, const char * buffer, size_t count, loff_t *ppos)
