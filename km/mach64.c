@@ -155,66 +155,6 @@ KM_DEBUG("start_frame_transfer_buf0\n");
 }
 
 
-#if 0
-static void mach64_start_frame_transfer_buf0(KM_STRUCT *kms)
-{
-long offset, status;
-if(kms->frame_info[FRAME_ODD].buffer==NULL)return;
-kms->frame_info[FRAME_ODD].timestamp=jiffies;
-mach64_wait_for_idle(kms);
-offset=readl(kms->reg_aperture+MACH64_CAP0_BUF0_OFFSET);
-mach64_setup_single_frame_buffer(kms, &(kms->frame_info[FRAME_ODD]), offset);
-#if 0 
-/* no analog for mach64.. yet ? */
-/* wait for at least one available queue */
-do {
-	status=readl(kms->reg_aperture+MACH64_DMA_GUI_STATUS);
-	KM_DEBUG("status=0x%08x\n", status);
-	} while (!(status & 0x1f));
-#endif
-/* start transfer */
-if(kms->frame_info[FRAME_ODD].dma_active)KM_DEBUG("DMA overrun\n");
-if(kms->frame_info[FRAME_ODD].buf_ptr!=kms->frame_info[FRAME_ODD].buf_free){
-	kms->overrun++;
-	KM_DEBUG("Data overrun\n");
-	}
-kms->total_frames++;
-kms->frame_info[FRAME_ODD].dma_active=1;
-writel(kvirt_to_pa(kms->frame_info[FRAME_ODD].dma_table)|MACH64_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM, 
-	kms->reg_aperture+MACH64_BM_SYSTEM_TABLE);
-KM_DEBUG("start_frame_transfer_buf0\n");
-}
-
-static void mach64_start_frame_transfer_buf0_even(KM_STRUCT *kms)
-{
-long offset, status;
-if(kms->frame_info[FRAME_EVEN].buffer==NULL)return;
-kms->frame_info[FRAME_EVEN].timestamp=jiffies;
-mach64_wait_for_idle(kms);
-offset=readl(kms->reg_aperture+MACH64_CAP0_BUF0_EVEN_OFFSET);
-mach64_setup_single_frame_buffer(kms, &(kms->frame_info[FRAME_EVEN]), offset);
-#if 0 
-/* no analog for mach64.. yet ? */
-/* wait for at least one available queue */
-do {
-	status=readl(kms->reg_aperture+MACH64_DMA_GUI_STATUS);
-	KM_DEBUG("status=0x%08x\n", status);
-	} while (!(status & 0x1f));
-#endif
-/* start transfer */
-if(kms->frame_info[FRAME_EVEN].dma_active)KM_DEBUG("DMA overrun\n");
-if(kms->frame_info[FRAME_EVEN].buf_ptr!=kms->frame_info[FRAME_EVEN].buf_free){
-	kms->overrun++;
-	KM_DEBUG("Data overrun\n");
-	}
-kms->total_frames++;
-kms->frame_info[FRAME_EVEN].dma_active=1;
-writel(kvirt_to_pa(kms->frame_info[FRAME_EVEN].dma_table)|MACH64_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM, 
-	kms->reg_aperture+MACH64_BM_SYSTEM_TABLE);
-KM_DEBUG("start_frame_transfer_buf0_even\n");
-}
-#endif
-
 static int mach64_is_capture_irq_active(KM_STRUCT *kms)
 {
 long status;

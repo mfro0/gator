@@ -214,61 +214,6 @@ writel(kvirt_to_pa(kms->dma_table[buffer]), (u32)(kms->reg_aperture+RADEON_DMA_G
 KM_DEBUG("start_frame_transfer_buf0\n");
 }
 
-#if 0
-
-static void radeon_start_frame_transfer_buf0(KM_STRUCT *kms)
-{
-long offset, status;
-if(kms->frame_info[FRAME_ODD].buffer==NULL)return;
-kms->frame_info[FRAME_ODD].timestamp=jiffies;
-offset=readl(kms->reg_aperture+RADEON_CAP0_BUF0_OFFSET);
-radeon_setup_single_frame_buffer(kms, &(kms->frame_info[FRAME_ODD]), offset);
-wmb();
-/* wait for at least one available queue */
-do {
-	status=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
-	KM_DEBUG("status=0x%08lx\n", status);
-	} while (!(status & 0x1f));
-/* start transfer */
-if(kms->frame_info[FRAME_ODD].dma_active)KM_DEBUG("DMA overrun\n");
-if(kms->frame_info[FRAME_ODD].buf_ptr!=kms->frame_info[FRAME_ODD].buf_free){
-	kms->overrun++;
-	KM_DEBUG("Data overrun\n");
-	}
-kms->total_frames++;
-kms->frame_info[FRAME_ODD].dma_active=1;
-wmb();
-writel(kvirt_to_pa(kms->frame_info[FRAME_ODD].dma_table), (u32)(kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR)| (0));
-KM_DEBUG("start_frame_transfer_buf0\n");
-}
-
-static void radeon_start_frame_transfer_buf0_even(KM_STRUCT *kms)
-{
-long offset, status;
-if(kms->frame_info[FRAME_EVEN].buffer==NULL)return;
-kms->frame_info[FRAME_EVEN].timestamp=jiffies;
-offset=readl(kms->reg_aperture+RADEON_CAP0_BUF0_EVEN_OFFSET);
-radeon_setup_single_frame_buffer(kms, &(kms->frame_info[FRAME_EVEN]), offset);
-wmb();
-/* wait for at least one available queue */
-do {
-	status=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
-	KM_DEBUG("status=0x%08lx\n", status);
-	} while (!(status & 0x1f));
-/* start transfer */
-if(kms->frame_info[FRAME_EVEN].dma_active)KM_DEBUG("DMA overrun\n");
-if(kms->frame_info[FRAME_EVEN].buf_ptr!=kms->frame_info[FRAME_EVEN].buf_free){
-	kms->overrun++;
-	KM_DEBUG("Data overrun total_frames=%d\n", kms->total_frames);
-	}
-kms->total_frames++;
-kms->frame_info[FRAME_EVEN].dma_active=1;
-wmb();
-writel(kvirt_to_pa(kms->frame_info[FRAME_EVEN].dma_table), (u32)(kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR) | (0));
-KM_DEBUG("start_frame_transfer_buf0_even\n");
-}
-#endif
-
 static int radeon_is_capture_irq_active(KM_STRUCT *kms)
 {
 long status, mask;

@@ -166,68 +166,6 @@ writel(kvirt_to_pa(kms->dma_table[buffer])|RAGE128_SYSTEM_TRIGGER_VIDEO_TO_SYSTE
 KM_DEBUG("start_frame_transfer_buf0\n");
 }
 
-#if 0
-static void rage128_start_frame_transfer_buf0(KM_STRUCT *kms)
-{
-long offset, status;
-u32 a;
-if(kms->frame_info[FRAME_ODD].buffer==NULL)return;
-kms->frame_info[FRAME_ODD].timestamp=jiffies;
-offset=readl(kms->reg_aperture+RAGE128_CAP0_BUF0_OFFSET);
-rage128_setup_single_frame_buffer(kms, &(kms->frame_info[FRAME_ODD]), offset);
-rage128_wait_for_idle(kms);
-#if 0 
-/* no analog for rage128.. yet ? */
-/* wait for at least one available queue */
-do {
-	status=readl(kms->reg_aperture+RAGE128_DMA_GUI_STATUS);
-	KM_DEBUG("status=0x%08x\n", status);
-	} while (!(status & 0x1f));
-#endif
-/* start transfer */
-if(kms->frame_info[FRAME_ODD].dma_active)KM_DEBUG("DMA overrun\n");
-if(kms->frame_info[FRAME_ODD].buf_ptr!=kms->frame_info[FRAME_ODD].buf_free){
-	kms->overrun++;
-	KM_DEBUG("Data overrun\n");
-	}
-kms->total_frames++;
-kms->frame_info[FRAME_ODD].dma_active=1;
-writel(kvirt_to_pa(kms->frame_info[FRAME_ODD].dma_table)|RAGE128_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM, 
-	kms->reg_aperture+RAGE128_BM_VIDCAP_BUF0);
-KM_DEBUG("start_frame_transfer_buf0\n");
-}
-
-static void rage128_start_frame_transfer_buf0_even(KM_STRUCT *kms)
-{
-long offset, status;
-u32 a;
-if(kms->frame_info[FRAME_EVEN].buffer==NULL)return;
-kms->frame_info[FRAME_EVEN].timestamp=jiffies;
-offset=readl(kms->reg_aperture+RAGE128_CAP0_BUF0_EVEN_OFFSET);
-rage128_setup_single_frame_buffer(kms, &(kms->frame_info[FRAME_EVEN]), offset);
-rage128_wait_for_idle(kms);
-#if 0 
-/* no analog for rage128.. yet ? */
-/* wait for at least one available queue */
-do {
-	status=readl(kms->reg_aperture+RAGE128_DMA_GUI_STATUS);
-	KM_DEBUG("status=0x%08x\n", status);
-	} while (!(status & 0x1f));
-#endif
-/* start transfer */
-if(kms->frame_info[FRAME_EVEN].dma_active)KM_DEBUG("DMA overrun\n");
-if(kms->frame_info[FRAME_EVEN].buf_ptr!=kms->frame_info[FRAME_EVEN].buf_free){
-	kms->overrun++;
-	KM_DEBUG("Data overrun\n");
-	}
-kms->total_frames++;
-kms->frame_info[FRAME_EVEN].dma_active=1;
-writel(kvirt_to_pa(kms->frame_info[FRAME_EVEN].dma_table)|RAGE128_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM, 
-	kms->reg_aperture+RAGE128_BM_VIDCAP_BUF0);
-KM_DEBUG("start_frame_transfer_buf0_even\n");
-}
-#endif
-
 static int rage128_is_capture_irq_active(KM_STRUCT *kms)
 {
 long status, mask;
