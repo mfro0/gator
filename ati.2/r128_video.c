@@ -947,7 +947,7 @@ static Bool R128VIP_read(GENERIC_BUS_Ptr b, CARD32 address, CARD32 count, CARD8 
    }
    
    OUTREG(VIPH_REG_ADDR, address | 0x2000);
-   while(VIP_BUSY == (status = R128VIP_idle(b)));
+   while(VIP_BUSY == (status = R128VIP_idle(b)))usleep(10);
    if(VIP_IDLE != status) return FALSE;
    
 /*
@@ -963,7 +963,7 @@ static Bool R128VIP_read(GENERIC_BUS_Ptr b, CARD32 address, CARD32 count, CARD8 
 */
     INREG(VIPH_REG_DATA);
     
-    while(VIP_BUSY == (status = R128VIP_idle(b)));
+    while(VIP_BUSY == (status = R128VIP_idle(b)))usleep(10);
     if(VIP_IDLE != status) return FALSE;
 /*
         set VIPH_REGR_DIS so that the read won't take too long.
@@ -980,7 +980,7 @@ static Bool R128VIP_read(GENERIC_BUS_Ptr b, CARD32 address, CARD32 count, CARD8 
 	     *(CARD32 *)buffer=(CARD32) ( INREG(VIPH_REG_DATA) & 0xffffffff);
 	     break;
 	}
-     while(VIP_BUSY == (status = R128VIP_idle(b)));
+     while(VIP_BUSY == (status = R128VIP_idle(b)))usleep(10);
      if(VIP_IDLE != status) return FALSE;
  /*	
  so that reading VIPH_REG_DATA would not trigger unnecessary vip cycles.
@@ -1005,7 +1005,7 @@ static Bool R128VIP_write(GENERIC_BUS_Ptr b, CARD32 address, CARD32 count, CARD8
     }
     
     OUTREG(VIPH_REG_ADDR, address & (~0x2000));
-    while(VIP_BUSY == (status = R128VIP_idle(b)));
+    while(VIP_BUSY == (status = R128VIP_idle(b)))usleep(10);
     
     if(VIP_IDLE != status) return FALSE;
     
