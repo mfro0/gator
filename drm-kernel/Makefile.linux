@@ -67,7 +67,7 @@ RADEONSHARED =	radeon.h radeon_drv.h radeon_drm.h radeon_cp.c radeon_irq.c \
 
 INC =		/usr/include
 
-CFLAGS =	-O2 $(WARNINGS)
+CFLAGS =	-O2 -pipe -fno-strict-aliasing -fno-common $(WARNINGS)
 WARNINGS =	-Wall -Wwrite-strings -Wpointer-arith -Wcast-align \
 		-Wstrict-prototypes -Wnested-externs \
 		-Wpointer-arith

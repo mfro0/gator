@@ -153,7 +153,7 @@ static void radeon_emit_state( drm_radeon_private_t *dev_priv,
 		OUT_RING( CP_PACKET0( RADEON_PP_TXFILTER_0, 5 ) );
 		OUT_RING( tex[0].pp_txfilter );
 		OUT_RING( tex[0].pp_txformat );
-		OUT_RING( tex[0].pp_txoffset);
+		OUT_RING( tex[0].pp_txoffset );
 		OUT_RING( tex[0].pp_txcblend );
 		OUT_RING( tex[0].pp_txablend );
 		OUT_RING( tex[0].pp_tfactor );
@@ -167,7 +167,7 @@ static void radeon_emit_state( drm_radeon_private_t *dev_priv,
 		OUT_RING( CP_PACKET0( RADEON_PP_TXFILTER_1, 5 ) );
 		OUT_RING( tex[1].pp_txfilter );
 		OUT_RING( tex[1].pp_txformat );
-		OUT_RING( tex[1].pp_txoffset);
+		OUT_RING( tex[1].pp_txoffset );
 		OUT_RING( tex[1].pp_txcblend );
 		OUT_RING( tex[1].pp_txablend );
 		OUT_RING( tex[1].pp_tfactor );
@@ -181,7 +181,7 @@ static void radeon_emit_state( drm_radeon_private_t *dev_priv,
 		OUT_RING( CP_PACKET0( RADEON_PP_TXFILTER_2, 5 ) );
 		OUT_RING( tex[2].pp_txfilter );
 		OUT_RING( tex[2].pp_txformat );
-		OUT_RING( tex[2].pp_txoffset);
+		OUT_RING( tex[2].pp_txoffset );
 		OUT_RING( tex[2].pp_txcblend );
 		OUT_RING( tex[2].pp_txablend );
 		OUT_RING( tex[2].pp_tfactor );
@@ -892,11 +892,7 @@ static void radeon_cp_dispatch_vertex( drm_device_t *dev,
 {
 	drm_radeon_private_t *dev_priv = dev->dev_private;
 	drm_clip_rect_t box;
-#if 1
-	int offset = dev_priv->agp_buffers_offset + buf->offset + prim->start + dev_priv->fb->offset;
-#else	
 	int offset = dev_priv->agp_buffers_offset + buf->offset + prim->start;
-#endif
 	int numverts = (int)prim->numverts;
 	int i = 0;
 	RING_LOCALS;
@@ -971,7 +967,7 @@ static void radeon_cp_dispatch_indirect( drm_device_t *dev,
 
 	if ( start != end ) {
 		int offset = (dev_priv->agp_buffers_offset
-			      + buf->offset + start+dev_priv->fb->offset);
+			      + buf->offset + start);
 		int dwords = (end - start + 3) / sizeof(u32);
 
 		/* Indirect buffer data must be an even number of
@@ -1005,7 +1001,7 @@ static void radeon_cp_dispatch_indices( drm_device_t *dev,
 {
 	drm_radeon_private_t *dev_priv = dev->dev_private;
 	drm_clip_rect_t box;
-	int offset = dev_priv->agp_buffers_offset + prim->offset + dev_priv->fb->offset;
+	int offset = dev_priv->agp_buffers_offset + prim->offset;
 	u32 *data;
 	int dwords;
 	int i = 0;
@@ -1194,7 +1190,7 @@ static int radeon_cp_dispatch_texture( drm_device_t *dev,
 		     RADEON_GMC_CLR_CMP_CNTL_DIS |
 		     RADEON_GMC_WR_MSK_DIS);
 
-	buffer[2] = (tex->pitch << 22) | ((tex->offset) >> 10);
+	buffer[2] = (tex->pitch << 22) | (tex->offset >> 10);
 	buffer[3] = 0xffffffff;
 	buffer[4] = 0xffffffff;
 	buffer[5] = (y << 16) | image->x;
@@ -1202,6 +1198,7 @@ static int radeon_cp_dispatch_texture( drm_device_t *dev,
 	buffer[7] = dwords;
 
 	buffer += 8;
+
 	if ( tex_width >= 32 ) {
 		/* Texture image width is larger than the minimum, so we
 		 * can upload it directly.
@@ -1837,7 +1834,7 @@ static __inline__ int radeon_emit_scalars(
 {
 	int sz = header.scalars.count;
 	int *data = (int *)cmdbuf->buf;
-	int start = header.scalars.offset+dev_priv->fb->offset;
+	int start = header.scalars.offset;
 	int stride = header.scalars.stride;
 	RING_LOCALS;
 
@@ -1861,7 +1858,7 @@ static __inline__ int radeon_emit_scalars2(
 {
 	int sz = header.scalars.count;
 	int *data = (int *)cmdbuf->buf;
-	int start = ((unsigned int)header.scalars.offset+dev_priv->fb->offset) + 0x100;
+	int start = ((unsigned int)header.scalars.offset) + 0x100;
 	int stride = header.scalars.stride;
 	RING_LOCALS;
 
@@ -1883,7 +1880,7 @@ static __inline__ int radeon_emit_vectors(
 {
 	int sz = header.vectors.count;
 	int *data = (int *)cmdbuf->buf;
-	int start = header.vectors.offset+dev_priv->fb->offset;
+	int start = header.vectors.offset;
 	int stride = header.vectors.stride;
 	RING_LOCALS;
 
@@ -2178,7 +2175,7 @@ int radeon_cp_getparam( DRM_IOCTL_ARGS )
 
 	switch( param.param ) {
 	case RADEON_PARAM_AGP_BUFFER_OFFSET:
-		value = dev_priv->agp_buffers_offset + dev_priv->fb->offset;
+		value = dev_priv->agp_buffers_offset;
 		break;
 	case RADEON_PARAM_LAST_FRAME:
 		dev_priv->stats.last_frame_reads++;
@@ -2195,7 +2192,7 @@ int radeon_cp_getparam( DRM_IOCTL_ARGS )
 		value = dev->irq;
 		break;
 	case RADEON_PARAM_AGP_BASE:
-		value = dev_priv->agp_vm_start + dev_priv->fb->offset;
+		value = dev_priv->agp_vm_start;
 		break;
 	default:
 		return DRM_ERR(EINVAL);

@@ -109,6 +109,7 @@ static void r128_status( drm_r128_private_t *dev_priv )
 }
 #endif
 
+
 /* ================================================================
  * Engine, FIFO control
  */
