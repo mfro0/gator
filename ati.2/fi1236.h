@@ -53,6 +53,7 @@ typedef struct {
 	
 	double video_if;
 	FI1236_parameters parm;
+	int xogc; /* for MT2032 */
 	
 	struct {
 		CARD8   div1;

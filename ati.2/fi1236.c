@@ -119,9 +119,9 @@ static void MT2032_init(FI1236Ptr f)
 {
 CARD8 data[10];
 CARD8 value;
+CARD8 xogc;
 
 MT2032_getid(f);
-MT2032_shutdown(f);
 
 data[0]=0x02; /* start with register 0x02 */
 data[1]=0xFF; 
@@ -142,21 +142,29 @@ data[0]=0x0d; /* now start with register 0x0d */
 data[1]=0x32;
 I2C_WriteRead(&(f->d), (I2CByte *)data, 2, NULL, 0);
 
+xogc=7;
+
 while(1) {
-	usleep(15000); /* wait 50 milliseconds */
+	usleep(15000); /* wait 15 milliseconds */
 
 	data[0]=0x0e; /* register number 7, status */
-	I2C_WriteRead(&(f->d), (I2CByte *)data, 1, &value, 1);
+	value=0xFF;
+	if(!I2C_WriteRead(&(f->d), (I2CByte *)data, 1, &value, 1))
+		xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: failed to read XOK\n", value & 0x01); 
 	xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: XOK=%d\n", value & 0x01); 
 	if(value & 1) break;
 	
+	xogc--;
+	if(xogc==3){
+		xogc++;
+		break; /* XOGC has reached 4.. stop */	
+		}
+	xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: try XOGC=%d\n", xogc); 
 	data[0]=0x07; /* register number 7, control byte 2 */
-	I2C_WriteRead(&(f->d), (I2CByte *)data, 1, &value, 1);
-	xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: try XOGC=%d\n", (value & 0x07)-1); 
-	if((value & 0x7)==4)break; /* XOGC has reached 4.. stop */
-	data[1]=(value & (~0x7)	) | ((value & 0x7)-1);
+	data[1]=0x88 | xogc;
 	I2C_WriteRead(&(f->d), (I2CByte *)data, 2, NULL, 0);	
 	}
+f->xogc=xogc;
 /* wait before continuing */
 usleep(15000); /* wait 50 milliseconds */
 MT2032_dump_status(f);
@@ -252,7 +260,7 @@ while(1){
 	I2C_WriteRead(&(f->d), (I2CByte *)data, 1, &value, 1);
 /*	xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: LO1LK=%d LO2LK=%d\n", (value & 0x04)>>2, (value & 0x02)>>1); */
 	if((value & 6)==6) break;
-	usleep(10000);
+	usleep(1500);
 	n--;
 	if(n<0)break;
 	}
@@ -316,7 +324,14 @@ data[0]=0x01;  /* start with register 1 */
 data[1]=(m->SEL<<4)|(m->LO1I & 0x7);
 I2C_WriteRead(&(f->d), (I2CByte *)data, 2, NULL, 0);
 
-MT2032_wait_for_lock(f);
+if(!MT2032_wait_for_lock(f)){
+	data[0]=0x07;
+	data[1]=0x88|f->xogc;
+	I2C_WriteRead(&(f->d), (I2CByte *)data, 2, NULL, 0);
+	usleep(15000);
+	data[1]=0x08|f->xogc;
+	I2C_WriteRead(&(f->d), (I2CByte *)data, 2, NULL, 0);
+	}
 }
 
 static int FI1236_get_afc_hint(FI1236Ptr f)
@@ -497,6 +512,7 @@ int FI1236_AFC(FI1236Ptr f)
     f->afc_count++;
     if(f->type==TUNER_TYPE_MT2032){
     	f->last_afc_hint=MT2032_get_afc_hint(f);
+        xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "AFC: afc_hint=%d\n", f->last_afc_hint);
 	if(f->last_afc_hint==TUNER_TUNED)return 0;
 	if(f->afc_count>3)f->last_afc_hint=TUNER_OFF;
 	if(f->last_afc_hint==TUNER_OFF){

@@ -3295,7 +3295,7 @@ switch(pPriv->encoding){
         case 1:
         case 2:
         case 3:
-                t->standard_video_if=0;
+                t->standard_video_if=2;
                 t->standard_sound_carrier=3;
 		t->modulation=0;
                 break;
@@ -3334,7 +3334,7 @@ switch(pPriv->encoding){
         case 1:
         case 2:
         case 3:
-		pPriv->fi1236->video_if=58.7812;
+		pPriv->fi1236->video_if=38.900;
                 break;
                 /* NTSC */
         case 4:
