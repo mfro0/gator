@@ -4,7 +4,7 @@ AC_PREREQ(2.52)
 # Note to self: always bump version number when there are changes
 # in setup window or avview_shell
 #
-AC_INIT([AVview], [0.10.9], [gatos-devel@lists.sf.net])
+AC_INIT([AVview], [0.11.0], [gatos-devel@lists.sf.net])
 #
 # For now I'll be happier without NEWS and Changelog files.
 #
@@ -145,13 +145,19 @@ if test "$no_x" = "yes" ; then
 	AC_MSG_ERROR([can not find X11])
 fi
 
+if ! test "$TCL_VERSION $TK_VERSION" = "8.4 8.4" ; then
+	AC_MSG_ERROR([AVview requires Tcl/Tk 8.4.x])
+fi
+
 echo ""
 echo "------------------- Configuration -------------------"
 echo ""
 echo "  X11 libraries                       $X_LIBS"
 echo "  X11 cflags                          $X_CFLAGS"
 echo "  TCL location                        $TCL_PREFIX"
+echo "  TCL version                         $TCL_VERSION$TCL_PATCH_LEVEL"
 echo "  TK location                         $TK_PREFIX"
+echo "  TCL version                         $TK_VERSION$TK_PATCH_LEVEL"
 echo "  ALSA support                        $ALSA_PRESENT"
 if test "$with_ffmpeg" = "" ; then
 echo "  Movie recording                     disabled"

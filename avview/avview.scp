@@ -468,7 +468,7 @@ if { [file exists "~/.avview_state"] } {
 		close $fileid
 		} err_msg
 	}
-global avview_version
+global avview_version current_port
 if { $avview_version != $saved_avview_version } {
 	wm deiconify .setup
 	update
