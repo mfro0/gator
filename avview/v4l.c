@@ -304,6 +304,11 @@ if(ioctl(data->fd, VIDIOCGPICT, &vpic)<0){
 	Tcl_AppendResult(interp,"ERROR: v4l_capture_snapshot: error getting picture parameters", NULL);
 	return TCL_ERROR;
 	}
+vpic.palette=VIDEO_PALETTE_YUV422;
+if(ioctl(data->fd, VIDIOCSPICT, &vpic)<0){
+	if(argc>=6)Tcl_Eval(data->interp, argv[5]);	
+	return 0;
+	}
 data->mode=MODE_SINGLE_FRAME;
 if(!strcmp("deinterlace-bob", argv[3])){
 	data->mode=MODE_DEINTERLACE_BOB;
@@ -377,6 +382,45 @@ Tcl_SetObjResult(interp, ans);
 return 0;
 }
 
+int v4l_set_current_window(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+{
+long i;
+V4L_DATA *data;
+Tcl_Obj *ans;
+struct video_window vwin;
+
+Tcl_ResetResult(interp);
+
+if(argc<6){
+	Tcl_AppendResult(interp,"ERROR: v4l_set_current_window requires five arguments", NULL);
+	return TCL_ERROR;
+	}
+i=lookup_string(v4l_sc, argv[1]);
+if(i<0){
+	Tcl_AppendResult(interp,"ERROR: v4l_set_current_window: no such v4l handle", NULL);
+	return TCL_ERROR;
+	}
+data=(V4L_DATA *)v4l_sc->data[i];	
+if(data==NULL){
+	Tcl_AppendResult(interp,"ERROR: v4l_set_current_window: no such v4l handle", NULL);
+	return TCL_ERROR;
+	}
+if(ioctl(data->fd, VIDIOCGWIN, &vwin)<0){
+	Tcl_AppendResult(interp,"ERROR: v4l_set_current_window: error getting window parameters", NULL);
+	return TCL_ERROR;
+	}
+vwin.x=atoi(argv[2]);
+vwin.y=atoi(argv[3]);
+vwin.width=atoi(argv[4]);
+vwin.height=atoi(argv[5]);
+if(ioctl(data->fd, VIDIOCSWIN, &vwin)<0){
+	Tcl_AppendResult(interp,"ERROR: v4l_set_current_window: error setting window parameters", NULL);
+	return TCL_ERROR;
+	}
+
+return 0;
+}
+
 
 struct {
 	char *name;
@@ -388,6 +432,7 @@ struct {
 	{"v4l_device_name", v4l_device_name},
 	{"v4l_capture_snapshot", v4l_capture_snapshot},
 	{"v4l_get_current_window", v4l_get_current_window},
+	{"v4l_set_current_window", v4l_set_current_window},
 	{NULL, NULL}
 	};
 
