@@ -408,6 +408,12 @@ if { $fullscreen_mode } {
 
 proc make_half_size {} {
 global VIDEO_WINDOW
+global fullscreen_mode
+
+if {$fullscreen_mode} {
+	set fullscreen_mode 0
+	return
+	}
 
 $VIDEO_WINDOW configure -width [expr [$VIDEO_WINDOW cget -width]/2] \
 			-height [expr [$VIDEO_WINDOW cget -height]/2]
