@@ -7,6 +7,10 @@
 #       GNU Public License
 #       
 
+#
+# AVview version   Note to self: always bump it when setup window changes
+#
+global avview_version
 set avview_version "0.10.0"
 
 global control_screen
@@ -22,7 +26,7 @@ global TABLE_LIST
 set TABLE_LIST [freq_get_table_list]
 
 global display_setup_window_on_startup
-set display_setup_window_on_startup true
+set display_setup_window_on_startup false
 
 source tree.scp
 source setup.scp
@@ -332,58 +336,34 @@ if { $current_encoding > 0 } {
 }
 
 proc save_settings {} {
-global current_port
-global current_table_name
-global current_encoding_name
-global current_channel
-global attributes_window
-global capture_window
-global alsa_window
-global current_alsa_device
-global file_save_path
-global show_control_window
-global display_setup_window_on_startup
-catch {
+if { [catch {
 	set fileid [open "~/.avview_state" w]
+	} ] != 0 } { return }
+
+global avview_version
+puts $fileid "\n# AVview version this file was saved with\n"
+puts $fileid "set saved_avview_version \"$avview_version\""
+
+puts $fileid "\n# General settings"
+
+foreach variable {current_port current_encoding_name current_table_name
+	current_channel attributes_window capture_window alsa_window
+	 show_control_window
+	display_setup_window_on_startup file_save_path} {
+	global $variable
+	puts $fileid "\nglobal $variable"
+	puts $fileid "set $variable \"[set $variable]\""
 	}
-puts $fileid "global current_port"
-puts $fileid "global current_encoding_name"
-puts $fileid "global current_table_name"
-puts $fileid "global current_channel"
-puts $fileid "global attributes_window"
-puts $fileid "global capture_window"
-puts $fileid "global alsa_window"
-puts $fileid "global current_alsa_device1"
-puts $fileid "global show_control_window"
-puts $fileid "global display_setup_window_on_startup"
-if { $current_port != "none" } {
-	puts $fileid "set current_port \"$current_port\""
-	if { $current_encoding_name != "none" } {
-		puts $fileid "set current_encoding_name \"$current_encoding_name\""
-		}
-	}
-if { $current_table_name != "none" } {
-	puts $fileid "set current_table_name \"$current_table_name\""
-	if { $current_channel != "none" } {
-		puts $fileid "set current_channel \"$current_channel\""
-		}
-	}
-puts $fileid "set attributes_window $attributes_window"
-puts $fileid "set capture_window $capture_window"
-puts $fileid "set alsa_window $alsa_window"
-puts $fileid "set show_control_window \"$show_control_window\""
 save_theme $fileid
 puts $fileid "update idletasks"
 
+global current_alsa_device
+puts $fileid "\nglobal current_alsa_device1"
 puts $fileid "set current_alsa_device1 \"$current_alsa_device\""
 puts $fileid ""
 save_v4l_capture $fileid
 puts $fileid ""
 save_favorite_channels $fileid
-
-puts $fileid "global file_save_path"
-puts $fileid "set file_save_path \"$file_save_path\""
-puts $fileid "set display_setup_window_on_startup \"$display_setup_window_on_startup\""
 
 close $fileid
 }
@@ -412,6 +392,17 @@ if { [file exists "~/.avview_state"] } {
 			}
 		close $fileid
 		} err_msg
+	}
+global avview_version
+if { $avview_version != $saved_avview_version } {
+	wm deiconify .setup
+	update
+	update idletasks
+	raise .setup
+	update
+	update idletasks
+	tk_messageBox -parent .setup -icon info\
+		-type ok -message "It appears you have not run AVview $avview_version before.\nPlease verify that all settings are correct."
 	}
 }
 

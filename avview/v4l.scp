@@ -655,7 +655,7 @@ set ffmpeg_vars {
 foreach variable [concat [list current_v4l_mode current_v4l_rrate] $ffmpeg_vars ] {
 	catch {
 		global $variable
-		puts $fileid "global $variable"
+		puts $fileid "\nglobal $variable"
 		puts $fileid "set $variable \"[set $variable]\""
 		}
 	}
