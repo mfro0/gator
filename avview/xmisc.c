@@ -206,7 +206,44 @@ Tk_DefineCursor(tkwin, cursor);
 return 0;
 }
 
+int xmisc_setfullscreen(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+{
+Tk_Window tkwin;
+Window win;
+Display *d;
+int timeout, interval, pb, ae;
+Tcl_Obj *ans;
+CARD16 dpms_standby,dpms_suspend,dpms_off,dpms_current_level;
+BOOL dpms_enabled;
 
+Tcl_ResetResult(interp);
+
+if(argc<2){
+	Tcl_AppendResult(interp,"ERROR: xmisc_setfullscreen requires one argument", NULL);
+	return TCL_ERROR;
+	}
+
+
+tkwin=Tk_NameToWindow(interp,argv[1], Tk_MainWindow(interp));
+
+if(tkwin==NULL){
+	Tcl_AppendResult(interp,"ERROR: xmisc_setfullscreen: first argument must be an existing toplevel or frame window", NULL);
+	return TCL_ERROR;
+	}
+
+d=Tk_Display(tkwin);
+win=Tk_WindowId(tkwin);
+
+if((d==NULL)||(win==(Window)NULL)){
+	Tcl_AppendResult(interp,"ERROR: xmisc_setfullscreen: first argument must be a mapped toplevel or frame window", NULL);
+	return TCL_ERROR;
+	}
+XUnmapWindow(d, win);
+XFlush(d);
+XMapRaised(d, win);
+XFlush(d);
+return TCL_OK;
+}
 struct {
 	char *name;
 	Tcl_CmdProc *command;
@@ -214,6 +251,7 @@ struct {
 	{"xmisc_getscreensaver", xmisc_getscreensaver},
 	{"xmisc_setscreensaver", xmisc_setscreensaver},	
 	{"xmisc_hidecursor", xmisc_hidecursor},
+	{"xmisc_setfullscreen", xmisc_setfullscreen},
 	{NULL, NULL}
 	};
 

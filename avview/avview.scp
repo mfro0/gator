@@ -31,7 +31,8 @@ set current_capture_filename "test3.avi"
 
 destroy .video
 
-. configure -width 320 -height 240
+
+. configure -width 320 -height 240 
 frame .video -background #102030
 
 place .video -relx 0.0 -rely 0.0 -relwidth 1.0 -relheight 1.0 -anchor nw
@@ -183,12 +184,15 @@ set current_table [lsearch -exact $TABLE_LIST "$current_table_name"]
 if { $current_table < 0 } { return }
 set CHANNEL_LIST [freq_get_channel_list $current_table]
 $current_channel_menu delete 0 end
+.video_menu.channel_menu delete 0 end
 foreach channel $CHANNEL_LIST {	
 	$current_channel_menu add radiobutton -label "$channel" -value "$channel" -variable current_channel
+	.video_menu.channel_menu add radiobutton -label "$channel" -value "$channel" -variable current_channel
 	}
 set num_channels [llength $CHANNEL_LIST]
 for {set i 16} { $i < $num_channels } {incr i 16 } {
 	$current_channel_menu entryconfigure $i -columnbreak 1
+	.video_menu.channel_menu entryconfigure $i -columnbreak 1
 	}
 }
 
@@ -513,12 +517,22 @@ if { $fullscreen_mode } {
 	set saved_vw_height [$VIDEO_WINDOW cget -height]
 	
 	wm geometry . =[winfo screenwidth $VIDEO_WINDOW]x[winfo screenheight $VIDEO_WINDOW]+0+0
-	$VIDEO_WINDOW configure -width [winfo screenwidth $VIDEO_WINDOW] \
-		-height [winfo screenheight $VIDEO_WINDOW]
+	
 
 	place $VIDEO_WINDOW.onscreen_display -relx 0.05 -rely 0.05 -anchor nw
+	
+	wm withdraw .
+	wm overrideredirect . true
+	wm deiconify .
+	xmisc_setfullscreen .
+
+	$VIDEO_WINDOW configure -width [winfo screenwidth $VIDEO_WINDOW] \
+		-height [winfo screenheight $VIDEO_WINDOW]
+	. configure -width [winfo screenwidth $VIDEO_WINDOW] \
+		-height [winfo screenheight $VIDEO_WINDOW]
 	xmisc_setscreensaver $VIDEO_WINDOW 0 0 DontPreferBlanking AllowExposures \
 		0 0 0 0 off
+#	after idle "raise ."
 	} {
 	wm geometry . =$saved_main_window_geometry
 	$VIDEO_WINDOW configure -width $saved_vw_width -height $saved_vw_height
@@ -534,6 +548,9 @@ if { $fullscreen_mode } {
 					   [lindex $saved_screensaver_mode 8]\
 					   [lindex $saved_screensaver_mode 9]
 					   
+	wm overrideredirect . false
+	wm withdraw .
+	wm deiconify .
 	}
 }
 
@@ -889,6 +906,21 @@ catch {
 	}
 after 800 "check_fifo $cw"
 }
+
+menu .video_menu -type normal -tearoff false
+menu .video_menu.channel_menu -type normal -tearoff false
+.video_menu add cascade -menu .video_menu.channel_menu -label Channel
+.video_menu add checkbutton -variable fullscreen_mode -label "Fullscreen"
+.video_menu add separator
+.video_menu add command -label "Settings" -command "raise .controlwin"
+.video_menu add separator
+.video_menu add command -label "Dismiss this menu"
+
+bind $VIDEO_WINDOW  <ButtonPress-3>  {
+	global $VIDEO_WINDOW
+	.video_menu post [winfo pointerx $VIDEO_WINDOW] [winfo pointery $VIDEO_WINDOW]
+	}
+
 
 global current_port
 trace variable current_port w set_port
