@@ -27,6 +27,11 @@
  * This driver was derived from usbati_remote and usbkbd drivers by Vojtech Pavlik
  */
 
+#include <linux/config.h>
+#if defined(CONFIG_MODVERSIONS) && !defined(__GENKSYMS__) && !defined(__DEPEND__)
+#define MODVERSIONS
+#include <linux/modversions.h>
+#endif
 #include <linux/kernel.h>
 #include <linux/slab.h>
 #include <linux/input.h>
