@@ -91,6 +91,16 @@ return TCL_OK;
 
 int main(int argc, char *argv[])
 {
+int major,minor,patchlevel,type;
+/* check version first */
+Tcl_GetVersion(&major, &minor, &patchlevel, &type);
+if((major!=TCL_MAJOR_VERSION)||(minor!=TCL_MINOR_VERSION)){
+	fprintf(stderr,"ERROR: detected mismatched between library and header version.\n");
+	fprintf(stderr,"ERROR: this is most likely caused by installation of two Tcl/Tk versions\n");
+	fprintf(stderr,"ERROR: and configure mistake. Report to gatos-devel@lists.sf.net\n");
+	exit(-1);
+	}
+
 pthread_mutex_init(&memory_mutex, NULL);
 Tk_Main(argc, argv, Tcl_AppInit);
 return 0;
