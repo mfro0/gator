@@ -2,6 +2,9 @@
 #
 #
 
+global fifo_limit
+set fifo_limit 32
+
 proc generate_capture_window { cw } {
 global capture_window
 foreach win [grid slaves $cw] { destroy $win }
@@ -102,11 +105,18 @@ if {[ffmpeg_present] == "yes"} {
 		-indicatoron false 
 	eval $cw.record_button configure [get_settings $cw.record_button Capture V4L]
 	grid x $cw.snapshot_button $cw.record_button -sticky ns -padx 5
-	label $cw.fifol -text "Fifo size: "
-	label $cw.fifov -text "0 Mb"
-	eval $cw.fifol configure [get_settings $cw.fifol Capture V4L]
-	eval $cw.fifov configure [get_settings $cw.fifov Capture V4L]
-	grid $cw.fifol $cw.fifov -sticky nws
+	label $cw.fifo_label -text "Fifo size: "
+	label $cw.fifo_value_label -text "0 Mb"
+	eval $cw.fifo_label configure [get_settings $cw.fifo_label Capture V4L]
+	eval $cw.fifo_value_label configure [get_settings $cw.fifo_value Capture V4L]
+	grid $cw.fifo_label $cw.fifo_value_label -sticky nws
+	
+	label $cw.fifo_limit_label -text "Fifo limit (Mb):"
+	entry $cw.fifo_limit_entry -textvariable fifo_limit
+	eval $cw.fifo_limit_label configure [get_settings $cw.fifo_limit_label Capture V4L]
+	eval $cw.fifo_limit_entry configure [get_settings $cw.fifo_limit_entry Capture V4L]
+	grid $cw.fifo_limit_label $cw.fifo_limit_entry -sticky news
+	grid configure $cw.fifo_limit_label -sticky nws
 	} {
 	button $cw.snapshot_button -text "Snapshot" -command capture_snapshot -state disabled
 	eval $cw.snapshot_button configure [get_settings $cw.snapshot_button Capture V4L]
@@ -314,10 +324,15 @@ if { $v4l_capture_on } {
 }
 
 proc check_fifo { cw } {
+global fifo_limit
+global v4l_capture_on
 if { [ffmpeg_present] == "no" } { return }
 catch {
 	set size [ffmpeg_incoming_fifo_size current_v4l_handle]
-	$cw.fifov configure -text "[expr $size/(1024*1024)] Mb"
+	$cw.fifo_value_label configure -text "[expr $size/(1024*1024)] Mb"
+	if { $v4l_capture_on && ($size > [expr $fifo_limit*1024*1024]) } {
+		set v4l_capture_on false
+		}
 	}
 after 800 "check_fifo $cw"
 }
