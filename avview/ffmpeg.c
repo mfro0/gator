@@ -514,6 +514,7 @@ data->priv=sdata;
 sdata->video_s=new_packet_stream();
 sdata->video_s->priv=data;
 sdata->video_s->consume_func=ffmpeg_v4l_encoding_thread;
+sdata->video_s->stop_stream|=STOP_CONSUMER_THREAD;
 /* set threshold to two frames worth of data */
 sdata->video_s->threshold=data->video_size*2;
 v4l_attach_output_stream(data, sdata->video_s);
@@ -706,6 +707,7 @@ if(sdata->audio_stream_num>=0){
 		sdata->audio_s->producer_thread_running=0;
 		} 
 	}
+sdata->video_s->stop_stream &= ~STOP_CONSUMER_THREAD;
 return 0;
 }
 
