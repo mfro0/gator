@@ -147,12 +147,12 @@ MODCFLAGS += -DCONFIG_AGP -DCONFIG_AGP_MODULE
 DRMTEMPLATES += drm_agpsupport.h
 MODS += mga.o
 ifeq ($(MACHINE),i386)
-MODS += i810.o
-MODS += i830.o
+#MODS += i810.o
+#MODS += i830.o
 endif
 ifeq ($(MACHINE),i686)
-MODS += i810.o
-MODS += i830.o
+#MODS += i810.o
+#MODS += i830.o
 endif
 
 MGAOBJS =	mga_drv.o mga_dma.o mga_state.o mga_warp.o
