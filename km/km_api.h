@@ -136,6 +136,11 @@ typedef struct {
 int add_km_device(KM_FIELD *kmfl, void *priv);
 int remove_km_device(int num);
 void kmd_signal_state_change(int num);
+
+/* functions for in-kernel access to km devices */
+int num_km_devices(void);
+KM_FILE_PRIVATE_DATA *open_km_device(int number);
+void close_km_device(KM_FILE_PRIVATE_DATA *kmfpd);
 void km_fo_control_perform_command(KM_FILE_PRIVATE_DATA *kmfpd, const char *command, size_t count);
 
 

@@ -49,6 +49,9 @@ EXPORT_SYMBOL(km_data_destroy_kdufpd);
 EXPORT_SYMBOL(km_data_generic_stream_read);
 EXPORT_SYMBOL(km_data_generic_stream_poll);
 EXPORT_SYMBOL(km_fo_control_perform_command);
+EXPORT_SYMBOL(num_km_devices);
+EXPORT_SYMBOL(open_km_device);
+EXPORT_SYMBOL(close_km_device);
 
 #define KM_MODULUS	255
 #define KM_MULTIPLE	23
@@ -167,21 +170,21 @@ for(i=0;kmd->fields[i].type!=KM_FIELD_TYPE_EOL;i++){
 	}
 }
 
-static int km_fo_control_open(struct inode * inode, struct file * file)
+int num_km_devices(void)
 {
-char *filename;
-KM_DEVICE *kmd=NULL;
+return devices_free;
+}
+
+KM_FILE_PRIVATE_DATA *open_km_device(int number)
+{
 KM_FILE_PRIVATE_DATA *kmfpd=NULL;
+KM_DEVICE *kmd=NULL;
 int i;
-filename=file->f_dentry->d_iname;
-if(strncmp(filename, "control", 7)){
-	return -EINVAL;
-	}
-i=simple_strtol(filename+7, NULL, 10);
-if(i<0)return -EINVAL;
-if(i>=devices_free)return -EINVAL;
-kmd=(devices[i]);
-if((kmd==NULL)||(kmd->fields==NULL))return -EINVAL;
+
+if(number<0)return NULL;
+if(number>=devices_free)return NULL;
+kmd=(devices[number]);
+if((kmd==NULL)||(kmd->fields==NULL))return NULL;
 
 MOD_INC_USE_COUNT;
 
@@ -212,17 +215,30 @@ for(i=0;i<kmd->num_fields;i++)
 
 spin_lock_init(&(kmfpd->lock));
 
-file->private_data=kmfpd;
 kmd->use_count++;
 spin_unlock(&(kmd->lock));
+return kmfpd;
+}
 
+static int km_fo_control_open(struct inode * inode, struct file * file)
+{
+char *filename;
+KM_FILE_PRIVATE_DATA *kmfpd=NULL;
+int i;
+filename=file->f_dentry->d_iname;
+if(strncmp(filename, "control", 7)){
+	return -EINVAL;
+	}
+i=simple_strtol(filename+7, NULL, 10);
+kmfpd=open_km_device(i);
+if(kmfpd==NULL)return -EINVAL;
+file->private_data=kmfpd;
 return 0;
 }
 
-static int km_fo_control_release(struct inode * inode, struct file * file)
+void close_km_device(KM_FILE_PRIVATE_DATA *kmfpd)
 {
 char temp[32];
-KM_FILE_PRIVATE_DATA *kmfpd=file->private_data;
 KM_DEVICE *kmd=kmfpd->kmd;
 int i;
 
@@ -247,7 +263,6 @@ kfree(kmfpd->buffer_read);
 kmfpd->buffer_read=NULL;
 kfree(kmfpd);
 kmfpd=NULL;
-file->private_data=NULL;
 kmd->use_count--;
 if(kmd->use_count<=0){
 	devices[kmd->number]=NULL;
@@ -259,7 +274,14 @@ if(kmd->use_count<=0){
 spin_unlock(&(kmd->lock));
 
 MOD_DEC_USE_COUNT;
+}
 
+static int km_fo_control_release(struct inode * inode, struct file * file)
+{
+KM_FILE_PRIVATE_DATA *kmfpd=file->private_data;
+
+close_km_device(kmfpd);
+file->private_data=NULL;
 return 0;
 }
 
