@@ -2650,7 +2650,7 @@ RADEONDisplayVideo(
 	v_inc_shift--;
     v_inc = (1 << v_inc_shift);
     v_inc_d = src_h * pScrn->currentMode->VDisplay;
-    if(info->DisplayType==MT_LCD)
+    if((info->DisplayType==MT_LCD)||(info->DisplayType==MT_DFP))
         v_inc_d = v_inc_d/(drw_h*info->PanelYRes);
         else
         v_inc_d = v_inc_d/(drw_h*pScrn->currentMode->VDisplay);
