@@ -69,6 +69,8 @@ typedef struct {
 
 FFMPEG_ENCODING_DATA *sdata=NULL;
 
+#define DEBUG_TIMESTAMPS
+
 int ffmpeg_present(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
 {
 Tcl_ResetResult(interp);
@@ -126,6 +128,7 @@ while(1){
 		do_free(output_buf);
 		s->consumer_thread_running=0;
 		pthread_mutex_unlock(&(s->ctr_mutex));
+		fprintf(stderr,"Exit 1\n");
 		pthread_exit(NULL);
 		}
 	pthread_mutex_unlock(&(s->ctr_mutex));
@@ -145,7 +148,7 @@ while(1){
 					i=write(sdata->fd_out, output_buf+ob_written, ob_free-ob_written);
 					}
 				sdata->last_video_timestamp=f->timestamp;
-				if(sdata->last_audio_timestamp > f->timestamp){
+				if(sdata->last_audio_timestamp > (f->timestamp+500000)){
 					/* audio encoding is faster than us */
 					if(sdata->audio_s!=NULL){
 						pthread_mutex_lock(&(sdata->audio_s->ctr_mutex));
@@ -160,8 +163,13 @@ while(1){
 					if((sdata->audio_s!=NULL) && (sdata->audio_stream_num>=0)){
 						pthread_mutex_lock(&(sdata->audio_s->ctr_mutex));
 						sdata->audio_s->stop_stream &= ~STOP_CONSUMER_THREAD;
-						if(!sdata->audio_s->consumer_thread_running){
-							pthread_create(&(sdata->audio_s->consumer_thread_id), NULL, sdata->audio_s->consume_func, sdata->audio_s);
+						if(!sdata->audio_s->consumer_thread_running &&
+							!sdata->audio_s->producer_thread_running){
+							if(pthread_create(&(sdata->audio_s->consumer_thread_id), NULL, sdata->audio_s->consume_func, sdata->audio_s)>=0){
+								sdata->audio_s->consumer_thread_running=1;
+								} else {
+								perror("pthread");
+								}
 							#ifdef DEBUG_TIMESTAMPS
 							fprintf(stderr,"+ Restarting audio thread\n");
 							#endif
@@ -235,7 +243,7 @@ while(1){
 		pthread_exit(NULL);
 		}
 	pthread_mutex_unlock(&(s->ctr_mutex));
-	while((f!=NULL)&&((f->next!=NULL)||(s->stop_stream & STOP_PRODUCER_THREAD)){
+	while((f!=NULL)&&((f->next!=NULL)||(s->stop_stream & STOP_PRODUCER_THREAD))){
 		ob_free=avcodec_encode_audio(&(sdata->audio_codec_context), out_buf, ob_size, f->buf);	
 		if(ob_free>0){
 			ob_written=0;
@@ -248,7 +256,7 @@ while(1){
 					i=write(sdata->fd_out, out_buf+ob_written, ob_free-ob_written);
 					}
 				sdata->last_audio_timestamp=f->timestamp;
-				if(sdata->last_video_timestamp < f->timestamp){
+				if((sdata->last_video_timestamp+500000) < f->timestamp){
 					pthread_mutex_lock(&(s->ctr_mutex));
 					s->stop_stream|=STOP_CONSUMER_THREAD;
 					pthread_mutex_unlock(&(s->ctr_mutex));
