@@ -121,7 +121,7 @@ while(1){
 	f=s->first;
 	pthread_mutex_unlock(&(s->ctr_mutex));
 	while((f!=NULL)&&(f->next!=NULL)){
-		if(!sdata->step_frames || !(incoming_frames_count % sdata->step_frames)){
+		if(1){
 			/* encode frame */
 			ffmpeg_preprocess_frame(data, sdata, f, &picture);
 			ob_free=avcodec_encode_video(&(sdata->video_codec_context), output_buf, ob_size, &picture);
@@ -230,6 +230,7 @@ PACKET *p;
 PACKET_STREAM *s=sdata->video_s;
 fd_set read_fds;
 int a;
+long incoming_frames_count=0;
 /* lock mutex before testing s->stop_stream */
 p=new_generic_packet(s, sdata->video_size);
 pthread_mutex_lock(&(s->ctr_mutex));
@@ -241,7 +242,8 @@ while(!s->stop_stream){
 		p->free+=a;
 		if(p->free==p->size){ /* deliver packet */
 			pthread_mutex_lock(&(s->ctr_mutex));
-			if(!s->stop_stream){
+			if(!s->stop_stream &&
+				(!sdata->step_frames || !(incoming_frames_count % sdata->step_frames))){
 				deliver_packet(s, p);
 				pthread_mutex_unlock(&(s->ctr_mutex));
 				p=new_generic_packet(s, sdata->video_size);
@@ -249,6 +251,7 @@ while(!s->stop_stream){
 				p->free=0;
 				pthread_mutex_unlock(&(s->ctr_mutex));
 				}
+			incoming_frames_count++;
 			}
 		} else
 	if(a<0){

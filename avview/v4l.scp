@@ -4,6 +4,14 @@
 
 global fifo_limit
 set fifo_limit 32
+#
+#
+# Heuristic to figure out a good fifo_limit
+#
+catch { 
+	set core_size [file size /proc/kcore]
+	set fifo_limit [expr $core_size/(2*1024*1024)]
+	}
 
 proc generate_capture_window { cw } {
 global capture_window
@@ -337,3 +345,30 @@ catch {
 after 800 "check_fifo $cw"
 }
 
+proc save_v4l_capture { fileid } {
+global current_v4l_rrate
+global current_v4l_mode
+global current_av_format
+global current_video_codec
+global current_audio_codec
+global fifo_limit
+
+puts $fileid "#\n# V4L and capture settings\n#"
+
+puts $fileid "global current_v4l_mode"
+puts $fileid "global current_v4l_rrate"
+puts $fileid "global current_av_format"
+puts $fileid "global current_video_codec"
+puts $fileid "global current_audio_codec"
+puts $fileid "global fifo_limit"
+
+
+puts $fileid "set current_video_codec \"$current_video_codec\""
+puts $fileid "set current_audio_codec \"$current_audio_codec\""
+puts $fileid "set current_v4l_mode \"$current_v4l_mode\""
+puts $fileid "set current_v4l_rrate \"$current_v4l_rrate\""
+puts $fileid "set current_av_format \"$current_av_format\""
+puts $fileid "set fifo_limit \"$fifo_limit\""
+
+puts $fileid "#\n# End of V4L and capture settings\n#"
+}
