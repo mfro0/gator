@@ -177,9 +177,13 @@ switch "[get_value $element "-type"]" \
 		
 }
 
-proc generate_mixer_window { mw } {
+proc generate_mixer_window { canvas mw } {
 global current_alsa_device
 global current_alsa_info
+
+if { ![winfo exists $mw] } {
+	return
+	}
 
 foreach win [grid slaves $mw] { destroy $win }
 if { "$current_alsa_device" == "none" } {
@@ -195,16 +199,23 @@ foreach element $current_alsa_info {
 	generate_element $mw $i $element
 	incr i
 	}
+
+update
+set bbox [grid bbox $mw]
+puts "$bbox"
+$canvas configure -scrollregion "[grid bbox $mw]" -width [expr [lindex $bbox 2]+8]
 }
 	
 proc generate_alsa_window { cw } {
 global alsa_window
 global current_alsa_device
 foreach win [grid slaves $cw] { destroy $win }
+destroy $cw.f.c.f
 
 set cw_info [grid info $cw]
 set master [get_value $cw_info "-in"]
 set column [get_value $cw_info "-column"]
+set row [get_value $cw_info "-row"]
 if { !$alsa_window || ([alsa_present] == "no") } { 
 	if { "$master" != "" } {
 		grid columnconfigure $master $column -weight 0
@@ -216,9 +227,10 @@ if { !$alsa_window || ([alsa_present] == "no") } {
 #grid columnconfigure .controlwin 2 -weight 1
 if { "$master" != "" } {
 	grid columnconfigure $master $column -weight 1
+	grid rowconfigure $master $row -weight 1
 	}
 
-frame $cw.f
+frame $cw.f 
 
 label $cw.title -text "Audio (ALSA)" -background black -foreground white
 grid $cw.title - - -sticky news -pady 2 -padx 2
@@ -237,8 +249,26 @@ rescan_alsa_devices
 global current_alsa_device1
 set current_alsa_device1 "$save_alsa_device"
 
+frame $cw.f1
+
+grid $cw.f1 - - -sticky news
+
+set c_info [grid info $cw.f1]
+
+grid rowconfig $cw [get_value $c_info "-row"] -weight 1
+
+canvas $cw.f1.c -yscrollcommand "$cw.f1.vscroll set" -relief flat -bd 0 -borderwidth 0\
+	-highlightthickness 0 -confine "yes"
+scrollbar $cw.f1.vscroll -command "$cw.f1.c yview" -orient vertical
+grid $cw.f1.c - $cw.f1.vscroll -sticky news
+grid rowconfig $cw.f1 0 -weight 1
+grid columnconfig $cw.f1 0 -weight 1
+
+frame $cw.f1.c.f
+$cw.f1.c create window 5 0 -window $cw.f1.c.f -anchor nw
+
 if { "$current_alsa_device" != "none" } {
-	generate_mixer_window $cw.f	
+	generate_mixer_window $cw.f1.c $cw.f1.c.f	
 	}
 
 
@@ -275,7 +305,7 @@ if { "$current_alsa_device" != "none" } {
 	set current_alsa_info [alsa_hctl_get_elements_info "$current_alsa_device"]
 	}	
 if { $alsa_window } {
-	generate_mixer_window $cw.f
+	generate_mixer_window $cw.f1.c $cw.f1.c.f
 	}
 }
 

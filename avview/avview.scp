@@ -50,7 +50,7 @@ if { $control_screen != "" } {
 frame .controlwin.control
 frame .controlwin.allattributes
 frame .controlwin.capture
-frame .controlwin.alsamixer
+frame .controlwin.alsamixer 
 
 set c .controlwin.control
 
@@ -109,12 +109,14 @@ grid $c.fullscreen $c.half_size $c.interface -padx 5 -pady 5 -sticky ns
 # pack .controlwin.capture -after .controlwin.allattributes -expand yes -fill both -pady 5 -side right
 
 grid $c - -sticky nw
-grid .controlwin.allattributes .controlwin.capture .controlwin.alsamixer -sticky new
+grid .controlwin.allattributes .controlwin.capture -sticky new
 grid columnconfigure .controlwin 0 -weight 0
 grid columnconfigure .controlwin 1 -weight 0
 grid columnconfigure .controlwin 2 -weight 0
 #grid columnconfigure .controlwin 2 -weight 1
 grid rowconfigure .controlwin 2 -weight 1
+#grid rowconfigure .controlwin 0 -weight 1
+grid .controlwin.alsamixer -column 2 -row 1 -rowspan 2 -sticky news
 
 update
 
