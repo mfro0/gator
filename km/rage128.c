@@ -121,14 +121,14 @@ static int rage128_setup_dma_table(KM_STRUCT *kms, bm_list_descriptor *dma_table
 int i;
 long count;
 count=free;
-for(i=0;i<(kms->capture.dvb.size/PAGE_SIZE);i++){
+for(i=0;;i++){
 	dma_table[i].from_addr=offset+i*PAGE_SIZE;
 	if(count>PAGE_SIZE){
 		dma_table[i].command=PAGE_SIZE | RAGE128_BM_FORCE_TO_PCI;
 		count-=PAGE_SIZE;
 		} else {
 		dma_table[i].command=count | RAGE128_BM_FORCE_TO_PCI | RAGE128_BM_END_OF_LIST;
-		return 0;
+		break;
 		}
 	}
 return 0;
