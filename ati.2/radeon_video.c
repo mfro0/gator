@@ -3293,25 +3293,26 @@ RADEONPutVideo(
    RADEONWaitForIdleMMIO(pScrn);
    display_base=INREG(RADEON_DISPLAY_BASE_ADDR);   
 
+   xf86DrvMsg(pScrn->scrnIndex, X_INFO, "display_base=0x%08x\n", display_base);
 /*   RADEONWaitForFifo(pScrn, 15); */
 
    switch(pPriv->overlay_deinterlacing_method){
         case METHOD_BOB:
         case METHOD_SINGLE:
            offset1 = (info->videoLinear->offset*bpp+0xf) & (~0xf);
-           offset2 = ((info->videoLinear->offset+new_size)*bpp + 0x1f) & (~0xf);
+           offset2 = ((info->videoLinear->offset+new_size)*bpp + 0xf) & (~0xf);
            offset3 = offset1;
            offset4 = offset2;
            break;
         case METHOD_WEAVE:
            offset1 = (info->videoLinear->offset*bpp+0xf) & (~0xf);
            offset2 = offset1+dstPitch;
-           offset3 = ((info->videoLinear->offset+2*new_size)*bpp + 0x1f) & (~0xf);
+           offset3 = ((info->videoLinear->offset+2*new_size)*bpp + 0xf) & (~0xf);
            offset4 = offset3+dstPitch;
            break;
         default:
            offset1 = (info->videoLinear->offset*bpp+0xf) & (~0xf);
-           offset2 = ((info->videoLinear->offset+new_size)*bpp + 0x1f) & (~0xf);
+           offset2 = ((info->videoLinear->offset+new_size)*bpp + 0xf) & (~0xf);
            offset3 = offset1;
            offset4 = offset2;
         }
@@ -3637,7 +3638,7 @@ RADEONDisplaySurface(
 
     RADEONResetVideo(pScrn);
 
-    RADEONDisplayVideo(pScrn, pPriv, surface->id,
+    RADEONDisplayVideo(pScrn, portPriv, surface->id,
 		       surface->offsets[0], surface->offsets[0],
 		       surface->offsets[0], surface->offsets[0],
 		       surface->width, surface->height, surface->pitches[0],

@@ -1362,6 +1362,8 @@ Bool RADEONDRIScreenInit(ScreenPtr pScreen)
 #endif
 	}
 
+	req_minor = 100; /* for GATOS */
+
 	if (version->version_major != 1 ||
 	    version->version_minor < req_minor ||
 	    (version->version_minor == req_minor && 
