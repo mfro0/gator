@@ -138,7 +138,7 @@ global current_encoding_menu
 #grid $c.portl $c.port_optionmenu -sticky news
 #grid configure $c.portl -sticky nws
 
-eval label $c.encodingl -text "\"Encoding: \"" [get_settings $c.encodingl AVview]
+eval label $c.encodingl -text {{Encoding: }} [get_settings $c.encodingl AVview]
 set current_encoding_menu [tk_optionMenu $c.encoding_optionmenu current_encoding_name  none]
 eval $c.encoding_optionmenu configure [get_settings $c.encoding_optionmenu AVview]
 eval $current_encoding_menu configure [get_settings $current_encoding_menu AVview menu]
@@ -157,7 +157,7 @@ grid configure $c.encodingl -sticky nws
 #grid $c.tablel $c.table_optionmenu -sticky news
 #grid configure $c.tablel -sticky nws
 
-eval label $c.channell -text "\"Channel: \"" [get_settings $c.channell]
+eval label $c.channell -text {{Channel: }} [get_settings $c.channell]
 set current_channel_menu [tk_optionMenu $c.channel_optionmenu current_channel none]
 eval $c.channel_optionmenu configure [get_settings $c.channel_optionmenu AVview]
 eval $current_channel_menu configure [get_settings $current_channel_menu AVview menu]
@@ -165,6 +165,12 @@ $current_channel_menu delete 0 end
 grid $c.channell $c.channel_optionmenu -sticky news
 grid configure $c.channell -sticky nsw
 
+eval checkbutton $c.xv_attr -variable attributes_window -text {{Xv Attributes}} -indicatoron false -onvalue true -offvalue false
+grid $c.xv_attr -row 0 -column 2 -padx 2 -pady 2
+eval checkbutton $c.capture_attr -variable capture_window -text {{Capture controls}} -indicatoron false -onvalue true -offvalue false
+grid $c.capture_attr -row 0 -column 3 -padx 2 -pady 2
+eval checkbutton $c.alsa_attr -variable alsa_window -text {{ALSA mixer}} -indicatoron false -onvalue true -offvalue false
+grid $c.alsa_attr -row 0 -column 4 -padx 2 -pady 2
 
 #eval checkbutton $c.fullscreen_checkbutton -text "Fullscreen"  \
 #	-indicatoron false -variable fullscreen_mode [get_settings $c.fullscreen_checkbutton]
@@ -711,11 +717,11 @@ menu .video_menu.interface_menu.theme_menu -type normal -tearoff false
 .video_menu.interface_menu add command -label "Show setup window" -command "create_setup_window"
 .video_menu.interface_menu add command -label "Favorite channel editor" -command scan_channels
 .video_menu.interface_menu add separator
-.video_menu.interface_menu add checkbutton -label "Show control window" -variable show_control_window
-.video_menu.interface_menu add checkbutton -label "Show Xv attributes section" -variable attributes_window
-.video_menu.interface_menu add checkbutton -label "Show capture (V4L) section" -variable capture_window
+.video_menu.interface_menu add checkbutton -label "Show control window" -variable show_control_window  -onvalue true -offvalue false
+.video_menu.interface_menu add checkbutton -label "Show Xv attributes section" -variable attributes_window  -onvalue true -offvalue false
+.video_menu.interface_menu add checkbutton -label "Show capture (V4L) section" -variable capture_window  -onvalue true -offvalue false
 if { [alsa_present] == "yes" } {
-	.video_menu.interface_menu add checkbutton -label "Show audio mixer (ALSA) section" -variable alsa_window
+	.video_menu.interface_menu add checkbutton -label "Show audio mixer (ALSA) section" -variable alsa_window  -onvalue true -offvalue false
 	} 
 .video_menu.interface_menu add separator
 .video_menu.interface_menu add cascade -label "Theme" -menu .video_menu.interface_menu.theme_menu

@@ -65,11 +65,12 @@ array set theme_settings_cache [array get tsc]
 proc get_settings { widget args } {
 global theme_settings_cache
 global current_theme_proc
-if { [catch { return "$theme_settings_cache([list $widget $args])" } ] } {
+if { [catch { set a "$theme_settings_cache([list $widget $args])" } ] } {
 	set a [$current_theme_proc "$widget" $args]
 	array set theme_settings_cache [list [list $widget $args] $a ]
 	return $a
 	}
+return $a
 }
 
 #
