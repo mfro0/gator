@@ -129,6 +129,7 @@ typedef struct _R128PortPrivRec {
    Bool          autopaint_colorkey;
 } R128PortPrivRec, *R128PortPrivPtr;
 
+static void R128MuteAudio(R128PortPrivPtr pPriv, Bool mute);
 void R128_detect_addon(R128PortPrivPtr pPriv);
 Bool R128SetupTheatre(ScrnInfoPtr pScrn, R128PortPrivPtr pPriv, TheatrePtr t);
 void R128_RT_SetEncoding(R128PortPrivPtr pPriv);
@@ -247,6 +248,32 @@ static XF86ImageRec Images[NUM_IMAGES] =
 	XVIMAGE_YV12,
 	XVIMAGE_I420
 };
+
+static void R128MuteAudio(R128PortPrivPtr pPriv, Bool mute)
+{
+  if (pPriv->msp3430 != NULL) xf86_MSP3430SetVolume(pPriv->msp3430, mute ? MSP3430_FAST_MUTE : pPriv->volume);
+  if (pPriv->tda9850 != NULL) xf86_tda9850_mute(pPriv->tda9850, mute);
+  if (pPriv->tda8425 != NULL) xf86_tda8425_mute(pPriv->tda8425, mute);
+  if ((pPriv->bt829 != NULL) && (pPriv->bt829->out_en)) {
+    if (mute) xf86_bt829_SetP_IO(pPriv->bt829, 0x02);
+    else {
+      switch (pPriv->bt829->mux) {
+        case BT829_MUX2:
+          xf86_bt829_SetP_IO(pPriv->bt829, 0x00);
+          break;
+        case BT829_MUX0:
+          xf86_bt829_SetP_IO(pPriv->bt829, 0x01);
+          break;
+        case BT829_MUX1:
+          xf86_bt829_SetP_IO(pPriv->bt829, 0x00);
+          break;
+        default: /* shouldn't get here */
+          xf86_bt829_SetP_IO(pPriv->bt829, 0x00); /* hardware default */
+          break;
+      }
+    }
+  }
+}
 
 void R128LeaveVT_Video(ScrnInfoPtr pScrn)
 {
@@ -707,18 +734,21 @@ static void R128InitI2C(ScrnInfoPtr pScrn, R128PortPrivPtr pPriv)
       xf86LoaderReqSymbols(BT829SymbolsList, NULL);
       if(pPriv->bt829 == NULL)
       {
-         pPriv->bt829 = xf86_Detect_bt829(pPriv->i2c, BT829_ADDR_1);
+         pPriv->bt829 = xf86_bt829_Detect(pPriv->i2c, BT829_ATI_ADDR_1);
       }
       if(pPriv->bt829 == NULL)
       {
-         pPriv->bt829 = xf86_Detect_bt829(pPriv->i2c, BT829_ADDR_2);
+         pPriv->bt829 = xf86_bt829_Detect(pPriv->i2c, BT829_ATI_ADDR_2);
       }
       if(pPriv->bt829 != NULL)
       {
-         if(!pPriv->MM_TABLE_valid) pPriv->bt829->vpole = 0;
-	    else pPriv->bt829->vpole = 1;
+         if(pPriv->MM_TABLE_valid)
+         {
+           xf86_bt829_SetP_IO(pPriv->bt829, 0x02); /* mute */
+           xf86_bt829_SetOUT_EN(pPriv->bt829, 1);
+         }
 	 pPriv->bt829->tunertype = pPriv->board_info & 0x0f;
-         if(!xf86_bt829_init(pPriv->bt829))pPriv->bt829 = NULL; /* disable it */
+         if(xf86_bt829_ATIInit(pPriv->bt829) < 0)pPriv->bt829 = NULL; /* disable it */
       }
     }
 
@@ -1475,9 +1505,7 @@ R128StopVideo(ScrnInfoPtr pScrn, pointer data, Bool cleanup)
         OUTREG(R128_CAP0_TRIG_CNTL, 0x0);
 	R128ResetVideo(pScrn);
 	pPriv->video_stream_active = FALSE;
-	if(pPriv->msp3430 != NULL) xf86_MSP3430SetVolume(pPriv->msp3430, MSP3430_FAST_MUTE);
-	if(pPriv->tda9850 != NULL) xf86_tda9850_mute(pPriv->tda9850, TRUE);
-	if(pPriv->tda8425 != NULL) xf86_tda8425_mute(pPriv->tda8425, TRUE);
+        R128MuteAudio(pPriv, TRUE);
         if(pPriv->i2c!=NULL) R128_board_setmisc(pPriv);
      }
      if(pPriv->linear) {
@@ -1585,9 +1613,7 @@ R128SetPortAttribute(
   } else 
   if(attribute == xvMute) {
         pPriv->mute = value;
-        if(pPriv->msp3430 != NULL) xf86_MSP3430SetVolume(pPriv->msp3430, pPriv->mute ? MSP3430_FAST_MUTE : pPriv->volume);
-	if(pPriv->tda9850 != NULL) xf86_tda9850_mute(pPriv->tda9850, pPriv->mute);
-	if(pPriv->tda8425 != NULL) xf86_tda8425_mute(pPriv->tda8425, pPriv->mute);
+        R128MuteAudio(pPriv, pPriv->mute);
         if(pPriv->i2c!=NULL) R128_board_setmisc(pPriv);
   } else 
   if(attribute == xvVolume) {
@@ -1596,6 +1622,7 @@ R128SetPortAttribute(
         pPriv->volume = value;
 	pPriv->mute = FALSE;
         if(pPriv->msp3430 != NULL) xf86_MSP3430SetVolume(pPriv->msp3430, value);
+        R128MuteAudio(pPriv, pPriv->mute);
         if(pPriv->i2c!=NULL) R128_board_setmisc(pPriv);
   } else 
      return BadMatch;
@@ -2139,8 +2166,7 @@ R128PutImage(
         OUTPLL(R128_FCP_CNTL, 0x404);
         OUTREG(R128_CAP0_TRIG_CNTL, 0x0);
 	pPriv->video_stream_active = FALSE;
-	if(pPriv->msp3430 != NULL) xf86_MSP3430SetVolume(pPriv->msp3430, MSP3430_FAST_MUTE);
-	if(pPriv->tda9850 != NULL) xf86_tda9850_mute(pPriv->tda9850, TRUE);
+        R128MuteAudio(pPriv, TRUE);
    }   
 
    /*
@@ -2408,6 +2434,7 @@ void R128_board_setmisc(R128PortPrivPtr pPriv)
 						    except tuner ones */ 
        xf86_tda8425_setaudio(pPriv->tda8425);
     }
+
     /* Adjust PAL/SECAM constants for FI1216MF tuner */
     if((((pPriv->board_info & 0xf)==5) ||
        ((pPriv->board_info & 0xf)==11) ||
@@ -2427,6 +2454,7 @@ void R128_board_setmisc(R128PortPrivPtr pPriv)
 	}
     }
 
+    R128MuteAudio(pPriv, pPriv->mute);
 }
 
 
@@ -2562,57 +2590,56 @@ void R128_BT_SetEncoding(R128PortPrivPtr pPriv)
 {
 switch(pPriv->encoding){
 	case 1:
-		pPriv->bt829->mux = 1;
+                xf86_bt829_SetMux(pPriv->bt829, BT829_MUX2);
 		pPriv->v=24;
-	        xf86_bt829_setformat(pPriv->bt829, BT829_PAL);
+	        xf86_bt829_SetFormat(pPriv->bt829, BT829_PAL);
 		break;
 	case 2:
-		pPriv->bt829->mux = 2;
+                xf86_bt829_SetMux(pPriv->bt829, BT829_MUX0);
 		pPriv->v=24;
-	        xf86_bt829_setformat(pPriv->bt829, BT829_PAL);
+	        xf86_bt829_SetFormat(pPriv->bt829, BT829_PAL);
 		break;
 	case 3:
-		pPriv->bt829->mux = 3;
+                xf86_bt829_SetMux(pPriv->bt829, BT829_MUX1);
 		pPriv->v=24;
-	        xf86_bt829_setformat(pPriv->bt829, BT829_PAL);
+	        xf86_bt829_SetFormat(pPriv->bt829, BT829_PAL);
 		break;
 	case 4:
-		pPriv->bt829->mux = 1;
+                xf86_bt829_SetMux(pPriv->bt829, BT829_MUX2);
 		pPriv->v=23;
-	        xf86_bt829_setformat(pPriv->bt829, BT829_NTSC);
+	        xf86_bt829_SetFormat(pPriv->bt829, BT829_NTSC);
 		break;
 	case 5:
-		pPriv->bt829->mux = 2;
+                xf86_bt829_SetMux(pPriv->bt829, BT829_MUX0);
 		pPriv->v=23;
-	        xf86_bt829_setformat(pPriv->bt829, BT829_NTSC);
+	        xf86_bt829_SetFormat(pPriv->bt829, BT829_NTSC);
 		break;
 	case 6:
-		pPriv->bt829->mux = 3;
+                xf86_bt829_SetMux(pPriv->bt829, BT829_MUX1);
 		pPriv->v=23;
-	        xf86_bt829_setformat(pPriv->bt829, BT829_NTSC);
+	        xf86_bt829_SetFormat(pPriv->bt829, BT829_NTSC);
 		break;
 	case 7:
-		pPriv->bt829->mux = 1;
+                xf86_bt829_SetMux(pPriv->bt829, BT829_MUX2);
 		pPriv->v=25;
-	        xf86_bt829_setformat(pPriv->bt829, BT829_SECAM);
+	        xf86_bt829_SetFormat(pPriv->bt829, BT829_SECAM);
 		break;
 	case 8:
-		pPriv->bt829->mux = 2;
+                xf86_bt829_SetMux(pPriv->bt829, BT829_MUX0);
 		pPriv->v=25;
-	        xf86_bt829_setformat(pPriv->bt829, BT829_SECAM);
+	        xf86_bt829_SetFormat(pPriv->bt829, BT829_SECAM);
 		break;
 	case 9:
-		pPriv->bt829->mux = 3;
+                xf86_bt829_SetMux(pPriv->bt829, BT829_MUX1);
 		pPriv->v=25;
-	        xf86_bt829_setformat(pPriv->bt829, BT829_SECAM);
+	        xf86_bt829_SetFormat(pPriv->bt829, BT829_SECAM);
 		break;
 	default:
-		pPriv->bt829->mux = 1;
+                xf86_bt829_SetMux(pPriv->bt829, BT829_MUX2);
 		pPriv->v=23;
-	        xf86_bt829_setformat(pPriv->bt829, BT829_NTSC);
+	        xf86_bt829_SetFormat(pPriv->bt829, BT829_NTSC);
 		return;
 	}	
-xf86_bt829_setmux(pPriv->bt829);
 if(pPriv->tda9850!=NULL){
 	pPriv->tda9850->mux = pPriv->bt829->mux;
 	xf86_tda9850_setaudio(pPriv->tda9850);
@@ -2723,7 +2750,7 @@ R128PutVideo(
    if(pPriv->bt829 != NULL)
    {
       width = InputVideoEncodings[pPriv->encoding].width;
-      height = InputVideoEncodings[pPriv->encoding].height; 
+      height = InputVideoEncodings[pPriv->encoding].height;
    } else 
       return FALSE;
         
@@ -2819,7 +2846,7 @@ R128PutVideo(
    if(pPriv->bt829 != NULL) 
    {
       R128_BT_SetEncoding(pPriv);
-      xf86_bt829_setcaptsize(pPriv->bt829, width, height*2);
+      xf86_bt829_SetCaptSize(pPriv->bt829, width, height*2);
    }
    
    if(pPriv->i2c!=NULL) R128_board_setmisc(pPriv);

@@ -1,16 +1,21 @@
+/* TODO: clean up/fix CC code */
+
 #include "xf86.h"
 #include "xf86i2c.h"
 #include "bt829.h"
 #include "i2c_def.h"
 
-#define BTREAD(R)	btread(bt,(R))
-#define BTWRITE(R,V)	btwrite(bt,(R),(V))
+/* Changing the following settings (especially VCROP) may */
+/* require modifying code that calls this driver.         */
+#define HCROP	0	/* amount to crop from the left and right edges */
+#define VCROP	0	/* amount to crop from the top and bottom edges */
+
+#define BTVERSION	(bt->id>>4)
+
 #define H(X)		( ((X)>>8) & 0xFF )
 #define L(X)		( (X) & 0xFF )
 
-
-#define LIMIT(X,A,B)  (((X)<(A)) ? (A) : ((X)>(B)) ? (B) : (X) )
-
+#define LIMIT(X,A,B)	(((X)<(A)) ? (A) : ((X)>(B)) ? (B) : (X) )
 
 /* Bt829 family chip ID's */
 #define BT815	0x02
@@ -54,11 +59,6 @@
 #define SRESET		0x1F	/* Software Reset */
 #define P_IO		0x3F	/* Programmable I/O */
 
-void bt829_crop(BT829Ptr bt);
-void bt829_ctrl(BT829Ptr bt);
-void bt829_iform(BT829Ptr bt);
-
-
 static CARD8 btread(BT829Ptr bt, CARD8 reg)
 {
   CARD8 v;
@@ -77,11 +77,382 @@ static void btwrite(BT829Ptr bt, CARD8 reg, CARD8 val)
   I2C_WriteRead(&(bt->d), data, 2, NULL, 0);
 }
 
-BT829Ptr Detect_bt829(I2CBusPtr b, I2CSlaveAddr addr)
+/*
+ * Register access
+ */
+static void btwrite_status(BT829Ptr bt) /* STATUS */
+{
+  btwrite(bt, STATUS, 0x00); /* clear */
+}
+
+static void btwrite_iform(BT829Ptr bt) /* IFORM */
+{
+  int xtsel;
+
+  switch (bt->format) {
+    case BT829_NTSC:
+    case BT829_NTSC_JAPAN:
+    case BT829_PAL_M:
+    case BT829_PAL_N_COMB: /* gatos says xtsel = 2 */
+      xtsel = 1;
+      break;
+    case BT829_PAL:
+    case BT829_PAL_N:
+    case BT829_SECAM:
+      xtsel = 2;
+      break;
+    default: /* shouldn't get here */
+      xtsel = 3; /* hardware default */
+      break;
+  }
+
+  btwrite(bt, IFORM, (bt->mux<<5) | (xtsel<<3) | bt->format);
+}
+
+static void btwrite_tdec(BT829Ptr bt) /* TDEC */
+{
+  /* use default */
+}
+
+static void btwrite_crop(BT829Ptr bt) /* CROP */
+{
+  btwrite(bt, CROP, (H(bt->vdelay)<<6) | (H(bt->vactive)<<4) |
+    (H(bt->hdelay)<<2) | H(bt->width));
+}
+
+static void btwrite_vdelay_lo(BT829Ptr bt) /* VDELAY_LO */
+{
+  btwrite(bt, VDELAY_LO, L(bt->vdelay));
+}
+
+static void btwrite_vactive_lo(BT829Ptr bt) /* VACTIVE_LO */
+{
+  btwrite(bt, VACTIVE_LO, L(bt->vactive));
+}
+
+static void btwrite_hdelay_lo(BT829Ptr bt) /* HDELAY_LO */
+{
+  btwrite(bt, HDELAY_LO, L(bt->hdelay));
+}
+
+static void btwrite_hactive_lo(BT829Ptr bt) /* HACTIVE_LO */
+{
+  btwrite(bt, HACTIVE_LO, L(bt->width));
+}
+
+static void btwrite_hscale_hi(BT829Ptr bt) /* HSCALE_HI */
+{
+  btwrite(bt, HSCALE_HI, H(bt->hscale));
+}
+
+static void btwrite_hscale_lo(BT829Ptr bt) /* HSCALE_LO */
+{
+  btwrite(bt, HSCALE_LO, L(bt->hscale));
+}
+
+static void btwrite_bright(BT829Ptr bt) /* BRIGHT */
+{
+  btwrite(bt, BRIGHT, bt->brightness);
+}
+
+static void btwrite_control(BT829Ptr bt) /* CONTROL */
+{
+  int ldec;
+
+  /* The data sheet says ldec should always be 0 for SECAM */
+  /* but the picture quality is better with ldec = 1       */
+  ldec = (bt->width > 360); /* gatos says 384 */
+
+  btwrite(bt, CONTROL,
+    ((bt->mux==bt->svideo_mux) ? 0xC0:0x00) | /* LNOTCH and COMP */
+    (ldec<<5) | (H(bt->contrast)<<2) | (H(bt->sat_u)<<1) | H(bt->sat_v));
+}
+
+static void btwrite_contrast_lo(BT829Ptr bt) /* CONTRAST_LO */
+{
+  btwrite(bt, CONTRAST_LO, L(bt->contrast));
+}
+
+static void btwrite_sat_u_lo(BT829Ptr bt) /* SAT_U_LO */
+{
+  btwrite(bt, SAT_U_LO, L(bt->sat_u));
+}
+
+static void btwrite_sat_v_lo(BT829Ptr bt) /* SAT_V_LO */
+{
+  btwrite(bt, SAT_V_LO, L(bt->sat_v));
+}
+
+static void btwrite_hue(BT829Ptr bt) /* HUE */
+{
+  btwrite(bt, HUE, bt->hue);
+}
+
+static void btwrite_scloop(BT829Ptr bt) /* SCLOOP */
+{
+  if (BTVERSION >= BT827) {
+    btwrite(bt, SCLOOP,
+      (bt->format==BT829_SECAM) ? 0x10:0x00 /* QCIF or AUTO */
+    );
+  }
+}
+
+static void btwrite_wc_up(BT829Ptr bt) /* WC_UP */
+{
+  if (BTVERSION >= BT827) {
+    /* use default */
+  }
+}
+
+static void btwrite_oform(BT829Ptr bt) /* OFORM */
+{
+  btwrite(bt, OFORM, (bt->code<<3) | (bt->len<<2) |
+    0x02 /* RANGE = 0, CORE = 0, VBI_FRAME = 0, OES = 2 (default) */
+  );
+}
+
+static void btwrite_vscale_hi(BT829Ptr bt) /* VSCALE_HI */
+{
+  btwrite(bt, VSCALE_HI, H(bt->vscale) |
+    0x60 /* YCOMB = 0, COMB = 1, INT = 1 (default) */
+  );
+}
+
+static void btwrite_vscale_lo(BT829Ptr bt) /* VSCALE_LO */
+{
+  btwrite(bt, VSCALE_LO, L(bt->vscale));
+}
+
+/* TEST should not be written to */
+
+static void btwrite_vpole(BT829Ptr bt) /* VPOLE */
+{
+  btwrite(bt, VPOLE, (bt->out_en<<7));
+}
+
+/* IDCODE is read only */
+
+static void btwrite_adelay(BT829Ptr bt) /* ADELAY */
+{
+  switch (bt->format) {
+    case BT829_NTSC:
+    case BT829_NTSC_JAPAN:
+    case BT829_PAL_M:
+      btwrite(bt, ADELAY, 104);
+      break;
+    case BT829_PAL:
+    case BT829_PAL_N:
+    case BT829_SECAM:
+    case BT829_PAL_N_COMB:
+      btwrite(bt, ADELAY, 127);
+      break;
+    default: /* shouldn't get here */
+      btwrite(bt, ADELAY, 104); /* hardware default */
+      break;
+  }
+}
+
+static void btwrite_bdelay(BT829Ptr bt) /* BDELAY */
+{
+  switch (bt->format) {
+    case BT829_NTSC:
+    case BT829_NTSC_JAPAN:
+    case BT829_PAL_M:
+      btwrite(bt, BDELAY, 93);
+      break;
+    case BT829_PAL:
+    case BT829_PAL_N:
+    case BT829_PAL_N_COMB:
+      btwrite(bt, BDELAY, 114);
+      break;
+    case BT829_SECAM:
+      btwrite(bt, BDELAY, 160);
+      break;
+    default: /* shouldn't get here */
+      btwrite(bt, BDELAY, 93); /* hardware default */
+      break;
+  }
+}
+
+static void btwrite_adc(BT829Ptr bt) /* ADC */
+{
+  btwrite(bt, ADC, bt->mux==bt->svideo_mux ? 0x80:0x82); /* CSLEEP = 0 or 1 */
+}
+
+static void btwrite_vtc(BT829Ptr bt) /* VTC */
+{
+  int vfilt = 0; /* hardware default */
+
+  if (BTVERSION > BT827) { /* gatos says >= BT827 */
+    switch (bt->format) {
+      case BT829_NTSC:
+      case BT829_NTSC_JAPAN:
+      case BT829_PAL_M:
+      case BT829_PAL_N_COMB: /* gatos groups with BT829_PAL */
+        if (bt->width <= 360) vfilt = 1; /* gatos says <= 240 */
+        if (bt->width <= 180) vfilt = 2; /* gatos says <= 120 */
+        if (bt->width <=  90) vfilt = 3; /* gatos says <= 60 */
+        break;
+      case BT829_PAL:
+      case BT829_PAL_N:
+      case BT829_SECAM:
+        if (bt->width <= 384) vfilt = 1;
+        if (bt->width <= 192) vfilt = 2;
+        if (bt->width<=  96) vfilt = 3;
+        break;
+      default: /* shouldn't get here */
+        break; /* use hardware default */
+    }
+    btwrite(bt, VTC, (bt->vbien<<4) | (bt->vbifmt<<3) | vfilt);
+  }
+}
+
+static void btwrite_cc_status(BT829Ptr bt) /* CC_STATUS */
+{ /* FIXME: ATI specific */
+  if (BTVERSION >= BT827) {
+    if (bt->ccmode == 0) btwrite(bt, CC_STATUS, 0x00);
+    /* 0x40 is activate to set the CCVALID line. Not required yet */
+    else btwrite(bt, CC_STATUS, (bt->ccmode<<4) | 0x40);
+  }
+}
+
+/* CC_DATA is read only */
+
+static void btwrite_wc_dn(BT829Ptr bt) /* WC_DN */
+{
+  if (BTVERSION >= BT827) {
+    /* use default */
+  }
+}
+
+static void bt_reset(BT829Ptr bt) { /* SRESET */
+  btwrite(bt, SRESET, 0x0); /* Reset all registers */
+}
+
+static void btwrite_p_io(BT829Ptr bt) /* P_IO */
+{
+  if (BTVERSION >= BT827) {
+    btwrite(bt, P_IO, bt->p_io);
+  }
+}
+
+/*
+ * Deal with dependencies
+ */
+static void propagate_changes(BT829Ptr bt)
+{
+  CARD16 hdelay, unscaled_hdelay, vdelay, hscale, vscale;
+  int htotal, vactive;
+
+  switch (bt->format) {
+    case BT829_NTSC:
+    case BT829_NTSC_JAPAN:
+    case BT829_PAL_M:
+      vdelay = 22;
+      htotal = 754;
+      vactive = 480;
+      unscaled_hdelay = 135;
+      break;
+    case BT829_PAL:
+    case BT829_PAL_N:
+      vdelay = (bt->tunertype==5) ? 34 : 22;
+      htotal = 922;
+      vactive = 576;
+      unscaled_hdelay = 186;
+      break;
+    case BT829_SECAM:
+      vdelay = 34;
+      htotal = 922;
+      vactive = 576;
+      unscaled_hdelay = 186;
+      break;
+    case BT829_PAL_N_COMB:
+      vdelay = (bt->tunertype==5) ? 34 : 22; /* windows says 22 */
+      htotal = 754; /* gatos and windows say 922 */
+      vactive = 576;
+      unscaled_hdelay = 135; /* gatos and windows say 186 */
+      break;
+    default: /* shouldn't get here */
+      vdelay = 22; /* hardware default */
+      htotal = 754;
+      vactive = 480; /* hardware default */
+      unscaled_hdelay = 135;
+      break;
+  }
+
+  bt->htotal = htotal; /* Used for error checking in bt829_SetCaptSize */
+
+  hscale = 4096 * htotal / (bt->width + 2 * HCROP)-4096;
+  hdelay = (
+    HCROP + (bt->width + 2 * HCROP) * unscaled_hdelay / htotal
+  ) & 0x3FE;
+
+  vactive = vactive - 2 * VCROP;
+  vdelay = vdelay + VCROP;
+  vscale = (0x10000 - (512*vactive/bt->height-512)) & 0x1FFF;
+
+  if ((hdelay  != bt->hdelay)  || (vdelay != bt->vdelay) ||
+      (vactive != bt->vactive) || (hscale != bt->hscale) ||
+      (vscale  != bt->vscale)) {
+    bt->hdelay = hdelay;
+    bt->vdelay = vdelay;
+    bt->vactive = vactive;
+    bt->hscale = hscale;
+    bt->vscale = vscale;
+    btwrite_crop(bt);
+    btwrite_vdelay_lo(bt);
+    btwrite_vactive_lo(bt);
+    btwrite_hdelay_lo(bt);
+    btwrite_hscale_hi(bt);
+    btwrite_hscale_lo(bt);
+    btwrite_control(bt);
+    btwrite_vscale_hi(bt);
+    btwrite_vscale_lo(bt);
+  }
+}
+
+static void write_all(BT829Ptr bt)
+{
+  bt_reset(bt);
+  propagate_changes(bt); /* ensure consistency */
+  btwrite_iform(bt);
+  btwrite_tdec(bt);
+  btwrite_crop(bt);
+  btwrite_vdelay_lo(bt);
+  btwrite_vactive_lo(bt);
+  btwrite_hdelay_lo(bt);
+  btwrite_hactive_lo(bt);
+  btwrite_hscale_hi(bt);
+  btwrite_hscale_lo(bt);
+  btwrite_bright(bt);
+  btwrite_control(bt);
+  btwrite_contrast_lo(bt);
+  btwrite_sat_u_lo(bt);
+  btwrite_sat_v_lo(bt);
+  btwrite_hue(bt);
+  btwrite_scloop(bt);
+  btwrite_wc_up(bt);
+  btwrite_oform(bt);
+  btwrite_vscale_hi(bt);
+  btwrite_vscale_lo(bt);
+  btwrite_vpole(bt);
+  btwrite_adelay(bt);
+  btwrite_bdelay(bt);
+  btwrite_adc(bt);
+  btwrite_vtc(bt);
+/*  btwrite_cc_status(bt); */ /* FIXME: CC code needs cleaning */
+  btwrite_wc_dn(bt);
+  btwrite_p_io(bt);
+}
+
+/*
+ * Public functions
+ */
+BT829Ptr bt829_Detect(I2CBusPtr b, I2CSlaveAddr addr)
 {
   BT829Ptr bt;
   I2CByte a;
-  
+
   bt = xcalloc(1, sizeof(BT829Rec));
   if(bt == NULL) return NULL;
   bt->d.DevName = strdup("BT829 video decoder");
@@ -93,18 +464,18 @@ BT829Ptr Detect_bt829(I2CBusPtr b, I2CSlaveAddr addr)
   bt->d.AcknTimeout = b->AcknTimeout;
   bt->d.ByteTimeout = b->ByteTimeout;
 
-  
+
   if(!I2C_WriteRead(&(bt->d), NULL, 0, &a, 1))
   {
      free(bt);
      return NULL;
   }
-  
-  bt->id = BTREAD(IDCODE);
-  
+
+  bt->id = btread(bt,IDCODE);
+
   free(bt->d.DevName);
   bt->d.DevName = xcalloc(200, sizeof(char));
-  switch((bt->id)>>4){
+  switch(BTVERSION){
   	case BT815:
 		sprintf(bt->d.DevName, "bt815a video decoder, revision %d",bt->id & 0xf);
 		break;
@@ -125,210 +496,176 @@ BT829Ptr Detect_bt829(I2CBusPtr b, I2CSlaveAddr addr)
   		break;
 	}
 
-  bt->xtsel=0;
-  bt->htotal=0; 
-  bt->vtotal=0; 
-  bt->ldec=1; 
-  bt->cbsense=0;
-  bt->adelay=0; 
-  bt->bdelay=0; 
-  bt->hdelay=0; 
-  bt->vdelay=22;
-  bt->luma=0; 
-  bt->sat_u=0; 
-  bt->sat_v=0;
-
-  bt->vpole=1; /* all-in-wonder 128 uses vpole=1, other cards
-                  (like All-in-Wonder classic) use vpole=0 */
-
-  bt->tunertype=1;
-  bt->format=BT829_NTSC;
   /* set default parameters */
   if(!I2CDevInit(&(bt->d)))
   {
      free(bt);
      return NULL;
   }
+
+  bt->tunertype = 1;
+
+  bt->brightness = 0; /* hardware default */
+  bt->ccmode = 0;
+  bt->code = 0; /* hardware default */
+  bt->contrast = 216; /* hardware default */
+  bt->format = BT829_NTSC;
+  bt->height = 480; /* hardware default for vactive */
+  bt->hue = 0; /* hardware default */
+  bt->len = 1; /* hardware default */
+  bt->mux = BT829_MUX0; /* hardware default */
+  bt->out_en = 0; /* hardware default */
+  bt->p_io = 0; /* hardware default */
+  bt->sat_u = 254; /* hardware default */
+  bt->sat_v = 180; /* hardware default */
+  bt->vbien = 0; /* hardware default */
+  bt->vbifmt = 0; /* hardware default */
+  bt->width = 640; /* hardware default for hactive */
+
+  bt->hdelay = 120; /* hardware default */
+  bt->hscale = 684; /* hardware default */
+  bt->vactive = 480; /* hardware default */
+  bt->vdelay = 22; /* hardware default */
+  bt->vscale = 0; /* hardware default */
+
+  bt->htotal = 754; /* NTSC */
+  bt->svideo_mux = 0; /* no s-video */
+
   return bt;
 }
 
-Bool bt829_init(BT829Ptr bt) 
+int bt829_ATIInit(BT829Ptr bt)
 {
-  	
-  BTWRITE(SRESET,0x0);
-  BTWRITE(VPOLE,(bt->vpole)<<7) ;
+  bt->code = 1;
+  bt->len = 0;
+  bt->vbien = 1;
+  bt->vbifmt = 1;
+  bt->svideo_mux = BT829_MUX1;
 
-  bt829_setformat(bt, bt->format);
-  return TRUE;  
+  write_all (bt);
+
+  return 0;
 }
 
-void bt829_setformat(BT829Ptr bt, int format) 
+int bt829_SetFormat(BT829Ptr bt, CARD8 format)
 {
-
-  /* NTSC, PAL or SECAM ? */
-  bt->format=format;
-  switch (bt->format) {
-    case 2: case 4:						/* NTSC */
-      if ((bt->id>>4) <= BT819) return; /* can't do it */
-    case 1:							/* NTSC */
-      bt->adelay = 104 ; 
-      bt->bdelay = 93 ; 
-      bt->xtsel = 1 ; 
-      bt->vdelay = 22 ;
-      bt->htotal = 754 ; 
-      bt->vtotal = 480 ; 
-      break ;
-    case 5: case 7:						/* PAL */
-      if ((bt->id>>4) <= BT819) return ; /* can't do it */
-    case 3:							/* PAL */
-      bt->vdelay = (bt->tunertype==5) ? 34 : 22 ;
-      bt->adelay = 127 ; 
-      bt->bdelay = 114 ; 
-      bt->xtsel = 2 ;
-/*      bt->htotal = 888 ;  */
-	bt->htotal=922;  /* according to Marko..*/
-      bt->vtotal = 576 ; 
-      break ;
-    case 6:							/* SECAM */
-      if ((bt->id>>4) <= BT819) return; /* can't do it */
-      bt->adelay = 127 ; 
-      bt->bdelay = 160 ; 
-      bt->xtsel = 2 ; 
-      bt->vdelay = 34 ;
-/*      bt->htotal = 888 ; */
-      bt->htotal=922;  /* according to Marko..*/
-      bt->vtotal = 576 ; 
-      break ; 
-    }
-
-  /* Program the Bt829 */
-  bt829_iform(bt) ;
-  BTWRITE(TDEC,0x00) ;
-  BTWRITE(VDELAY_LO,L(bt->vdelay)) ;
-  BTWRITE(OFORM,0x0A) ;
-  BTWRITE(ADELAY,bt->adelay) ;
-  BTWRITE(BDELAY,bt->bdelay) ;
-  BTWRITE(ADC,0x82) ;
-  if ((bt->id>>4) >= BT827) {
-    BTWRITE(SCLOOP,(format==6)?0x10:0x00) ;
-    BTWRITE(WC_UP,0xCF) ;
-    bt829_setCC(bt) ;
-    BTWRITE(WC_DN,0x7F) ;
-    BTWRITE(P_IO,0x00) ; }
-  bt829_setmux(bt) ;
-  bt829_SetBrightness(bt,bt->iBrightness) ;
-  bt829_SetContrast(bt,bt->iContrast) ;
-  bt829_SetSaturation(bt,bt->iSaturation) ;
-  bt829_SetTint(bt,bt->iHue) ;
+  if ((format < 1) || (format > 7)) return -1;
+  if ((BTVERSION <= BT819) &&
+      (format != BT829_NTSC) && (format != BT829_PAL)) return -1;
+  if (format == bt->format) return 0;
+  bt->format = format;
+  propagate_changes(bt);
+  btwrite_iform(bt);
+  btwrite_scloop(bt);
+  btwrite_adelay(bt);
+  btwrite_bdelay(bt);
+  btwrite_vtc(bt);
+  return 0;
 }
 
-void bt829_setmux(BT829Ptr bt) 
-{ 
-if(bt->mux==2){
-	btwrite(bt,P_IO,1);
-	} else {
-	btwrite(bt,P_IO,0);
-	}
-if(bt->mux==3){
-	btwrite(bt,ADC,0x80);
-	} else {
-	btwrite(bt,ADC,0x82);
-	}
-bt829_ctrl(bt) ; 
-bt829_iform(bt) ; 
+int bt829_SetMux(BT829Ptr bt, CARD8 mux)
+{
+  if ((mux < 1) || (mux > 3)) return -1;
+  if (mux == bt->mux) return 0;
+  bt->mux = mux;
+  /* propagate_changes(bt); */ /* no dependencies */
+  btwrite_iform(bt);
+  btwrite_control(bt);
+  btwrite_adc(bt);
+  return 0;
 }
 
-void bt829_SetBrightness(BT829Ptr bt, int b) 
+void bt829_SetBrightness(BT829Ptr bt, int brightness)
 {
-  bt->iBrightness=b; 
-  b = (127*(b))/1000 ;
-  b = LIMIT(b,-128,127) ; 
-  BTWRITE(BRIGHT,b) ;; 
+  brightness = LIMIT(brightness,-1000,999); /* ensure -128 <= brightness <= 127 below */
+  brightness = (128*brightness)/1000;
+  if (brightness == bt->brightness) return;
+  bt->brightness = brightness;
+  /* propagate_changes(bt); */ /* no dependencies */
+  btwrite_bright(bt);
 }
 
-void bt829_SetContrast(BT829Ptr bt, int c) 
+void bt829_SetContrast(BT829Ptr bt, int contrast)
 {
-  bt->iContrast=c;
-  c = (216*(c+1000))/1000 ; 
-  bt->luma = LIMIT(c,0,511) ;
-  bt829_ctrl(bt) ; 
-  BTWRITE(CONTRAST_LO,L(bt->luma)) ; 
+  contrast = LIMIT(contrast,-1000,1000);
+  contrast = (216*(contrast+1000))/1000;
+  if (contrast == bt->contrast) return;
+  bt->contrast = contrast;
+  /* propagate_changes(bt); */ /* no dependencies */
+  btwrite_control(bt);
+  btwrite_contrast_lo(bt);
 }
 
-void bt829_SetSaturation(BT829Ptr bt, int s)
+void bt829_SetSaturation(BT829Ptr bt, int saturation)
 {
-  bt->iSaturation=s;
-  s=(s+1000)/10;
-  s = LIMIT(s, 0, 200);
-  bt->sat_u = 254*s/100 ; bt->sat_v = 180*s/100 ;
-  bt829_ctrl(bt) ; 
-  BTWRITE(SAT_U_LO,L(bt->sat_u)) ; 
-  BTWRITE(SAT_V_LO,L(bt->sat_v)) ;
+  CARD16 sat_u, sat_v;
+
+  saturation = LIMIT(saturation,-1000,1000);
+  sat_u = (254*(saturation+1000))/1000;
+  sat_v = (180*(saturation+1000))/1000;
+  if ((sat_u == bt->sat_u) && (sat_v == bt->sat_v)) return;
+  bt->sat_u = sat_u;
+  bt->sat_v = sat_v;
+  /* propagate_changes(bt); */ /* no dependencies */
+  btwrite_control(bt);
+  btwrite_sat_u_lo(bt);
+  btwrite_sat_v_lo(bt);
 }
 
-void bt829_SetTint(BT829Ptr bt, int h) 
+void bt829_SetTint(BT829Ptr bt, int hue)
 {
-  bt->iHue=h;
-  h = 128*h/1000 ; h = LIMIT(h,-128,127) ;
-  BTWRITE(HUE,h) ;   
+  hue = LIMIT(hue,-1000,999); /* ensure -128 <= hue <= 127 below */
+  hue = (128*hue)/1000;
+  if (hue == bt->hue) return;
+  bt->hue = hue;
+  /* propagate_changes(bt); */ /* no dependencies */
+  btwrite_hue(bt);
 }
 
-void bt829_setcaptsize(BT829Ptr bt, int width, int height) 
+int bt829_SetCaptSize(BT829Ptr bt, int width, int height)
 {
-
-  CARD16 hscale, vscale ; CARD8 yci=0x60, vfilt=0 ;
-#if 0
-  xf86DrvMsg(bt->d.pI2CBus->scrnIndex, X_INFO, "bt829_setcaptsize %dx%d\n", width, height);
-#endif  
+  if ((width > bt->htotal - 2 * HCROP) ||
+      (16 * width < bt->htotal - 32 * HCROP)) return -1;
+  if ((height > bt->vactive) || (16 * height < bt->vactive)) return -1;
+  if ((width == bt->width) && (height == bt->height)) return 0;
   bt->width = width;
   bt->height = height;
-  /* NTSC, PAL or SECAM ? */
-  switch (bt->format) {
-    case 1: case 2: case 4:				/* NTSC */
-      bt->hdelay = bt->width*135/754 ;
-      if (bt->width <= 240) vfilt = 1 ;
-      if (bt->width <= 120) vfilt = 2 ;
-      if (bt->width <=  60) vfilt = 3 ; break ;
-    case 3: case 5: case 6: case 7:			/* PAL/SECAM */
-/*      bt->hdelay = bt->width*176/768 ;
-	Marko says should be 186/922 */
-      bt->hdelay = bt->width*186/922 ;
-      if (bt->width <= 384) vfilt = 1 ;
-      if (bt->width <= 192) vfilt = 2 ;
-      if (bt->width<=  96) vfilt = 3 ; break ;
-    default: return ; /* can't do it */ }
-
-  bt->ldec = (bt->width> 384) ;
-  bt->cbsense = bt->hdelay & 1 ;
-  hscale = 4096*bt->htotal/bt->width-4096 ;
-  vscale = (0x10000 - (512*bt->vtotal/bt->height-512)) & 0x1FFF ;
-
-  bt829_crop(bt) ; bt829_ctrl(bt) ;
-  BTWRITE(VACTIVE_LO,L(bt->vtotal)) ;
-  BTWRITE(HDELAY_LO,L(bt->hdelay)) ;
-  BTWRITE(HACTIVE_LO,L(bt->width)) ;
-  BTWRITE(HSCALE_HI,H(hscale)) ;
-  BTWRITE(HSCALE_LO,L(hscale)) ;
-  BTWRITE(VSCALE_HI,H(vscale)|yci) ;
-  BTWRITE(VSCALE_LO,L(vscale)) ;
-  if ((bt->id>>4) >= BT827) BTWRITE(VTC,0x18|vfilt) ;
-
+  propagate_changes(bt);
+  btwrite_crop(bt);
+  btwrite_hactive_lo(bt);
+  btwrite_control(bt);
+  btwrite_vtc(bt);
+  return 0;
 }
 
-int bt829_setCC(BT829Ptr bt) 
+int bt829_SetCC(BT829Ptr bt) /* FIXME: should take ccmode as a parameter */
 {
-  if ((bt->id >>4) < BT827) {
-    bt->CCmode = 0;
-    return -1; }
-  if (bt->CCmode == 0) { /* Powering off circuitry */
-    BTWRITE(CC_STATUS,0x00);
-     return 0; }
-  /* 0x40 is activate to set the CCVALID line. Not required yet */
-  BTWRITE(CC_STATUS,(bt->CCmode<<4)|0x40);
-/* we write to STATUS to reset the CCVALID flag */
-  BTWRITE(STATUS,0x00);
-  return 0; 
+  if (BTVERSION < BT827) return -1; /* can't do it */
+  /* propagate_changes(bt); */ /* no dependencies */
+  btwrite_cc_status(bt);
+  /* we write to STATUS to reset the CCVALID flag */
+  if (bt->ccmode != 0) btwrite_status(bt);
+  return 0;
 }
+
+void bt829_SetOUT_EN(BT829Ptr bt, BOOL out_en)
+{
+  out_en = (out_en != 0);
+  if (out_en == bt->out_en) return;
+  bt->out_en = out_en;
+  /* propagate_changes(bt); */ /* no dependencies */
+  btwrite_vpole(bt);
+}
+
+void bt829_SetP_IO(BT829Ptr bt, CARD8 p_io)
+{
+  if (p_io == bt->p_io) return;
+  bt->p_io = p_io;
+  /* propagate_changes(bt); */ /* no dependencies */
+  btwrite_p_io(bt);
+}
+
+#define BTREAD(R)	btread(bt,(R))
 
 #if 0
 
@@ -348,7 +685,7 @@ void bt829_getCCdata(BT829Ptr bt,struct CCdata *data)
                                  (CCS_HIGH*(status&0x01)) |
                                  (CCS_OVER*((status&0x08)>>3)) |
                                  (CCS_PAR*((status&0x80)>>7)) ; }
-  BTWRITE(STATUS,0x00); /* Reset CCVALID status bit */
+  btwrite(bt,STATUS,0x00); /* Reset CCVALID status bit */
   return;
 }
 
@@ -361,59 +698,40 @@ void bt829_getCCdata(BT829Ptr bt,struct CCdata *data)
   xf86DrvMsg(bt->d.pI2CBus->scrnIndex,X_INFO," %-12s (0x%02X) = 0x%02X\n", \
               #REG,REG,BTREAD(REG))
 
-static void bt829_dumpregs(BT829Ptr bt) 
+/*static void bt829_dumpregs(BT829Ptr bt)
 {
-  DUMPREG(STATUS) ;
-  DUMPREG(IFORM) ;
-  DUMPREG(TDEC) ;
-  DUMPREG(CROP) ;
-  DUMPREG(VDELAY_LO) ;
-  DUMPREG(VACTIVE_LO) ;
-  DUMPREG(HDELAY_LO) ;
-  DUMPREG(HACTIVE_LO) ;
-  DUMPREG(HSCALE_HI) ;
-  DUMPREG(HSCALE_LO) ;
-  DUMPREG(BRIGHT) ;
-  DUMPREG(CONTROL) ;
-  DUMPREG(CONTRAST_LO) ;
-  DUMPREG(SAT_U_LO) ;
-  DUMPREG(SAT_V_LO) ;
-  DUMPREG(HUE) ;
-  if ((bt->id>>4) >= BT827) {
-    DUMPREG(SCLOOP) ;
+  DUMPREG(STATUS);
+  DUMPREG(IFORM);
+  DUMPREG(TDEC);
+  DUMPREG(CROP);
+  DUMPREG(VDELAY_LO);
+  DUMPREG(VACTIVE_LO);
+  DUMPREG(HDELAY_LO);
+  DUMPREG(HACTIVE_LO);
+  DUMPREG(HSCALE_HI);
+  DUMPREG(HSCALE_LO);
+  DUMPREG(BRIGHT);
+  DUMPREG(CONTROL);
+  DUMPREG(CONTRAST_LO);
+  DUMPREG(SAT_U_LO);
+  DUMPREG(SAT_V_LO);
+  DUMPREG(HUE);
+  if (BTVERSION >= BT827) {
+    DUMPREG(SCLOOP);
     DUMPREG(WC_UP) ; }
-  DUMPREG(OFORM) ;
-  DUMPREG(VSCALE_HI) ;
-  DUMPREG(VSCALE_LO) ;
-  DUMPREG(TEST) ;
-  DUMPREG(VPOLE) ;
-  DUMPREG(IDCODE) ;
-  DUMPREG(ADELAY) ;
-  DUMPREG(BDELAY) ;
-  DUMPREG(ADC) ;
-  if ((bt->id) >= BT827) {
-    DUMPREG(VTC) ;
-    DUMPREG(CC_STATUS) ;
-    DUMPREG(CC_DATA) ;
-    DUMPREG(WC_DN) ;
-    DUMPREG(P_IO) ; } 
-}
-
-/* ------------------------------------------------------------------------ */
-/* Private routines */
-
-void bt829_crop(BT829Ptr bt) 
-{
-  BTWRITE(CROP,(H(bt->vdelay)<<6)+(H(bt->vtotal)<<4)+(H(bt->hdelay)<<2)+H(bt->width)) ;
-}
-
-void bt829_ctrl(BT829Ptr bt) 
-{
-  BTWRITE(CONTROL,((bt->mux==3)?0xC0:0x00)+
-          (bt->ldec<<5)+(bt->cbsense<<4)+(H(bt->luma)<<2)+(H(bt->sat_u)<<1)+H(bt->sat_v)) ;
-}
-
-void bt829_iform(BT829Ptr bt) 
-{
-  BTWRITE(IFORM,(bt->mux<<5)|(bt->xtsel<<3)|bt->format) ;  
-}
+  DUMPREG(OFORM);
+  DUMPREG(VSCALE_HI);
+  DUMPREG(VSCALE_LO);
+  DUMPREG(TEST);
+  DUMPREG(VPOLE);
+  DUMPREG(IDCODE);
+  DUMPREG(ADELAY);
+  DUMPREG(BDELAY);
+  DUMPREG(ADC);
+  if (BTVERSION >= BT827) {
+    DUMPREG(VTC);
+    DUMPREG(CC_STATUS);
+    DUMPREG(CC_DATA);
+    DUMPREG(WC_DN);
+    DUMPREG(P_IO) ; }
+}*/

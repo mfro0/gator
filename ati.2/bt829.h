@@ -4,88 +4,111 @@
 #include "xf86i2c.h"
 
 typedef struct {
+	int 		tunertype;	/* Must be set before init */
+        /* Private variables */
 	I2CDevRec d;
-	
-	int 		width;
+
+    	CARD8		brightness;
+    	CARD8 		ccmode;
+        CARD8           code;
+    	CARD16		contrast;
+    	CARD8		format;
 	int		height;
-    	CARD16		adelay;
-    	CARD16		bdelay;
-    	CARD16		hdelay;
-    	CARD16		vdelay;
-    	CARD16		luma;
+    	CARD8		hue;
+        CARD8           len;
+    	CARD8		mux;
+    	CARD8           out_en;
+        CARD8           p_io;
     	CARD16		sat_u;
     	CARD16		sat_v;
-    	int		xtsel;
-    	int		htotal;
-    	int		vtotal;
-    	int		ldec;
-    	int		cbsense;
-    	int		format;
-    	int		mux;
-    	int		iHue;
-    	int		iSaturation;
-    	int		iBrightness;
-    	int		iContrast;
-    	int 		CCmode;
+        CARD8           vbien;
+        CARD8           vbifmt;
+	int 		width;
+
+    	CARD16		hdelay;
+        CARD16		hscale;
+    	CARD16		vactive;
+    	CARD16		vdelay;
+        CARD16		vscale;
+
+        CARD16          htotal;
     	CARD8		id;
-    	CARD8		vpole;
-	int 		tunertype;
-	} BT829Rec, *BT829Ptr;
-	
-#define BT829_ADDR_1   0x8a
-#define BT829_ADDR_2   0x88
+    	CARD8		svideo_mux;
+} BT829Rec, *BT829Ptr;
 
-#define BT829_PAL      3
-#define BT829_NTSC     1
-#define BT829_SECAM    6
+BT829Ptr bt829_Detect(I2CBusPtr b, I2CSlaveAddr addr);
 
-BT829Ptr Detect_bt829(I2CBusPtr b, I2CSlaveAddr addr);
-Bool bt829_init(BT829Ptr bt);
-void bt829_setformat(BT829Ptr bt, int format);
-void bt829_setmux(BT829Ptr bt);
-void bt829_SetBrightness(BT829Ptr bt, int b);
-void bt829_SetContrast(BT829Ptr bt, int c);
-void bt829_SetSaturation(BT829Ptr bt, int s);
-void bt829_SetTint(BT829Ptr bt, int h);
-void bt829_setcaptsize(BT829Ptr bt, int width, int height);
-int bt829_setCC(BT829Ptr bt);
+/* ATI card specific initialization */
+#define BT829_ATI_ADDR_1	0x8A
+#define BT829_ATI_ADDR_2	0x88
+int bt829_ATIInit(BT829Ptr bt);
+
+#define BT829_NTSC		1	/* NTSC-M */
+#define BT829_NTSC_JAPAN	2	/* NTSC-Japan */
+#define BT829_PAL		3	/* PAL-B,D,G,H,I */
+#define BT829_PAL_M		4	/* PAL-M */
+#define BT829_PAL_N		5	/* PAL-N */
+#define BT829_SECAM		6	/* SECAM */
+#define BT829_PAL_N_COMB	7	/* PAL-N combination */
+int bt829_SetFormat(BT829Ptr bt, CARD8 format);
+
+#define BT829_MUX2	1	/* ATI -> composite video */
+#define BT829_MUX0	2	/* ATI -> tv tuner */
+#define BT829_MUX1	3	/* ATI -> s-video */
+int bt829_SetMux(BT829Ptr bt, CARD8 mux);
+
+int bt829_SetCaptSize(BT829Ptr bt, int width, int height);
+
+void bt829_SetBrightness(BT829Ptr bt, int brightness);
+void bt829_SetContrast(BT829Ptr bt, int contrast);
+void bt829_SetSaturation(BT829Ptr bt, int saturation);
+void bt829_SetTint(BT829Ptr bt, int hue);	/* Hue */
+
+void bt829_SetOUT_EN(BT829Ptr bt, BOOL out_en);	/* VPOLE register */
+void bt829_SetP_IO(BT829Ptr bt, CARD8 p_io);	/* P_IO register */
+
+int bt829_SetCC(BT829Ptr bt);
 
 #define BT829SymbolsList   \
-		"Detect_bt829", \
-		"bt829_init", \
-		"bt829_setformat", \
-		"bt829_setmux", \
+		"bt829_Detect", \
+		"bt829_ATIInit", \
+		"bt829_SetFormat", \
+		"bt829_SetMux", \
 		"bt829_SetBrightness", \
 		"bt829_SetContrast", \
 		"bt829_SetSaturation", \
 		"bt829_SetTint", \
-		"bt829_setcaptsize", \
-		"bt829_setCC"
+		"bt829_SetCaptSize", \
+		"bt829_SetOUT_EN", \
+		"bt829_SetP_IO"
 
 #ifdef XFree86LOADER
 
-#define xf86_Detect_bt829         ((BT829Ptr (*)(I2CBusPtr, I2CSlaveAddr))LoaderSymbol("Detect_bt829"))
-#define xf86_bt829_init           ((Bool (*)(BT829Ptr))LoaderSymbol("bt829_init"))
-#define xf86_bt829_setformat      ((void (*)(BT829Ptr, int))LoaderSymbol("bt829_setformat"))
-#define xf86_bt829_setmux         ((void (*)(BT829Ptr))LoaderSymbol("bt829_setmux"))
-#define xf86_bt829_setcaptsize    ((void (*)(BT829Ptr, int, int))LoaderSymbol("bt829_setcaptsize"))
-#define xf86_bt829_SetBrightness  ((void (*)(BT829Ptr, int))LoaderSymbol("bt829_SetBrightness"))
-#define xf86_bt829_SetContrast    ((void (*)(BT829Ptr, int))LoaderSymbol("bt829_SetContrast"))
-#define xf86_bt829_SetSaturation  ((void (*)(BT829Ptr, int))LoaderSymbol("bt829_SetSaturation"))
-#define xf86_bt829_SetTint        ((void (*)(BT829Ptr, int))LoaderSymbol("bt829_SetTint"))
+#define xf86_bt829_Detect		((BT829Ptr (*)(I2CBusPtr, I2CSlaveAddr))LoaderSymbol("bt829_Detect"))
+#define xf86_bt829_ATIInit		((int (*)(BT829Ptr))LoaderSymbol("bt829_ATIInit"))
+#define xf86_bt829_SetFormat		((int (*)(BT829Ptr, CARD8))LoaderSymbol("bt829_SetFormat"))
+#define xf86_bt829_SetMux		((int (*)(BT829Ptr, CARD8))LoaderSymbol("bt829_SetMux"))
+#define xf86_bt829_SetCaptSize		((int (*)(BT829Ptr, int, int))LoaderSymbol("bt829_SetCaptSize"))
+#define xf86_bt829_SetBrightness	((void (*)(BT829Ptr, int))LoaderSymbol("bt829_SetBrightness"))
+#define xf86_bt829_SetContrast		((void (*)(BT829Ptr, int))LoaderSymbol("bt829_SetContrast"))
+#define xf86_bt829_SetSaturation	((void (*)(BT829Ptr, int))LoaderSymbol("bt829_SetSaturation"))
+#define xf86_bt829_SetTint		((void (*)(BT829Ptr, int))LoaderSymbol("bt829_SetTint"))
+#define xf86_bt829_SetOUT_EN		((void (*)(BT829Ptr, Bool))LoaderSymbol("bt829_SetOUT_EN"))
+#define xf86_bt829_SetP_IO		((void (*)(BT829Ptr, CARD8))LoaderSymbol("bt829_SetP_IO"))
 
 #else
 
-#define xf86_Detect_bt829               Detect_bt829
-#define xf86_bt829_init                 bt829_init
-#define xf86_bt829_setformat            bt829_setformat
-#define xf86_bt829_setmux               bt829_setmux
-#define xf86_bt829_setcaptsize          bt829_setcaptsize
-#define xf86_bt829_SetBrightness        bt829_SetBrightness
-#define xf86_bt829_SetContrast          bt829_SetContrast
-#define xf86_bt829_SetSaturation        bt829_SetSaturation
-#define xf86_bt829_SetTint              bt829_SetTint
-
+#define xf86_bt829_Detect		bt829_Detect
+#define xf86_bt829_ATIInit		bt829_ATIInit
+#define xf86_bt829_SetFormat		bt829_SetFormat
+#define xf86_bt829_SetMux		bt829_SetMux
+#define xf86_bt829_SetCaptSize		bt829_SetCaptSize
+#define xf86_bt829_SetBrightness	bt829_SetBrightness
+#define xf86_bt829_SetContrast		bt829_SetContrast
+#define xf86_bt829_SetSaturation	bt829_SetSaturation
+#define xf86_bt829_SetTint		bt829_SetTint
+#define xf86_bt829_SetOUT_EN		bt829_SetOUT_EN
+#define xf86_bt829_SetP_IO		bt829_SetP_IO
 
 #endif
 
