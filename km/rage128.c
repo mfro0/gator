@@ -144,10 +144,10 @@ if(buffer<0){
 	}
 if(field){
 	offset=kms->buf0_even_offset;
-	kms->fi[buffer].flag&=~KM_FI_ODD;
+	kms->kmsbi[buffer].user_flag&=~KM_FI_ODD;
 	} else {
 	offset=kms->buf0_odd_offset;
-	kms->fi[buffer].flag|=KM_FI_ODD;
+	kms->kmsbi[buffer].user_flag|=KM_FI_ODD;
 	}
 KM_DEBUG("buf=%d field=%d\n", buffer, field);
 kms->fi[buffer].timestamp_start=jiffies;
@@ -163,8 +163,8 @@ do {
 #endif
 /* start transfer */
 kms->total_frames++;
-kms->fi[buffer].flag|=KM_FI_DMA_ACTIVE;
-kms->fi[buffer].age=kms->total_frames;
+kms->kmsbi[buffer].user_flag|=KM_FI_DMA_ACTIVE;
+kms->kmsbi[buffer].age=kms->total_frames;
 wmb();
 writel(kvirt_to_pa(kms->dma_table[buffer])|RAGE128_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM, 
 	kms->reg_aperture+RAGE128_BM_VIDCAP_BUF0);

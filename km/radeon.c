@@ -195,19 +195,19 @@ if(buffer<0){
 switch(field){
 	case 0:
 		offset=kms->buf0_odd_offset;
-		kms->fi[buffer].flag|=KM_FI_ODD;
+		kms->kmsbi[buffer].user_flag|=KM_FI_ODD;
 		break;
 	case 1:
 		offset=kms->buf0_even_offset;
-		kms->fi[buffer].flag&=~KM_FI_ODD;
+		kms->kmsbi[buffer].user_flag&=~KM_FI_ODD;
 		break;
 	case 2:
 		offset=kms->buf1_odd_offset;
-		kms->fi[buffer].flag|=KM_FI_ODD;
+		kms->kmsbi[buffer].user_flag|=KM_FI_ODD;
 		break;
 	case 3:
 		offset=kms->buf1_even_offset;
-		kms->fi[buffer].flag&=~KM_FI_ODD;
+		kms->kmsbi[buffer].user_flag&=~KM_FI_ODD;
 		break;
 	default:
 		printk("Internal error %s %s %d\n", __FILE__, __FUNCTION__, __LINE__);
@@ -223,8 +223,8 @@ do {
 	} while (!(status & 0x1f));
 /* start transfer */
 kms->total_frames++;
-kms->fi[buffer].flag|=KM_FI_DMA_ACTIVE;
-kms->fi[buffer].age=kms->total_frames;
+kms->kmsbi[buffer].user_flag|=KM_FI_DMA_ACTIVE;
+kms->kmsbi[buffer].age=kms->total_frames;
 wmb();
 writel(kvirt_to_pa(kms->dma_table[buffer]), (u32)(kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR)| (0));
 KM_DEBUG("start_frame_transfer_buf0\n");

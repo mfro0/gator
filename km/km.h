@@ -14,7 +14,7 @@
 #include "km_api.h"
 #include "km_api_data.h"
 
-#define KM_VERSION      "alpha-2.0"
+#define KM_VERSION      "alpha-3.0"
 
 typedef struct {
 	u32 from_addr;
@@ -28,19 +28,23 @@ typedef struct {
 #define KM_FI_PINNED		4
 
 typedef struct {
-	int age;
 	long timestamp_start;
 	long timestamp_end;
+	#if 0
+	int age;
 	int next;
 	int prev;
 	int flag;
+	#endif
 	} FIELD_INFO;
 
 typedef struct S_KM_STRUCT {
 	struct video_device vd;
 	struct video_window vwin;
 	spinlock_t kms_lock;
+	#if 0
 	wait_queue_head_t frameq;
+	#endif
 	long irq;
 	struct pci_dev *dev;
 	long interrupt_count;
@@ -52,11 +56,14 @@ typedef struct S_KM_STRUCT {
 	unsigned char * reg_aperture;
 	
 	long next_cap_buf;
-	
+	#if 0
 	int v4l_buf_read_from;
+	#endif
 	int v4l_buf_parity;
+	#if 0
 	long buf_ptr;
 	long buf_age;
+	#endif
 
 #define FRAME_ODD 		0
 #define FRAME_EVEN 		1
@@ -67,6 +74,7 @@ typedef struct S_KM_STRUCT {
 #endif
 	KM_DATA_VIRTUAL_BLOCK dvb_info;
 	FIELD_INFO *fi;
+	KM_STREAM_BUFFER_INFO *kmsbi;
 	long info_free;
 	int info_du;
 	int capture_du;

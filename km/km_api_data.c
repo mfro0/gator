@@ -62,6 +62,8 @@ if(kdufpd==NULL){
 memset(kdufpd, 0, sizeof(KDU_FILE_PRIVATE_DATA));
 
 kdufpd->kdu=kdu;
+kdufpd->buffer=0;
+kdufpd->bytes_read=0;
 
 spin_unlock(&(kdu->lock));
 return kdufpd;
@@ -77,6 +79,102 @@ kdu->use_count--;
 spin_unlock(&(kdu->lock));
 MOD_DEC_USE_COUNT;
 kfree(kdufpd);
+}
+
+long km_data_generic_stream_read(KDU_FILE_PRIVATE_DATA *kdufpd, KM_STREAM_BUFFER_INFO *kmsbi, KM_DATA_VIRTUAL_BLOCK *dvb,
+	 char *buf, unsigned long count, int nonblock,
+	 int user_flag, int user_flag_mask)
+{
+int q,todo;
+KM_DATA_UNIT *kdu=kdufpd->kdu;
+DECLARE_WAITQUEUE(wait, current);
+spin_lock(&(kdu->lock));
+if(kdufpd->buffer<0){
+	printk("Internal error in km_v4l:km_read()\n");
+	spin_unlock(&(kdu->lock));
+	return -EIO;
+	}
+q=kmsbi[kdufpd->buffer].next;
+while((kdufpd->bytes_read==dvb->free[kdufpd->buffer])||(q<0)||((kmsbi[q].flag & user_flag_mask)!=user_flag)){
+	q=kmsbi[kdufpd->buffer].next;
+	if((q>=0) && (kdufpd->age<kmsbi[q].age)){
+		kdufpd->buffer=q;
+		kdufpd->age=kmsbi[q].age;
+		if((kmsbi[q].user_flag & user_flag_mask)!=user_flag){
+			kdufpd->bytes_read=dvb->free[q];
+			KM_DEBUG("Skipping buf %d flag=%d age=%d\n", q, kmsbi[q].flag, kdufpd->age);
+			continue;
+			} else {
+			kdufpd->bytes_read=0;
+			KM_DEBUG("Reading buf %d flag=%d age=%d\n", q, kmsbi[q].flag, kdufpd->age);
+			break;
+			}
+		}
+	if(nonblock){
+		spin_unlock(&(kdu->lock));
+		return -EWOULDBLOCK;
+		}
+	add_wait_queue(&(kdu->dataq), &wait);
+	current->state=TASK_INTERRUPTIBLE;
+	spin_unlock(&(kdu->lock));
+	schedule();
+	if(signal_pending(current)){
+		spin_lock(&(kdu->lock));
+		remove_wait_queue(&(kdu->dataq), &wait);
+		current->state=TASK_RUNNING;
+		spin_unlock(&(kdu->lock));
+		return -EINTR;
+		}
+	spin_lock(&(kdu->lock));
+	remove_wait_queue(&(kdu->dataq), &wait);
+	current->state=TASK_RUNNING;
+	}
+todo=count;
+while(todo>0){	
+	q=todo;
+	if((kdufpd->bytes_read+q)>=dvb->free[kdufpd->buffer])q=dvb->free[kdufpd->buffer]-kdufpd->bytes_read;   
+	if(copy_to_user((void *) buf, (void *) (dvb->ptr[kdufpd->buffer]+kdufpd->bytes_read), q)){
+		spin_unlock(&(kdu->lock));
+		return -EFAULT;
+		}
+	todo-=q;
+	kdufpd->bytes_read+=q;
+	buf+=q;
+	#if 0
+	if(kdufpd->bytes_read>=dvb->free[kdufpd->buffer]){
+		kms->v4l_buf_parity=!kms->v4l_buf_parity;
+		break;
+		}
+	#endif
+	}
+spin_unlock(&(kdu->lock));
+return (count-todo);
+}
+
+unsigned int km_data_generic_stream_poll(KDU_FILE_PRIVATE_DATA *kdufpd, KM_STREAM_BUFFER_INFO *kmsbi, KM_DATA_VIRTUAL_BLOCK *dvb,
+	 struct file *file, poll_table *wait)
+{
+KM_DATA_UNIT *kdu=kdufpd->kdu;
+unsigned int mask=0;
+
+spin_lock(&(kdu->lock));
+if(kdufpd->buffer<0){
+	printk("km: internal error in kmv4l:km_poll\n");
+	spin_unlock(&(kdu->lock));
+	return 0;
+	}
+if(kdufpd->bytes_read==dvb->free[kdufpd->buffer]){
+	spin_unlock(&(kdu->lock));
+	poll_wait(file, &(kdu->dataq), wait);
+	spin_lock(&(kdu->lock));
+	}
+
+if(kdufpd->bytes_read<dvb->free[kdufpd->buffer])
+	/* Now we have more data.. */
+	mask |= (POLLIN | POLLRDNORM);
+
+spin_unlock(&(kdu->lock));
+return mask;
 }
 
 static int km_fo_data_open(struct inode * inode, struct file * file)
@@ -208,6 +306,7 @@ MOD_INC_USE_COUNT;
 kdu=&(data_units[k]);
 spin_lock_init(&(kdu->lock));
 spin_lock(&(kdu->lock));
+init_waitqueue_head(&(kdu->dataq));
 kdu->use_count=1;
 kdu->type=KDU_TYPE_GENERIC;
 kdu->mode=mode;
@@ -253,6 +352,7 @@ for(i=0;i<dvb->n;i++){
 	dvb->ptr[i]=rvmalloc(chunk_size);
 	memset(dvb->ptr[i], 0 , chunk_size);
 	}
+dvb->dataq=&(kdu->dataq);
 return k;
 }
 
@@ -262,9 +362,11 @@ void km_deallocate_data(int data_unit)
 char temp[32];
 KM_DATA_UNIT *kdu;
 if(data_unit<0)return;
+spin_lock(&data_units_lock);
 if(data_unit>=du_free)return;
 kdu=&(data_units[data_unit]);
 spin_lock(&(kdu->lock));
+spin_unlock(&data_units_lock);
 kdu->use_count--;
 KM_CHECKPOINT
 if(kdu->use_count>0){
@@ -283,7 +385,6 @@ if(kdu->free_private!=NULL)kdu->free_private(kdu);
 spin_unlock(&(kdu->lock));
 MOD_DEC_USE_COUNT;
 }
-
 
 int __init init_km_data_units(void)
 {

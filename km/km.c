@@ -39,7 +39,7 @@
 MODULE_LICENSE("GPL");
 #endif
 
-MODULE_DESCRIPTION("km_ati");
+MODULE_DESCRIPTION("km_drv");
 MODULE_PARM(km_debug, "i");
 MODULE_PARM(km_debug_overruns, "i");
 MODULE_PARM(km_buffers, "i");
@@ -54,18 +54,11 @@ int km_buffers=5;
 int find_free_buffer(KM_STRUCT *kms)
 {
 int i;
-int age;
-int k;
 if(kms->fi==NULL)return -1;
-while(kms->fi[kms->next_cap_buf].flag & KM_FI_PINNED)kms->next_cap_buf=kms->fi[kms->next_cap_buf].next;
+while(kms->kmsbi[kms->next_cap_buf].flag & KM_FI_PINNED)kms->next_cap_buf=kms->kmsbi[kms->next_cap_buf].next;
 i=kms->next_cap_buf;
-kms->next_cap_buf=kms->fi[kms->next_cap_buf].next;
+kms->next_cap_buf=kms->kmsbi[kms->next_cap_buf].next;
 return i;
-}
-
-int find_next_buffer(KM_STRUCT *kms, int buf)
-{
-
 }
 
 int generic_allocate_dvb(KM_STRUCT *kms, long size)
@@ -85,17 +78,20 @@ kms->capture_du=km_allocate_data_virtual_block(&(kms->dvb), S_IFREG | S_IRUGO);
 if(kms->capture_du<0)return -1;
 KM_CHECKPOINT
 /* allocate data unit to hold field info */
-kms->dvb_info.size=kms->num_buffers*sizeof(FIELD_INFO);
+kms->dvb_info.size=kms->num_buffers*(sizeof(FIELD_INFO)+sizeof(KM_STREAM_BUFFER_INFO));
 kms->dvb_info.n=1;
 kms->dvb_info.free=&(kms->info_free);
-kms->info_free=kms->num_buffers*sizeof(FIELD_INFO);
-kms->dvb_info.ptr=&(kms->fi);
+kms->info_free=kms->num_buffers*(sizeof(FIELD_INFO)+sizeof(KM_STREAM_BUFFER_INFO));
+kms->dvb_info.ptr=&(kms->kmsbi);
 kms->info_du=km_allocate_data_virtual_block(&(kms->dvb_info), S_IFREG | S_IRUGO);
 if(kms->info_du<0){
 	km_deallocate_data(kms->capture_du);
 	kms->capture_du=-1;
 	return -1;
 	}
+memset(kms->kmsbi, 0 , kms->dvb_info.size);
+/* Position field info after generic stream buffer information */
+kms->fi=((unsigned char *)kms->kmsbi)+kms->num_buffers*sizeof(KM_STREAM_BUFFER_INFO);
 /*
   dma_table allocation and initialization is the only hardware dependent part of this function
 
@@ -106,13 +102,13 @@ if(kms->info_du<0){
 */
 
 kms->dma_table=kmalloc(sizeof(*(kms->dma_table))*kms->num_buffers, GFP_KERNEL);
-memset(kms->fi, 0 , sizeof(*(kms->fi))*kms->num_buffers);
 for(k=0;k<kms->num_buffers;k++){
 	kms->dvb.free[k]=size;
-	kms->fi[k].flag=0;
-	kms->fi[k].next=k+1;
-	kms->fi[k].prev=k-1;
-	kms->fi[k].age=-1;
+	kms->kmsbi[k].flag=0;
+	kms->kmsbi[k].user_flag=0;
+	kms->kmsbi[k].next=k+1;
+	kms->kmsbi[k].prev=k-1;
+	kms->kmsbi[k].age=-1;
 	kms->dma_table[k]=rvmalloc(4096);
 	kms->v4l_free[k]=size;
 	memset(kms->dma_table[k], 0, 4096);
@@ -124,8 +120,8 @@ for(k=0;k<kms->num_buffers;k++){
 			}
 		}
 	}
-kms->fi[0].prev=kms->num_buffers-1;
-kms->fi[kms->num_buffers-1].next=0;
+kms->kmsbi[0].prev=kms->num_buffers-1;
+kms->kmsbi[kms->num_buffers-1].next=0;
 kms->next_cap_buf=0;
 KM_CHECKPOINT
 return 0;
@@ -151,17 +147,17 @@ int acknowledge_dma(KM_STRUCT *kms)
 {
 int i;
 for(i=0;i<kms->num_buffers;i++)
-if(kms->fi[i].flag & KM_FI_DMA_ACTIVE){
-	kms->fi[i].flag&=~KM_FI_DMA_ACTIVE;
+if(kms->kmsbi[i].user_flag & KM_FI_DMA_ACTIVE){
+	kms->kmsbi[i].user_flag&=~KM_FI_DMA_ACTIVE;
 	kms->fi[i].timestamp_end=jiffies;
-	wake_up_interruptible(&(kms->frameq));
+	wake_up_interruptible(kms->dvb.dataq);
 	}
 #if 0
 if(kms->frame_info[FRAME_EVEN].dma_active){
 	kms->frame_info[FRAME_EVEN].dma_active=0;
 	if(kms->frame_info[FRAME_EVEN].buf_ptr==kms->frame_info[FRAME_EVEN].buf_free){
 		kms->frame_info[FRAME_EVEN].buf_ptr=0;
-		if(kms->buf_read_from==1)wake_up_interruptible(&(kms->frameq));
+		if(kms->buf_read_from==1)wake_up_interruptible(kms->dvb.dataq);
 		} else 
 	if(km_debug_overruns)printk("overrun buf_ptr=%d buf_free=%d total=%d\n", 
 			kms->frame_info[FRAME_ODD].buf_ptr,
@@ -312,7 +308,6 @@ kms->capture_du=-1;
 kms->info_du=-1;
 spin_lock_init(&(kms->kms_lock));
 printk("km: using irq %ld\n", kms->irq);
-init_waitqueue_head(&(kms->frameq));
 if (pci_enable_device(dev))
 	return -EIO;	
 printk("Register aperture is 0x%08lx 0x%08lx\n", pci_resource_start(dev, 2), pci_resource_len(dev, 2));

@@ -41,16 +41,13 @@ if(!kms->is_capture_active(kms)){
 	goto fail;
 	}
 
-kms->v4l_buf_read_from=0;
 kms->v4l_buf_parity=0;
-kms->buf_age=0;
 kms->total_frames=0;
 kms->overrun=0;
 kms->get_window_parameters(kms, &(kms->vwin));
 
 
 buf_size=kms->vwin.width*kms->vwin.height*2;
-kms->buf_ptr=buf_size;
 
 if(kms->allocate_dvb!=NULL){
 	if(kms->allocate_dvb(kms, buf_size)<0){
@@ -80,7 +77,6 @@ DECLARE_WAITQUEUE(wait, current);
 spin_lock(&(kms->kms_lock));
 km_data_destroy_kdufpd(kms->v4l_kdufpd);
 kms->stop_transfer(kms);
-kms->v4l_buf_read_from=-1; /* none */
 if(kms->deallocate_dvb!=NULL){
 	kms->deallocate_dvb(kms);
 	kmd_signal_state_change(kms->kmd);
@@ -98,67 +94,18 @@ return -EINVAL;
 static long km_read(struct video_device *v, char *buf, unsigned long count, int nonblock)
 {
 KM_STRUCT *kms=(KM_STRUCT *)v;
-int q,todo;
-DECLARE_WAITQUEUE(wait, current);
-spin_lock(&(kms->kms_lock));
-if(kms->v4l_buf_read_from<0){
-	printk("Internal error in km_v4l:km_read()\n");
-	spin_unlock(&(kms->kms_lock));
-	return -EIO;
+int done;
+KDU_FILE_PRIVATE_DATA *kdufpd=kms->v4l_kdufpd;
+
+done=km_data_generic_stream_read(kdufpd, kms->kmsbi, &(kms->dvb), 
+	buf, count, nonblock,
+	kms->v4l_buf_parity, 1);
+	
+if((done > 0) && (kdufpd->bytes_read>=kms->dvb.free[kdufpd->buffer])){
+	kms->v4l_buf_parity=!kms->v4l_buf_parity;
 	}
-q=kms->fi[kms->v4l_buf_read_from].next;
-while((kms->buf_ptr==kms->v4l_free[kms->v4l_buf_read_from])||(q<0)||((kms->fi[q].flag & 1)!=kms->v4l_buf_parity)){
-	q=kms->fi[kms->v4l_buf_read_from].next;
-	if((q>=0) && (kms->buf_age<kms->fi[q].age)){
-		kms->v4l_buf_read_from=q;
-		kms->buf_age=kms->fi[q].age;
-		if((kms->fi[q].flag&1)!=kms->v4l_buf_parity){
-			kms->buf_ptr=kms->v4l_free[q];
-			KM_DEBUG("Skipping buf %d flag=%d age=%d\n", q, kms->fi[q].flag, kms->buf_age);
-			continue;
-			} else {
-			kms->buf_ptr=0;
-			KM_DEBUG("Reading buf %d flag=%d age=%d\n", q, kms->fi[q].flag, kms->buf_age);
-			break;
-			}
-		}
-	if(nonblock){
-		spin_unlock(&(kms->kms_lock));
-		return -EWOULDBLOCK;
-		}
-	add_wait_queue(&(kms->frameq), &wait);
-	current->state=TASK_INTERRUPTIBLE;
-	spin_unlock(&(kms->kms_lock));
-	schedule();
-	if(signal_pending(current)){
-		spin_lock(&(kms->kms_lock));
-		remove_wait_queue(&(kms->frameq), &wait);
-		current->state=TASK_RUNNING;
-		spin_unlock(&(kms->kms_lock));
-		return -EINTR;
-		}
-	spin_lock(&(kms->kms_lock));
-	remove_wait_queue(&(kms->frameq), &wait);
-	current->state=TASK_RUNNING;
-	}
-todo=count;
-while(todo>0){	
-	q=todo;
-	if((kms->buf_ptr+q)>=kms->v4l_free[kms->v4l_buf_read_from])q=kms->v4l_free[kms->v4l_buf_read_from]-kms->buf_ptr;   
-	if(copy_to_user((void *) buf, (void *) (kms->buffer[kms->v4l_buf_read_from]+kms->buf_ptr), q)){
-		spin_unlock(&(kms->kms_lock));
-		return -EFAULT;
-		}
-	todo-=q;
-	kms->buf_ptr+=q;
-	buf+=q;
-	if(kms->buf_ptr>=kms->v4l_free[kms->v4l_buf_read_from]){
-		kms->v4l_buf_parity=!kms->v4l_buf_parity;
-		break;
-		}
-	}
-spin_unlock(&(kms->kms_lock));
-return (count-todo);
+	
+return done;
 }
 
 static int km_ioctl(struct video_device *dev, unsigned int cmd, void *arg)
@@ -238,11 +185,13 @@ spin_unlock(&(kms->kms_lock));
 return -EINVAL;
 }
 
+/* ignore this - it is bogus */
 static int km_mmap(struct video_device *dev, const char *adr, unsigned long size)
 {
 KM_STRUCT *kms=(KM_STRUCT *)dev;
 unsigned long start=(unsigned long) adr;
 unsigned long page,pos;
+KDU_FILE_PRIVATE_DATA *kdufpd=kms->v4l_kdufpd;
 
 #if 0
 if (size>(kms->frame_info[FRAME_ODD].buf_size+kms->frame_info[FRAME_EVEN].buf_size))
@@ -252,7 +201,7 @@ if (!kms->frame_info[FRAME_ODD].buffer || !kms->frame_info[FRAME_EVEN].buffer) {
         return -EINVAL;
         }
 frame=&(kms->frame_info[FRAME_ODD]);
-pos=(unsigned long) kms->buffer[kms->v4l_buf_read_from];
+pos=(unsigned long) kms->buffer[kdufpd->buffer];
 while(size>0){
 	page = kvirt_to_pa(pos);
         if(remap_page_range(start, page, PAGE_SIZE, PAGE_SHARED))
@@ -260,9 +209,9 @@ while(size>0){
                 start+=PAGE_SIZE;
                 pos+=PAGE_SIZE;
                 size-=PAGE_SIZE;
-	if((pos-(unsigned long)kms->buffer[kms->v4l_buf_read_from])>frame->buf_size){
+	if((pos-(unsigned long)kms->buffer[kdufpd->buffer])>frame->buf_size){
 		frame=&(kms->frame_info[FRAME_EVEN]);
-		pos=(unsigned long)kms->buffer[kms->v4l_buf_read_from];
+		pos=(unsigned long)kms->buffer[kdufpd->buffer];
 		}
         }
 #endif
@@ -273,30 +222,8 @@ static unsigned int km_poll(struct video_device *dev, struct file *file,
 	poll_table *wait)
 {
 KM_STRUCT *kms=(KM_STRUCT *)dev;
-unsigned int mask=0;
 
-spin_lock(&(kms->kms_lock));
-if(kms->v4l_buf_read_from<0){
-	printk("km: internal error in kmv4l:km_poll\n");
-	spin_unlock(&(kms->kms_lock));
-	return 0;
-	}
-if(kms->buf_ptr==kms->v4l_free[kms->v4l_buf_read_from]){
-	spin_unlock(&(kms->kms_lock));
-	poll_wait(file, &(kms->frameq), wait);
-	spin_lock(&(kms->kms_lock));
-	}
-
-#if 0
-	if (btv->vbip < VBIBUF_SIZE)
-#endif
-
-if(kms->buf_ptr<kms->v4l_free[kms->v4l_buf_read_from])
-	/* Now we have more data.. */
-	mask |= (POLLIN | POLLRDNORM);
-
-spin_unlock(&(kms->kms_lock));
-return mask;
+return km_data_generic_stream_poll(kms->v4l_kdufpd, kms->kmsbi, &(kms->dvb), file, wait);
 }
 
 #ifndef VID_HARDWARE_KM
