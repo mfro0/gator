@@ -12,8 +12,12 @@ scp_DATA = alsa.scp bindings.scp ffmpeg.scp themes.scp video_device.scp \
 	alsa_mixer.scp channel_scan.scp  km.scp tree.scp xv.scp	\
 	avview.scp diag.scp setup.scp v4l.scp avview.modmap
 
+dist_scp_DATA = alsa.scp bindings.scp ffmpeg.scp themes.scp video_device.scp \
+	alsa_mixer.scp channel_scan.scp  km.scp tree.scp xv.scp	\
+	avview.scp diag.scp setup.scp v4l.scp avview.modmap
+
 #
-# Well, it doesn't exist !
+# Whoever said that the suffix is .c ?
 #
 nodist_start_avview_SOURCES = start_avview.c
 dist_start_avview_SOURCES = start_avview.in
