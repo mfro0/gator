@@ -31,6 +31,7 @@ typedef struct {
 	CARD8  afc_status;
 	CARD8  vif_level;
 	CARD8  afc_win;
+	CARD8  fm_carrier;
 	} TDA9885Rec, *TDA9885Ptr;
 
 #define TDA9885_ADDR_1   0x86
