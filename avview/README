@@ -10,6 +10,7 @@
 	  
    Requirements: TV input capable card with Xv support, Tcl/Tk 8.4.x or 
                  later. 
+		 libzvbi from http://zapping.sf.net/
 		  
 	
 *** NOTES ***
@@ -38,6 +39,9 @@
          You might need to replace /usr/local/ with whatever location 
 	 you installed AVview in.       	 
 
+
+       * at the moment closed captioning will only work with km from CVS
+         and only with Radeon cards.
 
 *** KEYBOARD BINDINGS ***
 
