@@ -33,23 +33,46 @@ MODULE_DESCRIPTION("kmultimedia");
 EXPORT_SYMBOL(add_km_device);
 EXPORT_SYMBOL(remove_km_device);
 
-static void expand_buffer(KM_DEVICE *kmd)
+static void expand_buffer(KM_DEVICE *kmd, long increment)
 {
 char *b;
-kmd->br_size+=kmd->br_size;
+kmd->br_size+=kmd->br_size+increment;
 b=kmalloc(kmd->br_size, GFP_KERNEL);
 if(kmd->br_free>0)memcpy(b, kmd->buffer_read, kmd->br_free);
 kfree(kmd->buffer_read);
 kmd->buffer_read=b;
 }
 
+static void perform_status_cmd(KM_DEVICE *kmd)
+{
+long field_length;
+KM_FIELD *f;
+int i;
+
+for(i=0;kmd->fields[i].type!=KM_FIELD_TYPE_EOL;i++){
+	f=&(kmd->fields[i]);
+	printk("%s=", f->name);
+	switch(f->type){
+		case KM_FIELD_TYPE_STATIC:
+			field_length=strlen(f->name)+strlen(f->data.c.string)+2;
+			if(kmd->br_free+field_length+10>=kmd->br_size)expand_buffer(kmd, field_length+10);
+			sprintf(kmd->buffer_read+kmd->br_free, "%s=%s\n", f->name, f->data.c.string);
+			kmd->br_free+=field_length;
+			break;
+		case KM_FIELD_TYPE_DYNAMIC_INT:
+			field_length=strlen(f->name)+20;
+			if(kmd->br_free+field_length>=kmd->br_size)expand_buffer(kmd, field_length);
+			kmd->br_free+=sprintf(kmd->buffer_read+kmd->br_free, "%s=%d\n", f->name, *(f->data.i.field));
+			break;
+		}
+	}
+
+}
 
 static int km_control_read(char *page, char **start, off_t off, int count, int *eof, void *data)
 {
-char s[5]="XYXY";
 KM_DEVICE *kmd=data;
 if(count>(kmd->br_free-kmd->br_read))count=kmd->br_free-kmd->br_read;
-printk("km_control_read: off=%lu count=%d %s kmd->number=%ld\n", off, count, s, kmd->number);
 if(count>0)memcpy(page, kmd->buffer_read+kmd->br_read, count); 
 kmd->br_read+=count;
 if(kmd->br_read==kmd->br_free){
@@ -64,7 +87,9 @@ return count;
 
 static int km_control_write(struct file *file, const char *buffer, unsigned long count, void *data)
 {
+KM_DEVICE *kmd=data;
 printk("km_control_write: count=%ld\n", count);
+perform_status_cmd(kmd);
 return count;
 }
 
@@ -130,6 +155,7 @@ devices[num].priv=NULL;
 MOD_DEC_USE_COUNT;
 return 0;
 }
+
 
 #ifdef MODULE
 

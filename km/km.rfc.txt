@@ -160,15 +160,19 @@ f)
        Status character        Description
 ------------------------------------------------------------------------------
              ?                 Perform query, no device state is changed
+	     
 	     ' ' (space)       Execute. Parameters are set and/or action is 
 	                       performed.
+			       
 	     +                 Reply: query/command succeeded. Addition information
 	     			may follow (esp. in the case of query)
+				
 	     -                 Reply: query/command failed. In particular this 
 	                       is returned if certain fields are not recognized
 			       by the driver. In this case the fields are always
 			       appended as in e) (for example this could be
 			       returned for a USB device).
+			       
 	     :                 Indicates out-of-sequence reply. Normally each
 	      			query/command is responded to with a + or -
 				reply. However, sometimes that driver needs to

@@ -103,7 +103,28 @@ KM_FIELD kmfl_template[]={
 	  changed: 0,
 	  lock: NULL,
 	  priv: NULL,
-	  read_complete: NULL
+	  read_complete: NULL,
+	}, 
+	{ type: KM_FIELD_TYPE_STATIC,
+	  name: "LOCATION_ID",
+	  changed: 0,
+	  lock: NULL,
+	  priv: NULL,
+	  read_complete: NULL,
+	}, 
+	{ type: KM_FIELD_TYPE_STATIC,
+	  name: "INSTANCE_ID",
+	  changed: 0,
+	  lock: NULL,
+	  priv: NULL,
+	  read_complete: NULL,
+	}, 
+	{ type: KM_FIELD_TYPE_DYNAMIC_INT,
+	  name: "VSYNC_COUNT",
+	  changed: 0,
+	  lock: NULL,
+	  priv: NULL,
+	  read_complete: NULL,
 	}, 
 	{ type: KM_FIELD_TYPE_EOL
 	}
@@ -195,10 +216,21 @@ if((irq_handler==NULL) || (install_irq_handler(kms, irq_handler, tag)<0)){
 	}
 init_km_v4l(kms);
 printk("sizeof(kmfl_template)=%d sizeof(KM_FIELD)=%d\n", sizeof(kmfl_template), sizeof(KM_FIELD));
+
 kms->kmfl=kmalloc(sizeof(kmfl_template), GFP_KERNEL);
 memcpy(kms->kmfl, kmfl_template, sizeof(kmfl_template));
+
 kms->kmfl[0].data.c.string=kmalloc(strlen(dev->name)+1, GFP_KERNEL);
 memcpy(kms->kmfl[0].data.c.string, dev->name, strlen(dev->name)+1);
+
+kms->kmfl[1].data.c.string=kmalloc(strlen(dev->slot_name)+10, GFP_KERNEL);
+sprintf(kms->kmfl[1].data.c.string, "PCI:%s", dev->slot_name);
+
+kms->kmfl[2].data.c.string=kmalloc(20, GFP_KERNEL);
+sprintf(kms->kmfl[2].data.c.string, "KM_DEVICE:%d", num_devices);
+
+kms->kmfl[3].data.i.field=&(kms->vsync_count);
+
 kms->kmd=add_km_device(kms->kmfl, kms);
 printk("Device %s %s (0x%04x:0x%04x) corresponds to /dev/video%d\n",
 	dev->name, dev->slot_name, dev->vendor, dev->device, kms->vd.minor);
@@ -222,6 +254,11 @@ free_irq(kms->irq, kms);
 kms->deallocate_single_frame_buffer(kms, &(kms->frame));
 kms->deallocate_single_frame_buffer(kms, &(kms->frame_even));
 iounmap(kms->reg_aperture);
+kfree(kms->kmfl[0].data.c.string);
+kfree(kms->kmfl[1].data.c.string);
+kfree(kms->kmfl[2].data.c.string);
+kfree(kms->kmfl);
+kms->kmfl=NULL;
 /* 
 release_mem_region(pci_resource_start(pci_dev,2),
                            pci_resource_len(pci_dev,2));

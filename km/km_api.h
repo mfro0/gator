@@ -10,7 +10,7 @@
 #define KM_FIELD_TYPE_DYNAMIC_INT	2	/* pointer to integer */
 #define KM_FIELD_TYPE_DYNAMIC_STRING	3	/* handle to string */
 #define KM_FIELD_TYPE_PROGRAMMABLE	4	/* user specified behaviour */
-
+#define KM_FIELD_TYPE_MEMORY_AREA       5	/* area of memory that can be mmaped */
 
 typedef struct {
 	char *string;
@@ -27,6 +27,16 @@ typedef struct {
 typedef struct {
 	} KM_FIELD_PROGRAMMABLE;
 
+/* memory area attribute values */	
+#define KM_MEMORY_READABLE		1
+#define KM_MEMORY_WRITABLE		2
+
+typedef struct {
+	int attribute;
+	void *address;
+	long size;
+	} KM_FIELD_MEMORY_AREA;
+
 typedef struct S_KM_FIELD {
 	int type;
 	char *name;
@@ -39,6 +49,7 @@ typedef struct S_KM_FIELD {
 		KM_FIELD_DYNAMIC_INT 	i;
 		KM_FIELD_DYNAMIC_STRING s;
 		KM_FIELD_PROGRAMMABLE	p;
+		KM_FIELD_MEMORY_AREA    m;
 		} data;
 	} KM_FIELD;
 

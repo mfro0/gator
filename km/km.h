@@ -33,6 +33,7 @@ typedef struct S_KM_STRUCT{
 	long irq;
 	struct pci_dev *dev;
 	long interrupt_count;
+	long vsync_count;
 	unsigned char * reg_aperture;
 	int buf_read_from;
 	SINGLE_FRAME frame;
