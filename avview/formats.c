@@ -395,6 +395,35 @@ for(line=height-1;line>=0;line--){
 	}
 }
 
+void avgcpy(unsigned char *t, unsigned char *s1, unsigned char *s2, long pitch)
+{
+while(pitch>0){
+	*t=(((unsigned int)(*s1))+((unsigned int)(*s2)))>>1;
+	t++;
+	s1++;
+	s2++;
+	pitch--;
+	}
+}
+
+void deinterlace_422_double_interpolate(long width, long height, long pitch, char *frame1, char *frame2, char *dest)
+{
+long line;
+long dst_pitch;
+char *t1,*t2;
+char *s1,*s2;
+dst_pitch=width*2;
+for(line=height-1;line>=0;line--){
+	s1=frame1+line*pitch;
+	s2=s1+pitch;
+	t1=dest+line*dst_pitch*2;
+	t2=t1+dst_pitch;
+	memcpy(t1,s1,pitch);
+	if(line==(height-1))memcpy(t2,s1,pitch);
+		else avgcpy(t2,s1,s2,pitch);
+	}
+}
+
 /* a rather simplistic deinterlacing.. for now */
 void deinterlace_422_weave(long width, long height, long pitch, char *frame1, char *frame2, char *dest)
 {
@@ -542,6 +571,48 @@ for(line=0;line<height;line++){
 			(*t3++)=v1;
 			} else {
 			(*t2++)=u1;
+			}
+		}
+	}
+}
+
+/* this produces even lines by interpolating Y */
+void deinterlace_422_double_interpolate_to_420p(long width, long height, long pitch, char *frame1, char *dest, int64 *hist)
+{
+long line;
+long pixel;
+unsigned char *t1,*t2,*t3;
+unsigned char *s1;
+unsigned char *s2;
+unsigned char y1,y2,v1,u1,y3,y4,v2,u2;
+t1=dest;
+t2=dest+(width*height*2);
+t3=t2+(width*height*2)/4;
+for(line=0;line<(height*2);line++){
+	s1=frame1+(line/2)*pitch;
+	s2=s1+pitch;
+	if(line>(height*2-3))s2=s1;
+	for(pixel=0;pixel<width;pixel+=2){
+		y1=(*s1++);
+		u1=(*s1++);
+		y2=(*s1++);
+		v1=(*s1++);
+		if((line & 1)) {
+			y3=(*s2++);
+			u2=(*s2++);
+			y4=(*s2++);
+			v2=(*s2++);
+			(*t1++)=((unsigned int)y1+(unsigned int)y3)>>1;
+			(*t1++)=((unsigned int)y2+(unsigned int)y4)>>1;
+			(*t3++)=((unsigned int)v1+(unsigned int)v2)>>1;
+			} else {
+			(*t1++)=y1;
+			(*t1++)=y2;
+			(*t2++)=u1;
+			}
+		if(hist!=NULL){
+			hist[y1>>3]++;
+			hist[y2>>3]++;
 			}
 		}
 	}

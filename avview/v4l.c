@@ -252,6 +252,22 @@ if(sdata->transfer_size==sdata->transfer_read){
 		case MODE_SINGLE_FRAME:
 			data->frame_count++;
 			break;
+		case MODE_DOUBLE_INTERPOLATE:
+			p=do_alloc(sdata->pib.width*sdata->pib.height*2, 1);
+			if(data->frame_count & 1){
+				deinterlace_422_double_interpolate(sdata->pib.width, sdata->pib.height/2, sdata->pib.width*2,
+					sdata->read_buffer+(sdata->transfer_size/3), sdata->read_buffer+2*(sdata->transfer_size/3),
+					p);
+				data->frame_count+=3;
+				} else {
+				deinterlace_422_double_interpolate(sdata->pib.width, sdata->pib.height/2, sdata->pib.width*2,
+					sdata->read_buffer, sdata->read_buffer+(sdata->transfer_size/2),
+					p);
+				data->frame_count+=2;
+				}
+			free(sdata->read_buffer);
+			sdata->read_buffer=p;
+			break;
 		case MODE_DEINTERLACE_BOB:
 			p=do_alloc(sdata->pib.width*sdata->pib.height*2, 1);
 			if(data->frame_count & 1){
@@ -359,10 +375,13 @@ if(ioctl(data->fd, VIDIOCSPICT, &vpic)<0){
 data->mode=MODE_SINGLE_FRAME;
 if(!strcmp("deinterlace-bob", argv[3])){
 	data->mode=MODE_DEINTERLACE_BOB;
-	}
+	} else
 if(!strcmp("deinterlace-weave", argv[3])){
 	data->mode=MODE_DEINTERLACE_WEAVE;
-	}
+	} else
+if(!strcmp("double-interpolate", argv[3])){
+	data->mode=MODE_DOUBLE_INTERPOLATE;
+	} else
 if(!strcmp("half-width", argv[3])){
 	data->mode=MODE_DEINTERLACE_HALF_WIDTH;
 	}
@@ -385,6 +404,7 @@ switch(data->mode){
 		sdata->pib.height=vwin.height;
 		sdata->transfer_size=2*vwin.width*vwin.height; 
 		break;
+	case MODE_DOUBLE_INTERPOLATE:
 	case MODE_DEINTERLACE_BOB:
 	case MODE_DEINTERLACE_WEAVE:
 		sdata->pib.width=vwin.width;
@@ -490,6 +510,21 @@ if(ioctl(data->fd, VIDIOCSWIN, &vwin)<0){
 return 0;
 }
 
+int get_deinterlacing_methods(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+{
+Tcl_Obj *ans;
+Tcl_ResetResult(interp);
+
+ans=Tcl_NewListObj(0, NULL);
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("single-frame", -1));
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("deinterlace-bob", -1));
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("deinterlace-weave", -1));
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("half-width", -1));
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("double-interpolate", -1));
+Tcl_SetObjResult(interp, ans);
+return TCL_OK;
+}
+
 
 struct {
 	char *name;
@@ -502,6 +537,7 @@ struct {
 	{"v4l_capture_snapshot", v4l_capture_snapshot},
 	{"v4l_get_current_window", v4l_get_current_window},
 	{"v4l_set_current_window", v4l_set_current_window},
+	{"get_deinterlacing_methods", get_deinterlacing_methods},
 	{NULL, NULL}
 	};
 

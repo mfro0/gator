@@ -103,6 +103,9 @@ switch(data->mode){
 	case MODE_DEINTERLACE_HALF_WIDTH:
 		deinterlace_422_half_width_to_420p(sdata->width, sdata->height, sdata->width*2, f->buf, picture->data[0], sdata->luma_hist);
 		break;
+	case MODE_DOUBLE_INTERPOLATE:
+		deinterlace_422_double_interpolate_to_420p(sdata->width, sdata->height, sdata->width*2, f->buf, picture->data[0], sdata->luma_hist);
+		break;		
 	}
 }
 
@@ -430,6 +433,9 @@ if(!strcmp("deinterlace-bob", arg_deinterlace_mode)){
 if(!strcmp("deinterlace-weave", arg_deinterlace_mode)){
 	data->mode=MODE_DEINTERLACE_WEAVE;
 	} else
+if(!strcmp("double-interpolate", arg_deinterlace_mode)){
+	data->mode=MODE_DOUBLE_INTERPOLATE;
+	} else
 if(!strcmp("half-width", arg_deinterlace_mode)){
 	data->mode=MODE_DEINTERLACE_HALF_WIDTH;
 	}
@@ -482,6 +488,7 @@ switch(data->mode){
 		sdata->video_codec_context.width=vwin.width;
 		sdata->video_codec_context.height=vwin.height;
 		break;
+	case MODE_DOUBLE_INTERPOLATE:
 	case MODE_DEINTERLACE_BOB:
 	case MODE_DEINTERLACE_WEAVE:
 		sdata->video_codec_context.width=vwin.width;
@@ -931,7 +938,6 @@ if(sdata->audio_s!=NULL){
 	}
 return TCL_OK;
 }
-
 
 struct {
 	char *name;
