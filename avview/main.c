@@ -25,6 +25,7 @@
 #include "ffmpeg.h"
 #include "linux.h"
 #include "alsa.h"
+#include "vbi.h"
 #include <pthread.h>
 
 pthread_mutex_t  memory_mutex;
@@ -90,6 +91,7 @@ init_v4l(interp);
 init_ffmpeg(interp);
 init_alsa(interp);
 init_linux(interp);
+init_vbi(interp);
 return TCL_OK;
 }
 
