@@ -501,6 +501,9 @@ puts $fileid "set attributes_window $attributes_window"
 puts $fileid "set capture_window $capture_window"
 puts $fileid "set alsa_window $alsa_window"
 puts $fileid "set current_alsa_device1 \"$current_alsa_device\""
+
+save_theme $fileid
+
 close $fileid
 }
 
@@ -722,7 +725,7 @@ wm title .controlwin "AV Control"
 # Generate theme menu
 #
 $c.inteface_menubutton.menu.theme delete 0 end
-foreach theme [array names theme_list] {
+foreach theme [lsort -ascii [array names theme_list]] {
 	$c.inteface_menubutton.menu.theme add radiobutton -label "$theme" \
 		-value "$theme" -variable theme_name \
 		-command {global theme_name ; reset_theme $theme_name}

@@ -10,13 +10,15 @@ global theme_list
 proc save_theme { fileid } {
 global theme_name
 global theme_settings_cache
+puts $fileid "#\n# Theme settings\n#"
 puts $fileid "global theme_name"
 puts $fileid "global theme_settings_cache"
-puts $fileid "set_theme_name \"$theme_name\""
+puts $fileid "set theme_name \"$theme_name\""
 if { [array exists theme_settings_cache] } {
-	puts $fileid "set theme_settings_cache \[array set \[list [array get theme_settings_cache]\]\]"
+	puts $fileid "array set theme_settings_cache \[list [array get theme_settings_cache]\]"
 	}
-puts $fileid "set_theme \"$theme_name\""
+puts $fileid "reset_theme \"$theme_name\""
+puts $fileid "#\n# End of theme settings\n#"
 }
 
 proc set_theme { name } {
@@ -96,10 +98,11 @@ switch -glob -- "$widget $args1" \
 	default { return "-background red" }
 }
 
-set theme_list(Red) theme_red
+#set theme_list(Red) theme_red
 
 proc theme_pink { widget args1 } {
-puts "widget=$widget args=$args1"
+# uncomment to debug theme setting failures
+#puts "widget=$widget args=$args1"
 switch -glob -- "$widget $args1" \
 	.video*AVview {return "-background #102030" } \
 	*.title*  { return "-background black -foreground white" } \
@@ -220,30 +223,85 @@ set theme_list(Pink) theme_pink
 proc theme_default { widget args1 } {
 switch -glob -- "$widget $args1" \
 	.video*AVview {return "-background #102030" } \
-	*.fullscreen*  { return "-background #CCDDFF" } \
 	*.title*  { return "-background black -foreground white" } \
 	*.c.f.*checkbutton*ALSA* {  \
 		set i [lindex $args1 1]
 		if { [expr $i % 2] } {
-			return "-background #CCCCCC -highlightbackground #CCCCCC";
+			return "-background #DDDDDD -activebackground #EEEEEE -highlightbackground #DDDDDD";
 			} {
-			return "-background #AAAAAA -highlightbackground #AAAAAA";
+			return "-background #BBBBBB -activebackground #EEEEEE -highlightbackground #BBBBBB";
 			}
 		} \
 	*.c.f.*scale*ALSA* {  \
 		set i [lindex $args1 1]
 		if { [expr $i % 2] } {
-			return "-background #CCCCCC -highlightbackground #CCCCCC";
+			return "-background #DDDDDD -activebackground #EEEEEE -highlightbackground #DDDDDD";
 			} {
-			return "-background #AAAAAA -highlightbackground #AAAAAA";
+			return "-background #BBBBBB -activebackground #EEEEEE -highlightbackground #BBBBBB";
+			}
+		} \
+	*.c.f.*optionmenu*ALSA*menu* {  \
+		set i [lindex $args1 1]
+		if { [expr $i % 2] } {
+			return "-background #DDDDDD -activebackground #EEEEEE -highlightbackground #DDDDDD";
+			} {
+			return "-background #BBBBBB -activebackground #EEEEEE -highlightbackground #BBBBBB";
+			}
+		} \
+	*.c.f.*optionmenu*ALSA* {  \
+		set i [lindex $args1 1]
+		if { [expr $i % 2] } {
+			return "-background #DDDDDD -activebackground #EEEEEE";
+			} {
+			return "-background #BBBBBB -activebackground #EEEEEE";
 			}
 		} \
 	*.c.f.*ALSA* {  \
 		set i [lindex $args1 1]
 		if { [expr $i % 2] } {
-			return "-background #CCCCCC";
+			return "-background #DDDDDD";
 			} {
-			return "-background #AAAAAA";
+			return "-background #BBBBBB";
+			}
+		} \
+	*.allattributes.*button*XVideo* {  \
+		set i [lindex $args1 4]
+		if { [expr $i % 2] } {
+			return "-background #DDDDDD -activebackground #EEEEEE -highlightbackground #DDDDDD";
+			} {
+			return "-background #BBBBBB -activebackground #EEEEEE -highlightbackground #BBBBBB";
+			}
+		} \
+	*.allattributes.*scale*XVideo* {  \
+		set i [lindex $args1 4]
+		if { [expr $i % 2] } {
+			return "-background #DDDDDD -activebackground #EEEEEE -highlightbackground #DDDDDD";
+			} {
+			return "-background #BBBBBB -activebackground #EEEEEE -highlightbackground #BBBBBB";
+			}
+		} \
+	*.allattributes.*optionmenu*XVideo*menu* {  \
+		set i [lindex $args1 4]
+		if { [expr $i % 2] } {
+			return "-background #DDDDDD -activebackground #EEEEEE -highlightbackground #DDDDDD";
+			} {
+			return "-background #BBBBBB -activebackground #EEEEEE -highlightbackground #BBBBBB";
+			}
+		} \
+	*.allattributes.*optionmenu*XVideo* {  \
+		set i [lindex $args1 4]
+		if { [expr $i % 2] } {
+			return "-background #DDDDDD -activebackground #EEEEEE";
+			} {
+			return "-background #BBBBBB -activebackground #EEEEEE";
+			}
+		} \
+	*.allattributes.*XVideo* {  \
+		set i [lindex $args1 4]
+		if { [expr $i % 2] } {
+			return "-background #DDDDDD";
+			} {
+			return "-background #BBBBBB";
 			}
 		} \
 	default { return "" }
@@ -257,5 +315,5 @@ puts "widget=$widget args=$args1"
 
 set theme_list(Widget\ dump) theme_widget_dump
 
-set_theme Pink
+set_theme Default
 
