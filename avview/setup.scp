@@ -91,7 +91,6 @@ global SETUP_PANES
 global diag_pane_count
 set PANE_FRAME $SETUP_MAIN.f.pane$diag_pane_count
 frame $PANE_FRAME 
-puts stderr "Adding pane $PANE_FRAME $key $title"
 make_title $PANE_FRAME.title "$title"
 grid $PANE_FRAME.title -sticky news -pady 2
 frame $PANE_FRAME.f
