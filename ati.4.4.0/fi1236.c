@@ -3,7 +3,7 @@
 #include "fi1236.h"
 #include "i2c_def.h"
 
-#define NUM_TUNERS    6
+#define NUM_TUNERS    7
 
 const FI1236_parameters tuner_parms[NUM_TUNERS] =
 {
