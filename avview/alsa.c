@@ -594,6 +594,34 @@ if(a<0){
 	fprintf(stderr,"Unable to set hw params for recording: %s\n", snd_strerror(a));
 	return -1;
 	}
+a=snd_pcm_sw_params_current(ad->recording_handle, swparams);
+if(a<0){
+     	fprintf(stderr, "Unable to obtain current sw paramams: %s\n", snd_strerror(a));
+     	return -1;
+	}
+fprintf(stderr,"stop_threshhold:%d pid:%d\n",
+	snd_pcm_sw_params_get_stop_threshold(swparams),
+        getpid());
+
+a=snd_pcm_sw_params_set_stop_threshold(ad->recording_handle, swparams, 32768);
+if(a<0){
+     	fprintf(stderr, "Unable to set stop threshold: %s\n", snd_strerror(a));
+     	return -1;
+ 	}
+a=snd_pcm_sw_params(ad->recording_handle, swparams);
+if(a<0){
+     	fprintf(stderr,"Unable to set sw params for recording: %s\n", snd_strerror(a));
+     	return -1;
+ 	}
+a=snd_pcm_sw_params_current(ad->recording_handle, swparams);
+if(a<0){
+     	fprintf(stderr, "Unable to obtain current software params: %s\n", snd_strerror(a));
+     	return -1;
+ 	}
+fprintf(stderr,"stop_threshhold:%d pid:%d\n",
+	snd_pcm_sw_params_get_stop_threshold(swparams),
+        getpid());
+
 s->priv=ad;
 ad->priv=s;
 return 0;
