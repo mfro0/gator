@@ -253,7 +253,6 @@ void km_signal_transfer_completion(KM_TRANSFER_QUEUE *kmtq)
 	wmb();
 	if(km_fire_transfer_request(kmtq)){
 		request=&(kmtq->request[kmtq->first]);	
-		spin_unlock(&(kmtq->lock));
 		request->start_transfer(request);
 		return;
 	}
