@@ -708,6 +708,10 @@ release_mem_region(pci_resource_start(pci_dev,2),
 #define PCI_DEVICE_ID_ATI_RADEON_BB 0x4242
 #endif
 
+#ifndef PCI_DEVICE_ID_ATI_RADEON_IF
+#define PCI_DEVICE_ID_ATI_RADEON_IF    0x4966
+#endif
+
 #ifndef PCI_DEVICE_ID_ATI_RADEON_QD
 #define PCI_DEVICE_ID_ATI_RADEON_QD      0x5144
 #endif
@@ -911,6 +915,8 @@ static struct pci_device_id km_pci_tbl[] __devinitdata = {
 	        /* Radeon200 i.e. 8500 */
         {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_RADEON_BB,
          PCI_ANY_ID, PCI_ANY_ID, 0, 0, HARDWARE_RADEON},	
+        {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_RADEON_IF,
+         PCI_ANY_ID, PCI_ANY_ID, 0, 0, HARDWARE_RADEON},
         {0,}
 };
 
