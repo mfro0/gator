@@ -497,6 +497,7 @@ if { $fullscreen_mode } {
 			-height ${screen_height}
 		wm geometry . =${screen_width}x${screen_height}+0+0
 		grab -global .
+		focus -force .
 #		}
 	} {
 	$VIDEO_WINDOW configure -width $saved_vw_width -height $saved_vw_height
@@ -519,6 +520,7 @@ if { $fullscreen_mode } {
 	update idletasks
 	wm geometry . =$saved_main_window_geometry
 	grab release .
+	focus -force .
 	}
 }
 
