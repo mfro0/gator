@@ -2673,6 +2673,16 @@ RADEONDisplayVideo(
     step_by_y = 1;
     step_by_uv = step_by_y;
 
+    /* if the source width was larger than what would fit in overlay scaler increase step_by values */
+    i=drw_w;
+    while(i>1536){
+    	step_by_y++;
+	step_by_uv++;
+	h_inc >>=1;
+	i=i/2;
+    	}
+
+
     /* we could do a tad better  - but why
        bother when this concerns downscaling and the code is so much more
        hairy */
@@ -2693,7 +2703,7 @@ RADEONDisplayVideo(
     /* we need twice as much space for 4 tap filtering.. */
     /* under special circumstances turn on 4 tap filtering */
     if(!is_rgb && (step_by_y==1) && (step_by_uv==1) && (h_inc < (1<<12)) && (deinterlacing_method!=METHOD_WEAVE) 
-       && (drw_w*2 < 1536)){
+       && (drw_w*2 <= 1536)){
         step_by_y=0;
         step_by_uv=1;
         h_inc_uv = h_inc;
@@ -3092,7 +3102,8 @@ RADEONQueryImageAttributes(
 ){
     int size, tmp;
 
-    if(*w > 2048) *w = 2048;
+    /* Overlay scaler has buffer that is 1536 pixels wide */
+    if(*w > 1536) *w = 1536;
     if(*h > 2048) *h = 2048;
 
     *w = (*w + 1) & ~1;
