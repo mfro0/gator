@@ -64,7 +64,7 @@ static Atom xvContrast, xvHue, xvColor, xvAutopaintColorkey, xvSetDefaults,
 	    xvEncoding, xvFrequency, xvVolume, xvMute,
 	     xvDecBrightness, xvDecContrast, xvDecHue, xvDecColor, xvDecSaturation,
 	     xvTunerStatus, xvSAP, xvOverlayDeinterlacingMethod,
-	     xvLocationID, xvDeviceID, xvInstanceID;
+	     xvLocationID, xvDeviceID, xvInstanceID, xvDumpStatus;
 
 typedef struct
 {
@@ -241,14 +241,15 @@ static XF86VideoFormatRec Formats[NUM_FORMATS] =
    {15, DirectColor}, {16, DirectColor}, {24, DirectColor}
 };
 
-#define NUM_DEC_ATTRIBUTES 19+4+3
-#define NUM_ATTRIBUTES 9+4+3
+#define NUM_DEC_ATTRIBUTES 19+4+4
+#define NUM_ATTRIBUTES 9+4+4
 
 static XF86AttributeRec Attributes[NUM_DEC_ATTRIBUTES+1] =
 {
    {             XvGettable, 0, ~0, "XV_DEVICE_ID"},
    {             XvGettable, 0, ~0, "XV_LOCATION_ID"},
    {             XvGettable, 0, ~0, "XV_INSTANCE_ID"},
+   {XvSettable		   , 0, 1, "XV_DUMP_STATUS"},
    {XvSettable             , 0, 1, "XV_SET_DEFAULTS"},
    {XvSettable | XvGettable, 0, 1, "XV_AUTOPAINT_COLORKEY"},
    {XvSettable | XvGettable, 0, ~0, "XV_COLORKEY"},
@@ -714,6 +715,7 @@ RADEONResetVideo(ScrnInfoPtr pScrn)
     xvInstanceID = MAKE_ATOM("XV_INSTANCE_ID");
     xvDeviceID = MAKE_ATOM("XV_DEVICE_ID");
     xvLocationID = MAKE_ATOM("XV_LOCATION_ID");
+    xvDumpStatus = MAKE_ATOM("XV_DUMP_STATUS");
     
     sprintf(tmp, "RXXX:%d.%d.%d", info->PciInfo->vendor, info->PciInfo->chipType, info->PciInfo->chipRev);
     pPriv->device_id = MAKE_ATOM(tmp);
@@ -2172,13 +2174,6 @@ RADEONSetPortAttribute(ScrnInfoPtr  pScrn,
   } else 
   if(attribute == xvSAP) {
         pPriv->sap_channel = value;
-	if(pPriv->tda9885 != NULL){
-		xf86_tda9885_getstatus(pPriv->tda9885);
-		xf86_tda9885_dumpstatus(pPriv->tda9885);
-		}
-	if(pPriv->fi1236!=NULL){
-		fi1236_dump_status(pPriv->fi1236);
-		}
         if(pPriv->msp3430 != NULL) xf86_MSP3430SetSAP(pPriv->msp3430, pPriv->sap_channel?4:3);
   } else 
   if(attribute == xvVolume) {
@@ -2206,6 +2201,15 @@ RADEONSetPortAttribute(ScrnInfoPtr  pScrn,
                 default:
                         OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0xAAAAA);
                 }                       
+  } else 
+  if(attribute == xvDumpStatus) {
+	if(pPriv->tda9885 != NULL){
+		xf86_tda9885_getstatus(pPriv->tda9885);
+		xf86_tda9885_dumpstatus(pPriv->tda9885);
+		}
+	if(pPriv->fi1236!=NULL){
+		fi1236_dump_status(pPriv->fi1236);
+		}
   }
     else 
 	return BadMatch;
