@@ -248,14 +248,27 @@ for(i=0;i<(f->free>>2);i++){
 sdata->audio_samples+=(f->free>>2);
 }
 
+static void os_write_packet(int fd, unsigned char *buf, int size)
+{
+int written=0, count;
+while(written<size){
+       count=write(fd, buf+written, size-written);
+       if(count<0&&count!=EAGAIN&&count!=EINTR){
+               perror("writing audio");
+               return;
+               }
+       written+=count;
+       }
+}
+
+
 void ffmpeg_audio_encoding_thread(PACKET_STREAM *s)
 {
 unsigned char *out_buf;
-long ob_size, ob_free, ob_written, i;
+long ob_size, ob_free;
 PACKET *f;
-ob_size=sdata->alsa_param.chunk_size;
+ob_size=sdata->audio_codec_context.frame_size*sdata->audio_codec_context.channels*sizeof(short);
 out_buf=do_alloc(ob_size, 1);
-
 fprintf(stderr,"audio_encoding pid %d\n", getpid());
 /* encode in the background */
 nice(1);
@@ -272,28 +285,27 @@ while(1){
 		ob_free=avcodec_encode_audio(&(sdata->audio_codec_context), out_buf, ob_size, (short *) f->buf);	
 		if(ob_free>0){
 			sdata->encoded_stream_size+=ob_free; 
-			ob_written=0;
-			while(ob_written<ob_free){
-				pthread_mutex_lock(&(sdata->format_context_mutex));
-				if(sdata->format_context.oformat!=NULL){
-					sdata->format_context.oformat->write_packet(&(sdata->format_context),sdata->audio_stream_num, out_buf+ob_written, ob_free-ob_written, 0);
-					i=ob_free-ob_written;
-					} else {
-					i=write(sdata->fd_out, out_buf+ob_written, ob_free-ob_written);
-					}
-				sdata->last_audio_timestamp=f->timestamp;
-				if(((sdata->last_video_timestamp+500000) < f->timestamp) && 
-					(sdata->video_stream_num>=0)){
-					pthread_mutex_lock(&(s->ctr_mutex));
-					s->stop_stream|=STOP_CONSUMER_THREAD;
-					pthread_mutex_unlock(&(s->ctr_mutex));
-					#ifdef DEBUG_TIMESTAMPS
-					fprintf(stderr,"* Stopping audio thread (self)\n");					
-					#endif
-					}
-				pthread_mutex_unlock(&(sdata->format_context_mutex));
-				if(i>=0)ob_written+=i;
+                       	pthread_mutex_lock(&(sdata->format_context_mutex));
+                       	/* write output buffer */
+                       	if(sdata->format_context.oformat!=NULL){
+                               	/* write using libavcodec format output */
+                               	sdata->format_context.oformat->write_packet(&(sdata->format_context),sdata->audio_stream_num, out_buf, ob_free, 0);
+                               	} else {
+                               	/* write using os function */
+                               	os_write_packet(sdata->fd_out, out_buf, ob_free);
+                               	}
+                       	/* check if we are too fast */
+                       	sdata->last_audio_timestamp=f->timestamp;
+                       	if(((sdata->last_video_timestamp+500000) < f->timestamp) && 
+                               	(sdata->video_stream_num>=0)){
+                               	pthread_mutex_lock(&(s->ctr_mutex));
+                               	s->stop_stream|=STOP_CONSUMER_THREAD;
+                               	pthread_mutex_unlock(&(s->ctr_mutex));
+                               	#ifdef DEBUG_TIMESTAMPS
+                               	fprintf(stderr,"* Stopping audio thread (self)\n");
+                               	#endif
 				}
+                        pthread_mutex_unlock(&(sdata->format_context_mutex));
 			#ifdef DEBUG_TIMESTAMPS
 			fprintf(stderr,"Done encoding audio packet with timestamp %lld\n", f->timestamp);
 			#endif
@@ -573,26 +585,15 @@ sdata->audio_codec_context.channels=sdata->alsa_param.channels;
 sdata->audio_codec_context.codec_id=sdata->audio_codec->id;
 sdata->audio_codec_context.sample_fmt=SAMPLE_FMT_S16;
 sdata->audio_codec_context.codec_type=sdata->audio_codec->type;
-sdata->audio_codec_context.frame_size=sdata->alsa_param.chunk_size/(2*sdata->alsa_param.channels);
-if(sdata->audio_codec->priv_data_size==0){
-	fprintf(stderr,"BUG: sdata->audio_codec->priv_data_size==0, fixing it\n");
-	sdata->audio_codec->priv_data_size=1024*1024; /* 2megs should be enough */
-	}
 if(avcodec_open(&(sdata->audio_codec_context), sdata->audio_codec)!=0){
 	return 0;
 	}
+sdata->alsa_param.chunk_size=sdata->audio_codec_context.frame_size*2*sdata->alsa_param.channels;
 fprintf(stderr,"audio_codec: bit_rate=%d sample_rate=%d frame_size=%d\n",
 	sdata->audio_codec_context.bit_rate,
 	sdata->audio_codec_context.sample_rate,
 	sdata->audio_codec_context.frame_size);
 
-if(sdata->audio_codec_context.frame_size==1){
-	fprintf(stderr,"BUG: sdata->audio_codec->frame_size==1, fixing it\n");
-	sdata->audio_codec_context.frame_size=1152; /* magic number from ../ffmpeg/libavcodec/mpegaudio.h */
-	}
-	
-if(sdata->audio_codec_context.frame_size>=1)
-	sdata->alsa_param.chunk_size=sdata->audio_codec_context.frame_size*2*sdata->alsa_param.channels;
 sdata->audio_s->consume_func=ffmpeg_audio_encoding_thread;
 return 1;
 }
