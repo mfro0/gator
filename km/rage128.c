@@ -140,7 +140,7 @@ long status;
 KM_STRUCT *kms=kmtr->user_data;
 rage128_wait_for_idle(kms);
 wmb();
-writel(kvirt_to_bus(kms->capture.dma_table[kmtr->buffer])|RAGE128_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM, 
+writel(kms->capture.dma_table_physical[kmtr->buffer]|RAGE128_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM, 
 	kms->reg_aperture+RAGE128_BM_VIDCAP_BUF0);
 }
 
@@ -170,7 +170,7 @@ stream->total_frames++;
 stream->dvb.kmsbi[buffer].age=stream->total_frames;
 wmb();
 km_add_transfer_request(&(kms->gui_dma_queue),
-	&(stream->dvb), buffer, KM_TRANSFER_TO_SYSTEM_RAM, rage128_start_request_transfer, kms);
+	stream, buffer, KM_TRANSFER_TO_SYSTEM_RAM, rage128_start_request_transfer, kms);
 }
 
 static int rage128_is_capture_irq_active(KM_STRUCT *kms)

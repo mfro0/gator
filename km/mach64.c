@@ -130,7 +130,7 @@ long status;
 KM_STRUCT *kms=kmtr->user_data;
 mach64_wait_for_idle(kms);
 wmb();
-writel(kvirt_to_bus(kms->capture.dma_table[kmtr->buffer])|MACH64_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM, 
+writel(kms->capture.dma_table_physical[kmtr->buffer]|MACH64_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM, 
 	kms->reg_aperture+MACH64_BM_SYSTEM_TABLE);
 }
 
@@ -160,7 +160,7 @@ stream->total_frames++;
 stream->dvb.kmsbi[buffer].age=stream->total_frames;
 wmb();
 km_add_transfer_request(&(kms->gui_dma_queue),
-	&(stream->dvb), buffer, KM_TRANSFER_TO_SYSTEM_RAM, mach64_start_request_transfer, kms);
+	stream, buffer, KM_TRANSFER_TO_SYSTEM_RAM, mach64_start_request_transfer, kms);
 }
 
 void mach64_km_irq(int irq, void *dev_id, struct pt_regs *regs)
