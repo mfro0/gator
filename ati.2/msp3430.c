@@ -85,7 +85,7 @@ xf86DrvMsg(m->d.pI2CBus->scrnIndex, X_INFO, "MSP34xx: SAP(8)=%d mono/NICAM(7)=%d
 		status_hi & 1, (status_lo>>7) & 1, (status_lo>>6)&1, 
 		(status_lo>>5)? ( (status_hi>>1)&1? "bad NICAM reception" : "NICAM" ) : 
 		                ((status_hi>>1)&1 ? "bogus" : "ANALOG FM/AM") , 
-		(status_lo>>4)&1, (status_lo>>3)&1, (status_lo>>2)&1, (status_lo>>1)&1);
+		(status_lo>>4)&1, (status_lo>>3)&1,!( (status_lo>>2)&1), !((status_lo>>1)&1));
 
 GetMSP3430Data(m, RD_DEM, 0x00, 0x7E, &status_hi, &status_lo);
 xf86DrvMsg(m->d.pI2CBus->scrnIndex, X_INFO, "MSP34xx: standard result=0x%02x%02x\n",
@@ -261,8 +261,8 @@ void MSP3430SetVolume (MSP3430Ptr m, CARD8 value)
     SetMSP3430Data(m, WR_DSP, 0x00, 0x07, value, 0);
     m->volume=value;
 
-    MSP3430DumpStatus(m); 
 #if __MSPDEBUG__ > 2
+    MSP3430DumpStatus(m); 
     __MSPBEEP
     GetMSP3430Data(m, RD_DSP, 0x00, 0x00, &old_volume, &result);
     xf86DrvMsg(m->d.pI2CBus->scrnIndex, X_INFO, "MSP3430 volume 0x%02x\n",value);
