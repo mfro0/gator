@@ -722,13 +722,13 @@ y=atoi(argv[4]);
 w=atoi(argv[5]);
 h=atoi(argv[6]);
 
-xgcv.subwindow_mode=ClipByChildren;
+xgcv.subwindow_mode=IncludeInferiors;
 xgcv.clip_x_origin=0;
 xgcv.clip_y_origin=0;
 /*
 Tk_CreateEventHandler(tkwin, XvVideoNotify, xv_notify_handler, NULL);
 */
-gc=Tk_GetGC(tkwin, 0, NULL);
+gc=Tk_GetGC(tkwin, GCSubwindowMode, &xgcv);
 
 XvPutVideo(d, port, win, gc, x, y, w, h, 0, 0, Tk_Width(tkwin), Tk_Height(tkwin));
 Tk_FreeGC(d, gc);
@@ -814,6 +814,41 @@ XvSetPortAttribute(d, port, attr_atom, value);
 return 0;
 }
 
+int xv_getwindowbackgroundpixel(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+{
+Tk_Window tkwin;
+Window win;
+Display *d;
+Screen *s;
+int value;
+XSetWindowAttributes *xswa;
+
+Tcl_ResetResult(interp);
+
+if(argc<2){
+	Tcl_AppendResult(interp,"ERROR: xv_getwindowbackgroundpixel requires one argument", NULL);
+	return TCL_ERROR;
+	}
+
+tkwin=Tk_NameToWindow(interp,argv[1], Tk_MainWindow(interp));
+
+if(tkwin==NULL){
+	Tcl_AppendResult(interp,"ERROR: xv_getwindowbackgroundpixel: first argument must be an existing toplevel or frame window", NULL);
+	return TCL_ERROR;
+	}
+
+xswa=Tk_Attributes(tkwin);
+if((xswa==NULL)){
+	Tcl_AppendResult(interp,"ERROR: xv_getwindowbackgroundpixel: first argument must be a mapped toplevel or frame window", NULL);
+	return TCL_ERROR;
+	}
+
+Tcl_SetObjResult(interp, Tcl_NewIntObj(xswa->background_pixel));
+return 0;
+}
+
+
+
 struct {
 	char *name;
 	Tcl_CmdProc *command;
@@ -833,6 +868,7 @@ struct {
 	{"xv_putvideo", xv_putvideo},
 	{"xv_getportattribute", xv_getportattribute},
 	{"xv_setportattribute", xv_setportattribute},
+	{"xv_getwindowbackgroundpixel", xv_getwindowbackgroundpixel},
 	{NULL, NULL}
 	};
 

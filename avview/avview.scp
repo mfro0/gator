@@ -9,7 +9,6 @@
 
 
 
-puts "$argv"
 set control_screen1 ""
 regexp "control=\[^ \]+" "$argv" control_screen1
 regsub "control=" "$control_screen1" "" control_screen
@@ -25,7 +24,7 @@ global VIDEO_WINDOW
 
 destroy .video
 
-frame .video -width 640 -height 480
+frame .video -width 640 -height 480 -background #102030
 
 set VIDEO_WINDOW .video
 
@@ -117,17 +116,9 @@ if { $current_encoding == "none" } { return }
 
 set port_size [xv_port_encoding_size $VIDEO_WINDOW $current_port $current_encoding]
 
-xv_setportattribute $VIDEO_WINDOW $current_port "XV_COLORKEY" 0
-
-set COLORKEY [xv_getportattribute $VIDEO_WINDOW $current_port "XV_COLORKEY"]
-
-puts "COLORKEY=[format "%x" $COLORKEY]"
-
-$VIDEO_WINDOW configure -background "#000000"
-xv_setportattribute $VIDEO_WINDOW $current_port "XV_ENCODING" 5
+xv_setportattribute $VIDEO_WINDOW $current_port "XV_COLORKEY" [xv_getwindowbackgroundpixel $VIDEO_WINDOW]
 
 xv_putvideo $VIDEO_WINDOW $current_port 0 0 [lindex $port_size 0] [lindex $port_size 1]
-
 }
 
 proc find_attribute_widget {video_window port attribute} {
@@ -163,7 +154,7 @@ global $variable
 global VIDEO_WINDOW
 global current_port
 xv_setportattribute $VIDEO_WINDOW $current_port $attr_name [set $variable]
-puts "$attr_name=[set $variable]"
+#puts "$attr_name=[set $variable]"
 #
 # The following is a hack.. 
 # do this properly after XvNotify support is complete
@@ -223,7 +214,6 @@ proc update_attribute_variables {} {
 global VIDEO_WINDOW
 global current_port
 if { $current_port == "none" } { return }
-puts "current_port=$current_port"
 set num_attributes [xv_num_port_attributes $VIDEO_WINDOW $current_port]
 for {set i 0 } { $i < $num_attributes} { incr i } {
 	set range [xv_port_attribute_range $VIDEO_WINDOW $current_port $i]
