@@ -8,7 +8,7 @@ DEFINES=
 
 CC=gcc -pipe -g $(INCLUDES) $(DEFINES)
 
-SRCS=xv.c frequencies.c xmisc.c string_cache.c v4l.c formats.c ffmpeg.c alsa.c
+SRCS=xv.c frequencies.c xmisc.c string_cache.c v4l.c formats.c ffmpeg.c alsa.c packet_stream.c
 
 #LIBS=-lm -ldl $(X11LIBS) @FFMPEG_LIBS@
 LIBS=$(X11LIBS) @LIBS@ @FFMPEG_LIBS@
@@ -17,20 +17,20 @@ TCLLIBS=-ltcl8.3
 TKLIBS=-ltk8.3
 
 
-all: avview
+all: avview_shell
 
-test: avview 
+test: avview_shell
 	sync
 	bash -c 'export DISPLAY=:0.0; ./avview.scp control=inspire:0.0'
 
 #	./read_pci.scp
 
-avview: $(SRCS) main.c
-	$(CC) -O2 $(X11CFLAGS) @FFMPEG_CFLAGS@ $(SRCS) $(TCLLIBS) $(TKLIBS) $(LIBS) main.c -o avview 
+avview_shell: $(SRCS) main.c
+	$(CC) -O2 $(X11CFLAGS) @FFMPEG_CFLAGS@ $(SRCS) $(TCLLIBS) $(TKLIBS) $(LIBS) main.c -o avview_shell
 
-avview.static: $(SRCS) main.c
-	$(CC) -static $(X11CFLAGS) @FFMPEG_CFLAGS@ $(SRCS) $(TCLLIBS) $(LIBS) main.c -lm -dl -o avview.static
-	strip avview.static
+avview_shell.static: $(SRCS) main.c
+	$(CC) -static $(X11CFLAGS) @FFMPEG_CFLAGS@ $(SRCS) $(TCLLIBS) $(LIBS) main.c -lm -dl -o avview_shell.static
+	strip avview_shell.static
 	
 	
 tarball:
