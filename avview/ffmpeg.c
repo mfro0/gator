@@ -243,7 +243,8 @@ while(1){
 					i=write(sdata->fd_out, out_buf+ob_written, ob_free-ob_written);
 					}
 				sdata->last_audio_timestamp=f->timestamp;
-				if((sdata->last_video_timestamp+500000) < f->timestamp){
+				if(((sdata->last_video_timestamp+500000) < f->timestamp) && 
+					(sdata->video_stream_num>=0)){
 					pthread_mutex_lock(&(s->ctr_mutex));
 					s->stop_stream|=STOP_CONSUMER_THREAD;
 					pthread_mutex_unlock(&(s->ctr_mutex));
@@ -515,7 +516,7 @@ sdata->audio_codec_context.sample_fmt=SAMPLE_FMT_S16;
 sdata->audio_codec_context.codec_type=sdata->audio_codec->type;
 if(sdata->audio_codec->priv_data_size==0){
 	fprintf(stderr,"BUG: sdata->audio_codec->priv_data_size==0, fixing it\n");
-	sdata->audio_codec->priv_data_size=2*1024*1024; /* 1meg should be enough */
+	sdata->audio_codec->priv_data_size=2*1024*1024; /* 2megs should be enough */
 	}
 if(avcodec_open(&(sdata->audio_codec_context), sdata->audio_codec)<0){
 	return 0;

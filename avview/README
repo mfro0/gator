@@ -32,3 +32,9 @@ Next run
        * People with newer cards with SPDIF - if your sound is distorted
          try muting/unmuting various channels (like CD).
 	 LET ME KNOW (volodya@mindspring.com) if this helps.       
+       * since we are working off ffmpeg CVS it is a good idea to 
+         run make clean; cvs update -d; make ; in ffmpeg directory
+	 before installing newer version of avview. Since CVS might turn
+	 out to be screwed up I recommend making a tarbal of ffmpeg tree
+	 right after make clean - it is not that big and you would be able
+	 to untar it and continue as before if anything breaks.

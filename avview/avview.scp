@@ -331,7 +331,7 @@ switch  $type {
 		}
 	"button" {
 		label $widget.label$suffix -text [translate_attribute_name $name]
-		button $widget.button$suffix -command "xv_setportattribute $video_window $port $name 1"\
+		button $widget.button$suffix -command "xv_setportattribute $video_window $port $name 1; update_attribute_variables"\
 			-text "perform now"
 		eval $widget.label$suffix configure [get_settings $widget.label$suffix AVview XVideo $port $attribute $attr_count]
 		eval $widget.button$suffix configure [get_settings $widget.button$suffix AVview XVideo $port $attribute $attr_count]
