@@ -611,6 +611,8 @@ static int __devinit km_probe(struct pci_dev *dev, const struct pci_device_id *p
 
 	kms=&(km_devices[num_devices]);
 	memset(kms, 0, sizeof(KM_STRUCT));
+	if (pci_enable_device(dev))
+		return -EIO;	
 	kms->dev=dev;
 	kms->irq=dev->irq;
 	kms->gui_dma_queue.request=kms->gui_dma_request;
@@ -631,8 +633,6 @@ static int __devinit km_probe(struct pci_dev *dev, const struct pci_device_id *p
 	kms->vbi.info_du=-1;
 	spin_lock_init(&(kms->kms_lock));
 	printk(KERN_DEBUG "km: using irq %ld\n", kms->irq);
-	if (pci_enable_device(dev))
-		return -EIO;	
 	printk(KERN_DEBUG "Register aperture is 0x%08lx 0x%08lx\n", pci_resource_start(dev, 2), pci_resource_len(dev, 2));
 /*
   if (!request_mem_region(pci_resource_start(dev,2),
