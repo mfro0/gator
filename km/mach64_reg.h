@@ -15,6 +15,7 @@
 #define MACH64_BUSMASTER_INT_ACK (1<<25)
 #define MACH64_ACKS_MASK        ((1<<2)|(1<<4)|(1<<8)|(1<<10)|(1<<17)|(1<<19)|(1<<21)|(1<<23)|(1<<25)|(1<<31))
 
+#define ACK_INTERRUPT(value, acks)    ( ( (value) & ~MACH64_ACKS_MASK) | (acks))
 
 #define MACH64_CAP0_BUF0_OFFSET 	(0x20*4)
 #define MACH64_CAP0_BUF0_EVEN_OFFSET 	(0x21*4)

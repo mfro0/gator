@@ -69,6 +69,7 @@ u32 a;
 a=readl(kms->reg_aperture+MACH64_BUS_CNTL);
 writel(a&(~(1<<6)), kms->reg_aperture+MACH64_BUS_CNTL);
 a=readl(kms->reg_aperture+MACH64_CRTC_INT_CNTL);
+printk("CRTC_INT_CNTL=0x%08x\n", a);
 writel(a|MACH64_CAPBUF0_INT_ACK|MACH64_CAPBUF1_INT_ACK|MACH64_BUSMASTER_INT_ACK, kms->reg_aperture+MACH64_CRTC_INT_CNTL);
 writel(a|MACH64_CAPBUF0_INT_EN|MACH64_CAPBUF1_INT_EN|MACH64_BUSMASTER_INT_EN, kms->reg_aperture+MACH64_CRTC_INT_CNTL);
 }
@@ -161,7 +162,7 @@ static int mach64_is_capture_irq_active(KM_STRUCT *kms)
 long status;
 status=readl(kms->reg_aperture+MACH64_CRTC_INT_CNTL);
 if(!(status & (MACH64_CAPBUF0_INT_ACK|MACH64_CAPBUF1_INT_ACK)))return 0;
-writel((status | MACH64_CAPBUF0_INT_ACK|MACH64_CAPBUF1_INT_ACK) & ~(MACH64_ACKS_MASK & ~(MACH64_CAPBUF0_INT_ACK|MACH64_CAPBUF1_INT_ACK))  , kms->reg_aperture+MACH64_CRTC_INT_CNTL);
+writel(ACK_INTERRUPT(status, MACH64_CAPBUF0_INT_ACK|MACH64_CAPBUF1_INT_ACK), kms->reg_aperture+MACH64_CRTC_INT_CNTL);
 printk("CAP_INT_STATUS=0x%08x\n", status);
 if(status & MACH64_CAPBUF0_INT_ACK)mach64_start_frame_transfer_buf0(kms);
 if(status & MACH64_CAPBUF1_INT_ACK)mach64_start_frame_transfer_buf0_even(kms); 
@@ -192,7 +193,8 @@ while(1){
 		printk("mach64: status=0x%08x\n", status);
 		if(!(status & MACH64_BUSMASTER_INT_ACK))return;
 		acknowledge_dma(kms);
-		writel((status|MACH64_BUSMASTER_INT_ACK) & ~(MACH64_ACKS_MASK & ~MACH64_BUSMASTER_INT_ACK), kms->reg_aperture+MACH64_CRTC_INT_CNTL);
+/*		writel((status|MACH64_BUSMASTER_INT_ACK) & ~(MACH64_ACKS_MASK & ~MACH64_BUSMASTER_INT_ACK), kms->reg_aperture+MACH64_CRTC_INT_CNTL); */
+		writel(ACK_INTERRUPT(status, MACH64_BUSMASTER_INT_ACK), kms->reg_aperture+MACH64_CRTC_INT_CNTL);
 		}
 	}
 }
