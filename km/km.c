@@ -74,53 +74,6 @@ for(i=0;i<(frame->buf_size/PAGE_SIZE);i++){
 return 0;
 }
 
-static void radeon_start_frame_transfer_buf0(KM_STRUCT *kms)
-{
-long offset, status;
-if(kms->frame.buffer==NULL)return;
-kms->frame.timestamp=jiffies;
-offset=readl(kms->reg_aperture+RADEON_CAP0_BUF0_OFFSET);
-setup_single_frame_buffer(kms, &(kms->frame), offset);
-/* wait for at least one available queue */
-do {
-	status=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
-	printk("status=0x%08x\n", status);
-	} while (!(status & 0x1f));
-/* start transfer */
-if(kms->frame.dma_active)printk("DMA overrun\n");
-if(kms->frame.buf_ptr!=kms->frame.buf_free){
-	kms->overrun++;
-	printk("Data overrun\n");
-	}
-kms->total_frames++;
-kms->frame.dma_active=1;
-writel(kvirt_to_pa(kms->frame.dma_table), kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR);
-printk("start_frame_transfer_buf0\n");
-}
-
-static void radeon_start_frame_transfer_buf0_even(KM_STRUCT *kms)
-{
-long offset, status;
-if(kms->frame_even.buffer==NULL)return;
-kms->frame_even.timestamp=jiffies;
-offset=readl(kms->reg_aperture+RADEON_CAP0_BUF0_EVEN_OFFSET);
-setup_single_frame_buffer(kms, &(kms->frame_even), offset);
-/* wait for at least one available queue */
-do {
-	status=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
-	printk("status=0x%08x\n", status);
-	} while (!(status & 0x1f));
-/* start transfer */
-if(kms->frame_even.dma_active)printk("DMA overrun\n");
-if(kms->frame_even.buf_ptr!=kms->frame_even.buf_free){
-	kms->overrun++;
-	printk("Data overrun\n");
-	}
-kms->total_frames++;
-kms->frame_even.dma_active=1;
-writel(kvirt_to_pa(kms->frame_even.dma_table), kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR);
-printk("start_frame_transfer_buf0_even\n");
-}
 
 static int acknowledge_dma(KM_STRUCT *kms)
 {
@@ -156,7 +109,7 @@ count=1000;
 
 while(1){
 	printk("beep %ld\n", kms->interrupt_count);
-	if(!is_capture_irq_active(irq, kms)){
+	if(!radeon_is_capture_irq_active(irq, kms)){
 		status=readl(kms->reg_aperture+RADEON_GEN_INT_STATUS);
 		mask=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
 		if(!(status & mask))return;

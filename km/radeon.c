@@ -12,6 +12,7 @@
 
 
 #include "km.h"
+#include "km_memory.h"
 #include "radeon_reg.h"
 
 
@@ -54,6 +55,54 @@ a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
 writel(a & ~(1<<30), kms->reg_aperture+RADEON_GEN_INT_CNTL);
 }
 
+static void radeon_start_frame_transfer_buf0(KM_STRUCT *kms)
+{
+long offset, status;
+if(kms->frame.buffer==NULL)return;
+kms->frame.timestamp=jiffies;
+offset=readl(kms->reg_aperture+RADEON_CAP0_BUF0_OFFSET);
+setup_single_frame_buffer(kms, &(kms->frame), offset);
+/* wait for at least one available queue */
+do {
+	status=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
+	printk("status=0x%08x\n", status);
+	} while (!(status & 0x1f));
+/* start transfer */
+if(kms->frame.dma_active)printk("DMA overrun\n");
+if(kms->frame.buf_ptr!=kms->frame.buf_free){
+	kms->overrun++;
+	printk("Data overrun\n");
+	}
+kms->total_frames++;
+kms->frame.dma_active=1;
+writel(kvirt_to_pa(kms->frame.dma_table), kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR);
+printk("start_frame_transfer_buf0\n");
+}
+
+static void radeon_start_frame_transfer_buf0_even(KM_STRUCT *kms)
+{
+long offset, status;
+if(kms->frame_even.buffer==NULL)return;
+kms->frame_even.timestamp=jiffies;
+offset=readl(kms->reg_aperture+RADEON_CAP0_BUF0_EVEN_OFFSET);
+setup_single_frame_buffer(kms, &(kms->frame_even), offset);
+/* wait for at least one available queue */
+do {
+	status=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
+	printk("status=0x%08x\n", status);
+	} while (!(status & 0x1f));
+/* start transfer */
+if(kms->frame_even.dma_active)printk("DMA overrun\n");
+if(kms->frame_even.buf_ptr!=kms->frame_even.buf_free){
+	kms->overrun++;
+	printk("Data overrun\n");
+	}
+kms->total_frames++;
+kms->frame_even.dma_active=1;
+writel(kvirt_to_pa(kms->frame_even.dma_table), kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR);
+printk("start_frame_transfer_buf0_even\n");
+}
+
 int radeon_is_capture_irq_active(int irq, KM_STRUCT *kms)
 {
 long status, mask;
@@ -64,7 +113,9 @@ mask=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
 if(!(status & mask))return 0;
 writel(status & mask, kms->reg_aperture+RADEON_CAP_INT_STATUS);
 printk("CAP_INT_STATUS=0x%08x\n", status);
-if(status & 1)start_frame_transfer_buf0(kms);
-if(status & 2)start_frame_transfer_buf0_even(kms); 
+if(status & 1)radeon_start_frame_transfer_buf0(kms);
+if(status & 2)radeon_start_frame_transfer_buf0_even(kms); 
 return 1;
 }
+
+
