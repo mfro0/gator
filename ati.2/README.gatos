@@ -10,9 +10,8 @@
 ** Hint from Marko Skofljanec:  
     (this is now the recommended way to compile ati.2)
 
-    If you want to setup ati_xv separately from XFree source tree cd into
-    driver directory (ati_xv/r128 or ati_xv/ati) and execute the following
-    command:
+    If you want to setup ati.2 separately from XFree source tree cd into
+    driver directory ati.2 and execute the following command:
     
        xmkmf path/to/your/xfree86/tree
        
