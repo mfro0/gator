@@ -97,7 +97,7 @@ return 1;
 
 int radeon_is_capture_active(KM_STRUCT *kms)
 {
-return (kms->capture_active && (readl(kms->reg_aperture+RADEON_CAP0_CONFIG) & 0x1));
+return (radeon_check_mc_settings(kms) && (readl(kms->reg_aperture+RADEON_CAP0_CONFIG) & 0x1));
 }
 
 void radeon_get_window_parameters(KM_STRUCT *kms, struct video_window *vwin)
@@ -234,7 +234,7 @@ wmb();
 writel(status & mask, kms->reg_aperture+RADEON_CAP_INT_STATUS);
 KM_DEBUG("CAP_INT_STATUS=0x%08x\n", status);
 /* do not start dma transfer if capture is not active anymore */
-if(!radeon_is_capture_active(kms))return 1;
+if(!kms->capture_active)return 1;
 if(status & 1)radeon_start_frame_transfer_buf0(kms);
 if(status & 2)radeon_start_frame_transfer_buf0_even(kms); 
 return 1;
