@@ -2544,11 +2544,11 @@ t->modulation=2; /* negative FM */
 t->forced_mute_audio=0;
 t->port1=1;
 t->port2=1;
-t->top_adjustment=0x10; /* ? */
-t->deemphasis=1; /* ? */
+t->top_adjustment=0x10;
+t->deemphasis=1; 
 t->audio_gain=0;
 t->minimum_gain=0;
-t->gating=0; /* ? */
+t->gating=0; 
 t->vif_agc=1;
 switch(pPriv->encoding){
 		/* PAL */

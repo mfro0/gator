@@ -229,7 +229,7 @@ I2C_WriteRead(&(f->d), (I2CByte *)data, 2, NULL, 0);
 
 data[0]=0x0b;   /* start with register 0x0b */
 data[1]=m->NUM & 0xff;
-data[2]=128+(m->NUM >> 8);
+data[2]=(1<<7)|((m->NUM >> 8) & 0x0f);
 I2C_WriteRead(&(f->d), (I2CByte *)data, 3, NULL, 0);
 
 MT2032_wait_for_lock(f);
