@@ -27,7 +27,7 @@ Additional notes:
 
         the way km works is this:
 
-        * you setup TV-in using xawtv and Xserver - which means
+        * you setup TV-in using AVview and Xserver - which means
           you see TV in a window.
 
         * now you can use km to see video data. When an application
@@ -37,15 +37,15 @@ Additional notes:
           into main RAM. If not it reports -ENODATA.
 
     2) So, to use xv_stream you need _two_ networked computers: one with
-       xawtv running and another to put xv_stream window on. The result
+       AVview running and another to put xv_stream window on. The result
        is that you should see more or less the same TV image in both
        windows. Displaying both on the same screen will not work as
        ATI cards have only one overlay scalar unit and both xawtv and
        xv_stream need it.
 
-    3) what can you do if you have one computer ? Get CVS version of
-       ffmpeg and capture the video stream to an mpeg file. You can view
-       it later with xine, for example.
+    3) what can you do if you have one computer ? Get AVview and CVS
+       version of ffmpeg off Sourceforge and capture snapshots and streams 
+       with AVview. You can view them later with xine, for example.
        
        If you have got ffmpeg 0.4.5 get the patch from www.linuxvideo.org/gatos
        this version has a bug and will not work otherwise
@@ -54,4 +54,7 @@ Additional notes:
 
     5) you need Linux 2.4.9 (or later) to compile it properly
        
-                                   Vladimir Dergachev
+    6) Note to Radeon owners: As of 12/11/01 this module will ONLY work 
+       with devel branch of ati_xv.           
+	    
+	                        Vladimir Dergachev
