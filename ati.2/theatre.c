@@ -1764,10 +1764,11 @@ void RT_SetConnector (TheatrePtr t, CARD16 wConnector, int tunerFlag)
 
      xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre Checkpoint 1\n");
     /* Get the contrast value - make sure we are viewing a visible line*/
-    /* VD: from experiment we know that counter never reaches 2000. a value of
-         10000 should be safe enough for timeout */
     counter=0;
-    while (!((ReadRT_fld (fld_VS_LINE_COUNT)> 1) && (ReadRT_fld (fld_VS_LINE_COUNT)<20)) && (counter < 10000))counter++;
+    while (!((ReadRT_fld (fld_VS_LINE_COUNT)> 1) && (ReadRT_fld (fld_VS_LINE_COUNT)<20)) && (counter < 500)){
+    	counter++;
+	usleep(100);
+	}
     xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre Checkpoint 2, counter=%ld\n", counter);
     if(counter>=9999)xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre: timeout waiting for line count (%d)\n", ReadRT_fld (fld_VS_LINE_COUNT));
 
@@ -1809,14 +1810,17 @@ void RT_SetConnector (TheatrePtr t, CARD16 wConnector, int tunerFlag)
     xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre Checkpoint 3\n");
     while ((i>=0) && (! ReadRT_fld (fld_HS_GENLOCKED)))
     {
-      usleep(50);
+      usleep(50000);
       xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "checkpoint 3a i=%ld\n", i);
       i--;
     }
     if(i<0) xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre: waiting for fld_HS_GENLOCKED failed\n");
     xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre Checkpoint 4\n");
     counter = 0;
-    while (!((ReadRT_fld (fld_VS_LINE_COUNT)> 1) && (ReadRT_fld (fld_VS_LINE_COUNT)<20)) && (counter < 10000))counter++;
+    while (!((ReadRT_fld (fld_VS_LINE_COUNT)> 1) && (ReadRT_fld (fld_VS_LINE_COUNT)<20)) && (counter < 500)){
+    	counter++;
+	usleep(100);
+	}
     xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre Checkpoint 5\n");
     if(counter>=9999)xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre: timeout waiting for line count (%d)\n", ReadRT_fld (fld_VS_LINE_COUNT));
 
@@ -1834,7 +1838,7 @@ void InitTheatre(TheatrePtr t)
 
     /* 0 reset Rage Theatre */
     ShutdownTheatre(t);
-    usleep(100);
+    usleep(100000);
        
     /* 1.
      Set the VIN_PLL to NTSC value */

@@ -779,7 +779,7 @@ static CARD8 RADEON_I2C_WaitForAck (ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
     unsigned char *RADEONMMIO = info->MMIO;
     long counter = 0;
 
-    usleep(1);
+    usleep(1000);
     while(1)
     {
         RADEONWaitForIdle(pScrn); 
@@ -796,7 +796,7 @@ static CARD8 RADEON_I2C_WaitForAck (ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
 	{
 	    return I2C_DONE;
 	}	
-	usleep(10);
+	usleep(10000);
 	counter++;
 	if(counter>100)
 	{
@@ -828,7 +828,7 @@ static void RADEON_I2C_Halt (ScrnInfoPtr pScrn)
     RADEONWaitForIdle(pScrn);
     while (INREG8 (RADEON_I2C_CNTL_0 + 0) & I2C_GO)
     {
-      usleep(1);
+      usleep(1000);
       counter++;
       if(counter>1000)return;
     }
@@ -903,7 +903,7 @@ static Bool RADEONI2CWriteRead(I2CDevPtr d, I2CByte *WriteBuffer, int nWrite,
 
        status=RADEON_I2C_WaitForAck(pScrn,pPriv);
   
-       usleep(1);
+       usleep(1000);
 
        /* Write Value into the buffer */
        for (loop = 0; loop < nRead; loop++)
@@ -994,7 +994,7 @@ static Bool R200_I2CWriteRead(I2CDevPtr d, I2CByte *WriteBuffer, int nWrite,
 
        status=RADEON_I2C_WaitForAck(pScrn,pPriv);
   
-       usleep(1);
+       usleep(1000);
 
        /* Write Value into the buffer */
        for (loop = 0; loop < nRead; loop++)
@@ -1030,7 +1030,7 @@ static Bool RADEONProbeAddress(I2CBusPtr b, I2CSlaveAddr addr)
      return I2C_WriteRead(&d, NULL, 0, &a, 1);
 }
 
-#define I2C_CLOCK_FREQ     (80000.0)
+#define I2C_CLOCK_FREQ     (60000.0)
 
 
 const struct 
@@ -1131,14 +1131,18 @@ static void RADEONInitI2C(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
 
     xf86DrvMsg(pScrn->scrnIndex, X_INFO, "*** %p versus %p\n", xf86CreateI2CBusRec, CreateI2CBusRec);
 
+#if 1
     if(info->IsRV200){
 	    nm=(pll->reference_freq * 40000.0)/(1.0*I2C_CLOCK_FREQ);
 	    } else 
-    if(info->IsR200){
+    if(info->IsR200 && pPriv->MM_TABLE_valid && (RADEON_tuners[pPriv->MM_TABLE.tuner_type & 0x1f].type==TUNER_TYPE_MT2032)){
 	    nm=(pll->reference_freq * 40000.0)/(4.0*I2C_CLOCK_FREQ);
 	    } else {
 	    nm=(pll->reference_freq * 10000.0)/(4.0*I2C_CLOCK_FREQ);
 	    }
+#else
+    nm=(pll->xclk * 40000.0)/(1.0*I2C_CLOCK_FREQ);	   
+#endif
     for(pPriv->radeon_N=1; pPriv->radeon_N<255; pPriv->radeon_N++)
           if((pPriv->radeon_N * (pPriv->radeon_N-1)) > nm)break;
     pPriv->radeon_M=pPriv->radeon_N-1;
@@ -1193,11 +1197,12 @@ static void RADEONInitI2C(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
 		}
     }
     
+    if(pPriv->MM_TABLE_valid && (RADEON_tuners[pPriv->MM_TABLE.tuner_type & 0x1f].type==TUNER_TYPE_MT2032)){
     if(!xf86LoadSubModule(pScrn,"tda9885"))
     {
        xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "Unable to initialize tda9885 driver\n");
     }
-    else
+    else    
     {
     xf86LoaderReqSymbols(TDA9885SymbolsList, NULL);
     if(pPriv->tda9885 == NULL)
@@ -1207,6 +1212,7 @@ static void RADEONInitI2C(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
     if(pPriv->tda9885 == NULL)
     {
     	pPriv->tda9885 = xf86_Detect_tda9885(pPriv->i2c, TDA9885_ADDR_2);
+    }
     }
     }
     
@@ -3372,7 +3378,7 @@ RADEONPutVideo(
    switch(pPriv->overlay_deinterlacing_method){
    	case METHOD_BOB:
 	   OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0xAAAAA);
-	   OUTREG(RADEON_OV0_AUTO_FLIP_CNTL, RADEON_OV0_AUTO_FLIP_CNTL_SOFT_BUF_ODD
+	   OUTREG(RADEON_OV0_AUTO_FLIP_CNTL,0 /*| RADEON_OV0_AUTO_FLIP_CNTL_SOFT_BUF_ODD*/
 	   	|RADEON_OV0_AUTO_FLIP_CNTL_SHIFT_ODD_DOWN);
 	   break;
    	case METHOD_SINGLE:

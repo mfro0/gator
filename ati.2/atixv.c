@@ -349,6 +349,9 @@ static XF86AttributeRec Attributes[NUM_ATTRIBUTES+1] =
 
 static XF86AttributeRec AIWClassicAttributes[NUM_ATTRIBUTES] =
 {
+   {             XvGettable, 0, ~0, "XV_DEVICE_ID"},
+   {             XvGettable, 0, ~0, "XV_LOCATION_ID"},
+   {             XvGettable, 0, ~0, "XV_INSTANCE_ID"},
    {XvSettable             , 0, 1, "XV_SET_DEFAULTS"},
    {XvSettable | XvGettable, 0, 1, "XV_AUTOPAINT_COLORKEY"},
    {XvSettable | XvGettable, 0, ~0, "XV_COLORKEY"},

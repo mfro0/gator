@@ -59,6 +59,16 @@ FI1236Ptr Detect_FI1236(I2CBusPtr b, I2CSlaveAddr addr)
     return f;
 }
 
+static void MT2032_dump_parameters(FI1236Ptr f, MT2032_parameters *m)
+{
+xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: input f_rf=%g f_if1=%g f_if2=%g f_ref=%g f_ifbw=%g f_step=%g\n", 
+	m->f_rf, m->f_if1, m->f_if2, m->f_ref, m->f_ifbw, m->f_step);
+
+xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: computed f_lo1=%g f_lo2=%g LO1I=%d LO2I=%d SEL=%d STEP=%d NUM=%d\n", 
+	m->f_lo1, m->f_lo2, m->LO1I, m->LO2I, m->SEL, m->STEP, m->NUM);
+}
+
+
 static void MT2032_getid(FI1236Ptr f)
 {
 CARD8 out[4];
@@ -70,6 +80,40 @@ xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: Company code 0x%02x%02x, pa
 	out[0], out[1], out[2], out[3]);
 
 }
+
+/* might be buggy */
+static void MT2032_shutdown(FI1236Ptr f)
+{
+CARD8 data[10];
+CARD8 value;
+
+data[0]=0x00; /* start with register 0x00 */
+data[1]=0x1A; 
+data[2]=0x44;
+data[3]=0x20;
+data[4]=0x0F;
+data[5]=0x1F;
+
+I2C_WriteRead(&(f->d), (I2CByte *)data, 6, NULL, 0);
+
+data[0]=0x05; /* now start with register 0x05 */
+data[1]=0xD7;
+data[2]=0x14;
+data[3]=0x05;
+data[4]=0xC3;
+data[5]=0x4E;
+I2C_WriteRead(&(f->d), (I2CByte *)data, 6, NULL, 0);
+
+data[0]=0x0A; /* now start with register 0x05 */
+data[1]=0xEC;
+data[2]=0x8F;
+data[3]=0x07;
+data[4]=0x43;
+I2C_WriteRead(&(f->d), (I2CByte *)data, 5, NULL, 0);
+
+usleep(15000);
+}
+
 
 static void MT2032_init(FI1236Ptr f)
 {
@@ -98,7 +142,7 @@ data[1]=0x32;
 I2C_WriteRead(&(f->d), (I2CByte *)data, 2, NULL, 0);
 
 while(1) {
-	usleep(15); /* wait 15 milliseconds */
+	usleep(15000); /* wait 150 milliseconds */
 
 	data[0]=0x0e; /* register number 7, status */
 	I2C_WriteRead(&(f->d), (I2CByte *)data, 1, &value, 1);
@@ -108,6 +152,7 @@ while(1) {
 	data[0]=0x07; /* register number 7, control byte 2 */
 	I2C_WriteRead(&(f->d), (I2CByte *)data, 1, &value, 1);
 /*	xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: try XOGC=%d\n", (value & 0x07)-1); */
+	if((value & 0x7)==4)break; /* XOGC has reached 4.. stop */
 	data[1]=(value & (~0x7)	) | ((value & 0x7)-1);
 	I2C_WriteRead(&(f->d), (I2CByte *)data, 2, NULL, 0);	
 	}
@@ -131,7 +176,7 @@ while(1){
 		if(n2<=-n_max)break;
   		/* this line in the manual is bogus. I say it is faster
 		and more correct to go over all harmonics.. */
-		#if 1
+		#if 0
 		if(f_test<(m->f_lo2-m->f_if2-m->f_ifbw))break; 
 		#endif
 		}
@@ -203,7 +248,7 @@ while(1){
 	I2C_WriteRead(&(f->d), (I2CByte *)data, 1, &value, 1);
 /*	xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: LO1LK=%d LO2LK=%d\n", (value & 0x04)>>2, (value & 0x02)>>1); */
 	if((value & 6)==6) break;
-	usleep(1);
+	usleep(10000);
 	n--;
 	if(n<0)break;
 	}
@@ -254,7 +299,7 @@ CARD8 TAD1;
 data[0]=0x0f; /* register number 7, status */
 I2C_WriteRead(&(f->d), (I2CByte *)data, 1, &value, 1);
 TAD1=value & 0x07;
-xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: TAD1=%d\n", TAD1);
+xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: TAD1=%d SEL=%d\n", TAD1, m->SEL);
 if(TAD1 < 2)return;
 if(TAD1==2){
 	if(m->SEL==0)return;
@@ -311,15 +356,6 @@ if(f->type==TUNER_TYPE_MT2032)
 	return FI1236_get_afc_hint(f);
 }
 
-static void MT2032_dump_parameters(FI1236Ptr f, MT2032_parameters *m)
-{
-xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: input f_rf=%g f_if1=%g f_if2=%g f_ref=%g f_ifbw=%g f_step=%g\n", 
-	m->f_rf, m->f_if1, m->f_if2, m->f_ref, m->f_ifbw, m->f_step);
-
-xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: computed f_lo1=%g f_lo2=%g LO1I=%d LO2I=%d SEL=%d STEP=%d NUM=%d\n", 
-	m->f_lo1, m->f_lo2, m->LO1I, m->LO2I, m->SEL, m->STEP, m->NUM);
-}
-
 static void MT2032_dump_status(FI1236Ptr f)
 {
 CARD8 in;
@@ -356,6 +392,7 @@ MT2032_calculate_register_settings(&m, freq, 1090.0, 45.125, 5.25, 6.0, step);
 MT2032_calculate_register_settings(&m, freq, 1090.0, 45.74, 5.25, 6.0, step);
 #endif
 MT2032_calculate_register_settings(&m, freq, 1090.0, f->video_if, 5.25, 6.0, step);
+MT2032_dump_parameters(f, &m);
 MT2032_implement_settings(f, &m);
 MT2032_optimize_VCO(f, &m);
 /* MT2032_dump_parameters(f, &m); */

@@ -452,7 +452,7 @@ static CARD8 R128_I2C_WaitForAck (ScrnInfoPtr pScrn, R128PortPrivPtr pPriv)
     unsigned char *R128MMIO = info->MMIO;
     long counter = 0;
 
-    usleep(1);
+    usleep(1000);
     while(1)
     {
         retval = INREG8(R128_I2C_CNTL_0);
@@ -468,7 +468,7 @@ static CARD8 R128_I2C_WaitForAck (ScrnInfoPtr pScrn, R128PortPrivPtr pPriv)
 	{
 	    return (I2C_DONE);
 	}
-	usleep(10);
+	usleep(10000);
 	counter++;
 	if(counter>100)
 	{
@@ -497,7 +497,7 @@ static void R128_I2C_Halt (ScrnInfoPtr pScrn)
     /* wait for GO bit to go low */
     while (INREG8 (R128_I2C_CNTL_0 + 1) & (I2C_GO >> 8))
     {
-       usleep(1);
+       usleep(1000);
        counter++;
        if(counter>100)return;
     }
@@ -571,7 +571,7 @@ static Bool R128I2CWriteRead(I2CDevPtr d, I2CByte *WriteBuffer, int nWrite,
 
       status=R128_I2C_WaitForAck(pScrn,pPriv);
 
-      usleep(1);
+      usleep(1000);
 
       /* Write Value into the buffer */
       for (loop = 0; loop < nRead; loop++)
