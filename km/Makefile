@@ -8,7 +8,7 @@ LINUXINCLUDES=$(TOPDIR)/include
 
 KM_OBJS=km.o km_v4l.o km_memory.o radeon.o mach64.o rage128.o
 
-KM_API_OBJS=km_api.o km_api_data.o
+KM_API_OBJS=km_api.o km_api_data.o km_memory.o
 
 all: km_drv.o km_api_drv.o
 

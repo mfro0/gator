@@ -349,13 +349,13 @@ init_waitqueue_head(&(kmd->wait));
 sprintf(temp, "control%ld", num);
 /*kmd->control=create_proc_entry(temp, S_IFREG | S_IRUGO | S_IWUSR, km_root); */
 kmd->control=create_proc_entry(temp, S_IFREG | S_IRUGO | S_IWUGO, km_root);
+#if 0
 sprintf(temp, "data%ld", num);
 kmd->data=create_proc_entry(temp, S_IFREG | S_IRUGO | S_IWUSR, km_root);
-
+#endif
 kmd->control->data=kmd;
 kmd->control->proc_fops=&km_control_file_operations;
 
-kmd->data->data=kmd;
 kmd->use_count=1;
 devices_free++;
 return num;
@@ -377,12 +377,9 @@ if(devices[num].number<0)return -EINVAL;
 spin_lock(&(devices[num].lock));
 sprintf(temp, "control%d", num);
 remove_proc_entry(temp, km_root);
-sprintf(temp, "data%d", num);
-remove_proc_entry(temp, km_root);
 kfree(devices[num].command_hash);
 devices[num].command_hash=NULL;
 devices[num].control=NULL;
-devices[num].data=NULL;
 devices[num].fields=NULL;
 devices[num].priv=NULL;
 devices[num].use_count--;

@@ -22,8 +22,10 @@
 #include <linux/sched.h>
 #include <linux/init.h>
 #include <linux/poll.h>
+#include <linux/pci.h>
 
 #include "km_api_data.h"
+#include "km_memory.h"
 
 extern struct proc_dir_entry *km_root;
 
@@ -47,7 +49,7 @@ if(k<0){
 		du_size+=du_size+10;
 		p=kmalloc(du_size*sizeof(KM_DATA_UNIT), GFP_KERNEL);
 		if(p==NULL){
-			return -1;
+			return -ENOMEM;
 			}
 		if(du_free>0)memcpy(p, data_units, du_free*sizeof(KM_DATA_UNIT));
 		kfree(data_units);
@@ -64,17 +66,116 @@ kdu->type=KDU_TYPE_GENERIC;
 kdu->mode=mode;
 kdu->number=k;
 sprintf(temp, "data%ld", k);
-kdu->data=create_proc_entry(temp, mode, km_root);
-kdu->data->data=kdu;
+kdu->data=NULL;
+if(mode!=0){
+	kdu->data=create_proc_entry(temp, mode, km_root);
+	if(kdu->data==NULL){
+		printk(KERN_ERR "Could not create proc entry %s\n", temp);
+		spin_unlock(&(kdu->lock));
+		MOD_DEC_USE_COUNT;
+		return -1;
+		}
+	kdu->data->data=kdu;
+	}
 kdu->data_private=NULL;
 kdu->free_private=NULL;
 spin_unlock(&(kdu->lock));
 return k;
 }
 
+static int km_fo_data_open(struct inode * inode, struct file * file)
+{
+char *filename;
+KM_DATA_UNIT *kdu;
+KDU_FILE_PRIVATE_DATA *kdufpd=NULL;
+int i;
+filename=file->f_dentry->d_iname;
+if(strncmp(filename, "data", 4)){
+	return -EINVAL;
+	}
+i=simple_strtol(filename+4, NULL, 10);
+if(i<0)return -EINVAL;
+if(i>=du_free)return -EINVAL;
+
+MOD_INC_USE_COUNT;
+
+kdu=&(data_units[i]);
+spin_lock(&(kdu->lock));
+if(kdu->use_count<=0){
+	MOD_DEC_USE_COUNT;
+	spin_unlock(&(kdu->lock));
+	return -EINVAL;
+	}
+kdu->use_count++;
+kdufpd=kmalloc(sizeof(KDU_FILE_PRIVATE_DATA), GFP_KERNEL);
+if(kdufpd==NULL){
+	kdu->use_count--;
+	MOD_DEC_USE_COUNT;
+	spin_unlock(&(kdu->lock));
+	return -ENOMEM;
+	}
+memset(kdufpd, sizeof(KDU_FILE_PRIVATE_DATA), 0);
+
+kdufpd->kdu=kdu;
+
+file->private_data=kdufpd;
+kdu->use_count++;
+spin_unlock(&(kdu->lock));
+
+return 0;
+}
+
+static int km_fo_data_release(struct inode * inode, struct file * file)
+{
+KDU_FILE_PRIVATE_DATA *kdufpd=file->private_data;
+KM_DATA_UNIT *kdu=kdufpd->kdu;
+
+file->private_data=NULL;
+spin_lock(&(kdu->lock));
+kdu->use_count--;
+spin_unlock(&(kdu->lock));
+
+MOD_DEC_USE_COUNT;
+
+return 0;
+}
+
+
+struct file_operations km_data_file_operations={
+	owner: 		THIS_MODULE,
+	open:		km_fo_data_open,
+	release: 	km_fo_data_release
+/*	read: 		km_fo_data_read,
+	write: 		km_fo_data_write,
+	poll: 		km_fo_data_poll */
+	} ;
+
+
+void km_free_private_data_virtual_block(KM_DATA_VIRTUAL_BLOCK *dvb)
+{
+rvfree(dvb->ptr, dvb->size);
+}
+
 int km_allocate_data_virtual_block(KM_DATA_VIRTUAL_BLOCK *dvb, mode_t mode)
 {
-return -1;
+long k;
+KM_DATA_UNIT *kdu;
+dvb->ptr=rvmalloc(dvb->size);
+if(dvb->ptr==NULL)return -ENOMEM;
+k=km_allocate_data_unit(mode);
+if(k<0){
+	kfree(dvb->ptr);
+	dvb->ptr=NULL;
+	return k;
+	}
+kdu=&(data_units[k]);
+kdu->type=KDU_TYPE_VIRTUAL_BLOCK;
+kdu->data_private=dvb;
+kdu->free_private=km_free_private_data_virtual_block;
+if(kdu->data!=NULL){
+	kdu->data->size=dvb->size;
+	}
+return k;
 }
 
 void km_deallocate_data(long data_unit)
@@ -92,7 +193,10 @@ if(kdu->use_count>0){
 	}
 /* free the data */
 sprintf(temp, "data%ld", data_unit);
-remove_proc_entry(temp, km_root);
+if(kdu->data!=NULL){
+	remove_proc_entry(temp, km_root);
+	kdu->data=NULL;
+	}
 if(kdu->free_private!=NULL)kdu->free_private(kdu);
 spin_unlock(&(kdu->lock));
 MOD_DEC_USE_COUNT;

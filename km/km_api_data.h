@@ -9,6 +9,8 @@
 #ifndef __KM_DATA_H__
 #define __KM_DATA_H__
 
+#include <linux/spinlock.h>
+
 /* this is a simple chunk of data accessible only through kernel virtual space */
 
 #define KDU_TYPE_VIRTUAL_BLOCK	1
@@ -31,6 +33,10 @@ typedef struct S_KM_DATA_UNIT{
 	void *data_private;
 	void (*free_private)(struct S_KM_DATA_UNIT *);
 	} KM_DATA_UNIT;
+
+typedef struct {
+	KM_DATA_UNIT *kdu;
+	} KDU_FILE_PRIVATE_DATA;
 
 int init_km_data_units(void);
 void cleanup_km_data_units(void);

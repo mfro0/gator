@@ -87,7 +87,6 @@ typedef struct {
 	spinlock_t lock;
 	wait_queue_head_t wait;
 	struct proc_dir_entry *control;
-	struct proc_dir_entry *data;	
 	KM_FIELD *fields;
 	long num_fields;
 	void *priv;
