@@ -141,7 +141,7 @@ AC_CHECK_FUNCS([memset strdup strerror])
 AC_CONFIG_FILES([Makefile start_avview.no_install])
 AC_OUTPUT
 
-if test "no_x" = "yes" ; then
+if test "$no_x" = "yes" ; then
 	AC_MSG_ERROR([can not find X11])
 fi
 
