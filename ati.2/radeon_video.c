@@ -9,6 +9,8 @@
 #include "Xv.h"
 #include "fourcc.h"
 
+#undef NUM
+
 #include "xf86i2c.h"
 #include "fi1236.h"
 #include "msp3430.h"
@@ -847,7 +849,7 @@ const struct
 	{"UNKNOWN-26"		, -1},
 	{"UNKNOWN-27"		, -1},
 	{"UNKNOWN-28"		, -1},
-	{"Silicon tuner"		, TUNER_TYPE_FI1236},
+	{"Microtuner MT2032"		, TUNER_TYPE_MT2032},
         {"UNKNOWN-30"		, -1},
 	{"UNKNOWN-31"		, -1}
     };
@@ -985,7 +987,7 @@ static void RADEONInitI2C(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
     }
     
     if(pPriv->i2c != NULL)RADEON_board_setmisc(pPriv);
-    #if 1
+    #if 0
     xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Scanning I2C Bus\n");
     for(i=0;i<255;i+=2)
     	if(RADEONProbeAddress(pPriv->i2c, i))

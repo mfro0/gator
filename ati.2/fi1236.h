@@ -19,7 +19,28 @@ typedef struct {
 
 
 typedef struct {
+	/* what we want */
+	/* all frequencies are in Mhz */
+	double f_rf;	/* frequency to tune to */
+	double f_if1;   /* first intermediate frequency */
+	double f_if2;   /* second intermediate frequency */
+	double f_ref;   /* reference frequency */
+	double f_ifbw;  /* bandwidth */
+	double f_step;  /* step */
+	
+	/* what we computer */
+	double f_lo1;
+	double f_lo2;
+	int LO1I;
+	int LO2I;
+	int SEL;
+	int STEP;
+	int NUM;
+	} MT2032_parameters;
+
+typedef struct {
 	I2CDevRec  d;
+	int type;
 	
 	FI1236_parameters parm;
 	
@@ -34,6 +55,7 @@ typedef struct {
 #define TUNER_TYPE_FI1236              0
 #define TUNER_TYPE_FI1216              1
 #define TUNER_TYPE_TEMIC_FN5AL         2
+#define TUNER_TYPE_MT2032	       3
 
 #define FI1236_ADDR(a)        ((a)->d.SlaveAddr)
 
