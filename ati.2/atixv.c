@@ -1992,7 +1992,9 @@ ATIPutImage(
     case FOURCC_YV12:
     case FOURCC_I420:
 	top &= ~1;
+	#if 0
 	dst_start += left << 1;
+	#endif
 	tmp = ((top >> 1) * srcPitch2) + (left >> 1);
 	s2offset += tmp;
 	s3offset += tmp;
