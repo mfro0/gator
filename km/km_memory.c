@@ -23,6 +23,8 @@ void * rvmalloc(signed long size)
 	unsigned long adr, page;
 
 	mem=vmalloc_32(size);
+	if (NULL == mem)
+		printk(KERN_INFO "km: vmalloc_32(%ld) failed\n",size);
 	if (mem) 
 	{
 		memset(mem, 0, size); /* Clear the ram out, no junk to the user */

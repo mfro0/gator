@@ -101,7 +101,7 @@ if(kms->buf_read_from==1)frame=&(kms->frame_even);
 printk("frame->buf_ptr=%d frame->buf_free=%d\n", frame->buf_ptr, frame->buf_free);
 #endif
 while(frame->buf_ptr==frame->buf_free){
-	printk("frame->dma_active=%d\n", frame->dma_active);
+	KM_DEBUG("frame->dma_active=%d\n", frame->dma_active);
 	if(nonblock)return -EWOULDBLOCK;
 	add_wait_queue(&(kms->frameq), &wait);
 	current->state=TASK_INTERRUPTIBLE;

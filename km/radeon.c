@@ -58,6 +58,16 @@ while(((a=readl(kms->reg_aperture+RADEON_RBBM_STATUS)) & RADEON_ENGINE_ACTIVE)!=
 read back framebuffer data, so no need */
 }
 
+void verify_dma_table(KM_STRUCT *kms, SINGLE_FRAME *frame)
+{
+long i;
+for(i=0;i<(frame->buf_size/PAGE_SIZE);i++){
+	if(frame->dma_table[i].to_addr!=kvirt_to_pa(frame->buffer+i*PAGE_SIZE)){
+		printk(KERN_ERR "Corrupt entry %ld in dma_table %p\n", i, frame->dma_table);
+		}
+	}
+}
+
 int radeon_is_capture_active(KM_STRUCT *kms)
 {
 return (readl(kms->reg_aperture+RADEON_CAP0_CONFIG) & 0x1);
@@ -121,6 +131,7 @@ for(i=0;i<(frame->buf_size/PAGE_SIZE);i++){
 		frame->dma_table[i].command=count | RADEON_DMA_GUI_COMMAND__EOL;
 		}
 	}
+/* verify_dma_table(kms, frame); */
 return 0;
 }
 
@@ -253,9 +264,16 @@ if(frame->dma_table==NULL){
 	rvfree(frame->buffer, frame->buf_size);
 	return -1;
 	}
+memset(frame->dma_table, 0, 4096);
 /* create DMA table */
+printk("Frame %p\n", frame);
 for(i=0;i<(frame->buf_size/PAGE_SIZE);i++){
 	frame->dma_table[i].to_addr=kvirt_to_pa(frame->buffer+i*PAGE_SIZE);
+	printk("entry virt %p phys %p %s\n", frame->buffer+i*PAGE_SIZE, frame->dma_table[i].to_addr,
+		((unsigned long)frame->dma_table[i].to_addr)<64*1024*1024?"*":"");
+	if(kvirt_to_pa(frame->buffer+i*PAGE_SIZE)!=kvirt_to_bus(frame->buffer+i*PAGE_SIZE)){
+		printk(KERN_ERR "pa!=bus for entry %ld frame %p\n", i, frame);
+		}
 	}
 return 0;
 }
