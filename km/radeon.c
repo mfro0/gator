@@ -343,6 +343,7 @@ while(1){
              /* check DMA and vblank bits in GEN_INT_STATUS */
 	status=readl(kms->reg_aperture+RADEON_GEN_INT_STATUS);
 	mask=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL) & ((1<<30)|7);
+	KM_DEBUG("GEN_INT_STATUS=0x%08x mask=0x%08x\n", status, mask);
 	status &=mask & ((1<<30)|7);
 	if(!status && !status_cap){
 		return;
