@@ -67,7 +67,7 @@ void mach64_start_transfer(KM_STRUCT *kms)
 {
 u32 a;
 a=readl(kms->reg_aperture+MACH64_BUS_CNTL);
-writel(a&~(1<<6), kms->reg_aperture+MACH64_BUS_CNTL);
+writel(a&(~(1<<6)), kms->reg_aperture+MACH64_BUS_CNTL);
 a=readl(kms->reg_aperture+MACH64_CRTC_INT_CNTL);
 writel(a|MACH64_CAPBUF0_INT_ACK|MACH64_CAPBUF1_INT_ACK|MACH64_BUSMASTER_INT_ACK, kms->reg_aperture+MACH64_CRTC_INT_CNTL);
 writel(a|MACH64_CAPBUF0_INT_EN|MACH64_CAPBUF1_INT_EN|MACH64_BUSMASTER_INT_EN, kms->reg_aperture+MACH64_CRTC_INT_CNTL);
