@@ -4,7 +4,7 @@ AC_PREREQ(2.57)
 # Note to self: always bump version number when there are changes
 # in setup window or avview_shell
 #
-AC_INIT([AVview], [0.11.10], [gatos-devel@lists.sf.net])
+AC_INIT([AVview], [0.11.12], [gatos-devel@lists.sf.net])
 #
 # For now I'll be happier without NEWS and Changelog files.
 #
@@ -81,6 +81,8 @@ ALSA_PRESENT=disabled
 fi
 
 AC_CHECK_HEADER(linux/videodev.h, ,echo "Avview requires video4linux support. You may want to upgrade to Linux 2.4.x."; exit)
+
+AC_CHECK_HEADER(libzvbi.h, , echo "Avview requires libzvbi 0.2.3 or later" ; exit )
 
 AC_CHECK_LIB([X11], [XCreateSimpleWindow],,,[$X_LIBS])
 AC_CHECK_LIB([Xext], [XInitExtension],,,[$X_LIBS])
