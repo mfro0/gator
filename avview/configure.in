@@ -52,7 +52,7 @@ AC_CHECK_LIB([tcl8.3], [Tcl_Init],,,[$X_LIBS])
 AC_CHECK_LIB([tk8.3], [Tk_Init],,,[$X_LIBS])
 
 CFLAGS="$CFLAGS $X_CFLAGS"
-AC_CHECK_HEADER(/usr/local/tk.h, TK_HEADERS=-I/usr/include,,[ ])
+AC_CHECK_HEADER(/usr/include/tk.h, TK_HEADERS=-I/usr/include,,[ ])
 AC_CHECK_HEADER(/usr/local/include/tk.h, TK_HEADERS=-I/usr/local/include,,[ ])
 AC_CHECK_HEADER(/usr/include/tk8.3/tk.h, TK_HEADERS=["$TK_HEADERS -I/usr/include/tk8.3"],,[ ])
 
