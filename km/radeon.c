@@ -140,6 +140,27 @@ kms->vbi_start=(v_window & 0xffff)+2; /* Rage Theatre has an off by 2 count */
 return (kms->vbi_width*kms->vbi_height);
 }
 
+void radeon_purge_gui_dma_queue(KM_STRUCT *kms)
+{
+u32 a;
+int count;
+
+a=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
+writel(a | RADEON_DMA_GUI_STATUS__ABORT, kms->reg_aperture+RADEON_DMA_GUI_STATUS);
+wmb();
+count=1000;
+while((a=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS))&RADEON_DMA_GUI_STATUS__ACTIVE){
+	udelay(1);
+	count--;
+	if(count<0){
+		printk("km: GUI_DMA_QUEUE abort stalled\n");
+		return;
+		}
+	}
+wmb();
+writel(a & ~ RADEON_DMA_GUI_STATUS__ABORT, kms->reg_aperture+RADEON_DMA_GUI_STATUS);
+}
+
 void radeon_start_transfer(KM_STRUCT *kms)
 {
 u32 a;
@@ -173,7 +194,7 @@ writel(a|(CAP_INT_BIT_BUF0|CAP_INT_BIT_BUF0_EVEN|
 void radeon_stop_transfer(KM_STRUCT *kms)
 {
 u32 a;
-int count;
+
 /* stop interrupts */
 a=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
 writel(a & ~(CAP_INT_BIT_BUF0|CAP_INT_BIT_BUF0_EVEN|
@@ -191,16 +212,7 @@ if(kms->gdq_usage==1){
 	/* stop outstanding DMA transfers */
 	a=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
 	if(a & RADEON_DMA_GUI_STATUS__ACTIVE){
-		writel(a | RADEON_DMA_GUI_STATUS__ABORT, kms->reg_aperture+RADEON_DMA_GUI_STATUS);
-		wmb();
-		count=1000;
-		while((a=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS))&RADEON_DMA_GUI_STATUS__ACTIVE){
-			udelay(1);
-			count--;
-			if(count<0)break;
-			}
-		wmb();
-		writel(a & ~ RADEON_DMA_GUI_STATUS__ABORT, kms->reg_aperture+RADEON_DMA_GUI_STATUS);
+		radeon_purge_gui_dma_queue(kms);
 		}
 	}
 }
@@ -236,7 +248,6 @@ writel(a|(CAP_INT_BIT_VBI0|CAP_INT_BIT_VBI1), kms->reg_aperture+RADEON_CAP_INT_C
 void radeon_stop_vbi_transfer(KM_STRUCT *kms)
 {
 u32 a;
-int count;
 /* stop interrupts */
 a=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
 writel(a & ~(CAP_INT_BIT_VBI0|CAP_INT_BIT_VBI1), kms->reg_aperture+RADEON_CAP_INT_CNTL);
@@ -252,16 +263,7 @@ if(kms->gdq_usage==1){
 	/* stop outstanding DMA transfers */
 	a=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
 	if(a & RADEON_DMA_GUI_STATUS__ACTIVE){
-		writel(a | RADEON_DMA_GUI_STATUS__ABORT, kms->reg_aperture+RADEON_DMA_GUI_STATUS);
-		wmb();
-		count=1000;
-		while((a=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS))&RADEON_DMA_GUI_STATUS__ACTIVE){
-			udelay(1);
-			count--;
-			if(count<0)break;
-			}
-		wmb();
-		writel(a & ~ RADEON_DMA_GUI_STATUS__ABORT, kms->reg_aperture+RADEON_DMA_GUI_STATUS);
+		radeon_purge_gui_dma_queue(kms);
 		}
 	}
 }
