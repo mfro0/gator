@@ -1,6 +1,6 @@
 #!./avview_shell
 
-global avview_version ; set avview_version "0.10.4" 
+global avview_version ; set avview_version "@PACKAGE_VERSION@" 
 global avview_directory ; set avview_directory "./" 
 #
 # This file is appended by make during compilation
