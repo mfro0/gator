@@ -474,7 +474,7 @@ sdata->frames_encoded=0;
 sdata->last_video_timestamp=0;
 
 if(arg_video_codec==NULL){
-	sdata->video_codec=avcodec_find_encoder(CODEC_ID_MPEG4);
+	sdata->video_codec=avcodec_find_encoder(CODEC_ID_MPEG2VIDEO);
 	} else
 if(!strcmp("MPEG-1", arg_video_codec)){
 	sdata->video_codec=avcodec_find_encoder(CODEC_ID_MPEG1VIDEO);
@@ -590,9 +590,11 @@ sdata->video_codec_context.temporal_cplx_masking=0;
 sdata->video_codec_context.spatial_cplx_masking=0;
 sdata->video_codec_context.p_masking=0;
 sdata->video_codec_context.dark_masking=0;
+sdata->video_codec_context.mpeg_quant=1;
+sdata->video_codec_context.global_quality=sdata->quality;
 if((arg_video_codec!=NULL)&&(
-  !strcmp(arg_video_codec, "MPEG-4") ||
-  !strcmp(arg_video_codec, "MSMPEG-4")))
+  !strcasecmp(arg_video_codec, "MPEG-4") ||
+  !strcasecmp(arg_video_codec, "MSMPEG-4")))
   	sdata->video_codec_context.gop_size=12;
 if(sdata->video_codec->priv_data_size==0){
 	fprintf(stderr,"BUG: sdata->video_codec->priv_data_size==0, fixing it\n");
