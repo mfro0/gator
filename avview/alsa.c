@@ -45,6 +45,7 @@ typedef struct {
 	snd_ctl_elem_type_t *etype;
 	snd_pcm_t *recording_handle;
 	long recording_chunk_size;
+	long frame_size;
 	void *priv;
 	} ALSA_DATA;
 
@@ -440,22 +441,22 @@ PACKET *p;
 ALSA_DATA *data=(ALSA_DATA *)s->priv;
 int a;
 /* lock mutex before testing s->stop_stream */
-p=new_generic_packet(data->recording_chunk_size); /* allocate enough for 2 seconds of audio */
+p=new_generic_packet(data->recording_chunk_size); 
 pthread_mutex_lock(&(s->ctr_mutex));
 while(!s->stop_stream){
 	pthread_mutex_unlock(&(s->ctr_mutex));
 	
 	/* do the reading */
-	if((a=snd_pcm_readi(data->recording_handle, p->buf+p->free, p->size-p->free))>0){
+	if((a=snd_pcm_readi(data->recording_handle, p->buf+p->free, (p->size-p->free)/data->frame_size))>0){
 		p->free+=a;
 		/* deliver always */
-		fprintf(stderr,"Read %d bytes\n", a);
+		fprintf(stderr,"Read %d samples\n", a);
 		if(1 || (p->free>=(p->size/2))){ /* deliver packet */
 			pthread_mutex_lock(&(s->ctr_mutex));
 			if(!s->stop_stream){
 				deliver_packet(s, p);
 				p=new_generic_packet(data->recording_chunk_size);
-				}
+				} else p->free=0;
 			pthread_mutex_unlock(&(s->ctr_mutex));
 			}
 		} else
@@ -465,6 +466,9 @@ while(!s->stop_stream){
 	pthread_mutex_lock(&(s->ctr_mutex));
 	}
 data->priv=NULL; 
+s->priv=NULL;
+snd_pcm_drop(data->recording_handle);
+snd_pcm_close(data->recording_handle);
 pthread_mutex_unlock(&(s->ctr_mutex));
 pthread_exit(NULL);
 }
@@ -483,6 +487,7 @@ long rate;
 snd_pcm_hw_params_alloca(&hwparams);
 snd_pcm_sw_params_alloca(&swparams);
 
+fprintf(stderr,"Checkpoint 2.2.1\n");
 arg_audio_device=get_value(argc, argv, "-audio_device");
 if(arg_audio_device==NULL)return -1;
 
@@ -494,25 +499,32 @@ i=lookup_string(alsa_sc, arg_audio_device);
 if((i<0)||((ad=(ALSA_DATA *)alsa_sc->data[i])==NULL)){
 	return -1;
 	}
+fprintf(stderr,"Checkpoint 2.2.1.1\n");
 if((a=snd_pcm_open(&(ad->recording_handle), arg_audio_device, SND_PCM_STREAM_CAPTURE, 0))<0){
 	fprintf(stderr,"Error opening device %s for capture %s\n", arg_audio_device, snd_strerror(a));
 	return -1;
 	}
+fprintf(stderr,"Checkpoint 2.2.1.2\n");
 if((a=snd_pcm_hw_params_any(ad->recording_handle, hwparams))<0){
 	fprintf(stderr,"Error device %s has no configurations available: \n", arg_audio_device, snd_strerror(a));
 	return -1;
 	}
+fprintf(stderr,"Checkpoint 2.2.1.3\n");
 a=snd_pcm_hw_params_set_access(ad->recording_handle, hwparams, SND_PCM_ACCESS_RW_INTERLEAVED);
 if(a<0){
         fprintf(stderr, "Access type not available for playback: %s\n", snd_strerror(a));
         return -1;
 	}
+fprintf(stderr,"Checkpoint 2.2.1.4\n");
 /* set the sample format signed 16 bits, machine endianness */
 if(__BYTE_ORDER == __LITTLE_ENDIAN){
 	a=snd_pcm_hw_params_set_format(ad->recording_handle, hwparams,  SND_PCM_FORMAT_S16_LE);
+	ad->frame_size=(snd_pcm_format_width(SND_PCM_FORMAT_S16_LE)/8)*2;
 	} else {
 	a=snd_pcm_hw_params_set_format(ad->recording_handle, hwparams, SND_PCM_FORMAT_S16_BE);
+	ad->frame_size=(snd_pcm_format_width(SND_PCM_FORMAT_S16_BE)/8)*2;
 	}
+fprintf(stderr,"Checkpoint 2.2.2\n");
 if(a<0){
         fprintf(stderr,"Sample format not available for recording: %s\n", snd_strerror(a));
         return -1;
@@ -530,8 +542,9 @@ if(a<0){
         return -1;
         }
 param->sample_rate=a;
-ad->recording_chunk_size=a*2*4; /* allocate enough for 2 seconds of audio */
-fprintf(stderr,"Using sample rate %ld Hz\n", param->sample_rate);
+ad->recording_chunk_size=4096*ad->frame_size; /* multiple of pages this way */
+if(a>40960)ad->recording_chunk_size=(a*ad->frame_size)/10;
+fprintf(stderr,"Using sample rate %ld Hz frame_size=%d\n", param->sample_rate, ad->frame_size);
 #if 0 /* don't know what to do with this */
         /* set buffer time */
 a=snd_pcm_hw_params_set_buffer_time_near(ad->recording_handle, hwparams, buffer_time, &dir);

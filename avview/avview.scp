@@ -832,12 +832,14 @@ global current_v4l_mode
 global current_v4l_rrate
 global current_av_format
 global current_capture_filename
+global current_alsa_device
 if { $v4l_capture_on } {
 	set status [ffmpeg_encode_v4l_stream -v4l_handle current_v4l_handle \
 				-video_codec $current_codec \
 				-deinterlace_mode $current_v4l_mode \
 				-step_frames $current_v4l_rrate \
 				-av_format $current_av_format \
+				-audio_device "$current_alsa_device" \
 				-filename "$current_capture_filename"]
 	if { "$status" == "" } { 
 		after cancel "check_fifo $cw"

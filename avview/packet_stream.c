@@ -16,7 +16,7 @@ s->total=0;
 s->threshhold=0;
 s->consumer_thread_running=0;
 s->stop_stream=0;
-s->consume_func=0;
+s->consume_func=NULL;
 s->priv=NULL;
 pthread_mutex_init(&(s->ctr_mutex), NULL);
 return s;
@@ -32,11 +32,10 @@ p->prev=NULL;
 p->size=size;
 p->free=0;
 if(size>0){
-	p->buf=malloc(size);
+	p->buf=do_alloc(size,1);
 	while(p->buf==NULL){
 		sleep(1);
-		fprintf(stderr,"Failed to allocate %d bytes\n", size);
-		p->buf=malloc(size);
+		p->buf=do_alloc(size, 1);
 		}
 	} else p->buf=NULL;
 p->discard=0;
@@ -50,13 +49,14 @@ void free_generic_packet(PACKET *p)
 {
 p->size=0;
 p->free=0;
-if(p->buf!=NULL)free(p->buf);
-free(p);
+#if 0
+if(p->buf!=NULL)do_free(p->buf);
+do_free(p);
+#endif
 }
 
 void deliver_packet(PACKET_STREAM *s, PACKET *p)
 {
-pthread_mutex_lock(&(s->ctr_mutex));
 /* put the packet into the queue */
 p->next=NULL;
 p->prev=s->last;
@@ -77,16 +77,22 @@ if((s->total>s->threshhold) &&
 		}
 		
 	}
-pthread_mutex_unlock(&(s->ctr_mutex));
 }
 
 void discard_packets(PACKET_STREAM *s)
 {
 PACKET *p;
-while((s->first!=NULL) && (s->first->discard)){
+while((s->first!=NULL) && (s->first->discard) && (s->first->next!=NULL)){
 	p=s->first;
 	s->first=p->next;
 	if(s->first!=NULL)s->first->prev=NULL;
+	s->total-=p->free;
+	if(p->free_func!=NULL)p->free_func(p);
+	}
+if((s->first!=NULL) && (s->first->discard) && (s->first->next==s->last)){
+	p=s->first;
+	s->first=NULL;
+	s->last=NULL;
 	s->total-=p->free;
 	if(p->free_func!=NULL)p->free_func(p);
 	}

@@ -33,13 +33,14 @@
 #include "v4l.h"
 #include "formats.h"
 #include "packet_stream.h"
+#include "alsa.h"
 
 typedef struct {
 	long type;
 	long width;
 	long height;
 	long stop;
-	long size;
+	long video_size;
 	long frame_count;
 	long step_frames;
 	long frames_encoded;
@@ -49,9 +50,13 @@ typedef struct {
 	AVCodec *audio_codec;
 	AVCodecContext audio_codec_context;
 	AVFormatContext format_context;
-	PACKET_STREAM *s;
-	pthread_t reader_thread;
+	pthread_mutex_t format_context_mutex;
+	PACKET_STREAM *video_s;
+	PACKET_STREAM *audio_s;
+	pthread_t video_reader_thread;
+	pthread_t audio_reader_thread;
 	V4L_DATA *v4l_data;
+	ALSA_PARAMETERS alsa_param;
 	} FFMPEG_ENCODING_DATA;
 
 /* this assumes only one encoding process goes on at a time.. not too unreasonable */
@@ -95,12 +100,11 @@ long ob_size, ob_free, ob_written;
 long incoming_frames_count=0;
 
 data=(V4L_DATA *)s->priv;
-if((data==NULL)||(sdata==NULL)||(sdata->type!=FFMPEG_CAPTURE_KEY)||(sdata->s==NULL))pthread_exit(NULL);
-s=sdata->s;
+if((data==NULL)||(sdata==NULL)||(sdata->type!=FFMPEG_CAPTURE_KEY)||(sdata->video_s==NULL))pthread_exit(NULL);
 ob_size=1024*1024;
 ob_free=0;
 output_buf=do_alloc(ob_size, sizeof(char));
-picture.data[0]=do_alloc((3*sdata->video_codec_context.width*sdata->video_codec_context.height)/2, sizeof(char));
+picture.data[0]=do_alloc((3*sdata->video_codec_context.width*sdata->video_codec_context.height)/2+4096, sizeof(char));
 picture.data[1]=picture.data[0]+sdata->video_codec_context.width*sdata->video_codec_context.height;
 picture.data[2]=picture.data[1]+(sdata->video_codec_context.width*sdata->video_codec_context.height)/4;
 picture.linesize[0]=sdata->video_codec_context.width;
@@ -109,7 +113,9 @@ picture.linesize[2]=sdata->video_codec_context.width/2;
 while(1){
 	/* wait for data to arrive */
 /*	sleep(1); */
+	pthread_mutex_lock(&(s->ctr_mutex));
 	f=s->first;
+	pthread_mutex_unlock(&(s->ctr_mutex));
 	while((f!=NULL)&&(f->next!=NULL)){
 		if(!sdata->step_frames || !(incoming_frames_count % sdata->step_frames)){
 			/* encode frame */
@@ -118,40 +124,45 @@ while(1){
 			/* write out data */
 			ob_written=0;
 			while(ob_written<ob_free){
+				pthread_mutex_lock(&(sdata->format_context_mutex));
 				if(sdata->format_context.format!=NULL){
 					sdata->format_context.format->write_packet(&(sdata->format_context),0, output_buf+ob_written, ob_free-ob_written);
 					i=ob_free-ob_written;
 					} else {
 					i=write(sdata->fd_out, output_buf+ob_written, ob_free-ob_written);
 					}
+				pthread_mutex_unlock(&(sdata->format_context_mutex));
 				if(i>=0)ob_written+=i;
 				}
 			}
 		incoming_frames_count++;
 		/* get next one */
 		f->discard=1;
+		f=f->next;
 		pthread_mutex_lock(&(s->ctr_mutex));
-		discard_packets(s);
+		discard_packets(s); 
 		pthread_mutex_unlock(&(s->ctr_mutex));
-		f=s->first;
 		}
 #if 0
 	fprintf(stderr,"frame_count=%d  stop=%d\n", sdata->frame_count, sdata->stop);
 #endif
+	pthread_mutex_lock(&(s->ctr_mutex));
 	if(s->stop_stream){
+		pthread_mutex_lock(&(sdata->format_context_mutex));
 		if(sdata->format_context.format!=NULL)
 			sdata->format_context.format->write_trailer(&(sdata->format_context));
+		pthread_mutex_unlock(&(sdata->format_context_mutex));
 		avcodec_close(&(sdata->video_codec_context));
 		close(sdata->fd_out);
-		pthread_mutex_lock(&(s->ctr_mutex));
 		for(f=s->first;f!=NULL;f=f->next)f->discard=1;
 		discard_packets(s);
 		free(picture.data[0]);
-		fprintf(stderr,"Recording finished\n");
 		s->consumer_thread_running=0;
 		pthread_mutex_unlock(&(s->ctr_mutex));
+		fprintf(stderr,"Recording finished\n");
 		pthread_exit(NULL);
 		}
+	pthread_mutex_unlock(&(s->ctr_mutex));
 	}
 pthread_exit(NULL);
 }
@@ -159,11 +170,11 @@ pthread_exit(NULL);
 void v4l_reader_thread(V4L_DATA *data)
 {
 PACKET *p;
-PACKET_STREAM *s=sdata->s;
+PACKET_STREAM *s=sdata->video_s;
 fd_set read_fds;
 int a;
 /* lock mutex before testing s->stop_stream */
-p=new_generic_packet(sdata->size);
+p=new_generic_packet(sdata->video_size);
 pthread_mutex_lock(&(s->ctr_mutex));
 while(!s->stop_stream){
 	pthread_mutex_unlock(&(s->ctr_mutex));
@@ -172,8 +183,12 @@ while(!s->stop_stream){
 	if((a=read(data->fd, p->buf+p->free, p->size-p->free))>0){
 		p->free+=a;
 		if(p->free==p->size){ /* deliver packet */
-			if(!s->stop_stream)deliver_packet(s, p);
-			p=new_generic_packet(sdata->size);
+			pthread_mutex_lock(&(s->ctr_mutex));
+			if(!s->stop_stream){
+				deliver_packet(s, p);
+				p=new_generic_packet(sdata->video_size);
+				}
+			pthread_mutex_unlock(&(s->ctr_mutex));
 			}
 		} else
 	if(a<0){
@@ -187,7 +202,10 @@ while(!s->stop_stream){
 		} 
 	pthread_mutex_lock(&(s->ctr_mutex));
 	}
+data->priv=NULL;
+sdata->v4l_data=NULL;
 pthread_mutex_unlock(&(s->ctr_mutex));
+fprintf(stderr,"v4l_reader_thread finished\n");
 pthread_exit(NULL);
 }
 
@@ -262,7 +280,7 @@ if(!strcmp("half-width", arg_deinterlace_mode)){
 
 sdata->width=vwin.width;
 sdata->height=vwin.height;
-sdata->size=vwin.width*vwin.height*2;
+sdata->video_size=vwin.width*vwin.height*2;
 sdata->frame_count=1;
 sdata->frames_encoded=0;
 
@@ -337,11 +355,19 @@ sdata->v4l_data=data;
 return 1;
 }
 
+int ffmpeg_create_audio_codec(Tcl_Interp* interp, int argc, char * argv[])
+{
+if(alsa_setup_reader_thread(sdata->audio_s, argc, argv, &(sdata->alsa_param))<0){
+	return 0;
+	}
+
+return 1;
+}
+
 int ffmpeg_encode_v4l_stream(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
 {
 int k;
 char *arg_filename;
-char *arg_alsa_device;
 char *arg_step_frames;
 char *arg_av_format;
 
@@ -351,8 +377,8 @@ if(argc<5){
 	Tcl_AppendResult(interp,"ERROR: ffmpeg_encode_v4l_stream requires at least four arguments", NULL);
 	return TCL_ERROR;
 	}
+
 arg_filename=get_value(argc, argv, "-filename");
-arg_alsa_device=get_value(argc, argv, "-alsa_device");
 arg_step_frames=get_value(argc, argv, "-step_frames");
 arg_av_format=get_value(argc, argv, "-av_format");
 
@@ -364,6 +390,9 @@ if(arg_filename==NULL){
 sdata=do_alloc(1, sizeof(FFMPEG_ENCODING_DATA));
 sdata->type=FFMPEG_CAPTURE_KEY;
 sdata->stop=0;
+fprintf(stderr,"checkpoint 1\n");
+pthread_mutex_init(&(sdata->format_context_mutex), NULL);
+
 sdata->step_frames=0;
 if(arg_step_frames==NULL){
 	/* nothing */
@@ -382,6 +411,7 @@ if(sdata->fd_out<0){
 motion_estimation_method=ME_FULL;
 memset(&(sdata->format_context), 0, sizeof(AVFormatContext));
 
+fprintf(stderr,"checkpoint 2\n");
 sdata->format_context.nb_streams=0;
 if(ffmpeg_create_video_codec(interp, argc, argv)){
 	k=sdata->format_context.nb_streams;
@@ -390,6 +420,18 @@ if(ffmpeg_create_video_codec(interp, argc, argv)){
 	memset(sdata->format_context.streams[k], 0, sizeof(AVStream));
 	memcpy(&(sdata->format_context.streams[k]->codec), &(sdata->video_codec_context), sizeof(AVCodecContext));	
 	}
+fprintf(stderr,"checkpoint 2.1\n");
+sdata->audio_s=new_packet_stream();
+fprintf(stderr,"checkpoint 2.2\n");
+if(ffmpeg_create_audio_codec(interp, argc, argv)){
+	fprintf(stderr,"checkpoint 2.3\n");
+	k=sdata->format_context.nb_streams;
+	sdata->format_context.nb_streams++; 
+	sdata->format_context.streams[k]=do_alloc(1, sizeof(AVStream));
+	memset(sdata->format_context.streams[k], 0, sizeof(AVStream));
+	memcpy(&(sdata->format_context.streams[k]->codec), &(sdata->audio_codec_context), sizeof(AVCodecContext));	
+	}
+fprintf(stderr,"checkpoint 3\n");
 if(sdata->format_context.nb_streams==0){
 	close(sdata->fd_out);
 	free(sdata);
@@ -420,12 +462,13 @@ if(sdata->format_context.format!=NULL){
 	strcpy(sdata->format_context.title, arg_filename);
 	sdata->format_context.format->write_header(&(sdata->format_context));
 	}
-sdata->s=new_packet_stream();
-sdata->s->priv=sdata->v4l_data;
-sdata->s->consume_func=ffmpeg_v4l_encoding_thread;
+sdata->video_s=new_packet_stream();
+sdata->video_s->priv=sdata->v4l_data;
+sdata->video_s->consume_func=ffmpeg_v4l_encoding_thread;
 /* set threshhold to two frames worth of data */
-sdata->s->threshhold=sdata->size*2;
-pthread_create(&(sdata->reader_thread), NULL, v4l_reader_thread, sdata->v4l_data);
+sdata->video_s->threshhold=sdata->video_size*2;
+pthread_create(&(sdata->video_reader_thread), NULL, v4l_reader_thread, sdata->v4l_data); 
+pthread_create(&(sdata->audio_reader_thread), NULL, alsa_reader_thread, sdata->audio_s); 
 return 0;
 }
 
@@ -451,9 +494,12 @@ if(data==NULL){
 if((sdata==NULL)||(sdata->type!=FFMPEG_CAPTURE_KEY)){
 	return 0;
 	}
-pthread_mutex_lock(&(sdata->s->ctr_mutex));
-sdata->s->stop_stream=1;
-pthread_mutex_unlock(&(sdata->s->ctr_mutex));
+pthread_mutex_lock(&(sdata->video_s->ctr_mutex));
+pthread_mutex_lock(&(sdata->audio_s->ctr_mutex));
+sdata->video_s->stop_stream=1;
+sdata->audio_s->stop_stream=1;
+pthread_mutex_unlock(&(sdata->audio_s->ctr_mutex));
+pthread_mutex_unlock(&(sdata->video_s->ctr_mutex));
 return 0;
 }
 
@@ -463,6 +509,8 @@ V4L_DATA *data;
 pthread_t thread;
 struct video_picture vpic;
 struct video_window vwin;
+long total;
+fprintf(stderr,"ffmpeg_incoming_fifo_size\n", total, sdata);
 
 Tcl_ResetResult(interp);
 /* Report 0 bytes when no such device exists or it is not capturing */
@@ -471,22 +519,56 @@ if(argc<2){
 	Tcl_AppendResult(interp,"ERROR: ffmpeg_incoming_fifo_size requires one argument", NULL);
 	return TCL_ERROR;
 	}
+#if 0  /* not necessary now */
 data=get_v4l_device_from_handle(argv[1]);
 if(data==NULL){
 	Tcl_SetObjResult(interp, Tcl_NewIntObj(0));
 	return 0;
 	}
-if((sdata==NULL)||(sdata->type!=FFMPEG_CAPTURE_KEY)||(sdata->s==NULL)){
+#endif
+if((sdata==NULL)||(sdata->type!=FFMPEG_CAPTURE_KEY)){
 	Tcl_SetObjResult(interp, Tcl_NewIntObj(0));
 	return 0;
 	}
-if(!sdata->s->consumer_thread_running){
-	data->priv=NULL;
-	free(sdata->s);
-	free(sdata);
+if(sdata->video_s!=NULL){
+	pthread_mutex_lock(&(sdata->video_s->ctr_mutex));
 	}
-Tcl_SetObjResult(interp, Tcl_NewIntObj(sdata->s->total));
-return 0;
+if(sdata->audio_s!=NULL){
+	pthread_mutex_lock(&(sdata->audio_s->ctr_mutex));
+	}
+if((sdata->video_s!=NULL) && sdata->video_s->stop_stream && !sdata->video_s->consumer_thread_running){
+	data->priv=NULL;
+	free(sdata->video_s);
+	sdata->video_s=NULL;
+	}
+if((sdata->audio_s!=NULL) && sdata->audio_s->stop_stream && !sdata->audio_s->consumer_thread_running){
+	free(sdata->audio_s);
+	sdata->audio_s=NULL;
+	}
+total=0;
+if(sdata->video_s!=NULL){
+	total+=sdata->video_s->total;
+	fprintf(stderr,"video fifo size=%d\n", sdata->video_s->total);
+	}
+if(sdata->audio_s!=NULL){
+	total+=sdata->audio_s->total;
+	fprintf(stderr,"audio fifo size=%d\n", sdata->audio_s->total);
+	}
+
+Tcl_SetObjResult(interp, Tcl_NewIntObj(total));
+if((sdata!=NULL)&&(sdata->audio_s==NULL)&&(sdata->video_s==NULL)){
+	free(sdata);
+	sdata=NULL;
+	return TCL_OK; 
+	}
+if(sdata->video_s!=NULL){
+	pthread_mutex_unlock(&(sdata->video_s->ctr_mutex));
+	}
+if(sdata->audio_s!=NULL){
+	pthread_mutex_unlock(&(sdata->audio_s->ctr_mutex));
+	}
+fprintf(stderr,"total=%d sdata=%p\n", total, sdata);
+return TCL_OK;
 }
 
 struct {

@@ -18,10 +18,14 @@
 #include "xmisc.h"
 #include "v4l.h"
 #include "ffmpeg.h"
+#include <pthread.h>
+
+pthread_mutex_t  memory_mutex;
 
 void * do_alloc(long a, long b)
 {
 void *r;
+pthread_mutex_lock(&memory_mutex);
 if(a<=0)a=1;
 if(b<=0)b=1;
 r=calloc(a, b);
@@ -30,7 +34,15 @@ while(r==NULL){
 	sleep(1);
 	r=calloc(a,b);
 	}
+pthread_mutex_unlock(&memory_mutex);
 return r;
+}
+
+void do_free(void *a)
+{
+pthread_mutex_lock(&memory_mutex);
+free(a);
+pthread_mutex_unlock(&memory_mutex);
 }
 
 char *get_value(int argc, char *argv[], char *key)
@@ -63,6 +75,7 @@ return TCL_OK;
 
 int main(int argc, char *argv[])
 {
+pthread_mutex_init(&memory_mutex, NULL);
 Tk_Main(argc, argv, Tcl_AppInit);
 return 0;
 }
