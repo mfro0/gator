@@ -98,10 +98,8 @@ switch(d.type){
 				Tcl_VarEval(data->interp, data->event_command, " aspect {}", NULL);
 				break;
 			
-			default:
 			}
 		break;
-	default:
 	}
 }
 
