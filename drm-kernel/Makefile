@@ -8,7 +8,7 @@
 #
 #
 #
-# $XFree86: xc/config/cf/Imake.tmpl,v 3.138 2002/12/10 03:20:41 dawes Exp $
+# $XFree86: xc/config/cf/Imake.tmpl,v 3.139 2003/01/28 22:06:08 alanh Exp $
 # ----------------------------------------------------------------------
 
 all::
@@ -17,7 +17,7 @@ all::
 
 # $Xorg: Imake.cf,v 1.4 2000/08/17 19:41:45 cpqbld Exp $
 
-# $XFree86: xc/config/cf/Imake.cf,v 3.79 2002/10/29 23:24:18 herrb Exp $
+# $XFree86: xc/config/cf/Imake.cf,v 3.80 2003/01/15 02:52:12 dawes Exp $
 
 # Keep cpp from replacing path elements containing i486/i586/i686
 
@@ -40,7 +40,7 @@ all::
 
 # platform:  $Xorg: linux.cf,v 1.3 2000/08/17 19:41:47 cpqbld Exp $
 
-# platform:  $XFree86: xc/config/cf/linux.cf,v 3.196 2002/12/11 02:41:46 dawes Exp $
+# platform:  $XFree86: xc/config/cf/linux.cf,v 3.199 2003/02/04 12:02:17 eich Exp $
 
 # operating system:  Linux 2.4.20 i686 [ELF] (2.4.20)
 # libc:	(6.2.3)
@@ -49,7 +49,7 @@ all::
 # $Xorg: lnxLib.rules,v 1.3 2000/08/17 19:41:47 cpqbld Exp $
 # $XFree86: xc/config/cf/lnxLib.rules,v 3.44 2002/11/18 22:47:25 dawes Exp $
 
-# $XFree86: xc/config/cf/xfree86.cf,v 3.431 2002/12/10 15:12:15 alanh Exp $
+# $XFree86: xc/config/cf/xfree86.cf,v 3.435 2003/01/28 22:41:38 dawes Exp $
 
 # $Xorg: xfree86.cf,v 1.4 2000/08/17 19:41:49 cpqbld Exp $
 
@@ -332,13 +332,13 @@ MODLDCOMBINEFLAGS = -r
 #
 #
 #
-# $XFree86: xc/config/cf/X11.tmpl,v 1.189 2002/12/09 17:18:59 dawes Exp $
+# $XFree86: xc/config/cf/X11.tmpl,v 1.193 2003/02/05 00:26:58 dawes Exp $
 
 XORGRELSTRING = Release 6.6
 XORGMANNAME = X Version 11
 
 VENDORMANNAME = XFree86
-VENDORMANVERSION = `echo 4 2 99 2 | sed -e 's/ /./g' -e 's/^/Version\\\ /'`
+VENDORMANVERSION = `echo 4 2 99 901 | sed -e 's/ /./g' -e 's/^/Version\\\ /'`
 
 STICKY_DEFINES = -DHAS_STICKY_DIR_BIT
 
@@ -820,14 +820,6 @@ FREETYPE2INCDIR=$(BUILDINCDIR)/freetype2
 FREETYPE2INCLUDES = -I$(FREETYPE2INCDIR)
 FREETYPE2DEFINES = -DFREETYPE2
 
-          LIBXML2LIBSRC = $(LIBSRC)/libxml2
-
-SOLIBXML2REV = 2.4
-DEPLIBXML2LIB =
-LIBXML2LIB =  -lxml2
-
-LINTLIBXML2 = $(LIBXML2LIBSRC)/llib-xml2.ln
-
           EXPATLIBSRC = $(LIBSRC)/expat
 
 SOEXPATREV = 1.0
@@ -935,7 +927,7 @@ CXXPROJECT_DEFINES =
 # ----------------------------------------------------------------------
 # start of Imakefile
 
-# $XFree86: xc/programs/Xserver/hw/xfree86/os-support/linux/drm/kernel/Imakefile,v 1.6 2002/10/30 12:52:33 alanh Exp $
+# $XFree86: xc/programs/Xserver/hw/xfree86/os-support/linux/drm/kernel/Imakefile,v 1.7 2002/12/16 16:19:27 dawes Exp $
 
 # $XFree86: xc/config/cf/Server.tmpl,v 3.20 2002/11/20 04:32:55 dawes Exp $
 
@@ -954,11 +946,13 @@ GLX_DEFINES = -DGLXEXT -DXF86DRI -DGLX_DIRECT_RENDERING -DGLX_USE_DLOPEN -DGLX_U
 
 # $Xorg: xf86.tmpl,v 1.3 2000/08/17 19:41:48 cpqbld Exp $
 
-# $XFree86: xc/config/cf/xf86.tmpl,v 3.32 2002/11/14 21:01:14 tsi Exp $
+# $XFree86: xc/config/cf/xf86.tmpl,v 3.33 2002/12/16 23:01:43 herrb Exp $
 
 BUILDERADDR = "xfree86@xfree86.org"
 
 BUGMSG = -DBUILDERADDR='$(BUILDERADDR)'
+
+MODULE_GCC_FLAGS = $(MODULE_GCC_FLAGS1) $(MODULE_GCC_FLAGS2)
 
 MODULE_CFLAGS = $(MODULE_PIC_FLAGS) $(MODULE_GCC_FLAGS)
 
@@ -1027,6 +1021,17 @@ depend:: mga_drv.h
 
 cleandir::
 	$(RM) mga_drv.h
+
+mga_irq.c:  $(XF86OSSRC)/shared/drm/kernel/mga_irq.c
+	$(RM) $@
+	$(LN) $? $@
+
+includes:: mga_irq.c
+
+depend:: mga_irq.c
+
+cleandir::
+	$(RM) mga_irq.c
 
 mga_state.c:  $(XF86OSSRC)/shared/drm/kernel/mga_state.c
 	$(RM) $@
@@ -1104,6 +1109,17 @@ depend:: r128_drv.h
 
 cleandir::
 	$(RM) r128_drv.h
+
+r128_irq.c:  $(XF86OSSRC)/shared/drm/kernel/r128_irq.c
+	$(RM) $@
+	$(LN) $? $@
+
+includes:: r128_irq.c
+
+depend:: r128_irq.c
+
+cleandir::
+	$(RM) r128_irq.c
 
 r128_state.c:  $(XF86OSSRC)/shared/drm/kernel/r128_state.c
 	$(RM) $@

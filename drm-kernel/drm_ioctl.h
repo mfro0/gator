@@ -41,6 +41,28 @@ int DRM(irq_busid)(struct inode *inode, struct file *filp,
 
 	if (copy_from_user(&p, (drm_irq_busid_t *)arg, sizeof(p)))
 		return -EFAULT;
+#ifdef __alpha__
+	{
+		int domain = p.busnum >> 8;
+		p.busnum &= 0xff;
+
+		/*
+		 * Find the hose the device is on (the domain number is the
+		 * hose index) and offset the bus by the root bus of that
+		 * hose.
+		 */
+                for(dev = pci_find_device(PCI_ANY_ID,PCI_ANY_ID,NULL);
+                    dev;
+                    dev = pci_find_device(PCI_ANY_ID,PCI_ANY_ID,dev)) {
+			struct pci_controller *hose = dev->sysdata;
+			
+			if (hose->index == domain) {
+				p.busnum += hose->bus->number;
+				break;
+			}
+		}
+	}
+#endif
 	dev = pci_find_slot(p.busnum, PCI_DEVFN(p.devnum, p.funcnum));
 	if (!dev) {
 		DRM_ERROR("pci_find_slot failed for %d:%d:%d\n",

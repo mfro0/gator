@@ -166,6 +166,12 @@
 #define pte_unmap(pte)
 #endif
 
+#ifndef list_for_each_safe
+#define list_for_each_safe(pos, n, head)				\
+	for (pos = (head)->next, n = pos->next; pos != (head);		\
+		pos = n, n = pos->next)
+#endif
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,4,19)
 static inline struct page * vmalloc_to_page(void * vmalloc_addr)
 {
@@ -488,7 +494,6 @@ typedef struct drm_agp_mem {
 
 typedef struct drm_agp_head {
 	agp_kern_info      agp_info;
-	const char         *chipset;
 	drm_agp_mem_t      *memory;
 	unsigned long      mode;
 	int                enabled;
@@ -593,6 +598,7 @@ typedef struct drm_device {
    	atomic_t          vbl_received;
 	spinlock_t        vbl_lock;
 	drm_vbl_sig_t     vbl_sigs;
+	unsigned int      vbl_pending;
 #endif
 	cycles_t	  ctx_start;
 	cycles_t	  lck_start;

@@ -36,11 +36,6 @@
 
 #define RADEON_FIFO_DEBUG	0
 
-#if defined(__alpha__) || defined(__powerpc__)
-# define PCIGART_ENABLED
-#else
-# undef PCIGART_ENABLED
-#endif
 
 
 /* CP microcode (from ATI) */
@@ -896,6 +891,7 @@ static void radeon_cp_init_ring_buffer( drm_device_t *dev,
 
 	/* Set the write pointer delay */
 	RADEON_WRITE( RADEON_CP_RB_WPTR_DELAY, 0 );
+	RADEON_READ( RADEON_CP_RB_WPTR_DELAY ); /* read back to propagate */
 
 	/* Initialize the ring buffer's read and write pointers */
 	cur_read_ptr = RADEON_READ( RADEON_CP_RB_RPTR );
@@ -915,9 +911,9 @@ static void radeon_cp_init_ring_buffer( drm_device_t *dev,
 
 		RADEON_WRITE( RADEON_CP_RB_RPTR_ADDR,
 			     entry->busaddr[page_ofs]);
-		DRM_DEBUG( "ring rptr: offset=0x%08lx handle=0x%08lx\n",
-			   (long)entry->busaddr[page_ofs],
-			   (unsigned long)entry->handle + tmp_ofs );
+		DRM_DEBUG( "ring rptr: offset=0x%08x handle=0x%08lx\n",
+			   entry->busaddr[page_ofs],
+			   entry->handle + tmp_ofs );
 	}
 
 	/* Initialize the scratch register pointer.  This will cause
@@ -1000,17 +996,6 @@ static int radeon_do_init_cp( drm_device_t *dev, drm_radeon_init_t *init )
 	memset( dev_priv, 0, sizeof(drm_radeon_private_t) );
 
 	dev_priv->is_pci = init->is_pci;
-
-#if !defined(PCIGART_ENABLED)
-	/* PCI support is not 100% working, so we disable it here.
-	 */
-	if ( dev_priv->is_pci ) {
-		DRM_ERROR( "PCI GART not yet supported for Radeon!\n" );
-		dev->dev_private = (void *)dev_priv;
-		radeon_do_cleanup_cp(dev);
-		return DRM_ERR(EINVAL);
-	}
-#endif
 
 	if ( dev_priv->is_pci && !dev->sg ) {
 		DRM_ERROR( "PCI GART memory not allocated!\n" );
@@ -1508,7 +1493,7 @@ drm_buf_t *radeon_freelist_get( drm_device_t *dev )
 		}
 	}
 
-	DRM_ERROR( "returning NULL!\n" );
+	DRM_DEBUG( "returning NULL!\n" );
 	return NULL;
 }
 #if 0

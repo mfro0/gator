@@ -55,11 +55,12 @@ GAMMAHEADERS =	gamma_drv.h $(DRMHEADERS) $(DRMTEMPLATES)
 TDFXOBJS =	tdfx_drv.o
 TDFXHEADERS =	tdfx.h $(DRMHEADERS) $(DRMTEMPLATES)
 
-R128OBJS =	r128_drv.o r128_cce.o r128_state.o
+R128OBJS =	r128_drv.o r128_cce.o r128_state.o r128_irq.o
 R128HEADERS =	r128.h r128_drv.h r128_drm.h $(DRMHEADERS) $(DRMTEMPLATES)
-R128SHARED =	r128.h r128_drv.h r128_drm.h r128_cce.c r128_state.c
+R128SHARED =	r128.h r128_drv.h r128_drm.h r128_cce.c r128_state.c r128_irq.c
 
-RADEONOBJS =	radeon_drv.o radeon_cp.o radeon_state.o radeon_mem.o radeon_irq.o
+RADEONOBJS =	radeon_drv.o radeon_cp.o radeon_state.o radeon_mem.o \
+		radeon_irq.o
 RADEONHEADERS =	radeon.h radeon_drv.h radeon_drm.h $(DRMHEADERS) \
 		$(DRMTEMPLATES)
 RADEONSHARED =	radeon.h radeon_drv.h radeon_drm.h radeon_cp.c radeon_irq.c \
@@ -72,7 +73,7 @@ WARNINGS =	-Wall -Wwrite-strings -Wpointer-arith -Wcast-align \
 		-Wstrict-prototypes -Wnested-externs \
 		-Wpointer-arith
 # -Wshadow -Winline -- make output too noisy
-MODCFLAGS =	$(CFLAGS) -D__KERNEL__ -DMODULE -fomit-frame-pointer
+MODCFLAGS =	$(CFLAGS) -D__KERNEL__ -DMODULE -fomit-frame-pointer -fno-strict-aliasing
 PRGCFLAGS =	$(CFLAGS) -g -ansi -pedantic -DPOSIX_C_SOURCE=199309L \
 		-D_POSIX_SOURCE -D_XOPEN_SOURCE -D_BSD_SOURCE -D_SVID_SOURCE \
 		-I../../../../../../include -I../../../../../../../../include \
@@ -164,8 +165,10 @@ ifeq ($(MACHINE),i686)
 #MODS += i830.o
 endif
 
-MGAOBJS =	mga_drv.o mga_dma.o mga_state.o mga_warp.o
+MGAOBJS =	mga_drv.o mga_dma.o mga_state.o mga_warp.o mga_irq.o
 MGAHEADERS =	mga.h mga_drv.h mga_drm.h $(DRMHEADERS) $(DRMTEMPLATES)
+MGASHARED =	mga.h mga_dma.c mga_drm.h mga_drv.h mga_state.c \
+		mga_ucode.h mga_warp.c
 
 I810OBJS =	i810_drv.o i810_dma.o
 I810HEADERS =	i810.h i810_drv.h i810_drm.h $(DRMHEADERS) $(DRMTEMPLATES)
@@ -178,6 +181,10 @@ endif
 ifeq ($(MACHINE),alpha)
 MODCFLAGS+=      -ffixed-8 -mno-fp-regs -mcpu=ev56 -Wa,-mev6 
 endif
+ifeq ($(MACHINE),x86_64)
+MODCFLAGS+=      -mcmodel=kernel
+endif
+
 
 MODS += sis.o
 

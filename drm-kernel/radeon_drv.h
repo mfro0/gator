@@ -829,21 +829,47 @@ do {									\
  * Ring control
  */
 
-#if defined(__powerpc__)
-#define radeon_flush_write_combine()	(void) GET_RING_HEAD( &dev_priv->ring )
-#else
-#define radeon_flush_write_combine()	DRM_WRITEMEMORYBARRIER()
-#endif
-
-
 #define RADEON_VERBOSE	0
 
 #define RING_LOCALS	int write, _nr; unsigned int mask; u32 *ring;
 
-#define BEGIN_RING( n ) do {						\
+#if defined(__alpha__)
+#  define RADEON_PAD_RING 16 /* pad ring requests to 16 lw boundaries */
+#else
+#  define RADEON_PAD_RING 0
+#endif
+
+#if RADEON_PAD_RING
+# define radeon_pad_size(n) 	\
+	(((RADEON_PAD_RING) - ((n) % (RADEON_PAD_RING))) % (RADEON_PAD_RING))
+# define radeon_pad_ring() do {						\
+	if (RADEON_VERBOSE) {						\
+		DRM_INFO("Padding ring from %d (%x) with %d words\n", 	\
+			 write, write, radeon_pad_size(write));		\
+	}								\
+	switch (radeon_pad_size(write)) {			      	\
+	case 0:  /* aligned */					      	\
+		break;						      	\
+	case 1:  /* 1 word */					      	\
+		OUT_RING(CP_PACKET2());				      	\
+		break;						      	\
+	default: /* >= 2 words */				      	\
+		OUT_RING(CP_PACKET3(0x1000, radeon_pad_size(write) - 1));\
+		write = (write + radeon_pad_size(write)) & mask;	\
+		write &= mask;						\
+		break;						      	\
+	}							      	\
+} while(0)
+#else
+# define radeon_pad_size(n) 0
+# define radeon_pad_ring()
+#endif
+
+#define BEGIN_RING( req_n ) do {					\
+	int n = req_n + radeon_pad_size(req_n);				\
 	if ( RADEON_VERBOSE ) {						\
-		DRM_INFO( "BEGIN_RING( %d ) in %s\n",			\
-			   n, __FUNCTION__ );				\
+		DRM_INFO( "BEGIN_RING( %d (%d) ) in %s\n",		\
+			   n, req_n, __FUNCTION__ );			\
 	}								\
 	if ( dev_priv->ring.space <= (n) * sizeof(u32) ) {		\
                 COMMIT_RING();						\
@@ -860,6 +886,7 @@ do {									\
 		DRM_INFO( "ADVANCE_RING() wr=0x%06x tail=0x%06x\n",	\
 			  write, dev_priv->ring.tail );			\
 	}								\
+	radeon_pad_ring();						\
 	if (((dev_priv->ring.tail + _nr) & mask) != write) {		\
 		DRM_ERROR( 						\
 			"ADVANCE_RING(): mismatch: nr: %x write: %x line: %d\n",	\
@@ -869,8 +896,13 @@ do {									\
 		dev_priv->ring.tail = write;				\
 } while (0)
 
-#define COMMIT_RING() do {					    \
-	RADEON_WRITE( RADEON_CP_RB_WPTR, dev_priv->ring.tail );		    \
+#define COMMIT_RING() do {						\
+	/* Flush writes to ring */					\
+	DRM_READMEMORYBARRIER();					\
+	GET_RING_HEAD( &dev_priv->ring );				\
+	RADEON_WRITE( RADEON_CP_RB_WPTR, dev_priv->ring.tail );		\
+	/* read from PCI bus to ensure correct posting */		\
+	RADEON_READ( RADEON_CP_RB_RPTR );				\
 } while (0)
 
 #define OUT_RING( x ) do {						\

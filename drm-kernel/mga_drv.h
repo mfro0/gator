@@ -125,6 +125,7 @@ extern int  mga_dma_vertex( DRM_IOCTL_ARGS );
 extern int  mga_dma_indices( DRM_IOCTL_ARGS );
 extern int  mga_dma_iload( DRM_IOCTL_ARGS );
 extern int  mga_dma_blit( DRM_IOCTL_ARGS );
+extern int  mga_getparam( DRM_IOCTL_ARGS );
 
 				/* mga_warp.c */
 extern int mga_warp_install_microcode( drm_mga_private_t *dev_priv );
@@ -141,6 +142,7 @@ extern int mga_warp_init( drm_mga_private_t *dev_priv );
 
 #ifdef __alpha__
 #define MGA_READ( reg )		(_MGA_READ((u32 *)MGA_ADDR(reg)))
+#define MGA_READ8( reg )	(_MGA_READ((u8 *)MGA_ADDR(reg)))
 #define MGA_WRITE( reg, val )	do { DRM_WRITEMEMORYBARRIER(); MGA_DEREF( reg ) = val; } while (0)
 #define MGA_WRITE8( reg, val )  do { DRM_WRITEMEMORYBARRIER(); MGA_DEREF8( reg ) = val; } while (0)
 
@@ -152,6 +154,7 @@ static inline u32 _MGA_READ(u32 *addr)
 
 #else
 #define MGA_READ( reg )		MGA_DEREF( reg )
+#define MGA_READ8( reg )	MGA_DEREF8( reg )
 #define MGA_WRITE( reg, val )	do { MGA_DEREF( reg ) = val; } while (0)
 #define MGA_WRITE8( reg, val )  do { MGA_DEREF8( reg ) = val; } while (0)
 #endif
@@ -235,9 +238,8 @@ do {									\
 	if ( MGA_VERBOSE ) {						\
 		DRM_INFO( "BEGIN_DMA( %d ) in %s\n",			\
 			  (n), __FUNCTION__ );				\
-		DRM_INFO( "   space=0x%x req=0x%lx\n",			\
-			  dev_priv->prim.space, (long)			\
-			  (n) * DMA_BLOCK_SIZE );			\
+		DRM_INFO( "   space=0x%x req=0x%x\n",			\
+			  dev_priv->prim.space, (n) * DMA_BLOCK_SIZE );	\
 	}								\
 	prim = dev_priv->prim.start;					\
 	write = dev_priv->prim.tail;					\
@@ -286,9 +288,8 @@ do {									\
 #define DMA_WRITE( offset, val )					\
 do {									\
 	if ( MGA_VERBOSE ) {						\
-		DRM_INFO( "   DMA_WRITE( 0x%08x ) at 0x%04lx\n",	\
-			  (u32)(val),					\
-			  (long)write + (offset) * sizeof(u32) );	\
+		DRM_INFO( "   DMA_WRITE( 0x%08x ) at 0x%04x\n",		\
+			  (u32)(val), write + (offset) * sizeof(u32) );	\
 	}								\
 	*(volatile u32 *)(prim + write + (offset) * sizeof(u32)) = val;	\
 } while (0)
@@ -347,6 +348,11 @@ do {									\
 /* A reduced set of the mga registers.
  */
 #define MGA_CRTC_INDEX			0x1fd4
+#define MGA_CRTC_DATA			0x1fd5
+
+/* CRTC11 */
+#define MGA_VINTCLR			(1 << 4)
+#define MGA_VINTEN			(1 << 5)
 
 #define MGA_ALPHACTRL 			0x2c7c
 #define MGA_AR0 			0x1c60
@@ -418,8 +424,10 @@ do {									\
 
 #define MGA_ICLEAR 			0x1e18
 #	define MGA_SOFTRAPICLR			(1 << 0)
+#	define MGA_VLINEICLR			(1 << 5)
 #define MGA_IEN 			0x1e1c
 #	define MGA_SOFTRAPIEN			(1 << 0)
+#	define MGA_VLINEIEN			(1 << 5)
 
 #define MGA_LEN 			0x1c5c
 
@@ -458,6 +466,8 @@ do {									\
 #	define MGA_SRCACC_AGP			(1 << 1)
 #define MGA_STATUS 			0x1e14
 #	define MGA_SOFTRAPEN			(1 << 0)
+#	define MGA_VSYNCPEN			(1 << 4)
+#	define MGA_VLINEPEN			(1 << 5)
 #	define MGA_DWGENGSTS			(1 << 16)
 #	define MGA_ENDPRDMASTS			(1 << 17)
 #define MGA_STENCIL			0x2cc8
