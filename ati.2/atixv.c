@@ -428,6 +428,36 @@ void ATIEnterVT_Video(ScrnInfoPtr pScrn)
     ATIResetVideo(pScrn);
 }
 
+/* I2C_CNTL_0 bits */
+#define I2C_DONE	(1<<0)
+#define I2C_NACK	(1<<1)
+#define I2C_HALT	(1<<2)
+#define I2C_SOFT_RST	(1<<5)
+#define I2C_START	(1<<8)
+#define I2C_STOP	(1<<9)
+#define I2C_RECEIVE	(1<<11)
+#define I2C_ABORT	(1<<12)
+#define I2C_GO		(1<<10)
+
+/* I2C_CNTL_1 bits */
+#define I2C_SEL		(1<<22)
+#define I2C_EN		(1<<17)
+
+
+#define MPP_WRITE      0x80038CB0
+#define MPP_WRITEINC   0x80338CB0
+#define MPP_READ       0x84038CB0
+#define MPP_READINC    0x84338CB0
+
+#define IMPACTTV_I2C_CNTL      0x0015
+
+#define TB_SDA_GET	0x40
+#define TB_SDA_SET	0x20
+#define TB_SDA_DIR	0x10
+#define TB_SCL_GET	0x04
+#define TB_SCL_SET	0x02
+#define TB_SCL_DIR	0x01
+
 
 void ATIResetVideo(ScrnInfoPtr pScrn)
 {
@@ -481,37 +511,13 @@ void ATIResetVideo(ScrnInfoPtr pScrn)
     outf(OVERLAY_GRAPHICS_KEY_CLR, pPriv->colorKey);
     outf(OVERLAY_KEY_CNTL, 0x50);
     outf(SCALER_TEST, 0);
+
+    if((pATI->Chip >= ATI_CHIP_264GTPRO) && (pATI->Chip <= ATI_CHIP_MOBILITY)) 
+    {   
+       out8(I2C_CNTL_1+2, (I2C_SEL >>16));
+       out8(I2C_CNTL_0+0, (I2C_DONE | I2C_NACK | I2C_HALT | I2C_SOFT_RST ));
+    }
 }
-
-/* I2C_CNTL_0 bits */
-#define I2C_DONE	(1<<0)
-#define I2C_NACK	(1<<1)
-#define I2C_HALT	(1<<2)
-#define I2C_SOFT_RST	(1<<5)
-#define I2C_START	(1<<8)
-#define I2C_STOP	(1<<9)
-#define I2C_RECEIVE	(1<<11)
-#define I2C_ABORT	(1<<12)
-#define I2C_GO		(1<<10)
-
-/* I2C_CNTL_1 bits */
-#define I2C_SEL		(1<<22)
-#define I2C_EN		(1<<17)
-
-
-#define MPP_WRITE      0x80038CB0
-#define MPP_WRITEINC   0x80338CB0
-#define MPP_READ       0x84038CB0
-#define MPP_READINC    0x84338CB0
-
-#define IMPACTTV_I2C_CNTL      0x0015
-
-#define TB_SDA_GET	0x40
-#define TB_SDA_SET	0x20
-#define TB_SDA_DIR	0x10
-#define TB_SCL_GET	0x04
-#define TB_SCL_SET	0x02
-#define TB_SCL_DIR	0x01
 
 static Bool MPP_wait(ATIPtr pATI)
 {
