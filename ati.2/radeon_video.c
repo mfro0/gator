@@ -2419,7 +2419,7 @@ RADEONDisplayVideo(
  
     OUTPLL(RADEON_VCLK_ECP_CNTL, (INPLL(pScrn, RADEON_VCLK_ECP_CNTL) & 0xfffffCff) | (pPriv->ecp_div << 8));
 
-    v_inc = (src_h << (20
+    v_inc = (src_h << (12
 		+ ((pScrn->currentMode->Flags & V_INTERLACE)?1:0)
 		- ((pScrn->currentMode->Flags & V_DBLSCAN)?1:0)));
 
@@ -2428,6 +2428,7 @@ RADEONDisplayVideo(
         v_inc = v_inc/(drw_h*info->PanelYRes);
         else
         v_inc = v_inc/(drw_h*pScrn->currentMode->VDisplay);
+    v_inc<<=8;
 
     h_inc = ((src_w << (12
     		+ pPriv->ecp_div)) / drw_w);
