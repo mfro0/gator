@@ -1,0 +1,13 @@
+
+           AV viewer
+	   
+	   (C) Vladimir Dergachev 2001
+	   
+	  
+   A viewer for TV capable cards.
+   
+          * Xv support
+	  
+   Requirements: TV input capable card with Xv support, Tcl/Tk 8.x.x or 
+                 later. 
+		  
