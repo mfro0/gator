@@ -2,9 +2,9 @@
 
 add_parameter_pane "/Diagnostics" "Diagnostics" \
 	"Version information" heading "" \
-	"AVview version" entry "avview_version" \
-	"Tcl version"  entry "tcl_version" \
-	"Tk version" entry "tk_version" \
+	"AVview version" ro_entry "avview_version" \
+	"Tcl version"  ro_entry "tcl_patchLevel" \
+	"Tk version" ro_entry "tk_patchLevel" \
 	"Additional diagnostics" heading "" \
 	"Show XVideo information" command {switch_to_pane "/Diagnostics/xvinfo"
 		Tree:open .setup.tree "/Diagnostics"

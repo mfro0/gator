@@ -171,6 +171,12 @@ foreach {description type var} $args {
 			grid $A.label$param_count $A.entry$param_count -sticky new -padx 2 -pady 2 
 			grid configure $A.label$param_count -sticky nw
 			}
+		"ro_entry" {
+			label $A.label$param_count -text "$description" -wraplength 300
+			entry $A.entry$param_count -textvariable $var -state disabled -disabledforeground black
+			grid $A.label$param_count $A.entry$param_count -sticky new -padx 2 -pady 2 
+			grid configure $A.label$param_count -sticky nw
+			}
 		"checkbutton" {
 			label $A.label$param_count -text "$description" -wraplength 300
 			checkbutton  $A.checkbutton$param_count -variable $var -onvalue true -offvalue false
