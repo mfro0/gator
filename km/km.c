@@ -69,6 +69,7 @@ if(size>(4096*4096/sizeof(bm_list_descriptor))){
 	printk("Too large buffer allocation requested: %ld bytes\n", size);
 	return -1;
 	}
+spin_lock_init(&(stream->lock));
 stream->total_frames=0;
 /* allocate data unit to hold stream meta info */
 stream->dvb_info.size=num_buffers*sizeof(KM_STREAM_BUFFER_INFO);
@@ -131,6 +132,7 @@ return 0;
 int generic_deallocate_dvb(KM_STREAM *stream)
 {
 int k;
+spin_lock_irq(&(stream->lock));
 for(k=0;k<stream->num_buffers;k++){
 	rvfree(stream->dma_table[k], 4096);
 	}
@@ -141,6 +143,7 @@ stream->du=-1;
 km_deallocate_data(stream->info_du);
 stream->info_du=-1;
 stream->num_buffers=-1;
+spin_unlock_irq(&(stream->lock));
 printk("km: closed stream, %ld buffers captured\n", stream->total_frames);
 return 0;
 }
@@ -151,12 +154,12 @@ if(kmtq->request[kmtq->first].flag & KM_TRANSFER_IN_PROGRESS){
 	return 0;
 	}
 while(kmtq->first!=kmtq->last){
-	kmtq->first++;
-	if(kmtq->first>=kmtq->size)kmtq->first=0;
 	if(kmtq->request[kmtq->first].flag!=KM_TRANSFER_NOP){
 		kmtq->request[kmtq->first].flag|=KM_TRANSFER_IN_PROGRESS;
 		return 1;		
 		}
+	kmtq->first++;
+	if(kmtq->first>=kmtq->size)kmtq->first=0;
 	}
 return 0;
 }
@@ -185,7 +188,8 @@ int last;
 spin_lock_irq(&(kmtq->lock));
 last=kmtq->last;
 if(kmtq->request[last].flag!=KM_TRANSFER_NOP){
-	printk("km: GUI_DMA queue is full first=%d last=%d\n", kmtq->first, kmtq->last);
+	printk("km: GUI_DMA queue is full first=%d last=%d flag=0x%08x\n", kmtq->first, kmtq->last,
+		kmtq->request[last].flag);
 	spin_unlock_irq(&(kmtq->lock));
 	return -1;
 	}

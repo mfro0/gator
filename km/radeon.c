@@ -155,6 +155,7 @@ if(a & (1<<6)){
 	}
 wmb();
 if(kms->gdq_usage==1){
+	printk("Starting GUIDMA queue\n");
 	writel(INT_BIT_GUIDMA, kms->reg_aperture+RADEON_GEN_INT_STATUS);
 	a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
 	writel(a|INT_BIT_GUIDMA, kms->reg_aperture+RADEON_GEN_INT_CNTL);
@@ -179,6 +180,7 @@ writel((CAP_INT_BIT_BUF0|CAP_INT_BIT_BUF0_EVEN|
 	CAP_INT_BIT_BUF1|CAP_INT_BIT_BUF1_EVEN), kms->reg_aperture+RADEON_CAP_INT_STATUS);
 wmb();
 if(kms->gdq_usage==1){
+	printk("Stopping GUIDMA queue\n");
 	a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
 	writel(a & ~INT_BIT_GUIDMA, kms->reg_aperture+RADEON_GEN_INT_CNTL);
 	wmb();
@@ -210,6 +212,7 @@ if(a & (1<<6)){
 	}
 wmb();
 if(kms->gdq_usage==1){
+	printk("Starting GUIDMA queue\n");
 	writel(INT_BIT_GUIDMA, kms->reg_aperture+RADEON_GEN_INT_STATUS);
 	a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
 	writel(a|INT_BIT_GUIDMA, kms->reg_aperture+RADEON_GEN_INT_CNTL);
@@ -230,6 +233,7 @@ wmb();
 writel((CAP_INT_BIT_VBI0|CAP_INT_BIT_VBI1), kms->reg_aperture+RADEON_CAP_INT_STATUS);
 wmb();
 if(kms->gdq_usage==1){
+	printk("Stopping GUIDMA queue\n");
 	a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
 	writel(a & ~INT_BIT_GUIDMA, kms->reg_aperture+RADEON_GEN_INT_CNTL);
 	wmb();
@@ -290,10 +294,16 @@ static void radeon_schedule_request(KM_STRUCT *kms, KM_STREAM *stream, u32 offse
 {
 int buffer;
 /* do not start dma transfer if stream is not being used anymore */
-if(stream->num_buffers<=0)return;
+spin_lock(&(stream->lock));
+if(stream->num_buffers<=0){
+	spin_unlock(&(stream->lock));
+	return;
+	}
 buffer=find_free_buffer(stream);
 if(buffer<0){
-	KM_DEBUG("radeon_schedule_request buffer=%d offset=0x%08x odd=%d\n",buffer, offset, stream->free[buffer]);
+	printk(KERN_ERR "radeon_schedule_request: could not find free buffer buffer=%d offset=0x%08x odd=%d\n", 
+		buffer, offset, odd);
+	spin_unlock(&(stream->lock));
 	return;
 	}
 if(odd)
@@ -303,6 +313,7 @@ if(odd)
 	
 KM_DEBUG("buf=%d offset=0x%08x odd=%d\n", buffer, offset, odd);
 stream->dvb.kmsbi[buffer].timestamp=jiffies;
+spin_unlock(&(stream->lock));
 radeon_setup_dma_table(kms, (stream->dma_table[buffer]), offset, stream->free[buffer]);
 /* start transfer */
 stream->total_frames++;
@@ -350,7 +361,7 @@ while(1){
 	status=readl(kms->reg_aperture+RADEON_GEN_INT_STATUS);
 	mask=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL) & ((1<<30)|7);
 	KM_DEBUG("GEN_INT_STATUS=0x%08x mask=0x%08x\n", status, mask);
-	status &=mask & (INT_BIT_GUIDMA|INT_BIT_VLINE|INT_BIT_VSYNC|INT_BIT_VBLANK);
+	status &=mask & (INT_BIT_GUIDMA|INT_BIT_VLINE|INT_BIT_VSYNC|INT_BIT_VBLANK|INT_BIT_CAP0);
 	if(!status && !status_cap){
 		return;
 		}
@@ -454,7 +465,7 @@ void radeon_uninit_hardware(KM_STRUCT *kms)
 u32 a;
 
 a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
-writel(a& ~((7)|(1<<30)), kms->reg_aperture+RADEON_GEN_INT_CNTL);
+writel(a& ~(INT_BIT_VBLANK|INT_BIT_VLINE|INT_BIT_VSYNC|INT_BIT_GUIDMA), kms->reg_aperture+RADEON_GEN_INT_CNTL);
 
 writel(0, kms->reg_aperture+RADEON_CAP_INT_CNTL);
 }

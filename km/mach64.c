@@ -187,8 +187,10 @@ while(1){
 
 	status=readl(kms->reg_aperture+MACH64_CRTC_INT_CNTL);
 	KM_DEBUG("CRTC_INT_CNTL=0x%08x\n", status);
+	writel(ACK_INTERRUPT(status, status & (MACH64_CAPBUF0_INT_ACK|
+		MACH64_CAPBUF1_INT_ACK|
+		MACH64_BUSMASTER_INT_ACK)), kms->reg_aperture+MACH64_CRTC_INT_CNTL);
 	if((status & (MACH64_CAPBUF0_INT_ACK|MACH64_CAPBUF1_INT_ACK))){
-		writel(ACK_INTERRUPT(status, status & (MACH64_CAPBUF0_INT_ACK|MACH64_CAPBUF1_INT_ACK)), kms->reg_aperture+MACH64_CRTC_INT_CNTL);
 		/* do not start dma transfer if capture is not active anymore */
 		if(mach64_is_capture_active(kms)){
 			mach64_wait_for_idle(kms);
@@ -198,7 +200,6 @@ while(1){
 		}
 	
 	if((status & MACH64_BUSMASTER_INT_ACK)){
-		writel(ACK_INTERRUPT(status, MACH64_BUSMASTER_INT_ACK), kms->reg_aperture+MACH64_CRTC_INT_CNTL);
 		mach64_wait_for_idle(kms);
 		acknowledge_dma(kms);
 		}

@@ -30,6 +30,7 @@ typedef struct {
 /* this structure contains information corresponding to a single stream
    There should be one for each functions: video capture, vbi capture, etc */
 typedef struct {
+	spinlock_t lock;
 	int num_buffers;
 	/* dma buffers */
 	bm_list_descriptor **dma_table;
