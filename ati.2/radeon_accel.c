@@ -296,6 +296,7 @@ void RADEONEngineRestore(ScrnInfoPtr pScrn)
     RADEONInfoPtr info        = RADEONPTR(pScrn);
     unsigned char *RADEONMMIO = info->MMIO;
     int           pitch64;
+    CARD32	  display_base;
 
     RADEONTRACE(("EngineRestore (%d/%d)\n",
 		 info->CurrentLayout.pixel_code,
@@ -307,9 +308,13 @@ void RADEONEngineRestore(ScrnInfoPtr pScrn)
 
     pitch64 = ((pScrn->displayWidth * (pScrn->bitsPerPixel / 8) + 0x3f)) >> 6;
 
-    RADEONWaitForFifo(pScrn, 1);
+    RADEONWaitForFifo(pScrn, 2);
+    display_base=INREG(RADEON_DISPLAY_BASE_ADDR);
+    #if 0
     OUTREG(RADEON_DEFAULT_OFFSET, (INREG(RADEON_DEFAULT_OFFSET) & 0xC0000000) |
-				  (pitch64 << 22));
+				  (pitch64 << 22) | (display_base >> 10));
+    #endif
+    OUTREG(RADEON_DEFAULT_OFFSET, (pitch64 << 22) | (display_base >> 10));
 
     RADEONWaitForFifo(pScrn, 1);
 #if X_BYTE_ORDER == X_BIG_ENDIAN
@@ -351,6 +356,7 @@ void RADEONRestoreAccelState(ScrnInfoPtr pScrn)
     CARD32 pitch64;
     RADEONEntPtr pRADEONEnt;
     DevUnion* pPriv;
+    CARD32 display_base;
 
     pPriv = xf86GetEntityPrivate(pScrn->entityList[0],
             gRADEONEntityIndex);
@@ -365,7 +371,8 @@ void RADEONRestoreAccelState(ScrnInfoPtr pScrn)
     }
     pitch64 = ((pScrn->displayWidth * (pScrn->bitsPerPixel / 8) + 0x3f)) >> 6;
 
-    OUTREG(RADEON_DEFAULT_OFFSET, (pScrn->fbOffset>>10) |
+    display_base=INREG(RADEON_DISPLAY_BASE_ADDR);
+    OUTREG(RADEON_DEFAULT_OFFSET, ((pScrn->fbOffset+display_base)>>10) |
 				  (pitch64 << 22));
 
     /* FIXME: May need to restore other things, 
@@ -382,9 +389,11 @@ void RADEONRestoreCPAccelState(ScrnInfoPtr pScrn)
 {
     RADEONInfoPtr info        = RADEONPTR(pScrn);
     unsigned char *RADEONMMIO = info->MMIO;
+    CARD32	display_base;
     /*xf86DrvMsg(pScrn->scrnIndex, X_INFO, "===>RestoreCP\n");*/
 
-    RADEONWaitForFifo(pScrn, 1);
+    RADEONWaitForFifo(pScrn, 2);
+    display_base=INREG(RADEON_DISPLAY_BASE_ADDR);
     OUTREG( RADEON_DEFAULT_OFFSET, info->frontPitchOffset);
 
     RADEONWaitForIdle(pScrn);
@@ -1754,11 +1763,19 @@ Bool RADEONAccelInit(ScreenPtr pScreen)
     }
 #ifdef XF86DRI
     if (info->directRenderingEnabled)
+    {
+        xf86DrvMsg(pScrn->scrnIndex, X_INFO, 
+            "Using CP based acceleration\n");
 	RADEONCPAccelInit(pScrn, a);
+    }
     else
 #endif
+    {
+        xf86DrvMsg(pScrn->scrnIndex, X_INFO, 
+            "Using MMIO based acceleration\n");
 	RADEONMMIOAccelInit(pScrn, a);
-
+    }
+    
     RADEONEngineInit(pScrn);
     
     if(!XAAInit(pScreen, a))

@@ -46,6 +46,8 @@ void CalculateCrCbGain (TheatrePtr t, double *CrGain, double *CbGain, CARD16 wSt
 void RT_SetConnector (TheatrePtr t, CARD16 wConnector, int tunerFlag);
 
 void ShutdownTheatre(TheatrePtr t);
+void DumpRageTheatreRegs(TheatrePtr t);
+void ResetTheatreRegsForTVout(TheatrePtr t);
 
 
 #define TheatreSymbolsList  \
@@ -80,6 +82,8 @@ void ShutdownTheatre(TheatrePtr t);
 #define xf86_RT_SetConnector       ((void (*)(TheatrePtr, CARD16, int))LoaderSymbol("RT_SetConnector"))
 
 #define xf86_ShutdownTheatre       ((void (*)(TheatrePtr))LoaderSymbol("ShutdownTheatre"))
+#define xf86_DumpRageTheatreRegs       ((void (*)(TheatrePtr))LoaderSymbol("DumpRageTheatreRegs"))
+#define xf86_ResetTheatreRegsForTVout       ((void (*)(TheatrePtr))LoaderSymbol("ResetTheatreRegsForTVout"))
 #else
 
 #define xf86_DetectTheatre             DetectTheatre

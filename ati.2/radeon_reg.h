@@ -796,6 +796,8 @@
 #define RADEON_MAX_LATENCY                  0x0f3f /* PCI */
 #define RADEON_MC_AGP_LOCATION              0x014c
 #define RADEON_MC_FB_LOCATION               0x0148
+#define RADEON_DISPLAY_BASE_ADDR	    0x023c
+#define RADEON_OVERLAY_BASE_ADDR	    0x043c
 #define RADEON_MCLK_CNTL                    0x0012 /* PLL */
 #       define RADEON_FORCEON_MCLKA         (1 << 16)
 #       define RADEON_FORCEON_MCLKB         (1 << 17)

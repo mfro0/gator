@@ -117,6 +117,10 @@ typedef struct {
     CARD32     cap1_trig_cntl;
     CARD32     bus_cntl;
     CARD32     surface_cntl;
+    CARD32	display_base;
+    CARD32	overlay_base;
+    CARD32	mc_fb_location;
+    CARD32	mc_agp_location;
 
 				/* Other registers to save for VT switches */
     CARD32     dp_datatype;
@@ -260,6 +264,9 @@ typedef struct {
     CARD32            BusCntl;
     unsigned long     FbMapSize;  /* Size of frame buffer, in bytes          */
     int               Flags;      /* Saved copy of mode flags                */
+    CARD32	      membase;    /* Address of the framebuffer from the point of
+                                     view of internal memory controller of
+				     the Radeon */
 
     /****** Added for VE/M6 support *******************/
     RADEONMonitorType DisplayType;  /* Monitor connected on*/

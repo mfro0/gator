@@ -1751,7 +1751,7 @@ void CalculateCrCbGain (TheatrePtr t, double *CrGain, double *CbGain, CARD16 wSt
 void RT_SetConnector (TheatrePtr t, CARD16 wConnector, int tunerFlag)
 {
     CARD32 dwTempContrast=0;
-    CARD32 i;
+    int i;
     long counter;
 
     t->wConnector = wConnector;
@@ -1804,6 +1804,7 @@ void RT_SetConnector (TheatrePtr t, CARD16 wConnector, int tunerFlag)
     while ((i>=0) && (! ReadRT_fld (fld_HS_GENLOCKED)))
     {
       usleep(50);
+      xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "checkpoint 3a i=%ld\n", i);
       i--;
     }
     if(i<0) xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre: waiting for fld_HS_GENLOCKED failed\n");
@@ -1884,4 +1885,55 @@ void ShutdownTheatre(TheatrePtr t)
     WriteRT_fld (fld_VINRST       , RT_VINRST_RESET);
     WriteRT_fld (fld_ADC_PDWN     , RT_ADC_DISABLE);
     WriteRT_fld (fld_DVS_DIRECTION, RT_DVSDIR_IN);
+}
+
+void DumpRageTheatreRegs(TheatrePtr t)
+{
+    int i;
+    CARD32 data;
+    
+    for(i=0;i<0x900;i+=4)
+    {
+       RT_regr(i, &data);
+       xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "register 0x%04x is equal to 0x%08x\n", i, data);
+    }   
+
+}
+
+void ResetTheatreRegsForTVout(TheatrePtr t)
+{
+    int i;
+    CARD32 data;
+    
+/*    RT_regw(VIP_HW_DEBUG, 0x200);   */
+/*     RT_regw(VIP_INT_CNTL, 0x0); 
+     RT_regw(VIP_GPIO_INOUT, 0x10090000); 
+     RT_regw(VIP_GPIO_INOUT, 0x340b0000);  */
+/*     RT_regw(VIP_MASTER_CNTL, 0x6e8);  */
+     RT_regw(VIP_CLKOUT_CNTL, 0x29); 
+#if 1
+     RT_regw(VIP_HCOUNT, 0x1d1); 
+     RT_regw(VIP_VCOUNT, 0x1e3); 
+#else
+     RT_regw(VIP_HCOUNT, 0x322); 
+     RT_regw(VIP_VCOUNT, 0x151);
+#endif
+     RT_regw(VIP_DFCOUNT, 0x01); 
+/*     RT_regw(VIP_CLOCK_SEL_CNTL, 0xb7);  /* versus 0x237 <-> 0x2b7 */
+     RT_regw(VIP_CLOCK_SEL_CNTL, 0x2b7);  /* versus 0x237 <-> 0x2b7 */
+     RT_regw(VIP_VIN_PLL_CNTL, 0x60a6039);
+/*     RT_regw(VIP_PLL_CNTL1, 0xacacac74); */
+     RT_regw(VIP_FRAME_LOCK_CNTL, 0x0f);
+/*     RT_regw(VIP_ADC_CNTL, 0x02a420a8); 
+     RT_regw(VIP_COMB_CNTL_0, 0x0d438083); 
+     RT_regw(VIP_COMB_CNTL_2, 0x06080102); 
+     RT_regw(VIP_HS_MINMAXWIDTH, 0x462f); 
+     ...
+     */
+/*
+     RT_regw(VIP_HS_PULSE_WIDTH, 0x359);
+     RT_regw(VIP_HS_PLL_ERROR, 0xab6);
+     RT_regw(VIP_HS_PLL_FS_PATH, 0x7fff08f8);
+     RT_regw(VIP_VS_LINE_COUNT, 0x49b5e005);
+	*/
 }

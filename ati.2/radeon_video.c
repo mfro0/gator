@@ -2533,7 +2533,7 @@ RADEONPutVideo(
    int srcPitch, srcPitch2, dstPitch;
    int bpp;
    BoxRec dstBox;
-   CARD32 id;
+   CARD32 id, display_base;
    int width, height;
 
    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "PutVideo\n");
@@ -2619,18 +2619,20 @@ RADEONPutVideo(
 
    
    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "PutVideo Checkpoint 2\n");
-   
 
-   RADEONWaitForFifo(pScrn, 15);
+   RADEONWaitForIdle(pScrn);
+   display_base=INREG(RADEON_DISPLAY_BASE_ADDR);   
+
+/*   RADEONWaitForFifo(pScrn, 15); */
 
    offset1 = (pPriv->linear->offset*bpp+0xf) & (~0xf);
    offset2 = ((pPriv->linear->offset+new_size)*bpp + 0x1f) & (~0xf);
 
-   OUTREG(RADEON_CAP0_BUF0_OFFSET, offset1);
-   OUTREG(RADEON_CAP0_BUF0_EVEN_OFFSET, offset2);
-   OUTREG(RADEON_CAP0_ONESHOT_BUF_OFFSET, offset1);
-   OUTREG(RADEON_CAP0_BUF1_OFFSET, offset1);
-   OUTREG(RADEON_CAP0_BUF1_EVEN_OFFSET, offset2);
+   OUTREG(RADEON_CAP0_BUF0_OFFSET, offset1+display_base);
+   OUTREG(RADEON_CAP0_BUF0_EVEN_OFFSET, offset2+display_base);
+   OUTREG(RADEON_CAP0_ONESHOT_BUF_OFFSET, offset1+display_base);
+   OUTREG(RADEON_CAP0_BUF1_OFFSET, offset1+display_base);
+   OUTREG(RADEON_CAP0_BUF1_EVEN_OFFSET, offset2+display_base);
    
    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "PutVideo Checkpoint 3\n");
 

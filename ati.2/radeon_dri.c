@@ -450,7 +450,7 @@ static void RADEONScreenToScreenCopyDepth(ScrnInfoPtr pScrn,
     int           xstart, xend, xdir;
     int           ystart, yend, ydir;
     int           x, y, d;
-    unsigned char *buf = info->FB + info->depthOffset;
+    unsigned char *buf = info->FB + (info->depthOffset - info->membase);
 
     if (xa < xb) xdir = -1, xstart = w-1, xend = 0;
     else         xdir =  1, xstart = 0,   xend = w-1;
@@ -1108,6 +1108,8 @@ static void RADEONDRISAREAInit(ScreenPtr pScreen,
     CARD32                color_fmt, depth_fmt;
     int                   i;
 
+    xf86DrvMsg(pScreen->myNum, X_INFO,
+		   "[dri] RADEONDRISAREAInit.\n");
     switch (info->CurrentLayout.pixel_code) {
     case 16:
 	color_fmt = RADEON_COLOR_FORMAT_RGB565;
@@ -1163,7 +1165,7 @@ static void RADEONDRISAREAInit(ScreenPtr pScreen,
 		      color_fmt |
 		      RADEON_ZBLOCK16);
 
-    ctx->rb3d_coloroffset = (info->backOffset & RADEON_COLOROFFSET_MASK);
+    ctx->rb3d_coloroffset = ((info->backOffset) & RADEON_COLOROFFSET_MASK);
 
     ctx->re_width_height = ((0x7ff << RADEON_RE_WIDTH_SHIFT) |
 			    (0x7ff << RADEON_RE_HEIGHT_SHIFT));
@@ -1269,7 +1271,7 @@ static void RADEONDRISAREAInit(ScreenPtr pScreen,
 
 	tex->pp_txfilter     = 0x00000000;
 	tex->pp_txformat     = 0x00000000;
-	tex->pp_txoffset     = 0x00000000;
+	tex->pp_txoffset     = info->LinearAddr;
 	tex->pp_txcblend     = 0x00000000;
 	tex->pp_txablend     = 0x00000000;
 	tex->pp_tfactor      = 0x00000000;
@@ -1415,11 +1417,12 @@ Bool RADEONDRIScreenInit(ScreenPtr pScreen)
     version = drmGetVersion(info->drmFD);
     if (version) {
 	if (version->version_major != 1 ||
-	    version->version_minor < 1) {
+	    version->version_minor < 2) {
             /* incompatible drm version */
             xf86DrvMsg(pScreen->myNum, X_ERROR,
                 "[dri] RADEONDRIScreenInit failed because of a version mismatch.\n"
-		"[dri] radeon.o kernel module version is %d.%d.%d but version 1.1.x is needed.\n"
+		"[dri] radeon.o kernel module version is %d.%d.%d but version 1.2.x is needed.\n"
+		"[dri] see http://gatos.sf.net/ for an updated module\n"
 		"[dri] Disabling DRI.\n",
                 version->version_major,
                 version->version_minor,
@@ -1553,7 +1556,7 @@ Bool RADEONDRIFinishScreenInit(ScreenPtr pScreen)
     pRADEONDRI->agpTexHandle      = info->agpTexHandle;
     pRADEONDRI->agpTexMapSize     = info->agpTexMapSize;
     pRADEONDRI->log2AGPTexGran    = info->log2AGPTexGran;
-    pRADEONDRI->agpTexOffset      = info->agpTexStart;
+    pRADEONDRI->agpTexOffset      = info->agpTexStart+info->membase;
 
     pRADEONDRI->sarea_priv_offset = sizeof(XF86DRISAREARec);
 
