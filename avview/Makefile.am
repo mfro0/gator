@@ -13,10 +13,14 @@ avview_shell_SOURCES = xv.c frequencies.c xmisc.c string_cache.c v4l.c formats.c
 
 scpdir = @datadir@/AVview
 
+scp_DATA = start_avview.desktop
+
+nodist_scp_DATA = start_avview.desktop
+
 dist_scp_DATA = alsa.scp bindings.scp ffmpeg.scp themes.scp video_device.scp \
 	alsa_mixer.scp channel_scan.scp  km.scp tree.scp xv.scp	\
 	avview.scp diag.scp setup.scp v4l.scp xmisc.scp avview.modmap \
-	avview-16x16.ppm avview-control-16x16.ppm avview-48x48.png
+	avview-16x16.ppm avview-control-16x16.ppm avview-48x48.png start_avview.desktop.in
 
 #
 # Whoever said that the suffix is .c ?
@@ -27,13 +31,18 @@ dist_start_avview_SOURCES = start_avview.in
 avview_shell_LDADD = @X_PRE_LIBS@ @X_LIBS@ @X_EXTRA_LIBS@ @FFMPEG_LIBS@
 avview_shell_CFLAGS = -Wall -O2 -DAVVIEW_VERSION=\"@PACKAGE_VERSION@\" @FFMPEG_CFLAGS@
 
-start_avview$(EXEEXT): start_avview.in configure.in
+start_avview$(EXEEXT): start_avview.in configure.in Makefile.am
 	echo '#!$(bindir)/avview_shell' > start_avview
 	echo '' >> start_avview
 	echo 'global avview_version ; set avview_version "@PACKAGE_VERSION@" ' >> start_avview
 	echo 'global avview_directory ; set avview_directory "${datadir}/AVview" ' >> start_avview
 	cat start_avview.in >> start_avview
 	chmod +x start_avview
+
+start_avview.desktop: start_avview.desktop.in configure.in Makefile.am
+	cp start_avview.desktop.in start_avview.desktop
+	echo 'Exec=$(bindir)/start_avview' >> start_avview.desktop
+	echo 'Icon=$(datadir)/AVview/avview-48x48.png' >> start_avview.desktop
 
 install-data-hook:
 	@echo ""
