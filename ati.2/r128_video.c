@@ -1764,6 +1764,7 @@ R128QueryBestSize(
 
 static Bool
 R128DMA(
+  ScrnInfoPtr pScrn,
   R128InfoPtr info,
   unsigned char *src,
   unsigned char *dst,
@@ -1784,7 +1785,7 @@ R128DMA(
     drmDMAReq req;
 
     /* Verify conditions and bail out as early as possible */
-    if (1 || !info->directRenderingEnabled)     /* Disable this for now. As it is not working right */
+    if (!info->directRenderingEnabled)    
         return FALSE;
 
     if ((hpass = min(h,(BUFSIZE/w))) == 0)
@@ -1792,6 +1793,8 @@ R128DMA(
 
     if ((passes = (h+hpass-1)/hpass) > MAXPASSES)
         return FALSE;
+
+    R128CCEWaitForIdle(pScrn);
 
     /* Request indirect buffers */
     srcpassbytes = w*hpass;
@@ -1860,6 +1863,7 @@ R128DMA(
 
 static void
 R128CopyData422(
+  ScrnInfoPtr pScrn,
   R128InfoPtr info,
   unsigned char *src,
   unsigned char *dst,
@@ -1872,7 +1876,7 @@ R128CopyData422(
 
     /* Attempt data transfer with DMA and fall back to memcpy */
 
-    if (!R128DMA(info, src, dst, srcPitch, dstPitch, h, w)) {
+    if (!R128DMA(pScrn, info, src, dst, srcPitch, dstPitch, h, w)) {
         while(h--) {
 	    memcpy(dst, src, w);
 	    src += srcPitch;
@@ -1883,6 +1887,7 @@ R128CopyData422(
 
 static void
 R128CopyData420(
+   ScrnInfoPtr pScrn,
    R128InfoPtr info,
    unsigned char *src1,
    unsigned char *src2,
@@ -1900,7 +1905,7 @@ R128CopyData420(
 
    /* Attempt data transfer with DMA and fall back to memcpy */
 
-   if (!R128DMA(info, src1, dst1, srcPitch, dstPitch, h, w)) {
+   if (!R128DMA(pScrn,info, src1, dst1, srcPitch, dstPitch, h, w)) {
        count = h;
        while(count--) {
 	   memcpy(dst1, src1, w);
@@ -1913,7 +1918,7 @@ R128CopyData420(
    h >>= 1;
    dstPitch >>= 1;
 
-   if (!R128DMA(info, src2, dst2, srcPitch2, dstPitch, h, w)) {
+   if (!R128DMA(pScrn,info, src2, dst2, srcPitch2, dstPitch, h, w)) {
        count = h;
        while(count--) {
 	   memcpy(dst2, src2, w);
@@ -1922,7 +1927,7 @@ R128CopyData420(
        }
    }
 
-   if (!R128DMA(info, src3, dst3, srcPitch2, dstPitch, h, w)) {
+   if (!R128DMA(pScrn, info, src3, dst3, srcPitch2, dstPitch, h, w)) {
        count = h;
        while(count--) {
 	   memcpy(dst3, src3, w);
@@ -2357,7 +2362,7 @@ R128PutImage(
 	   OUTREG(R128_CONFIG_CNTL, config_cntl &
 		 ~(APER_0_BIG_ENDIAN_16BPP_SWAP|APER_0_BIG_ENDIAN_32BPP_SWAP));
 #endif
-	   R128CopyData420(info, buf + s1offset, buf + s2offset, buf + s3offset,
+	   R128CopyData420(pScrn, info, buf + s1offset, buf + s2offset, buf + s3offset,
 			  info->FB+d1offset, info->FB+d2offset, info->FB+d3offset,
 			  srcPitch, srcPitch2, dstPitch, nlines, npixels);
 #if X_BYTE_ORDER == X_BIG_ENDIAN
@@ -2378,7 +2383,7 @@ R128PutImage(
 	d3offset = 0;
 	s1offset += (top * srcPitch) + left;
 	nlines = ((yb + 0xffff) >> 16) - top;
-	R128CopyData422(info, buf + s1offset, info->FB + d1offset,
+	R128CopyData422(pScrn, info, buf + s1offset, info->FB + d1offset,
 			srcPitch, dstPitch, nlines, npixels);
 	break;
     }
