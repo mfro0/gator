@@ -18,6 +18,7 @@
 #include "theatre.h"
 #include "i2c_def.h"
 #include "tda9885.h"
+#include "saa7114.h"
 
 #define OFF_DELAY       250  /* milliseconds */
 #define FREE_DELAY      15000
@@ -81,6 +82,7 @@ typedef struct {
    FI1236Ptr     fi1236;
    MSP3430Ptr    msp3430;
    TDA9885Ptr    tda9885;
+   SAA7114Ptr    saa7114;
    
    GENERIC_BUS_Ptr  VIP;
    TheatrePtr       theatre;
@@ -1056,6 +1058,7 @@ static void RADEONInitI2C(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
     pPriv->fi1236 = NULL;
     pPriv->msp3430 = NULL;
     pPriv->tda9885 = NULL;
+    pPriv->saa7114 = NULL;
     
     if(pPriv->i2c!=NULL) return;
     if(!xf86LoadSubModule(pScrn,"i2c")) 
@@ -1185,6 +1188,29 @@ static void RADEONInitI2C(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
        xf86_MSP3430SetVolume(pPriv->msp3430, pPriv->mute ? MSP3430_FAST_MUTE : pPriv->volume);
     }
     
+    if(!xf86LoadSubModule(pScrn,"saa7114"))
+    {
+       xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "Unable to initialize saa7114 driver\n");
+    } 
+    else 
+    {
+    xf86LoaderReqSymbols(SAA7114SymbolsList, NULL);
+    if(pPriv->saa7114 == NULL)
+    {
+       pPriv->saa7114 = xf86_DetectSAA7114(pPriv->i2c, SAA7114_ADDR_1);
+    }
+    if(pPriv->saa7114 == NULL)
+    {
+       pPriv->saa7114 = xf86_DetectSAA7114(pPriv->i2c, SAA7114_ADDR_2);
+    }
+    }
+    if(pPriv->saa7114 != NULL)
+    {
+       xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Detected SAA7114 at 0x%02x\n", 
+                 pPriv->saa7114->d.SlaveAddr);
+       xf86_InitSAA7114(pPriv->saa7114);
+    }
+
     if(pPriv->i2c != NULL)RADEON_board_setmisc(pPriv);
     #if 0
     xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Scanning I2C Bus\n");
@@ -2960,7 +2986,7 @@ RADEONPutVideo(
    CARD32 id, display_base;
    int width, height;
 
-   xf86DrvMsg(pScrn->scrnIndex, X_INFO, "PutVideo\n");
+   xf86DrvMsg(pScrn->scrnIndex, X_INFO, "PutVideo %dx%d+%d+%d\n", drw_w,drw_h,drw_x,drw_y);
    info->accel->Sync(pScrn);
    /*
     * s2offset, s3offset - byte offsets into U and V plane of the

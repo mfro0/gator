@@ -37,7 +37,8 @@ MODSRCS4 = radeon_misc.c
 MODSRC_FI1236 = fi1236_module.c
 MODSRC_MSP3430 = msp3430_module.c
 MODSRC_THEATRE = theatre_module.c
-MODSRC_BT829 = b829_module.c
+MODSRC_BT829 = bt829_module.c
+MODSRC_SAA7114 = saa7114_module.c
 MODSRC_TDA9850 = tda9850_module.c
 MODSRC_TDA8425 = tda8425_module.c
 MODSRC_TDA9885 = tda9885_module.c
@@ -50,6 +51,7 @@ MODOBJ_FI1236 = fi1236_module.o
 MODOBJ_MSP3430 = msp3430_module.o
 MODOBJ_THEATRE = theatre_module.o
 MODOBJ_BT829 = bt829_module.o
+MODOBJ_SAA7114 = saa7114_module.o
 MODOBJ_TDA9850 = tda9850_module.o
 MODOBJ_TDA8425 = tda8425_module.o
 MODOBJ_TDA9885 = tda9885_module.o
@@ -176,6 +178,7 @@ SRCS_FI1236 = fi1236.c $(MODSRC_FI1236)
 SRCS_MSP3430 = msp3430.c $(MODSRC_MSP3430)
 SRCS_THEATRE = theatre.c $(MODSRC_THEATRE)
 SRCS_BT829 = bt829.c $(MODSRC_BT829)
+SRCS_SAA7114 = saa7114.c $(MODSRC_SAA7114)
 SRCS_TDA9850 = tda9850.c $(MODSRC_TDA9850)
 SRCS_TDA8425 = tda8425.c $(MODSRC_TDA8425)
 SRCS_TDA9885 = tda9885.c $(MODSRC_TDA9885)
@@ -197,16 +200,17 @@ OBJS_FI1236 = fi1236.o $(MODOBJ_FI1236)
 OBJS_MSP3430 = msp3430.o $(MODOBJ_MSP3430)
 OBJS_THEATRE = theatre.o $(MODOBJ_THEATRE)
 OBJS_BT829 = bt829.o $(MODOBJ_BT829)
+OBJS_SAA7114 = saa7114.o $(MODOBJ_SAA7114)
 OBJS_TDA9850 = tda9850.o $(MODOBJ_TDA9850)
 OBJS_TDA8425 = tda8425.o $(MODOBJ_TDA8425)
 OBJS_TDA9885 = tda9885.o $(MODOBJ_TDA9885)
 
 SRCS = $(SRCS1) $(SRCS2) $(SRCS3) $(SRCS4) $(SRCS_FI1236) \
 	$(SRCS_MSP3430) $(SRCS_THEATRE) $(SRCS_BT829) $(SRCS_TDA9850) \
-	$(SRCS_TDA8425) $(SRCS_TDA9885)
+	$(SRCS_TDA8425) $(SRCS_TDA9885) $(SRCS_SAA7114)
 OBJS = $(OBJS1) $(OBJS2) $(OBJS3) $(OBJS4) $(OBJS_FI1236) \
 	$(OBJS_MSP3430) $(OBJS_THEATRE) $(OBJS_BT829) $(OBJS_TDA9850) \
-	$(OBJS_TDA8425) $(OBJS_TDA9885)
+	$(OBJS_TDA8425) $(OBJS_TDA9885) $(OBJS_SAA7114)
 
 #if defined(XF86DriverSDK)
 INCLUDES = -I. -I../../include
@@ -238,6 +242,7 @@ ObjectModuleTarget(fi1236,$(OBJS_FI1236))
 ObjectModuleTarget(msp3430, $(OBJS_MSP3430))
 ObjectModuleTarget(theatre, $(OBJS_THEATRE))
 ObjectModuleTarget(bt829, $(OBJS_BT829))
+ObjectModuleTarget(saa7114, $(OBJS_SAA7114))
 ObjectModuleTarget(tda9850, $(OBJS_TDA9850))
 ObjectModuleTarget(tda8425, $(OBJS_TDA8425))
 ObjectModuleTarget(tda9885, $(OBJS_TDA9885))
@@ -251,6 +256,7 @@ InstallObjectModule(radeon,$(MODULEDIR),drivers)
 InstallObjectModule(fi1236,$(MODULEDIR),multimedia)
 InstallObjectModule(msp3430,$(MODULEDIR),multimedia)
 InstallObjectModule(bt829,$(MODULEDIR),multimedia)
+InstallObjectModule(saa7114,$(MODULEDIR),multimedia)
 InstallObjectModule(tda9850,$(MODULEDIR),multimedia)
 InstallObjectModule(tda8425,$(MODULEDIR),multimedia)
 InstallObjectModule(tda9885,$(MODULEDIR),multimedia)
@@ -369,6 +375,10 @@ InstallDriverSDKNonExecFile(bt829.c,$(DRIVERSDKDIR)/drivers/ati)
 InstallDriverSDKNonExecFile(bt829_module.c,$(DRIVERSDKDIR)/drivers/ati)
 InstallDriverSDKNonExecFile(bt829.h,$(DRIVERSDKDIR)/drivers/ati)
 
+InstallDriverSDKNonExecFile(saa7114.c,$(DRIVERSDKDIR)/drivers/ati)
+InstallDriverSDKNonExecFile(saa7114_module.c,$(DRIVERSDKDIR)/drivers/ati)
+InstallDriverSDKNonExecFile(saa7114.h,$(DRIVERSDKDIR)/drivers/ati)
+
 InstallDriverSDKNonExecFile(msp3430.c,$(DRIVERSDKDIR)/drivers/ati)
 InstallDriverSDKNonExecFile(msp3430_module.c,$(DRIVERSDKDIR)/drivers/ati)
 InstallDriverSDKNonExecFile(msp3430.h,$(DRIVERSDKDIR)/drivers/ati)
@@ -413,6 +423,7 @@ InstallDriverSDKObjectModule(radeon,$(DRIVERSDKMODULEDIR),drivers)
 InstallDriverSDKObjectModule(fi1236,$(MODULEDIR),multimedia)
 InstallDriverSDKObjectModule(msp3430,$(MODULEDIR),multimedia)
 InstallDriverSDKObjectModule(bt829,$(MODULEDIR),multimedia)
+InstallDriverSDKObjectModule(saa7114,$(MODULEDIR),multimedia)
 InstallDriverSDKObjectModule(tda9850,$(MODULEDIR),multimedia)
 InstallDriverSDKObjectModule(tda8425,$(MODULEDIR),multimedia)
 
