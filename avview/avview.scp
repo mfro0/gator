@@ -654,6 +654,10 @@ bind $VIDEO_WINDOW <Configure> {
 	global $VIDEO_WINDOW
 	display_video
 	place $VIDEO_WINDOW.onscreen_display -relx 0.05 -rely 0.05 -anchor nw
+	if { [winfo exists $VIDEO_WINDOW.control] } {
+		destroy $VIDEO_WINDOW.control
+		next_control 0
+		}
 	adjust_message_font
 	}
 

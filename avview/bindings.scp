@@ -99,9 +99,21 @@ set avview_controls {
 	}
 set avview_controls_layout { attribute name }
 set avview_current_control 0
+global control_countdown
+set control_countdown 0
+
+proc control_counter {} {
+global control_countdown VIDEO_WINDOW
+incr control_countdown -1
+if { $control_countdown <= 0 } { 
+	destroy $VIDEO_WINDOW.control 
+	} {
+	after 200 control_counter
+	}
+}
 
 proc display_control { name value min max } {
-global VIDEO_WINDOW
+global VIDEO_WINDOW control_countdown
 set C $VIDEO_WINDOW.control
 destroy $C
 canvas $C -background [$VIDEO_WINDOW cget -background] -borderwidth 0
@@ -114,17 +126,24 @@ set bbox [$C bbox name]
 $C create rectangle $bbox -fill black -tag name_bkg
 $C lower name_bkg
 set width [expr 1+[winfo height $C]/100]
-$C create rectangle [expr [lindex $bbox 0]+$width/2] [expr [lindex $bbox 3]+2+$width/2] [expr [winfo width $C]-1-$width/2] [expr [winfo height $C]-1-$width/2] \
+set bar_x [expr [lindex $bbox 0]]
+$C create rectangle [expr $bar_x+$width/2] [expr [lindex $bbox 3]+2+$width/2] [expr [winfo width $C]-1-$width/2] [expr [winfo height $C]-1-$width/2] \
 	-fill "black" -width $width -outline yellow
-$C create rectangle [expr [lindex $bbox 0]+$width] [expr [lindex $bbox 3]+2+$width] [expr ([winfo width $C]-1-$width)*($value-$min)/($max-$min)] [expr [winfo height $C]-1-$width] \
+$C create rectangle [expr $bar_x+$width+1] [expr [lindex $bbox 3]+2+$width+1] [expr ([winfo width $C]-3-$width-$bar_x)*($value-$min)/($max-$min)+$bar_x+1] [expr [winfo height $C]-2-$width] \
 	-fill "blue" -width 0
+if { $control_countdown <= 0 } { 
+	after 300 control_counter
+	}
+set control_countdown 14
 }
 	
 proc next_control { dir } {
 global VIDEO_WINDOW
 global current_port
 global avview_current_control avview_controls avview_controls_layout
-incr avview_current_control $dir
+if { [winfo exists $VIDEO_WINDOW.control ] } {
+	incr avview_current_control $dir
+	}
 set N [llength $avview_controls_layout]
 set last_control [expr [llength $avview_controls]/$N-1]
 if { $avview_current_control < 0 } {
@@ -171,11 +190,11 @@ for {set i 0 } { $i < $num_attributes} { incr i } {
 	if { $attribute == $attr_name } {
 		set range [xv_port_attribute_range $VIDEO_WINDOW $current_port $i]
 		set value [xv_getportattribute $VIDEO_WINDOW $current_port $attribute]
-		set increment [expr round(([lindex $range 1]-[lindex $range 0])*0.01)]
+		set increment [expr round(([lindex $range 1]-[lindex $range 0])*0.025)]
 		if { $increment < 1 } { set increment 1 }
 		set value [expr $value+$increment*$dir]
-		if { $value > [lindex $range 1] } { set $value [lindex $range 1] }
-		if { $value < [lindex $range 0] } { set $value [lindex $range 0] }
+		if { $value > [lindex $range 1] } { set value [lindex $range 1] }
+		if { $value < [lindex $range 0] } { set value [lindex $range 0] }
 		display_control $name  $value [lindex $range 0] [lindex $range 1]
 		update
 		catch {
