@@ -180,7 +180,7 @@ return kmtq;
 }
 
 int km_add_transfer_request(KM_TRANSFER_QUEUE *kmtq, 
-	KM_DATA_VIRTUAL_BLOCK *dvb, int buffer, int flag,
+	KM_STREAM *stream, int buffer, int flag,
 	int (*start_transfer)(KM_TRANSFER_REQUEST *kmtr), void *user_data)
 {
 int last;
@@ -192,7 +192,7 @@ if(kmtq->request[last].flag!=KM_TRANSFER_NOP){
 	return -1;
 	}
 
-kmtq->request[last].dvb=dvb;
+kmtq->request[last].stream=stream;
 kmtq->request[last].buffer=buffer;
 kmtq->request[last].flag=flag;
 kmtq->request[last].start_transfer=start_transfer;
@@ -216,9 +216,9 @@ void km_signal_transfer_completion(KM_TRANSFER_QUEUE *kmtq)
 KM_TRANSFER_REQUEST *request;
 spin_lock(&(kmtq->lock));
 request=&(kmtq->request[kmtq->first]);
-if(request->dvb->kmsbi!=NULL)
-	request->dvb->kmsbi[request->buffer].flag&=~KM_STREAM_BUF_BUSY;
-wake_up_interruptible(request->dvb->dataq);
+if(request->stream->dvb.kmsbi!=NULL)
+	request->stream->dvb.kmsbi[request->buffer].flag&=~KM_STREAM_BUF_BUSY;
+wake_up_interruptible(request->stream->dvb.dataq);
 /* this operation is atomic as the value written in 32 bits */
 request->flag=KM_TRANSFER_NOP;
 wmb();

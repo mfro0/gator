@@ -258,7 +258,7 @@ do {
 	KM_DEBUG("status=0x%08lx\n", status);
 	} while (!(status & 0x1f));
 wmb();
-writel(kvirt_to_pa(kms->capture.dma_table[kmtr->buffer]), (u32)(kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR)| (0));
+writel(kvirt_to_pa(kmtr->stream->dma_table[kmtr->buffer]), (u32)(kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR)| (0));
 }
 
 static void radeon_schedule_request(KM_STRUCT *kms, KM_STREAM *stream, int field)
@@ -308,7 +308,7 @@ stream->dvb.kmsbi[buffer].age=stream->total_frames;
 stream->dvb.kmsbi[buffer].flag|=KM_STREAM_BUF_BUSY;
 wmb();
 km_add_transfer_request(&(kms->gui_dma_queue),
-	&(stream->dvb), buffer, KM_TRANSFER_TO_SYSTEM_RAM, radeon_start_request_transfer, kms);
+	stream, buffer, KM_TRANSFER_TO_SYSTEM_RAM, radeon_start_request_transfer, kms);
 }
 
 static int radeon_is_capture_irq_active(KM_STRUCT *kms)
