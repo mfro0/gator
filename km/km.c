@@ -51,14 +51,6 @@ int km_debug=0;
 int km_debug_overruns=0;
 int km_buffers=5;
 
-void generic_deallocate_single_frame_buffer(KM_STRUCT *kms, SINGLE_FRAME *frame)
-{
-if(frame->buffer!=NULL)rvfree(frame->buffer, frame->buf_size);
-if(frame->dma_table!=NULL)rvfree(frame->dma_table, 4096);
-frame->buffer=NULL;
-frame->dma_table=NULL;
-}
-
 int find_free_buffer(KM_STRUCT *kms)
 {
 int i;
@@ -264,8 +256,6 @@ switch(pci_id->driver_data){
 		kms->stop_transfer=radeon_stop_transfer;
 		kms->allocate_v4l_dvb=radeon_allocate_v4l_dvb;
 		kms->deallocate_v4l_dvb=radeon_deallocate_v4l_dvb;
-		kms->allocate_single_frame_buffer=radeon_allocate_single_frame_buffer;
-		kms->deallocate_single_frame_buffer=generic_deallocate_single_frame_buffer;
 		kms->irq_handler=radeon_km_irq;
 		kms->init_hardware=radeon_init_hardware;
 		kms->uninit_hardware=radeon_uninit_hardware;
@@ -279,8 +269,6 @@ switch(pci_id->driver_data){
 		kms->stop_transfer=mach64_stop_transfer;
 		kms->allocate_v4l_dvb=mach64_allocate_v4l_dvb;
 		kms->deallocate_v4l_dvb=mach64_deallocate_v4l_dvb;
-		kms->allocate_single_frame_buffer=mach64_allocate_single_frame_buffer;
-		kms->deallocate_single_frame_buffer=generic_deallocate_single_frame_buffer;
 		kms->irq_handler=mach64_km_irq;
 		break;
 #endif
@@ -292,8 +280,6 @@ switch(pci_id->driver_data){
 		kms->stop_transfer=rage128_stop_transfer;
 		kms->allocate_v4l_dvb=rage128_allocate_v4l_dvb;
 		kms->deallocate_v4l_dvb=rage128_deallocate_v4l_dvb;
-		kms->allocate_single_frame_buffer=rage128_allocate_single_frame_buffer;
-		kms->deallocate_single_frame_buffer=generic_deallocate_single_frame_buffer;
 		kms->irq_handler=rage128_km_irq;
 		break;
 #endif

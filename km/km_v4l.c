@@ -41,10 +41,6 @@ if(!kms->is_capture_active(kms)){
 	goto fail;
 	}
 
-#if 0
-kms->frame_info[FRAME_ODD].buf_ptr=0;
-kms->frame_info[FRAME_EVEN].buf_ptr=0;
-#endif
 kms->v4l_buf_read_from=0;
 kms->buf_age=0;
 kms->total_frames=0;
@@ -62,32 +58,14 @@ if(kms->allocate_v4l_dvb!=NULL){
 		}
 	kmd_signal_state_change(kms->kmd);
 	} else {
-#if 0
-kms->deallocate_single_frame_buffer(kms, &(kms->frame_info[FRAME_ODD]));
-kms->deallocate_single_frame_buffer(kms, &(kms->frame_info[FRAME_EVEN]));
-
-if(kms->allocate_single_frame_buffer(kms, &(kms->frame_info[FRAME_ODD]), buf_size)<0){
-	result=-ENOMEM;
 	goto fail;
 	}
-
-if(kms->allocate_single_frame_buffer(kms, &(kms->frame_info[FRAME_EVEN]), buf_size)<0){
-	result=-ENOMEM;
-	goto fail;
-	}
-#endif
-goto fail;
-}
 
 spin_unlock(&(kms->kms_lock));
 kms->start_transfer(kms);
 return 0;
 
 fail:
-#if 0
-  kms->deallocate_single_frame_buffer(kms, &(kms->frame_info[FRAME_ODD]));
-  kms->deallocate_single_frame_buffer(kms, &(kms->frame_info[FRAME_EVEN]));
-#endif
   spin_unlock(&(kms->kms_lock));
   return result;
 
@@ -99,19 +77,11 @@ static void km_close(struct video_device *dev)
 KM_STRUCT *kms=(KM_STRUCT *)dev;
 spin_lock(&(kms->kms_lock));
 kms->stop_transfer(kms);
-#if 0
-kms->frame_info[FRAME_ODD].buf_ptr=0;
-kms->frame_info[FRAME_EVEN].buf_ptr=0;
-#endif
 kms->v4l_buf_read_from=-1; /* none */
 if(kms->deallocate_v4l_dvb!=NULL){
 	kms->deallocate_v4l_dvb(kms);
 	kmd_signal_state_change(kms->kmd);
 	} else {
-#if 0
-kms->deallocate_single_frame_buffer(kms, &(kms->frame_info[FRAME_ODD]));
-kms->deallocate_single_frame_buffer(kms, &(kms->frame_info[FRAME_EVEN]));
-#endif
 }
 printk("km: total frames: %ld, overrun: %ld\n", kms->total_frames, kms->overrun);
 spin_unlock(&(kms->kms_lock));
@@ -136,12 +106,6 @@ if(kms->v4l_buf_read_from<0){
 	spin_unlock(&(kms->kms_lock));
 	return -EIO;
 	}
-#if 0
-if(kms->v4l_buf_read_from==1)frame=&(kms->frame_info[FRAME_EVEN]);
-	else frame=&(kms->frame_info[FRAME_ODD]);
-	
-printk("kms->buf_ptr=%d kms->v4l_free[kms->v4l_buf_read_from]=%d\n", kms->buf_ptr, kms->v4l_free[kms->v4l_buf_read_from]);
-#endif
 while((kms->buf_ptr==kms->v4l_free[kms->v4l_buf_read_from])){
 	q=kms->fi[kms->v4l_buf_read_from].next;
 	if((q>=0) && (kms->buf_age<kms->fi[q].age)){
@@ -307,10 +271,6 @@ if(kms->v4l_buf_read_from<0){
 	spin_unlock(&(kms->kms_lock));
 	return 0;
 	}
-#if 0
-if(kms->v4l_buf_read_from==0)frame=&(kms->frame_info[FRAME_ODD]);
-	else frame=&(kms->frame_info[FRAME_EVEN]);
-#endif
 if(kms->buf_ptr==kms->v4l_free[kms->v4l_buf_read_from]){
 	spin_unlock(&(kms->kms_lock));
 	poll_wait(file, &(kms->frameq), wait);
