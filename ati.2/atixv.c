@@ -137,7 +137,8 @@ static void ATIVideoTimerCallback(ScrnInfoPtr pScrn, Time time);
 
 static Atom xvBrightness, xvColorKey, xvSaturation, xvColor, xvHue, xvContrast,
         xvDoubleBuffer, xvEncoding, xvVolume, xvMute, xvFrequency, xv_autopaint_colorkey,
-	xv_set_defaults, xvTunerStatus;
+	xv_set_defaults, xvTunerStatus,
+	     xvLocationID, xvDeviceID, xvInstanceID;
 
 typedef struct
 {
@@ -198,6 +199,8 @@ typedef struct {
    int           board_control;
    
    Bool          autopaint_colorkey;
+   Atom		 device_id, location_id, instance_id;
+
    /* mach64 AIW boards have their own, peculiar I2C interface */
    /* In particular, when you reset direction bits the line is dropped 
       so we can't just override I2CGetBits and I2CPutBits (since generic
@@ -319,11 +322,14 @@ static XF86VideoFormatRec Formats[NUM_FORMATS] =
 };
 
 
-#define NUM_ATTRIBUTES 14
+#define NUM_ATTRIBUTES 17
 
 /* +1 for the NULL string.. it is not actually used */
 static XF86AttributeRec Attributes[NUM_ATTRIBUTES+1] =
 {
+   {             XvGettable, 0, ~0, "XV_DEVICE_ID"},
+   {             XvGettable, 0, ~0, "XV_LOCATION_ID"},
+   {             XvGettable, 0, ~0, "XV_INSTANCE_ID"},
    {XvSettable             , 0, 1, "XV_SET_DEFAULTS"},
    {XvSettable | XvGettable, 0, 1, "XV_AUTOPAINT_COLORKEY"},
    {XvSettable | XvGettable, 0, ~0, "XV_COLORKEY"},
@@ -424,6 +430,7 @@ void ATIResetVideo(ScrnInfoPtr pScrn)
 {
     ATIPtr   pATI      = ATIPTR(pScrn);
     ATIPortPrivPtr pPriv = pATI->adaptor->pPortPrivates[0].ptr;
+    char tmp[200];
 
     /* this is done here because each time the server is reset these
        could change.. Otherwise they remain constant */
@@ -442,6 +449,17 @@ void ATIResetVideo(ScrnInfoPtr pScrn)
     xvHue          = MAKE_ATOM("XV_HUE");
     xv_autopaint_colorkey = MAKE_ATOM("XV_AUTOPAINT_COLORKEY");
     xv_set_defaults = MAKE_ATOM("XV_SET_DEFAULTS");
+
+    xvInstanceID = MAKE_ATOM("XV_INSTANCE_ID");
+    xvDeviceID = MAKE_ATOM("XV_DEVICE_ID");
+    xvLocationID = MAKE_ATOM("XV_LOCATION_ID");
+    
+    sprintf(tmp, "RXXX:%d.%d.%d", pATI->PCIInfo->vendor, pATI->PCIInfo->chipType, pATI->PCIInfo->chipRev);
+    pPriv->device_id = MAKE_ATOM(tmp);
+    sprintf(tmp, "PCI:%02d:%02d.%d", pATI->PCIInfo->bus, pATI->PCIInfo->device, pATI->PCIInfo->func);
+    pPriv->location_id = MAKE_ATOM(tmp);
+    sprintf(tmp, "INSTANCE:%d", pScrn->scrnIndex);
+    pPriv->instance_id = MAKE_ATOM(tmp);
 
     ATIMach64WaitForFIFO(pATI, 14);
     outf(OVERLAY_SCALE_CNTL, 0x80000000);
@@ -1637,6 +1655,15 @@ ATIGetPortAttribute(
   } else 
   if(attribute == xvVolume) {
         *value = pPriv->volume;
+  } else 
+  if(attribute == xvDeviceID) {
+        *value = pPriv->device_id;
+  } else 
+  if(attribute == xvLocationID) {
+        *value = pPriv->location_id;
+  } else 
+  if(attribute == xvInstanceID) {
+        *value = pPriv->instance_id;
   } else 
     return BadMatch;
 

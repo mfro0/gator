@@ -63,7 +63,8 @@ static void R128VideoTimerCallback(ScrnInfoPtr pScrn, Time now);
 
 static Atom xvBrightness, xvColorKey, xvSaturation, xvColor, xvDoubleBuffer, 
           xvEncoding, xvVolume, xvMute, xvFrequency, xvContrast, xvHue,
-	  xv_autopaint_colorkey, xv_set_defaults, xvTunerStatus, xvSAP;
+	  xv_autopaint_colorkey, xv_set_defaults, xvTunerStatus, xvSAP,
+	     xvLocationID, xvDeviceID, xvInstanceID;
 
 typedef struct
 {
@@ -128,6 +129,7 @@ typedef struct _R128PortPrivRec {
    int           board_control;
 
    Bool          autopaint_colorkey;
+   Atom		 device_id, location_id, instance_id;
 } R128PortPrivRec, *R128PortPrivPtr;
 
 static void R128MuteAudio(R128PortPrivPtr pPriv, Bool mute);
@@ -223,10 +225,13 @@ static XF86VideoFormatRec Formats[NUM_FORMATS] =
 };
 
 
-#define NUM_ATTRIBUTES 15
+#define NUM_ATTRIBUTES 18
 
 static XF86AttributeRec Attributes[NUM_ATTRIBUTES+1] =
 {
+   {             XvGettable, 0, ~0, "XV_DEVICE_ID"},
+   {             XvGettable, 0, ~0, "XV_LOCATION_ID"},
+   {             XvGettable, 0, ~0, "XV_INSTANCE_ID"},
    {XvSettable             , 0, 1, "XV_SET_DEFAULTS"},
    {XvSettable | XvGettable, 0, 1, "XV_AUTOPAINT_COLORKEY"},
    {XvSettable | XvGettable, 0, ~0, "XV_COLORKEY"},
@@ -357,7 +362,7 @@ R128ResetVideo(ScrnInfoPtr pScrn)
     R128InfoPtr   info      = R128PTR(pScrn);
     unsigned char *R128MMIO = info->MMIO;
     R128PortPrivPtr pPriv = info->adaptor->pPortPrivates[0].ptr;
-
+    char tmp[200];
 
     /* this is done here because each time the server is reset these
        could change.. Otherwise they remain constant */
@@ -377,6 +382,18 @@ R128ResetVideo(ScrnInfoPtr pScrn)
     xvHue          = MAKE_ATOM("XV_HUE");
     xv_autopaint_colorkey = MAKE_ATOM("XV_AUTOPAINT_COLORKEY");
     xv_set_defaults = MAKE_ATOM("XV_SET_DEFAULTS");
+
+    xvInstanceID = MAKE_ATOM("XV_INSTANCE_ID");
+    xvDeviceID = MAKE_ATOM("XV_DEVICE_ID");
+    xvLocationID = MAKE_ATOM("XV_LOCATION_ID");
+    
+    sprintf(tmp, "RXXX:%d.%d.%d", info->PciInfo->vendor, info->PciInfo->chipType, info->PciInfo->chipRev);
+    pPriv->device_id = MAKE_ATOM(tmp);
+    sprintf(tmp, "PCI:%02d:%02d.%d", info->PciInfo->bus, info->PciInfo->device, info->PciInfo->func);
+    pPriv->location_id = MAKE_ATOM(tmp);
+    sprintf(tmp, "INSTANCE:%d", pScrn->scrnIndex);
+    pPriv->instance_id = MAKE_ATOM(tmp);
+
 
     R128WaitForFifo(pScrn, 11); 
     OUTREG(R128_OV0_SCALE_CNTL, 0x80000000);
@@ -1727,6 +1744,15 @@ R128GetPortAttribute(
   } else 
   if(attribute == xvVolume) {
         *value = pPriv->volume;
+  } else 
+  if(attribute == xvDeviceID) {
+        *value = pPriv->device_id;
+  } else 
+  if(attribute == xvLocationID) {
+        *value = pPriv->location_id;
+  } else 
+  if(attribute == xvInstanceID) {
+        *value = pPriv->instance_id;
   } else 
     return BadMatch;
 
