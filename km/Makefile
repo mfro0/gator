@@ -26,6 +26,9 @@ install:
 	mkdir -p /lib/modules/`uname -r`/misc/
 	install km_drv.o /lib/modules/`uname -r`/misc/
 
+tarball:
+	(cd .. ; tar cvf - km/*.[c,h] km/Makefile km/README | gzip - ) > km.tgz
+
 clean:
 	rm -f *.o *.bck *.bak core
 

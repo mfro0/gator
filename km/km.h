@@ -37,5 +37,7 @@ typedef struct {
 	long overrun;
 	} KM_STRUCT;
 
+int allocate_single_frame_buffer(KM_STRUCT *kms, SINGLE_FRAME *frame, long size);
+void deallocate_single_frame_buffer(KM_STRUCT *kms, SINGLE_FRAME *frame);
 
 #endif

@@ -16,7 +16,7 @@
 #include "radeon_reg.h"
 
 
-static int allocate_single_frame_buffer(KM_STRUCT *kms, SINGLE_FRAME *frame, long size)
+int allocate_single_frame_buffer(KM_STRUCT *kms, SINGLE_FRAME *frame, long size)
 {
 int i;
 frame->buf_free=size;
@@ -73,6 +73,7 @@ return 0;
 static void start_frame_transfer_buf0(KM_STRUCT *kms)
 {
 long offset, status;
+if(kms->frame.buffer==NULL)return;
 kms->frame.timestamp=jiffies;
 offset=readl(kms->reg_aperture+RADEON_CAP0_BUF0_OFFSET);
 setup_single_frame_buffer(kms, &(kms->frame), offset);
@@ -96,6 +97,7 @@ printk("start_frame_transfer_buf0\n");
 static void start_frame_transfer_buf0_even(KM_STRUCT *kms)
 {
 long offset, status;
+if(kms->frame_even.buffer==NULL)return;
 kms->frame_even.timestamp=jiffies;
 offset=readl(kms->reg_aperture+RADEON_CAP0_BUF0_EVEN_OFFSET);
 setup_single_frame_buffer(kms, &(kms->frame_even), offset);
@@ -159,17 +161,16 @@ int count;
 
 kms=dev_id;
 kms->interrupt_count++;
-printk("beep %ld\n", kms->interrupt_count);
 
 count=1000;
 
 while(1){
+	printk("beep %ld\n", kms->interrupt_count);
 	if(!is_capture_irq_active(irq, kms)){
 		status=readl(kms->reg_aperture+RADEON_GEN_INT_STATUS);
 		mask=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
 		if(!(status & mask))return;
 		if(status & (1<<30))acknowledge_dma(kms);
-		printk("beep %ld\n", kms->interrupt_count);
 		writel(status & mask, kms->reg_aperture+RADEON_GEN_INT_STATUS);
 		count--;
 		if(count<0){
