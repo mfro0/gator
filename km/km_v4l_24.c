@@ -491,12 +491,12 @@ static struct video_device km_v4l_vbi_template=
 
 int init_km_v4l(KM_STRUCT *kms)
 {
-kms->vd = kmalloc(sizeof(km_v4l_template));
+kms->vd = kmalloc(sizeof(km_v4l_template), GFP_KERNEL);
 if (NULL == kms->vd) return -ENOMEM;
 memcpy(kms->vd, &km_v4l_template, sizeof(km_v4l_template));
 kms->vd->priv=kms;
 
-kms->vbi_vd = kvmalloc(sizeof(km_v4l_vbi_template));
+kms->vbi_vd = kmalloc(sizeof(km_v4l_vbi_template), GFP_KERNEL);
 if (NULL == kms->vbi_vd) {
 	kfree(kms->vd);
 	return -ENOMEM;
