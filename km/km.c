@@ -14,7 +14,7 @@
 #include "km_memory.h"
 #include "km_v4l.h"
 #include "radeon_reg.h"
-
+#include "radeon.h"
 
 int allocate_single_frame_buffer(KM_STRUCT *kms, SINGLE_FRAME *frame, long size)
 {
@@ -109,7 +109,7 @@ count=1000;
 
 while(1){
 	printk("beep %ld\n", kms->interrupt_count);
-	if(!radeon_is_capture_irq_active(irq, kms)){
+	if(!radeon_is_capture_irq_active(kms)){
 		status=readl(kms->reg_aperture+RADEON_GEN_INT_STATUS);
 		mask=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
 		if(!(status & mask))return;
@@ -141,6 +141,10 @@ kms=&(radeon[num_radeons]);
 num_radeons++;
 kms->dev=dev;
 kms->irq=dev->irq;
+kms->is_capture_active=radeon_is_capture_active;
+kms->get_window_parameters=radeon_get_window_parameters;
+kms->start_transfer=radeon_start_transfer;
+kms->stop_transfer=radeon_stop_transfer;
 printk("km: using irq %d\n", kms->irq);
 kms->interrupt_count=0;
 init_waitqueue_head(&(kms->frameq));

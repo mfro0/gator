@@ -22,7 +22,7 @@ typedef struct {
 	bm_list_descriptor *dma_table;
 	} SINGLE_FRAME;
 
-typedef struct {
+typedef struct S_KM_STRUCT{
 	struct video_device vd;
 	struct video_window vwin;
 	long irq;
@@ -35,6 +35,10 @@ typedef struct {
 	wait_queue_head_t frameq;
 	long total_frames;
 	long overrun;
+	int  (*is_capture_active)(struct S_KM_STRUCT *kms);
+	void (*get_window_parameters)(struct S_KM_STRUCT *kms, struct video_window *vwin);
+	void (*start_transfer)(struct S_KM_STRUCT *kms);
+	void (*stop_transfer)(struct S_KM_STRUCT *kms);
 	} KM_STRUCT;
 
 int allocate_single_frame_buffer(KM_STRUCT *kms, SINGLE_FRAME *frame, long size);

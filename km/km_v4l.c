@@ -12,7 +12,6 @@
 
 #include "km.h"
 #include "km_memory.h"
-#include "radeon.h"
 
 static int km_open(struct video_device *dev, int flags)
 {
@@ -20,7 +19,7 @@ u32 buf_size;
 int result;
 KM_STRUCT *kms=(KM_STRUCT *)dev;
 
-if(!radeon_is_capture_active(kms)){
+if(!kms->is_capture_active(kms)){
 	result=-ENODATA;
 	goto fail;
 	}
@@ -30,7 +29,7 @@ kms->frame_even.buf_ptr=0;
 kms->buf_read_from=0;
 kms->total_frames=0;
 kms->overrun=0;
-radeon_get_window_parameters(kms, &(kms->vwin));
+kms->get_window_parameters(kms, &(kms->vwin));
 
 
 buf_size=kms->vwin.width*kms->vwin.height*2;
@@ -48,7 +47,7 @@ if(allocate_single_frame_buffer(kms, &(kms->frame_even), buf_size)<0){
 	goto fail;
 	}
 
-radeon_start_transfer(kms);
+kms->start_transfer(kms);
 return 0;
 
 fail:
@@ -63,7 +62,7 @@ fail:
 static void km_close(struct video_device *dev)
 {
 KM_STRUCT *kms=(KM_STRUCT *)dev;
-radeon_stop_transfer(kms);
+kms->stop_transfer(kms);
 kms->frame.buf_ptr=0;
 kms->frame_even.buf_ptr=0;
 kms->buf_read_from=-1; /* none */
@@ -159,7 +158,7 @@ switch(cmd){
 		}
 	case VIDIOCGWIN:{
 		struct video_window vwin;
-		radeon_get_window_parameters(kms, &(vwin));
+		kms->get_window_parameters(kms, &(vwin));
 		if(copy_to_user(arg,&vwin,sizeof(vwin)))
 			return -EFAULT;
 		return 0;

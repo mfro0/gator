@@ -103,7 +103,7 @@ writel(kvirt_to_pa(kms->frame_even.dma_table), kms->reg_aperture+RADEON_DMA_GUI_
 printk("start_frame_transfer_buf0_even\n");
 }
 
-int radeon_is_capture_irq_active(int irq, KM_STRUCT *kms)
+int radeon_is_capture_irq_active(KM_STRUCT *kms)
 {
 long status, mask;
 status=readl(kms->reg_aperture+RADEON_GEN_INT_STATUS);
