@@ -26,6 +26,9 @@ global VIDEO_WINDOW
 
 set VIDEO_WINDOW .video
 
+global current_capture_filename
+set current_capture_filename "test3.avi"
+
 destroy .video
 
 . configure -width 320 -height 240
@@ -634,6 +637,23 @@ if {[ffmpeg_present] == "yes"} {
 	grid configure $cw.av_formatl -sticky nws
 	grid configure $cw.av_formatom -sticky news
 
+	label $cw.filenamel -text "Save to file:"
+	entry $cw.filenamee -textvariable current_capture_filename
+	button $cw.filenameb -text "Change" -command {
+		global current_capture_filename
+		set result [tk_getSaveFile -initialfile "$current_capture_filename" \
+			-parent .controlwin -title "Specify file to hold recorded video"  \
+			-filetypes { {"All files" { * } } { "Mpeg streams" { mpg MPG} } { "AVI streams" { avi AVI} } }
+			]
+		if { "$result" != "" } {
+			set current_capture_filename "$result"
+			}			
+		}
+	grid $cw.filenamel $cw.filenamee $cw.filenameb
+	grid configure $cw.filenamel -sticky nws
+	grid configure $cw.filenamee -sticky news
+	grid configure $cw.filenameb -sticky news
+
 	button $cw.snapshotb -text "Snapshot" -command capture_snapshot -state disabled
 	checkbutton $cw.recordb -text "Record" -variable v4l_capture_on \
 		-indicatoron false -state disabled
@@ -811,13 +831,14 @@ global current_codec
 global current_v4l_mode
 global current_v4l_rrate
 global current_av_format
+global current_capture_filename
 if { $v4l_capture_on } {
 	set status [ffmpeg_encode_v4l_stream -v4l_handle current_v4l_handle \
 				-video_codec $current_codec \
 				-deinterlace_mode $current_v4l_mode \
 				-step_frames $current_v4l_rrate \
 				-av_format $current_av_format \
-				-filename "hello.avi"]
+				-filename "$current_capture_filename"]
 	if { "$status" == "" } { 
 		after cancel "check_fifo $cw"
 		after 800 "check_fifo $cw"
