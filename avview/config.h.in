@@ -1,20 +1,79 @@
-#ifndef __CONFIG_H__
-#define __CONFIG_H__
+/* config.h.in.  Generated automatically from configure.in by autoheader.  */
 
+/* Define if you have the <errno.h> header file. */
+#undef HAVE_ERRNO_H
 
-/*
+/* Define if you have the <fcntl.h> header file. */
+#undef HAVE_FCNTL_H
 
-Include ffmpeg-dependent code
+/* Define if you have the `asound' library (-lasound). */
+#undef HAVE_LIBASOUND
 
-*/
-#define USE_FFMPEG 	0
+/* Define if you have the `dl' library (-ldl). */
+#undef HAVE_LIBDL
 
-/*
+/* Define if you have the `m' library (-lm). */
+#undef HAVE_LIBM
 
-Include asound (ALSA library) dependent code
+/* Define if you have the `pthread' library (-lpthread). */
+#undef HAVE_LIBPTHREAD
 
-*/
-#define USE_ALSA 0
+/* Define if you have the `tcl8.3' library (-ltcl8.3). */
+#undef HAVE_LIBTCL8_3
 
+/* Define if you have the `tk8.3' library (-ltk8.3). */
+#undef HAVE_LIBTK8_3
 
-#endif
+/* Define if you have the `X11' library (-lX11). */
+#undef HAVE_LIBX11
+
+/* Define if you have the `Xext' library (-lXext). */
+#undef HAVE_LIBXEXT
+
+/* Define if you have the `Xv' library (-lXv). */
+#undef HAVE_LIBXV
+
+/* Define if you have the `z' library (-lz). */
+#undef HAVE_LIBZ
+
+/* Define if you have the `memset' function. */
+#undef HAVE_MEMSET
+
+/* Define if you have the <stdlib.h> header file. */
+#undef HAVE_STDLIB_H
+
+/* Define if you have the `strdup' function. */
+#undef HAVE_STRDUP
+
+/* Define if you have the `strerror' function. */
+#undef HAVE_STRERROR
+
+/* Define if you have the <string.h> header file. */
+#undef HAVE_STRING_H
+
+/* Define if you have the <sys/ioctl.h> header file. */
+#undef HAVE_SYS_IOCTL_H
+
+/* Define if you have the <unistd.h> header file. */
+#undef HAVE_UNISTD_H
+
+/* Name of package */
+#undef PACKAGE
+
+/* Define if you have the ANSI C header files. */
+#undef STDC_HEADERS
+
+/* use alsa libraries */
+#undef USE_ALSA
+
+/* use ffmpeg libraries */
+#undef USE_FFMPEG
+
+/* Version number of package */
+#undef VERSION
+
+/* Define if the X Window System is missing or not being used. */
+#undef X_DISPLAY_MISSING
+
+/* Define to empty if `const' does not conform to ANSI C. */
+#undef const

@@ -59,6 +59,17 @@ for(i=0;i<argc;i++){
 return NULL;
 }
 
+#ifndef AVVIEW_VERSION
+#error "please regenerate ./configure file and run it again"
+#endif
+
+int avview_version(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+{
+Tcl_ResetResult(interp);
+Tcl_AppendResult(interp, AVVIEW_VERSION, NULL);
+return TCL_OK;
+}
+
 int Tcl_AppInit(Tcl_Interp * interp)
 {
 int status=TCL_OK;
@@ -67,6 +78,7 @@ status=Tcl_Init(interp);
 if(status!=TCL_OK)return TCL_ERROR;
 status=Tk_Init(interp);
 if(status!=TCL_OK)return TCL_ERROR; 
+Tcl_CreateCommand(interp, "avview_version", avview_version, (ClientData)0, NULL);
 init_freq(interp);
 init_xv(interp);
 init_xmisc(interp);

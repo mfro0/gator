@@ -1,9 +1,13 @@
 # Process this file with autoconf to produce a configure script.
 AC_PREREQ(2.52)
-
+#
+# Note to self: always bump version number when there are changes
+# in setup window or avview_shell
+#
 AC_INIT([AV viewer], [0.10.4], [gatos-devel@lists.sf.net])
+AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([frequencies.c])
-AC_CONFIG_HEADER([config.h])
+AM_CONFIG_HEADER([config.h])
 
 # Checks for programs.
 AC_PROG_CC
@@ -18,6 +22,20 @@ AC_CHECK_LIB([z], [uncompress])
 AC_CHECK_LIB([m], [sin])
 AC_CHECK_LIB([pthread], [pthread_create])
 AC_CHECK_LIB([asound], [snd_card_get_name])
+
+#
+#
+# Default values
+#
+AC_DEFINE(USE_FFMPEG, 0, [use ffmpeg libraries])
+AC_DEFINE(USE_ALSA, 0, [use alsa libraries])
+#
+# paths
+#
+INTERPRETER_PATH=$bindir
+SCRIPT_PATH=$datadir/AVview
+AC_SUBST(INTERPRETER_PATH)
+AC_SUBST(SCRIPT_PATH)
 
 ALSA_PRESENT=no
 if ! test "$enable_alsa" = "no" ; then
@@ -65,7 +83,7 @@ AC_SUBST(X_PRE_LIBS)
 AC_SUBST(LIBS)
 
 if ! test "$with_ffmpeg" = "" ; then
-AC_DEFINE(USE_FFMPEG)
+AC_DEFINE(USE_FFMPEG, 1)
 FFMPEG_LIBS="-L$with_ffmpeg/libav -L$with_ffmpeg/libavcodec -lavformat -lavcodec -lpthread"
 FFMPEG_CFLAGS="-I$with_ffmpeg/libav -I$with_ffmpeg/libavcodec"
 else
@@ -88,7 +106,7 @@ AC_C_CONST
 AC_PROG_GCC_TRADITIONAL
 AC_CHECK_FUNCS([memset strdup strerror])
 
-AC_CONFIG_FILES([Makefile version.scp])
+AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
 
 if test "no_x" = "yes" ; then
@@ -98,17 +116,20 @@ fi
 echo ""
 echo "------------------- Configuration -------------------"
 echo ""
-echo "  X11 libraries                    $X_LIBS"
-echo "  X11 cflags                       $X_CFLAGS"
-echo "  TCL headers                      $TCL_HEADERS"
-echo "  TK headers                       $TK_HEADERS"
-echo "  ALSA support                     $ALSA_PRESENT"
+echo "  X11 libraries                       $X_LIBS"
+echo "  X11 cflags                          $X_CFLAGS"
+echo "  TCL headers                         $TCL_HEADERS"
+echo "  TK headers                          $TK_HEADERS"
+echo "  ALSA support                        $ALSA_PRESENT"
 if test "$with_ffmpeg" = "" ; then
-echo "  Movie recording                  disabled"
+echo "  Movie recording                     disabled"
 echo "         to enable specify --with-ffmpeg=/path/to/compiled/ffmpeg/source"
 else
-echo "  Movie recording                  enabled"
-echo "  Path to compiled ffmeg source    $with_ffmpeg"
+echo "  Movie recording                     enabled"
+echo "  Path to compiled ffmeg source       $with_ffmpeg"
+echo ""
+echo "  Binaries will be installed in       $INTERPRETER_PATH"
+echo "  Script files will be installed in   $SCRIPT_PATH"
 fi
 echo ""
 
@@ -126,4 +147,4 @@ echo "restart ./configure with the correct parameter syntax"
 echo ""
 fi
 
-
+chmod +x start_avview

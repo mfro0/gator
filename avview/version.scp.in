@@ -1,3 +1,0 @@
-
-global avview_version
-set avview_version "@PACKAGE_VERSION@"

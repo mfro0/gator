@@ -1,0 +1,12 @@
+#
+# This file is appended by make during compilation
+#
+
+if { $avview_version != [avview_version] } {
+	wm withdraw .
+	tk_messageBox -default ok -title "Version mismatch" -icon error \
+		-type ok -message "AVview source files have version $avview_version while avview_shell has version [avview_version].\nExiting !"
+	exit	
+	}
+	
+source $avview_directory/avview.scp
