@@ -14,6 +14,7 @@
 #include <linux/pci.h>
 #include <linux/interrupt.h>
 #include <linux/wrapper.h>
+#include <linux/mm.h>
 
 #include "km_memory.h"
 
