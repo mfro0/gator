@@ -2288,18 +2288,26 @@ dprintk(2,"card(%d) VIDIOC_G_TUNER called\n",card->cardnum);
        strncpy(t->name, "tuner", sizeof(t->name));
        t->type       = V4L2_TUNER_ANALOG_TV;
        t->rangehigh  = 0xffffffffUL;
-//       t->capability = V4L2_TUNER_CAP_NORM|V4L2_TUNER_CAP_STEREO|V4L2_TUNER_CAP_SAP;
-       t->capability = V4L2_TUNER_CAP_NORM|V4L2_TUNER_CAP_STEREO;
-/* my all in wonder does not do sap */
-//       t->rxsubchans = V4L2_TUNER_SUB_STEREO|V4L2_TUNER_SUB_SAP;
-       t->rxsubchans = V4L2_TUNER_SUB_STEREO;
+       if (card->audio.deviceid == TDA9850) {
+         t->capability = V4L2_TUNER_CAP_NORM|V4L2_TUNER_CAP_STEREO|V4L2_TUNER_CAP_SAP;
+         t->rxsubchans = V4L2_TUNER_SUB_STEREO|V4L2_TUNER_SUB_SAP;
+       } else {
+         t->capability = V4L2_TUNER_CAP_NORM|V4L2_TUNER_CAP_STEREO;
+         t->rxsubchans = V4L2_TUNER_SUB_STEREO;
+       }
 
        /* check if the tuner has a horizontal lock */
        if (BTREAD(card,BT829_DSTATUS)&BT829_DSTATUS_HLOC)
          t->signal = 0xffff;
 
-       /* should probably check to see if sap is on? */
-       t->audmode     = V4L2_TUNER_MODE_STEREO;
+       if (card->stereo) {
+         t->audmode     = V4L2_TUNER_MODE_STEREO;
+	 t->rxsubchans |= V4L2_TUNER_SUB_STEREO;
+       }
+       if (card->sap) {
+         t->audmode     = V4L2_TUNER_MODE_LANG1;
+	 t->rxsubchans = V4L2_TUNER_SUB_LANG1 | V4L2_TUNER_SUB_LANG2;
+       }
        up(&card->lock);
 
        return 0;
@@ -2327,7 +2335,6 @@ dprintk(2,"card(%d) VIDIOC_S_TUNER called\n",card->cardnum);
       } else if (t->audmode == V4L2_TUNER_MODE_SAP){
 	card->stereo = 1;
 	card->sap = 1;
-printk (KERN_INFO "Setting sap mode \n");	
       } else {
         dprintk(1,"card(%d) unknown %d\n",card->cardnum,t->audmode);
       }
