@@ -19,6 +19,8 @@
 #define KM_FIELD_TYPE_DYNAMIC_STRING	3	/* handle to string */
 #define KM_FIELD_TYPE_PROGRAMMABLE	4	/* user specified behaviour */
 #define KM_FIELD_TYPE_MEMORY_AREA       5	/* area of memory that can be mmaped */
+#define KM_FIELD_TYPE_LEVEL_TRIGGER	6	/* 1 if any client requested to be 1,
+						   0 if no clients requested to be 0 */
 
 typedef struct {
 	char *string;
@@ -64,6 +66,12 @@ typedef struct {
 	long size;
 	} KM_FIELD_MEMORY_AREA;
 
+typedef struct {
+	u32 count;
+	void (*zero2one)(struct S_KM_FIELD *kmf);
+	void (*one2zero)(struct S_KM_FIELD *kmf);
+	} KM_FIELD_LEVEL_TRIGGER;
+
 typedef struct S_KM_FIELD {
 	int type;
 	char *name;
@@ -77,6 +85,7 @@ typedef struct S_KM_FIELD {
 		KM_FIELD_DYNAMIC_STRING s;
 		KM_FIELD_PROGRAMMABLE	p;
 		KM_FIELD_MEMORY_AREA    m;
+		KM_FIELD_LEVEL_TRIGGER  t;
 		} data;
 	int next_command;
 	} KM_FIELD;
@@ -95,12 +104,17 @@ typedef struct {
 	} KM_DEVICE;
 
 typedef union {
+	/* union members correspond to members of KM_FIELD */
 	struct {
 		u32 old_value;
 		} i;
 	struct {
 		char *old_string; /* pointer only, no access to data */
 		} s;
+	struct {
+		u32 old_count;
+		int requested;
+		} t;
 	} KM_FIELD_DATA;
 
 #define KM_STATUS_REQUESTED	1

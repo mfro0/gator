@@ -103,6 +103,12 @@ for(i=0;kmd->fields[i].type!=KM_FIELD_TYPE_EOL;i++){
 			if(kmfpd->br_free+field_length>=kmfpd->br_size)expand_buffer(kmfpd, field_length);
 			kmfpd->br_free+=sprintf(kmfpd->buffer_read+kmfpd->br_free, "%s=%s\n", f->name, kmfpd->kfd[i].s.old_string);
 			break;
+		case KM_FIELD_TYPE_LEVEL_TRIGGER:
+			kmfpd->kfd[i].t.old_count=f->data.t.count;
+			field_length=strlen(f->name)+20;
+			if(kmfpd->br_free+field_length>=kmfpd->br_size)expand_buffer(kmfpd, field_length);
+			kmfpd->br_free+=sprintf(kmfpd->buffer_read+kmfpd->br_free, "%s=%u\n", f->name, kmfpd->kfd[i].t.old_count);
+			break;
 		}
 	}
 if(kmfpd->br_free+10>=kmfpd->br_size)expand_buffer(kmfpd, 14);
@@ -142,6 +148,16 @@ for(i=0;kmd->fields[i].type!=KM_FIELD_TYPE_EOL;i++){
 			kmfpd->buffer_read[kmfpd->br_free]=':';
 			kmfpd->br_free++;
 			kmfpd->br_free+=sprintf(kmfpd->buffer_read+kmfpd->br_free, "%s=%s\n", f->name, b);
+			break;
+		case KM_FIELD_TYPE_LEVEL_TRIGGER:
+			a=f->data.t.count;
+			if(a==kmfpd->kfd[i].t.old_count)continue;
+			kmfpd->kfd[i].t.old_count=a;
+			field_length=strlen(f->name)+22;
+			if(kmfpd->br_free+field_length>=kmfpd->br_size)expand_buffer(kmfpd, field_length);
+			kmfpd->buffer_read[kmfpd->br_free]=':';
+			kmfpd->br_free++;
+			kmfpd->br_free+=sprintf(kmfpd->buffer_read+kmfpd->br_free, "%s=%u\n", f->name, a);
 			break;
 		}
 	}

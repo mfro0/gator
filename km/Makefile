@@ -1,5 +1,5 @@
 KM_FLAGS=
-CFLAGS = -m486 -O2 -Wall -Wstrict-prototypes -pipe -fno-strict-aliasing -fno-common $(KM_FLAGS)
+CFLAGS = -march=i586 -O2 -Wall -Wstrict-prototypes -pipe -fno-strict-aliasing -fno-common $(KM_FLAGS)
 LDFLAGS = -s -N
 CC=gcc
 
