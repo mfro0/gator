@@ -13,7 +13,9 @@ To compile:
 	make
 	
 If you are using code from CVS you need to run these commands first:
+
 	autoconf
+	autoheader
 	automake
 
 To install:
