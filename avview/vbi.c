@@ -146,14 +146,16 @@ VBI_DATA *data=(VBI_DATA *)user_data;
 DATAGRAM d;
 int r,a;
 d.type=TYPE_EVENT;
+pthread_mutex_unlock(&(data->mutex));
 memcpy(&d.ev, event, sizeof(*event));
 r=0;
 do {
 	a=write(data->fd[1], ((unsigned char *)&d)+r, sizeof(d)-r);
-	if(a==EPIPE)return; /* close thread */
+	if(a==EPIPE)break; 
 	if(a>0)r+=a;
-	if((a<0)&&(a!=EINTR))return; /* close thread, just in case */
+	if((a<0)&&(a!=EINTR))break;
 	} while (r<sizeof(d));
+pthread_mutex_lock(&(data->mutex));
 }
 
 int vbi_open_device(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
@@ -176,6 +178,7 @@ if(vbi_sc->data[i]!=NULL){
 	pthread_mutex_lock(&(data->mutex));	
 	if(!strcmp(data->device, argv[2])){
 		pthread_mutex_unlock(&(data->mutex));
+		fprintf(stderr,"vbi_open_device %s %s: already opened\n", argv[1], argv[2]);
 		return TCL_OK; /* device has been already opened */
 		}
 	close(data->fd[0]);
