@@ -1,7 +1,7 @@
 
     USE AT YOUR OWN RISK !
     
-    
+    This is experimental driver.. who knows what it'll do ;)
     
 hints:
 
@@ -12,6 +12,8 @@ hints:
     * start xawtv
     * get xv_stream, compile it
     * run xv_stream --device=/dev/video0 --width=640 --height=240
+      (preferable over network from a different computer with Xv capable
+      video card)
     * enjoy
     * tweak
     
