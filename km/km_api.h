@@ -56,6 +56,8 @@ typedef struct S_KM_FIELD {
 
 typedef struct {
 	long number; /* set to the device number if active, to -1 if inactive */
+	int use_count;
+	wait_queue_head_t wait;
 	struct proc_dir_entry *control;
 	struct proc_dir_entry *data;	
 	char *buffer_read;
@@ -73,5 +75,6 @@ typedef struct {
 
 int add_km_device(KM_FIELD *kmfl, void *priv);
 int remove_km_device(int num);
+void kmd_signal_state_change(int num);
 
 #endif

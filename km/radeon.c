@@ -265,6 +265,7 @@ while(1){
 		if(status & (1<<0))kms->vblank_count++;
 		if(status & (1<<1))kms->vline_count++;
 		if(status & (1<<2))kms->vsync_count++;
+		if(status & 7)kmd_signal_state_change(kms->kmd);
 		writel(status & mask, kms->reg_aperture+RADEON_GEN_INT_STATUS);
 		count--;
 		if(count<0){
