@@ -299,6 +299,8 @@ set type [find_attribute_widget $video_window $port $attribute]
 set suffix "${port}_$attribute"
 global $attr_var
 
+global attr_count
+
 puts "$name $range $type"
 switch  $type {
 	"none" {
@@ -307,39 +309,40 @@ switch  $type {
 	"entry" {     
 		label $widget.label$suffix -text [translate_attribute_name $name]
 		entry $widget.entry$suffix -textvariable $attr_var
-		eval $widget.label$suffix configure [get_settings $widget.label$suffix AVview Xvideo $port $attribute]
-		eval $widget.entry$suffix configure [get_settings $widget.entry$suffix AVview Xvideo $port $attribute]
-		grid $widget.label$suffix $widget.entry$suffix -sticky news -padx 2
-		grid configure $widget.label$suffix -sticky nw 
+		eval $widget.label$suffix configure [get_settings $widget.label$suffix AVview XVideo $port $attribute $attr_count]
+		eval $widget.entry$suffix configure [get_settings $widget.entry$suffix AVview XVideo $port $attribute $attr_count]
+		grid $widget.label$suffix $widget.entry$suffix -sticky news
+		grid configure $widget.label$suffix -sticky news 
 		}	
 	"toggle" {
 		label $widget.label$suffix -text [translate_attribute_name $name]
 		checkbutton $widget.checkbutton$suffix -variable $attr_var \
 			-onvalue 1 -offvalue 0
-		eval $widget.label$suffix configure [get_settings $widget.label$suffix AVview Xvideo $port $attribute]
-		eval $widget.checkbutton$suffix configure [get_settings $widget.checkbutton$suffix AVview Xvideo $port $attribute]
-		grid $widget.label$suffix $widget.checkbutton$suffix -sticky news -padx 2
-		grid configure $widget.label$suffix -sticky nw
+		eval $widget.label$suffix configure [get_settings $widget.label$suffix AVview XVideo $port $attribute $attr_count]
+		eval $widget.checkbutton$suffix configure [get_settings $widget.checkbutton$suffix AVview XVideo $port $attribute $attr_count]
+		grid $widget.label$suffix $widget.checkbutton$suffix -sticky news
+		grid configure $widget.label$suffix -sticky news
 		}
 	"button" {
 		label $widget.label$suffix -text [translate_attribute_name $name]
 		button $widget.button$suffix -command "xv_setportattribute $video_window $port $name 1"\
 			-text "perform now"
-		eval $widget.label$suffix configure [get_settings $widget.label$suffix AVview Xvideo $port $attribute]
-		eval $widget.button$suffix configure [get_settings $widget.button$suffix AVview Xvideo $port $attribute]
-		grid $widget.label$suffix $widget.button$suffix -sticky news -padx 2
-		grid configure $widget.label$suffix -sticky nw
+		eval $widget.label$suffix configure [get_settings $widget.label$suffix AVview XVideo $port $attribute $attr_count]
+		eval $widget.button$suffix configure [get_settings $widget.button$suffix AVview XVideo $port $attribute $attr_count]
+		grid $widget.label$suffix $widget.button$suffix -sticky news 
+		grid configure $widget.label$suffix -sticky news
 		}
 	"slider" {
 		label $widget.label$suffix -text [translate_attribute_name $name]
 		scale $widget.scale$suffix -from [lindex $range 0] -to [lindex $range 1] \
 			-variable $attr_var -orient horizontal
-		eval $widget.label$suffix configure [get_settings $widget.label$suffix AVview Xvideo $port $attribute]
-		eval $widget.scale$suffix configure [get_settings $widget.scale$suffix AVview Xvideo $port $attribute]
-		grid $widget.label$suffix $widget.scale$suffix -sticky news -padx 2
-		grid configure $widget.label$suffix -sticky sw
+		eval $widget.label$suffix configure [get_settings $widget.label$suffix AVview XVideo $port $attribute $attr_count]
+		eval $widget.scale$suffix configure [get_settings $widget.scale$suffix AVview XVideo $port $attribute $attr_count]
+		grid $widget.label$suffix $widget.scale$suffix -sticky news
+		grid configure $widget.label$suffix -sticky news
 		}
 	}
+incr attr_count
 if { $type != "button" } {
 	trace vdelete $attr_var w "on_attribute_change $name"
 	set $attr_var [xv_getportattribute $video_window $port "$name"]
@@ -390,7 +393,8 @@ label $af.title -text "Attributes" -background black -foreground white
 grid $af.title - -sticky news -pady 2 -padx 2
 
 set NUM_ATTRIBUTES [xv_num_port_attributes $VIDEO_WINDOW $current_port]
-
+global attr_count
+set attr_count 0
 for { set i 0 } {$i < $NUM_ATTRIBUTES } { incr i } {
 	create_attribute_widget $af $VIDEO_WINDOW $current_port $i
 	}
