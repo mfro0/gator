@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/r128_driver.c,v 1.53 2001/12/28 17:31:44 dawes Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/r128_driver.c,v 1.57 2002/01/04 21:22:26 tsi Exp $ */
 /*
  * Copyright 1999, 2000 ATI Technologies Inc., Markham, Ontario,
  *                      Precision Insight, Inc., Cedar Park, Texas, and
@@ -196,7 +196,7 @@ static const char *vgahwSymbols[] = {
 static const char *fbdevHWSymbols[] = {
     "fbdevHWInit",
     "fbdevHWUseBuildinMode",
-
+    "fbdevHWGetLineLength",
     "fbdevHWGetVidmem",
 
     /* colormap */
@@ -1145,7 +1145,7 @@ R128I2cInit(ScrnInfoPtr pScrn)
         xf86LoaderReqSymLists(i2cSymbols,NULL);
 	else{
         xf86DrvMsg(pScrn->scrnIndex, X_ERROR, 
-            "Fail to load 12c module\n");
+            "Failed to load i2c module\n");
 		return FALSE;
     }
 
@@ -1770,7 +1770,7 @@ Bool R128PreInit(ScrnInfoPtr pScrn, int flags)
 		      fbdevHWSymbols,
 		      vbeSymbols,
 		      /* ddcsymbols, */
-		      /* i2csymbols, */
+		      i2cSymbols,
 		      /* shadowSymbols, */
 		      NULL);
 
@@ -1892,7 +1892,7 @@ Bool R128PreInit(ScrnInfoPtr pScrn, int flags)
 
     xf86DrvMsg(pScrn->scrnIndex, X_NOTICE,
 	"For information on using the multimedia capabilities\n of this"
-	" adapter, please see http://www.linuxvideo.org/gatos.\n");
+	" adapter, please see http://gatos.sf.net.\n");
 
     return TRUE;
 

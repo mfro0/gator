@@ -1900,6 +1900,23 @@ void DumpRageTheatreRegs(TheatrePtr t)
 
 }
 
+void ResetTheatreRegsForNoTVout(TheatrePtr t)
+{
+    int i;
+    CARD32 data;
+    
+     RT_regw(VIP_CLKOUT_CNTL, 0x0); 
+     RT_regw(VIP_HCOUNT, 0x0); 
+     RT_regw(VIP_VCOUNT, 0x0); 
+     RT_regw(VIP_DFCOUNT, 0x0); 
+     #if 0
+     RT_regw(VIP_CLOCK_SEL_CNTL, 0x2b7);  /* versus 0x237 <-> 0x2b7 */
+     RT_regw(VIP_VIN_PLL_CNTL, 0x60a6039);
+     #endif
+     RT_regw(VIP_FRAME_LOCK_CNTL, 0x0);
+}
+
+
 void ResetTheatreRegsForTVout(TheatrePtr t)
 {
     int i;

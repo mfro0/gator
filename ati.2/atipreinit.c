@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atipreinit.c,v 1.54 2001/12/06 15:28:23 tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atipreinit.c,v 1.55 2002/01/01 01:04:19 tsi Exp $ */
 /*
  * Copyright 1999 through 2001 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
  *
@@ -1349,7 +1349,7 @@ ATIPreInit
     if (pATI->Chip >= ATI_CHIP_264GT)
         xf86DrvMsg(pScreenInfo->scrnIndex, X_NOTICE,
             "For information on using the multimedia capabilities\n of this"
-            " adapter, please see http://www.linuxvideo.org/gatos.\n");
+            " adapter, please see http://gatos.sf.net.\n");
 
     if ((pATI->DAC & ~0x0FU) == ATI_DAC_INTERNAL)
         xf86DrvMsg(pScreenInfo->scrnIndex, X_PROBED,

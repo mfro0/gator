@@ -78,6 +78,7 @@ static void GetMSP3430Data(MSP3430Ptr m, CARD8 RegAddress, CARD8 RegSubAddressHi
 static void MSP3430DumpStatus(MSP3430Ptr m)
 {
 CARD8 status_hi, status_lo;
+CARD8 subaddr, data[2];
 
 GetMSP3430Data(m, RD_DEM, 0x02, 0x00, &status_hi, &status_lo);
 xf86DrvMsg(m->d.pI2CBus->scrnIndex, X_INFO, "MSP34xx: SAP(8)=%d mono/NICAM(7)=%d stereo=%d %s O_1=%d O_0=%d 2nd car=%d 1st car=%d\n",
@@ -89,6 +90,10 @@ xf86DrvMsg(m->d.pI2CBus->scrnIndex, X_INFO, "MSP34xx: SAP(8)=%d mono/NICAM(7)=%d
 GetMSP3430Data(m, RD_DEM, 0x00, 0x7E, &status_hi, &status_lo);
 xf86DrvMsg(m->d.pI2CBus->scrnIndex, X_INFO, "MSP34xx: standard result=0x%02x%02x\n",
 		status_hi, status_lo);
+subaddr=0x0;
+I2C_WriteRead(&(m->d), &subaddr, 1, data, 2);
+xf86DrvMsg(m->d.pI2CBus->scrnIndex, X_INFO, "MSP34xx: control=0x%02x%02x\n",
+		data[1], data[0]);
 }
 
 /* wrapper */
@@ -335,11 +340,11 @@ void InitMSP34xxG(MSP3430Ptr m)
    /*       13 - detect 4.5 Mhz carrier as BTSC */ 
    if ( (m->standard & 0xff) == MSP3430_PAL )
    {
-      SetMSP3430Data(m, WR_DEM, 0x00, 0x30, 0x30, 0x03);    
+      SetMSP3430Data(m, WR_DEM, 0x00, 0x30, 0x30, 0x03|0x08);    /* make O_ pins tristate */
       /* PAL standard */
       SetMSP3430Data(m, WR_DEM, 0x00, 0x20, 0x00, 0x01); /* possibly wrong */
    } else {
-      SetMSP3430Data(m, WR_DEM, 0x00, 0x30, 0x20, 0x03);
+      SetMSP3430Data(m, WR_DEM, 0x00, 0x30, 0x20, 0x03|0x08);
       /* standard selection is M-BTSC-Stereo */
       SetMSP3430Data(m, WR_DEM, 0x00, 0x20, 0x00, 0x20); 
    }

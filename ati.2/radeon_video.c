@@ -558,7 +558,8 @@ void RADEONResetVideo(ScrnInfoPtr pScrn)
     
     if(pPriv->theatre != NULL) {
         xf86_InitTheatre(pPriv->theatre);
-        }
+	xf86_ResetTheatreRegsForNoTVout(pPriv->theatre);
+	}
     
     if(pPriv->i2c != NULL){
     	RADEONResetI2C(pScrn, pPriv);
@@ -1028,7 +1029,7 @@ static void RADEONInitI2C(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
     }
     
     if(pPriv->i2c != NULL)RADEON_board_setmisc(pPriv);
-    #if 0
+    #if 1
     xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Scanning I2C Bus\n");
     for(i=0;i<255;i+=2)
     	if(RADEONProbeAddress(pPriv->i2c, i))
@@ -1477,6 +1478,7 @@ RADEONSetupImageVideo(ScreenPtr pScreen)
     if(pPriv->theatre != NULL) 
     {
        xf86_InitTheatre(pPriv->theatre);
+       xf86_ResetTheatreRegsForNoTVout(pPriv->theatre);
        xf86_RT_SetTint(pPriv->theatre, pPriv->dec_hue);
        xf86_RT_SetSaturation(pPriv->theatre, pPriv->dec_saturation);
        xf86_RT_SetSharpness(pPriv->theatre, RT_NORM_SHARPNESS);

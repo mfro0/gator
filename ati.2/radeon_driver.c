@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/radeon_driver.c,v 1.47 2001/12/28 17:31:44 dawes Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/radeon_driver.c,v 1.49 2002/01/07 22:12:37 dawes Exp $ */
 /*
  * Copyright 2000 ATI Technologies Inc., Markham, Ontario, and
  *                VA Linux Systems Inc., Fremont, California.
@@ -2334,7 +2334,7 @@ Bool RADEONPreInit(ScrnInfoPtr pScrn, int flags)
 
     xf86DrvMsg(pScrn->scrnIndex, X_NOTICE,
 	"For information on using the multimedia capabilities\n of this"
-	" adapter, please see http://www.linuxvideo.org/gatos.\n");
+	" adapter, please see http://gatos.sf.net.\n");
 
     return TRUE;
 
@@ -3802,7 +3802,7 @@ static Bool RADEONInitCrtcRegisters(ScrnInfoPtr pScrn, RADEONSavePtr save,
  				 | (hsync_wid << 16)
 				 | ((mode->Flags & V_NHSYNC)
 				    ? RADEON_CRTC_H_SYNC_POL
-				    : RADEON_CRTC_H_SYNC_POL));
+				    : 0));
   
 #if 1
 				/* This works for double scan mode. */
@@ -3825,7 +3825,7 @@ static Bool RADEONInitCrtcRegisters(ScrnInfoPtr pScrn, RADEONSavePtr save,
 				 | (vsync_wid << 16)
 				 | ((mode->Flags & V_NVSYNC)
 				    ? RADEON_CRTC_V_SYNC_POL
-				    : RADEON_CRTC_V_SYNC_POL));
+				    : 0));
 
     save->crtc_offset      = 0;
     save->crtc_offset_cntl = 0;

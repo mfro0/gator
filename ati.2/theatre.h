@@ -63,6 +63,9 @@ void ResetTheatreRegsForTVout(TheatrePtr t);
 		"RT_SetCombFilter", \
 		"RT_SetOutputVideoSize", \
 		"RT_SetConnector", \
+		"ResetTheatreRegsForNoTVout", \
+		"ResetTheatreRegsForTVout", \
+		"DumpRageTheatreRegs", \
 		"ShutdownTheatre"
 
 #ifdef XFree86LOADER
@@ -84,6 +87,7 @@ void ResetTheatreRegsForTVout(TheatrePtr t);
 #define xf86_ShutdownTheatre       ((void (*)(TheatrePtr))LoaderSymbol("ShutdownTheatre"))
 #define xf86_DumpRageTheatreRegs       ((void (*)(TheatrePtr))LoaderSymbol("DumpRageTheatreRegs"))
 #define xf86_ResetTheatreRegsForTVout       ((void (*)(TheatrePtr))LoaderSymbol("ResetTheatreRegsForTVout"))
+#define xf86_ResetTheatreRegsForNoTVout       ((void (*)(TheatrePtr))LoaderSymbol("ResetTheatreRegsForNoTVout"))
 #else
 
 #define xf86_DetectTheatre             DetectTheatre
