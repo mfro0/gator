@@ -55,7 +55,7 @@ TheatrePtr DetectTheatre(GENERIC_BUS_Ptr b)
 
    if(t->theatre_num < 0)
    {
-   free(t);
+   xfree(t);
    return NULL;
    }
 
