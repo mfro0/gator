@@ -720,9 +720,10 @@ destroy $m
 frame $m -background $bg
 raise $m
 grid $m
-label $m.l -text "$message" -font message_font -background black -foreground "#FFAA88"
+label $m.l -text $message -font message_font -background black -foreground "#FFAA88"
 grid $m.l
 
+wm title . "AVview: $message"
 
 global flash_counter message_visible_secs
 if { $flash_counter < 0 } { after 1000 fm_countdown }
