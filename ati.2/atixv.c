@@ -1781,7 +1781,13 @@ ATIDisplayVideo(
 
     v_inc = ((src_h) << (12
 		+((pScrn->currentMode->Flags & V_INTERLACE)?1:0)
-		-((pScrn->currentMode->Flags & V_DBLSCAN)?1:0))) / drw_h;
+		-((pScrn->currentMode->Flags & V_DBLSCAN)?1:0)));
+	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "%p\n", pScrn->currentMode);
+    v_inc = v_inc * pScrn->currentMode->VDisplay;
+    if(pATI->LCDPanelID>=0)
+	v_inc = v_inc/(drw_h*pATI->LCDVertical);
+	else
+	v_inc = v_inc/(drw_h*pScrn->currentMode->VDisplay);
     h_inc = ((src_w << (12
     		+pPriv->ecp_div)) / drw_w);
 
