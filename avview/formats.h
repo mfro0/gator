@@ -30,6 +30,7 @@ void deinterlace_422_weave(long width, long height, long pitch, char *frame1, ch
 void deinterlace_422_half_width(long width, long height, long pitch, char *frame1, char *dest);
 void deinterlace_422_half_width_to_420p(long width, long height, long pitch, char *frame1, char *dest);
 void deinterlace_422_bob_to_420p(long width, long height, long pitch, char *frame1, char *dest);
+void convert_422_to_420p(long width, long height, long pitch, char *frame1, char *dest);
 
 
 #endif

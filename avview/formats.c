@@ -504,3 +504,33 @@ for(line=0;line<height;line++){
 		}
 	}
 }
+
+/* this replicates discard U and V alternatively */
+void convert_422_to_420p(long width, long height, long pitch, char *frame1, char *dest)
+{
+long line;
+long pixel;
+long dst_pitch;
+unsigned char *t1,*t2,*t3;
+unsigned char *s1;
+char y1,y2,v1,u1;
+t1=dest;
+t2=dest+(width*height);
+t3=t2+(width*height)/4;
+for(line=0;line<height;line++){
+	s1=frame1+line*pitch;
+	for(pixel=0;pixel<width;pixel+=2){
+		y1=(*s1++);
+		u1=(*s1++);
+		y2=(*s1++);
+		v1=(*s1++);
+		(*t1++)=y1;
+		(*t1++)=y2;
+		if(line & 1){
+			(*t3++)=v1;
+			} else {
+			(*t2++)=u1;
+			}
+		}
+	}
+}

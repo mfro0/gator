@@ -622,11 +622,18 @@ if {[ffmpeg_present] == "yes"} {
 	grid $cw.rratel $cw.rrateom - -sticky news
 	grid configure $cw.rratel -sticky nws
 
-	label $cw.codecl -text "Recording format:"
+	label $cw.codecl -text "Video format:"
 	tk_optionMenu $cw.codecom current_codec "H263" "H263I" "H263P" "MJPEG" "MPEG-1" "MPEG-4" "MSMPEG-4" "RV10"
 	grid $cw.codecl $cw.codecom
 	grid configure $cw.codecl -sticky nws
 	grid configure $cw.codecom -sticky news
+
+	label $cw.av_formatl -text "File format:"
+	tk_optionMenu $cw.av_formatom current_av_format "none" "AVI" "ASF"
+	grid $cw.av_formatl $cw.av_formatom
+	grid configure $cw.av_formatl -sticky nws
+	grid configure $cw.av_formatom -sticky news
+
 	button $cw.snapshotb -text "Snapshot" -command capture_snapshot -state disabled
 	checkbutton $cw.recordb -text "Record" -variable v4l_capture_on \
 		-indicatoron false -state disabled
@@ -803,8 +810,14 @@ global v4l_capture_on
 global current_codec
 global current_v4l_mode
 global current_v4l_rrate
+global current_av_format
 if { $v4l_capture_on } {
-	set status [ffmpeg_encode_v4l_stream current_v4l_handle $current_codec $current_v4l_mode $current_v4l_rrate "hello.mpg"]
+	set status [ffmpeg_encode_v4l_stream -v4l_handle current_v4l_handle \
+				-video_codec $current_codec \
+				-deinterlace_mode $current_v4l_mode \
+				-step_frames $current_v4l_rrate \
+				-av_format $current_av_format \
+				-filename "hello.avi"]
 	if { "$status" == "" } { 
 		after cancel "check_fifo $cw"
 		after 800 "check_fifo $cw"

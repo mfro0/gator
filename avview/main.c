@@ -33,6 +33,17 @@ while(r==NULL){
 return r;
 }
 
+char *get_value(int argc, char *argv[], char *key)
+{
+int i;
+for(i=0;i<argc;i++){
+	if(!strcmp(key, argv[i])){
+		if((i+1)<argc)return argv[i+1];
+		}
+	}
+return NULL;
+}
+
 int Tcl_AppInit(Tcl_Interp * interp)
 {
 int status=TCL_OK;

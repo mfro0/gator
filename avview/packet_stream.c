@@ -31,8 +31,14 @@ p->next=NULL;
 p->prev=NULL;
 p->size=size;
 p->free=0;
-if(size>0)p->buf=do_alloc(size, 1);
-	else p->buf=NULL;
+if(size>0){
+	p->buf=malloc(size);
+	while(p->buf==NULL){
+		sleep(1);
+		fprintf(stderr,"Failed to allocate %d bytes\n", size);
+		p->buf=malloc(size);
+		}
+	} else p->buf=NULL;
 p->discard=0;
 p->free_func=free_generic_packet;
 p->type="GENERIC";

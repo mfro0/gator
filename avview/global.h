@@ -4,5 +4,6 @@
 #include "config.h"
 
 void * do_alloc(long, long);
+char *get_value(int argc, char *argv[], char *key);
 
 #endif

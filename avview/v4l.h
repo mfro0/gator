@@ -32,6 +32,6 @@ void init_v4l(Tcl_Interp *interp);
 V4L_DATA *get_v4l_device_from_handle(char *handle);
 
 #define V4L_SNAPSHOT_KEY	1
-#define FFMPEG_V4L_CAPTURE_KEY	2
+#define FFMPEG_CAPTURE_KEY	2
 
 #endif
