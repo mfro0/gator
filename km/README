@@ -36,7 +36,7 @@ Additional notes:
        AVview running and another to put xv_stream window on. The result
        is that you should see more or less the same TV image in both
        windows. Displaying both on the same screen will not work as
-       ATI cards have only one overlay scalar unit and both xawtv and
+       ATI cards have only one overlay scaler unit and both xawtv and
        xv_stream need it.
 
     3) what can you do if you have one computer ? Get AVview and CVS
@@ -48,7 +48,7 @@ Additional notes:
 
     4) you cannot use this module simultaneously with Linux framebuffer devices.
 
-    5) you need Linux 2.4.9 (or later) to compile it properly
+    5) you need Linux 2.4.20 (or later) to compile it properly
        
     6) You might have problems if you don't let your BIOS assign an irq to 
        your video card.
