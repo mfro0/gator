@@ -423,7 +423,6 @@ global current_capture_filename
 if { [ffmpeg_present] == "no" } { return }
 catch {
 	set status [ffmpeg_encoding_status]
-	puts "status=$status"
 	if { "$status" == "" } {
 		reset_video_stats $cw.video_stats
 		return
@@ -517,19 +516,13 @@ grid $widget.f.left_audio_level $widget.f.right_audio_level $widget.f.video_hist
 }
 
 proc update_video_stats { widget status} {
-set size [get_value $status "-total_fifo"]
-set length [get_value $status "-encoded_stream_size"]
-set frames_encoded [get_value $status "-frames_encoded"]
-set luma_hist  [get_value $status "-luma_hist"]
-set luma_top_hist [get_value $status "-luma_top_hist"]
+foreach { var value } $status {
+	set $var $value
+	}
 set cheight [$widget.f.video_hist cget -height]
 set cwidth [$widget.f.video_hist cget -width]
-set avg_right_level [get_value $status "-avg_right_level"]
-set avg_left_level [get_value $status "-avg_left_level"]
-set top_right_level [get_value $status "-top_right_level"]
-set top_left_level [get_value $status "-top_left_level"]
-$widget.fifo_value_label configure -text "[expr $size/(1024*1024)] Mb"
-$widget.total_stream_length_value configure -text "$length Mb"
+$widget.fifo_value_label configure -text "[expr $total_fifo/(1024*1024)] Mb"
+$widget.total_stream_length_value configure -text "$encoded_stream_size Mb"
 $widget.frames_encoded_value configure -text "$frames_encoded"
 $widget.f.video_hist configure -scrollregion [list 1 1 [expr $cwidth -1] [expr $cheight-1]]
 if { $luma_top_hist == 0 } { set luma_top_hist 1 }

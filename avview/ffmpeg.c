@@ -844,45 +844,45 @@ if((sdata->audio_s!=NULL) && (sdata->audio_s->stop_stream & STOP_PRODUCER_THREAD
 ans=Tcl_NewListObj(0, NULL);
 total_fifo=0;
 if(sdata->video_s!=NULL){
-	Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-video_fifo", -1));
+	Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("video_fifo", -1));
 	Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj(sdata->video_s->total));
-	Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-video_recycling_stack", -1));
+	Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("video_recycling_stack", -1));
 	Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj(sdata->video_s->unused_total));
 	total_fifo+=sdata->video_s->total;
 	total_fifo+=sdata->video_s->unused_total;
 	}
 if(sdata->audio_s!=NULL){
-	Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-audio_fifo", -1));
+	Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("audio_fifo", -1));
 	Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj(sdata->audio_s->total));
-	Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-audio_recycling_stack", -1));
+	Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("audio_recycling_stack", -1));
 	Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj(sdata->audio_s->unused_total));
 	total_fifo+=sdata->audio_s->total;
 	total_fifo+=sdata->audio_s->unused_total;
 	}
-Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-total_fifo", -1));
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("total_fifo", -1));
 Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj(total_fifo));
 
-Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-frames_encoded", -1));
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("frames_encoded", -1));
 Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj(sdata->frames_encoded));
 
-Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-encoded_stream_size", -1));
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("encoded_stream_size", -1));
 Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj((long)((sdata->encoded_stream_size+((1<<20)-1))>>20))); /* convert to megabytes */
 
 if(sdata->audio_samples>0){
-	Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-avg_left_level", -1));
+	Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("avg_left_level", -1));
 	Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj((1000*(sdata->audio_sample_sum_left/sdata->audio_samples))/32768));
 
-	Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-avg_right_level", -1));
+	Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("avg_right_level", -1));
 	Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj((1000*(sdata->audio_sample_sum_right/sdata->audio_samples))/32768));
 	}
 
-Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-top_left_level", -1));
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("top_left_level", -1));
 Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj(((1000*sdata->audio_sample_top_left)/32768)));
 
-Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-top_right_level", -1));
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("top_right_level", -1));
 Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj(((1000*sdata->audio_sample_top_right)/32768)));
 
-Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-luma_hist", -1));
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("luma_hist", -1));
 
 fprintf(stderr, "%d %d\n", sdata->audio_sample_top_left, sdata->audio_sample_top_right);
 
@@ -899,7 +899,7 @@ for(i=0;i<32;i++){
 	}
 Tcl_ListObjAppendElement(interp, ans, list);
 
-Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-luma_top_hist", -1));
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("luma_top_hist", -1));
 Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj(b));
 
 Tcl_SetObjResult(interp, ans);
