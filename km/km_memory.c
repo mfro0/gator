@@ -27,7 +27,8 @@
 void * rvmalloc(signed long size)
 {
 	void * mem;
-	unsigned long adr, page;
+	unsigned long adr;
+	struct page * page;
 
 	mem=vmalloc_32(size);
 	if (NULL == mem)
@@ -38,8 +39,8 @@ void * rvmalloc(signed long size)
 	        adr=(unsigned long) mem;
 		while (size > 0) 
                 {
-	                page = kvirt_to_pa(adr);
-			mem_map_reserve(virt_to_page(__va(page)));
+			page = vmalloc_to_page((void *)adr);
+			mem_map_reserve(page);
 			adr+=PAGE_SIZE;
 			size-=PAGE_SIZE;
 		}
@@ -49,15 +50,16 @@ void * rvmalloc(signed long size)
 
 void rvfree(void * mem, signed long size)
 {
-        unsigned long adr, page;
+        unsigned long adr;
+	struct page * page;
         
 	if (mem) 
 	{
 	        adr=(unsigned long) mem;
 		while (size > 0) 
                 {
-	                page = kvirt_to_pa(adr);
-			mem_map_unreserve(virt_to_page(__va(page)));
+	                page =vmalloc_to_page((void *)adr);
+			mem_map_unreserve(page);
 			adr+=PAGE_SIZE;
 			size-=PAGE_SIZE;
 		}

@@ -287,7 +287,11 @@ do {
 	KM_DEBUG("status=0x%08lx\n", status);
 	} while (!(status & 0x1f));
 wmb();
+#if 0
 writel(kvirt_to_pa(kmtr->stream->dma_table[kmtr->buffer]), (u32)(kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR)| (0));
+#else
+writel(kvirt_to_bus(kmtr->stream->dma_table[kmtr->buffer]), (u32)(kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR)| (0));
+#endif
 }
 
 static void radeon_schedule_request(KM_STRUCT *kms, KM_STREAM *stream, u32 offset, int odd)
