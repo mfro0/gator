@@ -730,8 +730,14 @@ if((sdata==NULL)||(sdata->type!=FFMPEG_CAPTURE_KEY)){
 	}
 if(sdata->video_s!=NULL)pthread_mutex_lock(&(sdata->video_s->ctr_mutex));
 if(sdata->audio_s!=NULL)pthread_mutex_lock(&(sdata->audio_s->ctr_mutex));
-if(sdata->video_s!=NULL)sdata->video_s->stop_stream|=STOP_PRODUCER_THREAD;
-if(sdata->audio_s!=NULL)sdata->audio_s->stop_stream|=STOP_PRODUCER_THREAD;
+if(sdata->video_s!=NULL){
+	sdata->video_s->stop_stream|=STOP_PRODUCER_THREAD;
+	start_consumer_thread(sdata->video_s);
+	}
+if(sdata->audio_s!=NULL){
+	sdata->audio_s->stop_stream|=STOP_PRODUCER_THREAD;
+	start_consumer_thread(sdata->audio_s);
+	}
 if(sdata->audio_s!=NULL)pthread_mutex_unlock(&(sdata->audio_s->ctr_mutex));
 if(sdata->video_s!=NULL)pthread_mutex_unlock(&(sdata->video_s->ctr_mutex));
 if(sdata->video_s!=NULL)v4l_detach_output_stream(sdata->v4l_device, sdata->video_s);
