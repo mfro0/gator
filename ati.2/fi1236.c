@@ -52,7 +52,7 @@ FI1236Ptr Detect_FI1236(I2CBusPtr b, I2CSlaveAddr addr)
     return f;
 }
 
-void MT2032_getid(FI1236Ptr f)
+static void MT2032_getid(FI1236Ptr f)
 {
 CARD8 out[4];
 CARD8 in;
@@ -64,11 +64,10 @@ xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: Company code 0x%02x%02x, pa
 
 }
 
-void MT2032_init(FI1236Ptr f)
+static void MT2032_init(FI1236Ptr f)
 {
 CARD8 data[10];
 CARD8 value;
-CARD8 xogc;
 
 MT2032_getid(f);
 
@@ -107,7 +106,7 @@ while(1) {
 	}
 }
 
-int MT2032_no_spur_in_band(MT2032_parameters *m)
+static int MT2032_no_spur_in_band(MT2032_parameters *m)
 {
 int n_max, n1, n2;
 double f_test;
@@ -129,7 +128,7 @@ while(1){
 
 }
 
-void MT2032_calculate_register_settings(MT2032_parameters *m, double f_rf, double f_if1, double f_if2, double f_ref, double f_ifbw, double f_step)
+static void MT2032_calculate_register_settings(MT2032_parameters *m, double f_rf, double f_if1, double f_if2, double f_ref, double f_ifbw, double f_step)
 {
 int n;
 m->f_rf=f_rf;
@@ -179,7 +178,7 @@ m->NUM=(int)(3780.0*(m->f_lo2/f_ref-m->LO2I));
 m->NUM=m->STEP*(int)((1.0*m->NUM)/(1.0*m->STEP)+0.5);
 }
 
-int MT2032_wait_for_lock(FI1236Ptr f)
+static int MT2032_wait_for_lock(FI1236Ptr f)
 {
 int n;
 CARD8 data[10];
@@ -202,7 +201,7 @@ if(n<0){
 return 1;
 }
 
-void MT2032_implement_settings(FI1236Ptr f, MT2032_parameters *m)
+static void MT2032_implement_settings(FI1236Ptr f, MT2032_parameters *m)
 {
 CARD8 data[10];
 CARD8 value;
@@ -233,7 +232,7 @@ I2C_WriteRead(&(f->d), (I2CByte *)data, 3, NULL, 0);
 MT2032_wait_for_lock(f);
 }
 
-void MT2032_optimize_VCO(FI1236Ptr f, MT2032_parameters *m)
+static void MT2032_optimize_VCO(FI1236Ptr f, MT2032_parameters *m)
 {
 CARD8 data[10];
 CARD8 value;
@@ -258,7 +257,7 @@ I2C_WriteRead(&(f->d), (I2CByte *)data, 2, NULL, 0);
 MT2032_wait_for_lock(f);
 }
 
-void MT2032_dump_parameters(FI1236Ptr f, MT2032_parameters *m)
+static void MT2032_dump_parameters(FI1236Ptr f, MT2032_parameters *m)
 {
 xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: input f_rf=%g f_if1=%g f_if2=%g f_ref=%g f_ifbw=%g f_step=%g\n", 
 	m->f_rf, m->f_if1, m->f_if2, m->f_ref, m->f_ifbw, m->f_step);
@@ -267,7 +266,7 @@ xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: computed f_lo1=%g f_lo2=%g 
 	m->f_lo1, m->f_lo2, m->LO1I, m->LO2I, m->SEL, m->STEP, m->NUM);
 }
 
-void MT2032_dump_status(FI1236Ptr f)
+static void MT2032_dump_status(FI1236Ptr f)
 {
 CARD8 in;
 CARD8 out[2];
@@ -292,12 +291,12 @@ xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: status: XOK=%d LO1LK=%d LO2
 	XOK, LO1LK, LO2LK, LDONrb, AFC, TAD1, TAD2);
 }
 
-void MT2032_tune_NTSC(FI1236Ptr f, double freq)
+static void MT2032_tune_NTSC(FI1236Ptr f, double freq)
 {
 MT2032_parameters m;
 CARD8 data[10];
 
-MT2032_calculate_register_settings(&m, freq, 1090.0, 44, 5.25, 6.0, 0.0625);
+MT2032_calculate_register_settings(&m, freq, 1090.0, 44.0, 5.25, 6.0, 0.0625);
 MT2032_implement_settings(f, &m);
 MT2032_optimize_VCO(f, &m);
 MT2032_dump_parameters(f, &m);
