@@ -33,3 +33,29 @@ start_avview$(EXEEXT): start_avview.in
 	echo 'global avview_directory ; set avview_directory "${datadir}/AVview" ' >> start_avview
 	cat start_avview.in >> start_avview
 	chmod +x start_avview
+
+install-data-hook:
+	@echo ""
+	@echo " ************************************************"
+	@echo ""
+	@echo "   To start AVview use $(bindir)/start_avview"
+	@echo ""
+
+install-exec-hook:
+	@echo ""
+	@echo " ************************************************"
+	@echo ""
+	@echo "   To start AVview use $(bindir)/start_avview"
+	@echo ""
+	
+all-local:
+	@echo ""
+	@echo " *****************************************************"
+	@echo ""
+	@echo "  To try out AVview without installing it first run:"
+	@echo ""
+	@echo "       ./start_avview.no_install"
+	@echo ""
+	@echo "  This will always use code in current directory,"
+	@echo "     even if another installed version of AVview exists"
+	@echo ""
