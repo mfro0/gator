@@ -725,7 +725,8 @@ static int __devinit km_probe(struct pci_dev *dev, const struct pci_device_id *p
 	FIELD("DEVICE_ID").data.c.string=kmalloc(strlen(dev->pretty_name)+1, GFP_KERNEL);
 	memcpy(FIELD("DEVICE_ID").data.c.string, dev->pretty_name, strlen(dev->pretty_name)+1);
 #else
-	FIELD("DEVICE_ID").data.c.string=0;
+	FIELD("DEVICE_ID").data.c.string=kmalloc(strlen(dev->slot_name)+1, GFP_KERNEL);
+	memcpy(FIELD("DEVICE_ID").data.c.string, dev->slot_name, strlen(dev->slot_name)+1);
 #endif
 #else
 	FIELD("DEVICE_ID").data.c.string=kmalloc(strlen(dev->name)+1, GFP_KERNEL);
