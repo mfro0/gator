@@ -9,6 +9,7 @@
 #include "Xv.h"
 #include "fourcc.h"
 
+#include "xf86PciInfo.h"
 
 #include "xf86i2c.h"
 #include "fi1236.h"
