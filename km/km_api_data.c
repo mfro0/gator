@@ -97,9 +97,9 @@ if(kdufpd->buffer<0){
 	return -EIO;
 	}
 q=kmsbi[kdufpd->buffer].next;
-while((kdufpd->bytes_read==dvb->free[kdufpd->buffer])||(q<0)||((kmsbi[q].flag & user_flag_mask)!=user_flag)){
+while((kdufpd->bytes_read==dvb->free[kdufpd->buffer])||(q<0)||((kmsbi[q].user_flag & user_flag_mask)!=user_flag)){
 	q=kmsbi[kdufpd->buffer].next;
-	if((q>=0) && (kdufpd->age<kmsbi[q].age)){
+	if((q>=0) && (kdufpd->age<kmsbi[q].age) && !(kmsbi[q].flag & KM_STREAM_BUF_BUSY)){
 		kdufpd->buffer=q;
 		kdufpd->age=kmsbi[q].age;
 		if((kmsbi[q].user_flag & user_flag_mask)!=user_flag){
@@ -132,15 +132,17 @@ while((kdufpd->bytes_read==dvb->free[kdufpd->buffer])||(q<0)||((kmsbi[q].flag & 
 	current->state=TASK_RUNNING;
 	}
 /* We can unlock earlier than before as we are not modifying any of kdu fields.
-   dvb should not change under us as we have been passwed kdufpd - and this
+   dvb should not change under us as we have been passed kdufpd - and this
    implies that kdufpd->kdu is still in use */
 spin_unlock(&(kdu->lock));
 todo=count;
-while(todo>0){	
+#if 0
+while(todo>0)
+#endif
+	{	
 	q=todo;
 	if((kdufpd->bytes_read+q)>=dvb->free[kdufpd->buffer])q=dvb->free[kdufpd->buffer]-kdufpd->bytes_read;   
 	if(copy_to_user((void *) buf, (void *) (dvb->ptr[kdufpd->buffer]+kdufpd->bytes_read), q)){
-		spin_unlock(&(kdu->lock));
 		return -EFAULT;
 		}
 	todo-=q;

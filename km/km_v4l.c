@@ -60,7 +60,7 @@ return -EINVAL;
 
 static long km_v4l_read(struct video_device *v, char *buf, unsigned long count, int nonblock)
 {
-KM_STRUCT *kms=(KM_STRUCT *)v;
+KM_STRUCT *kms=(KM_STRUCT *)v->priv;
 int done;
 KDU_FILE_PRIVATE_DATA *kdufpd=kms->v4l_kdufpd;
 
@@ -225,7 +225,7 @@ return -EINVAL;
 
 static long km_vbi_read(struct video_device *v, char *buf, unsigned long count, int nonblock)
 {
-KM_STRUCT *kms=(KM_STRUCT *)v;
+KM_STRUCT *kms=(KM_STRUCT *)v->priv;
 int done;
 KDU_FILE_PRIVATE_DATA *kdufpd=kms->vbi_kdufpd;
 

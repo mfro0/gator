@@ -37,6 +37,7 @@ typedef struct {
 	int flag;       /* flag that relates special information about
 	                   this buffer, see below: */
 	#define KM_STREAM_BUF_PINNED	1
+	#define KM_STREAM_BUF_BUSY	2
 	int user_flag;   /* for whatever the user has a need for */
 	} KM_STREAM_BUFFER_INFO;
 

@@ -69,6 +69,7 @@ if(size>(4096*4096/sizeof(bm_list_descriptor))){
 	printk("Too large buffer allocation requested: %ld bytes\n", size);
 	return -1;
 	}
+stream->total_frames=0;
 /* allocate data unit to hold stream meta info */
 stream->dvb_info.size=num_buffers*(sizeof(FIELD_INFO)+sizeof(KM_STREAM_BUFFER_INFO));
 stream->dvb_info.n=1;
@@ -144,6 +145,7 @@ stream->du=-1;
 km_deallocate_data(stream->info_du);
 stream->info_du=-1;
 stream->num_buffers=-1;
+printk("km: closed stream, %ld buffers captured\n", stream->total_frames);
 return 0;
 }
 
@@ -199,7 +201,7 @@ kmtq->request[last].user_data=user_data;
 
 kmtq->last++;
 if(kmtq->last>=kmtq->size)kmtq->last=0;
-/* check if any transfer has been schedule */
+/* check if any transfer has been scheduled */
 if(km_fire_transfer_request(kmtq)){
 	spin_unlock_irq(&(kmtq->lock));
 	kmtq->request[kmtq->first].start_transfer(&(kmtq->request[kmtq->first]));
@@ -213,14 +215,19 @@ return 0;
    Be careful with spin_locks */
 void km_signal_transfer_completion(KM_TRANSFER_QUEUE *kmtq)
 {
+KM_TRANSFER_REQUEST *request;
 spin_lock(&(kmtq->lock));
-wake_up_interruptible(kmtq->request[kmtq->first].dvb->dataq);
+request=&(kmtq->request[kmtq->first]);
+if(request->dvb->kmsbi!=NULL)
+	request->dvb->kmsbi[request->buffer].flag&=~KM_STREAM_BUF_BUSY;
+wake_up_interruptible(request->dvb->dataq);
 /* this operation is atomic as the value written in 32 bits */
-kmtq->request[kmtq->first].flag=KM_TRANSFER_NOP;
+request->flag=KM_TRANSFER_NOP;
 wmb();
 if(km_fire_transfer_request(kmtq)){
+	request=&(kmtq->request[kmtq->first]);	
 	spin_unlock(&(kmtq->lock));
-	kmtq->request[kmtq->first].start_transfer(&(kmtq->request[kmtq->first]));
+	request->start_transfer(request);
 	return;
 	}
 spin_unlock(&(kmtq->lock));
@@ -261,7 +268,7 @@ int start_video_capture(KM_STRUCT *kms)
 int result;
 u32 buf_size;
 spin_lock(&(kms->kms_lock));
-if(kms->is_capture_active==NULL){
+if((kms->is_capture_active==NULL)||(kms->get_window_parameters==NULL)||(kms->allocate_dvb==NULL)){
 	result=-ENOTSUPP;
 	goto fail;
 	}
@@ -271,26 +278,22 @@ if(!kms->is_capture_active(kms)){
 	goto fail;
 	}
 
-kms->total_frames=0;
-kms->overrun=0;
 kms->get_window_parameters(kms, &(kms->vwin));
 
 
 buf_size=kms->vwin.width*kms->vwin.height*2;
 
-if(kms->allocate_dvb!=NULL){
-	if(kms->allocate_dvb(&(kms->capture), km_buffers, buf_size)<0){
-		result=-ENOMEM;
-		goto fail;
-		}
-	kmd_signal_state_change(kms->kmd);
-	} else {
-	result=-ENOTSUPP;
+if(kms->allocate_dvb(&(kms->capture), km_buffers, buf_size)<0){
+	result=-ENOMEM;
 	goto fail;
 	}
-spin_unlock(&(kms->kms_lock));
-if(kms->start_transfer!=NULL)kms->start_transfer(kms);
-return 0;
+kmd_signal_state_change(kms->kmd);
+if(kms->start_transfer!=NULL){
+	kms->start_transfer(kms);
+	spin_unlock(&(kms->kms_lock));
+	return 0;
+	}
+result=0;
 
 fail:
   spin_unlock(&(kms->kms_lock));
@@ -306,16 +309,15 @@ if(kms->deallocate_dvb!=NULL){
 	kmd_signal_state_change(kms->kmd);
 	} else {
 	}
-printk("km: total frames: %ld, overrun: %ld\n", kms->total_frames, kms->overrun);
 spin_unlock(&(kms->kms_lock));
 }
 
 int start_vbi_capture(KM_STRUCT *kms)
 {
 int result;
-u32 buf_size;
+long buf_size;
 spin_lock(&(kms->kms_lock));
-if(kms->is_vbi_active==NULL){
+if((kms->is_vbi_active==NULL)||(kms->get_vbi_buf_size==NULL)||(kms->allocate_dvb==NULL)){
 	result=-ENOTSUPP;
 	goto fail;
 	}
@@ -325,24 +327,21 @@ if(!kms->is_vbi_active(kms)){
 	goto fail;
 	}
 
-kms->get_window_parameters(kms, &(kms->vwin));
+buf_size=kms->get_vbi_buf_size(kms);
 
+printk("vbi_buf_size=%ld\n", buf_size);
 
-buf_size=kms->vwin.width*kms->vwin.height*2;
-
-if(kms->allocate_dvb!=NULL){
-	if(kms->allocate_dvb(&(kms->vbi), km_buffers, buf_size)<0){
-		result=-ENOMEM;
-		goto fail;
-		}
-	kmd_signal_state_change(kms->kmd);
-	} else {
-	result=-ENOTSUPP;
+if(kms->allocate_dvb(&(kms->vbi), km_buffers, buf_size)<0){
+	result=-ENOMEM;
 	goto fail;
 	}
-spin_unlock(&(kms->kms_lock));
-if(kms->start_vbi_transfer!=NULL)kms->start_vbi_transfer(kms);
-return 0;
+kmd_signal_state_change(kms->kmd);
+if(kms->start_vbi_transfer!=NULL){
+	kms->start_vbi_transfer(kms);
+	spin_unlock(&(kms->kms_lock));
+	return 0;
+	}
+result=0;
 
 fail:
   spin_unlock(&(kms->kms_lock));
@@ -358,14 +357,13 @@ if(kms->deallocate_dvb!=NULL){
 	kmd_signal_state_change(kms->kmd);
 	} else {
 	}
-printk("km: total frames: %ld, overrun: %ld\n", kms->total_frames, kms->overrun);
 spin_unlock(&(kms->kms_lock));
 }
 
 /* you shouldn't be having more than 3 actually.. - 1 agp and 2 pci - 
     number of slots + bandwidth issues */
 #define MAX_DEVICES 10
-KM_STRUCT km_devices[10];
+KM_STRUCT km_devices[MAX_DEVICES];
 int num_devices=0;
 
 int find_kmfl(KM_FIELD *kmfl, char *id)
@@ -529,6 +527,7 @@ switch(pci_id->driver_data){
 		kms->is_capture_active=radeon_is_capture_active;
 		kms->is_vbi_active=radeon_is_vbi_active;
 		kms->get_window_parameters=radeon_get_window_parameters;
+		kms->get_vbi_buf_size=radeon_get_vbi_buf_size;
 		kms->start_transfer=radeon_start_transfer;
 		kms->stop_transfer=radeon_stop_transfer;
 		kms->allocate_dvb=generic_allocate_dvb;

@@ -67,6 +67,8 @@ typedef struct {
 	int du;
 	KM_DATA_VIRTUAL_BLOCK dvb;
 	long next_buf;
+	long total_frames;
+
 	void *buffer[MAX_FRAME_BUFF_NUM];
 	long free[MAX_FRAME_BUFF_NUM];
 
@@ -89,8 +91,6 @@ typedef struct S_KM_STRUCT {
 	long vblank_count;
 	long vline_count;
 	long vsync_count;
-	long total_frames;
-	long overrun;
 	unsigned char * reg_aperture;
 	
 	int v4l_buf_parity;
@@ -107,10 +107,13 @@ typedef struct S_KM_STRUCT {
 	KM_TRANSFER_REQUEST gui_dma_request[10];  /* we should not have more than 10 
 	                                             outstanding DMA requests */
 	
-	unsigned long buf0_odd_offset;
-	unsigned long buf0_even_offset;
-	unsigned long buf1_odd_offset;
-	unsigned long buf1_even_offset;
+	u32 buf0_odd_offset;
+	u32 buf0_even_offset;
+	u32 buf1_odd_offset;
+	u32 buf1_even_offset;
+
+	u32 vbi0_offset;
+	u32 vbi1_offset;
 
 	int capture_active;
 	long kmd;
@@ -121,6 +124,7 @@ typedef struct S_KM_STRUCT {
 	int  (*is_capture_active)(struct S_KM_STRUCT *kms);
 	int (*is_vbi_active)(struct S_KM_STRUCT *kms);
 	void (*get_window_parameters)(struct S_KM_STRUCT *kms, struct video_window *vwin);
+	long (*get_vbi_buf_size)(struct S_KM_STRUCT *kms);
 	void (*start_transfer)(struct S_KM_STRUCT *kms);
 	void (*stop_transfer)(struct S_KM_STRUCT *kms);
 	void (*start_vbi_transfer)(struct S_KM_STRUCT *kms);
@@ -133,6 +137,8 @@ int acknowledge_dma(KM_STRUCT *kms);
 int find_free_buffer(KM_STREAM *stream);
 int start_video_capture(KM_STRUCT *kms);
 void stop_video_capture(KM_STRUCT *kms);
+int start_vbi_capture(KM_STRUCT *kms);
+void stop_vbi_capture(KM_STRUCT *kms);
 int km_add_transfer_request(KM_TRANSFER_QUEUE *kmtq, 
 	KM_DATA_VIRTUAL_BLOCK *dvb, int buffer, int flag,
 	int (*start_transfer)(KM_TRANSFER_REQUEST *kmtr), void *user_data);

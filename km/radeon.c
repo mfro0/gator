@@ -125,6 +125,16 @@ kms->buf1_odd_offset=a;
 printk("radeon_get_window_parameters: width=%d height=%d\n", vwin->width, vwin->height);
 }
 
+long radeon_get_vbi_buf_size(KM_STRUCT *kms)
+{
+u32 h_window, v_window;
+h_window=readl(kms->reg_aperture+RADEON_CAP0_VBI_H_WINDOW);
+v_window=readl(kms->reg_aperture+RADEON_CAP0_VBI_V_WINDOW);
+kms->vbi0_offset=readl(kms->reg_aperture+RADEON_CAP0_VBI0_OFFSET);
+kms->vbi1_offset=readl(kms->reg_aperture+RADEON_CAP0_VBI1_OFFSET);
+return ((h_window>>16)*((v_window>>16)-(v_window & 0xffff)));
+}
+
 void radeon_start_transfer(KM_STRUCT *kms)
 {
 u32 a;
@@ -154,6 +164,52 @@ u32 a;
 /* stop interrupts */
 a=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
 writel(a & ~0xf, kms->reg_aperture+RADEON_CAP_INT_CNTL);
+#if 0
+a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
+writel(a & ~(1<<30), kms->reg_aperture+RADEON_GEN_INT_CNTL);
+#endif
+wmb();
+/* stop outstanding DMA transfers */
+a=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
+if(a & RADEON_DMA_GUI_STATUS__ACTIVE){
+	writel(a | RADEON_DMA_GUI_STATUS__ABORT, kms->reg_aperture+RADEON_DMA_GUI_STATUS);
+	wmb();
+	while((a=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS))&RADEON_DMA_GUI_STATUS__ACTIVE);
+	wmb();
+	writel(a & ~ RADEON_DMA_GUI_STATUS__ABORT, kms->reg_aperture+RADEON_DMA_GUI_STATUS);
+	}
+kms->capture_active=0;
+}
+
+void radeon_start_vbi_transfer(KM_STRUCT *kms)
+{
+u32 a;
+
+kms->capture_active=radeon_check_mc_settings(kms);
+if(!kms->capture_active)return;
+wmb();
+a=readl(kms->reg_aperture+RADEON_BUS_CNTL);
+printk("RADEON_BUS_CNTL=0x%08x\n", a);
+/* enable bus mastering */
+if(a & (1<<6)){ 
+	printk("Enabling bus mastering\n");
+	writel(a | (3<<1) | (1<<6), kms->reg_aperture+RADEON_BUS_CNTL);
+	}
+wmb();
+writel(3, kms->reg_aperture+RADEON_CAP_INT_STATUS);
+writel(1<<30, kms->reg_aperture+RADEON_GEN_INT_STATUS);
+a=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
+writel(a|0x30, kms->reg_aperture+RADEON_CAP_INT_CNTL);
+a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
+writel(a|(1<<30), kms->reg_aperture+RADEON_GEN_INT_CNTL);
+}
+
+void radeon_stop_vbi_transfer(KM_STRUCT *kms)
+{
+u32 a;
+/* stop interrupts */
+a=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
+writel(a & ~0x30, kms->reg_aperture+RADEON_CAP_INT_CNTL);
 a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
 writel(a & ~(1<<30), kms->reg_aperture+RADEON_GEN_INT_CNTL);
 wmb();
@@ -203,9 +259,13 @@ wmb();
 writel(kvirt_to_pa(kms->capture.dma_table[kmtr->buffer]), (u32)(kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR)| (0));
 }
 
-static void radeon_schedule_request(KM_STRUCT *kms, int buffer, int field)
+static void radeon_schedule_request(KM_STRUCT *kms, KM_STREAM *stream, int field)
 {
 long offset;
+int buffer;
+/* do not start dma transfer if stream is not being used anymore */
+if(stream->num_buffers<=0)return;
+buffer=find_free_buffer(stream);
 if(buffer<0){
 	KM_DEBUG("radeon_schedule_request buffer=%d field=%d\n",buffer, field);
 	return;
@@ -213,33 +273,40 @@ if(buffer<0){
 switch(field){
 	case 0:
 		offset=kms->buf0_odd_offset;
-		kms->capture.dvb.kmsbi[buffer].user_flag|=KM_FI_ODD;
+		stream->dvb.kmsbi[buffer].user_flag|=KM_FI_ODD;
 		break;
 	case 1:
 		offset=kms->buf0_even_offset;
-		kms->capture.dvb.kmsbi[buffer].user_flag&=~KM_FI_ODD;
+		stream->dvb.kmsbi[buffer].user_flag&=~KM_FI_ODD;
 		break;
 	case 2:
 		offset=kms->buf1_odd_offset;
-		kms->capture.dvb.kmsbi[buffer].user_flag|=KM_FI_ODD;
+		stream->dvb.kmsbi[buffer].user_flag|=KM_FI_ODD;
 		break;
 	case 3:
 		offset=kms->buf1_even_offset;
-		kms->capture.dvb.kmsbi[buffer].user_flag&=~KM_FI_ODD;
+		stream->dvb.kmsbi[buffer].user_flag&=~KM_FI_ODD;
+		break;
+	case 4: 
+		offset=kms->vbi0_offset;
+		break;
+	case 5:
+		offset=kms->vbi1_offset;
 		break;
 	default:
 		printk("Internal error %s %s %d\n", __FILE__, __FUNCTION__, __LINE__);
 		return;
 	}
 KM_DEBUG("buf=%d field=%d\n", buffer, field);
-kms->capture.fi[buffer].timestamp_start=jiffies;
-radeon_setup_dma_table(kms, (kms->capture.dma_table[buffer]), offset, kms->capture.free[buffer]);
+stream->fi[buffer].timestamp_start=jiffies;
+radeon_setup_dma_table(kms, (stream->dma_table[buffer]), offset, stream->free[buffer]);
 /* start transfer */
-kms->total_frames++;
-kms->capture.dvb.kmsbi[buffer].age=kms->total_frames;
+stream->total_frames++;
+stream->dvb.kmsbi[buffer].age=stream->total_frames;
+stream->dvb.kmsbi[buffer].flag|=KM_STREAM_BUF_BUSY;
 wmb();
 km_add_transfer_request(&(kms->gui_dma_queue),
-	&(kms->capture.dvb), buffer, KM_TRANSFER_TO_SYSTEM_RAM, radeon_start_request_transfer, kms);
+	&(stream->dvb), buffer, KM_TRANSFER_TO_SYSTEM_RAM, radeon_start_request_transfer, kms);
 }
 
 static int radeon_is_capture_irq_active(KM_STRUCT *kms)
@@ -254,12 +321,13 @@ if(!(status & mask))return 0;
 wmb();
 writel(status & mask, kms->reg_aperture+RADEON_CAP_INT_STATUS);
 KM_DEBUG("CAP_INT_STATUS=0x%08x\n", status);
-/* do not start dma transfer if capture is not active anymore */
-if(!kms->capture_active)return 1;
-if(status & 1)radeon_schedule_request(kms, find_free_buffer(&(kms->capture)), 0);
-if(status & 2)radeon_schedule_request(kms, find_free_buffer(&(kms->capture)), 1);
-if(status & 4)radeon_schedule_request(kms, find_free_buffer(&(kms->capture)), 2);
-if(status & 8)radeon_schedule_request(kms, find_free_buffer(&(kms->capture)), 3);
+
+if(status & 1)radeon_schedule_request(kms, &(kms->capture), 0);
+if(status & 2)radeon_schedule_request(kms, &(kms->capture), 1);
+if(status & 4)radeon_schedule_request(kms, &(kms->capture), 2);
+if(status & 8)radeon_schedule_request(kms, &(kms->capture), 3);
+if(status & 0x10)radeon_schedule_request(kms, &(kms->vbi),  4);
+if(status & 0x20)radeon_schedule_request(kms, &(kms->vbi),  5);
 return 1;
 }
 
