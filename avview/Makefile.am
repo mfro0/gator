@@ -15,7 +15,8 @@ scpdir = @datadir@/AVview
 
 dist_scp_DATA = alsa.scp bindings.scp ffmpeg.scp themes.scp video_device.scp \
 	alsa_mixer.scp channel_scan.scp  km.scp tree.scp xv.scp	\
-	avview.scp diag.scp setup.scp v4l.scp xmisc.scp avview.modmap avview-16x16.ppm avview-control-16x16.ppm
+	avview.scp diag.scp setup.scp v4l.scp xmisc.scp avview.modmap \
+	avview-16x16.ppm avview-control-16x16.ppm avview-48x48.png
 
 #
 # Whoever said that the suffix is .c ?
