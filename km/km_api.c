@@ -83,6 +83,8 @@ for(i=0;kmd->fields[i].type!=KM_FIELD_TYPE_EOL;i++){
 			break;
 		}
 	}
+if(kmfpd->br_free+10>=kmfpd->br_size)expand_buffer(kmfpd, 14);
+kmfpd->br_free+=sprintf(kmfpd->buffer_read+kmfpd->br_free, "+END_STATUS\n");
 kmfpd->request_flags &= ~STATUS_REQUESTED; 
 kmd_signal_state_change(kmd->number);
 }
@@ -280,7 +282,8 @@ spin_lock_init(&(kmd->lock));
 init_waitqueue_head(&(kmd->wait));
 
 sprintf(temp, "control%d", num);
-kmd->control=create_proc_entry(temp, S_IFREG | S_IRUGO | S_IWUSR, km_root);
+/*kmd->control=create_proc_entry(temp, S_IFREG | S_IRUGO | S_IWUSR, km_root); */
+kmd->control=create_proc_entry(temp, S_IFREG | S_IRUGO | S_IWUGO, km_root);
 sprintf(temp, "data%d", num);
 kmd->data=create_proc_entry(temp, S_IFREG | S_IRUGO | S_IWUSR, km_root);
 
