@@ -48,6 +48,8 @@ TheatrePtr DetectTheatre(GENERIC_BUS_Ptr b)
    {
 	if(b->read(b, ((i & 0x03)<<14) | VIP_VIP_VENDOR_DEVICE_ID, 4, (CARD8 *)&val))
         {
+	  if(val)xf86DrvMsg(b->scrnIndex, X_INFO, "Device %d on VIP bus ids as 0x%08x\n",i,val);
+	  if(t->theatre_num>=0)continue; /* already found one instance */
 	  switch(val){
 	  	case RT100_ATI_ID:
 	           t->theatre_num=i;
@@ -55,13 +57,19 @@ TheatrePtr DetectTheatre(GENERIC_BUS_Ptr b)
 		   break;
 		case RT200_ATI_ID:
 	           t->theatre_num=i;
-		   t->theatre_id=RT100_ATI_ID;
+		   t->theatre_id=RT200_ATI_ID;
 		   break;
                 }
+	} else {
+	  xf86DrvMsg(b->scrnIndex, X_INFO, "No response from device %d on VIP bus\n",i);	
 	}
-	if(val)xf86DrvMsg(b->scrnIndex, X_INFO, "Device %d on VIP bus ids as 0x%08x\n",i,val);
    }
-   if(t->theatre_num>=0)xf86DrvMsg(b->scrnIndex, X_INFO, "Detected Rage Theatre as device %d on VIP bus with ids 0x%08x\n",t->theatre_num,val);
+   if(t->theatre_num>=0)xf86DrvMsg(b->scrnIndex, X_INFO, "Detected Rage Theatre as device %d on VIP bus with id 0x%08x\n",t->theatre_num,t->theatre_id);
+
+   if(t->theatre_id==RT200_ATI_ID){
+   	xf86DrvMsg(b->scrnIndex, X_INFO, "Rage Theatre 200 is not supported yet\n");
+	t->theatre_num=-1;
+	}
 
    if(t->theatre_num < 0)
    {
@@ -1783,7 +1791,7 @@ void RT_SetConnector (TheatrePtr t, CARD16 wConnector, int tunerFlag)
 	}
     dwTempContrast = ReadRT_fld (fld_LP_CONTRAST);
     xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre Checkpoint 2, counter=%ld  (%d)\n", counter,  ReadRT_fld(fld_VS_LINE_COUNT));
-    if(counter>=100000)xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre: timeout waiting for line count (%d)\n", ReadRT_fld (fld_VS_LINE_COUNT));
+    if(counter>=10000)xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre: timeout waiting for line count (%d)\n", ReadRT_fld (fld_VS_LINE_COUNT));
 
 
     WriteRT_fld (fld_LP_CONTRAST, 0x0);
