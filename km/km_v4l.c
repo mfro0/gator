@@ -16,20 +16,30 @@
 
 static int km_open(struct video_device *dev, int flags)
 {
+u32 a;
 KM_STRUCT *kms=(KM_STRUCT *)dev;
 kms->frame.buf_ptr=0;
 kms->frame_even.buf_ptr=0;
 kms->buf_read_from=0;
-writel(3, kms->reg_aperture+CAP_INT_CNTL);
+writel(3, kms->reg_aperture+CAP_INT_STATUS);
+writel(1<<30, kms->reg_aperture+GEN_INT_STATUS);
+a=readl(kms->reg_aperture+CAP_INT_CNTL);
+writel(a|3, kms->reg_aperture+CAP_INT_CNTL);
+a=readl(kms->reg_aperture+GEN_INT_CNTL);
+writel(a|(1<<30), kms->reg_aperture+GEN_INT_CNTL);
 return 0;
 }
 
 
 static void km_close(struct video_device *dev)
 {
+u32 a;
 KM_STRUCT *kms=(KM_STRUCT *)dev;
 /* stop interrupts */
-writel(0, kms->reg_aperture+CAP_INT_CNTL);
+a=readl(kms->reg_aperture+CAP_INT_CNTL);
+writel(a & ~3, kms->reg_aperture+CAP_INT_CNTL);
+a=readl(kms->reg_aperture+GEN_INT_CNTL);
+writel(a & ~(1<<30), kms->reg_aperture+GEN_INT_CNTL);
 kms->frame.buf_ptr=0;
 kms->frame_even.buf_ptr=0;
 kms->buf_read_from=-1; /* none */
@@ -45,6 +55,7 @@ static long km_read(struct video_device *v, char *buf, unsigned long count, int 
 KM_STRUCT *kms=(KM_STRUCT *)v;
 SINGLE_FRAME *frame;
 int q,todo;
+DECLARE_WAITQUEUE(wait, current);
 
 todo=count;
 if(kms->buf_read_from<0){
@@ -53,7 +64,23 @@ if(kms->buf_read_from<0){
 	}
 if(kms->buf_read_from==1)frame=&(kms->frame_even);
 	else frame=&(kms->frame);
+#if 0
 printk("frame->buf_ptr=%d frame->buf_free=%d\n", frame->buf_ptr, frame->buf_free);
+#endif
+while(frame->buf_ptr==frame->buf_free){
+	printk("frame->dma_active=%d\n", frame->dma_active);
+	if(nonblock)return -EWOULDBLOCK;
+	add_wait_queue(&(kms->frameq), &wait);
+	current->state=TASK_INTERRUPTIBLE;
+	schedule();
+	if(signal_pending(current)){
+		remove_wait_queue(&(kms->frameq), &wait);
+		current->state=TASK_RUNNING;
+		return -EINTR;
+		}
+	remove_wait_queue(&(kms->frameq), &wait);
+	current->state=TASK_RUNNING;
+	}
 while(todo>0){	
 	q=todo;
 	if((frame->buf_ptr+q)>=frame->buf_free)q=frame->buf_free-frame->buf_ptr;   
@@ -63,7 +90,6 @@ while(todo>0){
 	frame->buf_ptr+=q;
 	buf+=q;
 	if(frame->buf_ptr>=frame->buf_free){
-		frame->buf_ptr=0;
 		kms->buf_read_from=kms->buf_read_from ? 0: 1;
 		break;
 		}
@@ -141,14 +167,23 @@ static unsigned int km_poll(struct video_device *dev, struct file *file,
 	poll_table *wait)
 {
 KM_STRUCT *kms=(KM_STRUCT *)dev;
-	unsigned int mask = 0;
+unsigned int mask=0;
+SINGLE_FRAME *frame;
+
+if(kms->buf_read_from<0){
+	printk("km: internal error in kmv4l:km_poll\n");
+	return 0;
+	}
+if(kms->buf_read_from==0)frame=&(kms->frame);
+	else frame=&(kms->frame_even);
+
+if(frame->buf_ptr==frame->buf_free)
+	poll_wait(file, &(kms->frameq), wait);
 
 #if 0
-	poll_wait(file, &btv->vbiq, wait);
-
 	if (btv->vbip < VBIBUF_SIZE)
 #endif
-/* for now we always have data.. */
+/* by now we have more data.. */
 mask |= (POLLIN | POLLRDNORM);
 
 return mask;

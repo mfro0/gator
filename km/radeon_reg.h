@@ -2,6 +2,7 @@
 #define __RADEON_REG_H__
 
 #define GEN_INT_STATUS 0x44
+#define GEN_INT_CNTL   0x40
 #define CAP_INT_CNTL   0x908
 #define CAP_INT_STATUS 0x90C
 

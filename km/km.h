@@ -17,6 +17,7 @@ typedef struct {
 	long buf_size;
 	long buf_ptr;
 	long buf_free;
+	int dma_active;
 	bm_list_descriptor *dma_table;
 	} SINGLE_FRAME;
 
@@ -26,11 +27,10 @@ typedef struct {
 	struct pci_dev *dev;
 	long interrupt_count;
 	unsigned char * reg_aperture;
-	long reg_status;
-	long reg_mask;
 	int buf_read_from;
 	SINGLE_FRAME frame;
 	SINGLE_FRAME frame_even;
+	wait_queue_head_t frameq;
 	} KM_STRUCT;
 
 
