@@ -116,7 +116,7 @@ if {[ffmpeg_present] == "yes"} {
 	label $cw.fifo_label -text "Fifo size: "
 	label $cw.fifo_value_label -text "0 Mb"
 	eval $cw.fifo_label configure [get_settings $cw.fifo_label Capture V4L]
-	eval $cw.fifo_value_label configure [get_settings $cw.fifo_value Capture V4L]
+	eval $cw.fifo_value_label configure [get_settings $cw.fifo_value_label Capture V4L]
 	grid $cw.fifo_label $cw.fifo_value_label -sticky nws
 	
 	label $cw.fifo_limit_label -text "Fifo limit (Mb):"
@@ -299,6 +299,40 @@ switch "$save_type" \
 		}
 }
 
+proc verify_v4l_stream_parameters {} {
+global v4l_capture_on
+global current_video_codec
+global current_audio_codec
+global current_v4l_mode
+global current_v4l_rrate
+global current_av_format
+global current_capture_filename
+global current_v4l_device
+global current_alsa_device
+global file_save_path
+
+if { ("$current_av_format" == "none") &&
+	("$current_v4l_device" != "none") &&
+	("$current_alsa_device" != "none") } {
+	tk_dialog .controlwin.capture.wrong_parameters "Incompatible capture parameters" \
+		"If you want to record both audio and video the file format must not be \"none\"" ""\
+		0 "OK"
+	return 0
+	}
+
+if { ("$current_av_format" == "MPEG") &&
+	( ("$current_v4l_device" != "none" ) && ("$current_video_codec" != "MPEG-1") )
+	} {
+	set ans [tk_dialog .controlwin.capture.wrong_parameters "Incompatible capture parameters" \
+		"At the moment mpeg format is not compatible with video formats except mpeg-1.\n Do you want to proceed anyway ?" ""\
+		1 "Yes" "No" ]
+	if { "$ans" == 0 } { return 1 }
+	return 0
+	}
+
+return 1
+}
+
 proc on_v4l_capture_set {cw name1 name2 w } {
 global v4l_capture_on
 global current_video_codec
@@ -310,6 +344,11 @@ global current_capture_filename
 global current_alsa_device
 global file_save_path
 if { $v4l_capture_on } {
+	if { ! [verify_v4l_stream_parameters] } {
+		set v4l_capture_on 0
+		after idle "$cw.record_button deselect"
+		return
+		}
 	set status [ffmpeg_encode_v4l_stream -v4l_handle current_v4l_handle \
 				-video_codec $current_video_codec \
 				-audio_code $current_audio_codec \
