@@ -145,12 +145,6 @@ MSP3430Ptr DetectMSP3430(I2CBusPtr b, I2CSlaveAddr addr)
 	return NULL;
     }
 
-   if(!I2CDevInit(&(m->d)))
-   {
-       xfree(m->d.DevName);
-       xfree(m);
-       return NULL;
-   }
 
 	m->standard=MSP3430_NTSC;
 	m->connector=MSP3430_CONNECTOR_1;
@@ -232,9 +226,17 @@ MSP3430Ptr DetectMSP3430(I2CBusPtr b, I2CSlaveAddr addr)
 		MSP_getProductName(m->chip_id), supported?"":" (unsupported)", rom_version, m->chip_id);
 
 	if (!supported) {
+       		xfree(m->d.DevName);
 	   	xfree(m);
 		return NULL;
 	}	
+   if(!I2CDevInit(&(m->d)))
+   {
+       xfree(m->d.DevName);
+       xfree(m);
+       return NULL;
+   }
+
    return m;  
 }
 

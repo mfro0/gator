@@ -51,6 +51,7 @@ typedef struct
 } _MM_TABLE;
 
 typedef struct {
+   ScrnInfoPtr	 pScrn;
    CARD32	 transform_index;
    int           brightness;
    int           saturation;
@@ -78,6 +79,8 @@ typedef struct {
    CARD32 	 radeon_i2c_timing;
    CARD32        radeon_M;
    CARD32        radeon_N;
+   CARD32	 i2c_status;
+   CARD32	 i2c_cntl;
    
    FI1236Ptr     fi1236;
    MSP3430Ptr    msp3430;
@@ -787,6 +790,29 @@ static void radeon_i2c_cntl_write(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv, CA
 }
 
 
+static CARD32 radeon_i2c_cntl_read(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv, CARD32 reg)
+{
+    RADEONInfoPtr info = RADEONPTR(pScrn);
+    unsigned char *RADEONMMIO = info->MMIO;
+    CARD32 data;
+
+    if(info->IsRV200){
+        if(pPriv->theatre==NULL){
+		xf86DrvMsg(pScrn->scrnIndex, X_WARNING, "Attempt to access i2c bus on RV200 with Rage Theatre not detected\n");
+		return 0;
+		}
+	#undef read
+         if(pPriv->VIP->read(pPriv->VIP, ((pPriv->theatre->theatre_num & 0x03) << 14) | (reg-RADEON_I2C_CNTL_0+0x20), 4, &data))
+		 return data;
+		 else
+		 return 0;
+	
+    	} else {
+	return INREG(reg);
+	}
+
+}
+
 
 /****************************************************************************
  *  I2C_WaitForAck (void)                                                   *
@@ -1056,7 +1082,6 @@ static Bool RADEONProbeAddress(I2CBusPtr b, I2CSlaveAddr addr)
      return I2C_WriteRead(&d, NULL, 0, &a, 1);
 }
 
-
 #define I2C_CLOCK_FREQ     (80000.0)
 
 
@@ -1118,6 +1143,7 @@ static void RADEONInitI2C(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
     RADEONInfoPtr info = RADEONPTR(pScrn);
     RADEONPLLPtr  pll = &(info->pll);
     int i;
+    unsigned char *RADEONMMIO = info->MMIO;
 
     pPriv->fi1236 = NULL;
     pPriv->msp3430 = NULL;
@@ -1143,10 +1169,9 @@ static void RADEONInitI2C(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
     pPriv->i2c->scrnIndex=pScrn->scrnIndex;
     pPriv->i2c->BusName="Radeon multimedia bus";
     pPriv->i2c->DriverPrivate.ptr=(pointer)pPriv;
-    if(info->IsR200){
+    if(info->IsR200 || info->IsRV200){
 	    pPriv->i2c->I2CWriteRead=R200_I2CWriteRead;
       	    xf86DrvMsg(pScrn->scrnIndex,X_INFO,"Using R200 i2c bus access method\n");
-	    
 	    } else {
 	    pPriv->i2c->I2CWriteRead=RADEONI2CWriteRead;
     	    xf86DrvMsg(pScrn->scrnIndex,X_INFO,"Using Radeon bus access method\n");
@@ -1158,12 +1183,23 @@ static void RADEONInitI2C(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
 
     xf86DrvMsg(pScrn->scrnIndex, X_INFO, "*** %p versus %p\n", xf86CreateI2CBusRec, CreateI2CBusRec);
 
-    nm=(pll->reference_freq * 10000.0)/(4.0 * I2C_CLOCK_FREQ);
+    if(info->IsRV200){
+	    nm=(pll->reference_freq * 40000.0)/(1.0*I2C_CLOCK_FREQ);
+	    } else {
+	    nm=(pll->reference_freq * 10000.0)/(4.0*I2C_CLOCK_FREQ);
+	    }
     for(pPriv->radeon_N=1; pPriv->radeon_N<255; pPriv->radeon_N++)
           if((pPriv->radeon_N * (pPriv->radeon_N-1)) > nm)break;
     pPriv->radeon_M=pPriv->radeon_N-1;
     pPriv->radeon_i2c_timing=2*pPriv->radeon_N;
 
+
+    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "ref=%d M=0x%02x N=0x%02x timing=0x%02x\n", pll->reference_freq, pPriv->radeon_M, pPriv->radeon_N, pPriv->radeon_i2c_timing);
+#if 0
+    pPriv->radeon_M=0x32;
+    pPriv->radeon_N=0x33;
+    pPriv->radeon_i2c_timing=2*pPriv->radeon_N;
+#endif
     RADEONResetI2C(pScrn, pPriv);
     
 #if 0 /* I don't know whether standalone boards are supported with Radeon */
@@ -1741,9 +1777,9 @@ RADEONSetupImageVideo(ScreenPtr pScreen)
 	return NULL;
 
     pPriv = (RADEONPortPrivPtr)(adapt->pPortPrivates[0].ptr);
+    pPriv->pScrn=pScrn;
     
     RADEONReadMM_TABLE(pScrn,pPriv);
-    RADEONInitI2C(pScrn,pPriv);
     RADEONVIP_init(pScrn,pPriv);
 
     if(!xf86LoadSubModule(pScrn,"theatre")) 
@@ -1760,7 +1796,7 @@ RADEONSetupImageVideo(ScreenPtr pScreen)
 	pPriv->theatre=NULL;
 	xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "Failed to initialize Rage Theatre, chip disabled\n");
     }
-    
+    RADEONInitI2C(pScrn,pPriv);
     if(pPriv->theatre != NULL) 
     {	
        xf86_InitTheatre(pPriv->theatre);

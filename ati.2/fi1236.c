@@ -32,7 +32,7 @@ FI1236Ptr Detect_FI1236(I2CBusPtr b, I2CSlaveAddr addr)
 
    f = xcalloc(1,sizeof(FI1236Rec));
    if(f == NULL) return NULL;
-   f->d.DevName = "FI12xx Tuner";
+   f->d.DevName = strdup("FI12xx Tuner");
    f->d.SlaveAddr = addr;
    f->d.pI2CBus = b;
    f->d.NextDev = NULL;

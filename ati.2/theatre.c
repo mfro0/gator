@@ -63,7 +63,9 @@ TheatrePtr DetectTheatre(GENERIC_BUS_Ptr b)
    RT_regr(VIP_VIP_REVISION_ID, &val);
    xf86DrvMsg(b->scrnIndex, X_INFO, "Detected Rage Theatre revision %8.8X\n", val);
 
+#if 1
 DumpRageTheatreRegsByName(t);
+#endif
    return t;
 }
 
