@@ -4,7 +4,7 @@ AC_PREREQ(2.57)
 # Note to self: always bump version number when there are changes
 # in setup window or avview_shell
 #
-AC_INIT([AVview], [0.12.7], [gatos-devel@lists.sf.net])
+AC_INIT([AVview], [0.80.0], [gatos-devel@lists.sf.net])
 #
 # For now I'll be happier without NEWS and Changelog files.
 #
@@ -103,6 +103,8 @@ AC_CHECK_HEADER(X11/extensions/Xinerama.h,
 
 AC_SUBST(USE_XINERAMA)
 
+LDFLAGS="$LDFLAGS $X_LIBS"
+
 AC_CHECK_LIB([X11], [XCreateSimpleWindow],,,[$X_LIBS])
 AC_CHECK_LIB([Xext], [XInitExtension],,,[$X_LIBS])
 AC_CHECK_LIB([Xv], [XvPutVideo],,,[$X_LIBS -lX11 -lXext])
@@ -135,8 +137,47 @@ AC_SUBST(LIBS)
 
 if ! test "$with_ffmpeg" = "" ; then
 AC_DEFINE(USE_FFMPEG, 1, [use ffmpeg libraries])
-FFMPEG_LIBS="-L$with_ffmpeg/libavformat -L$with_ffmpeg/libavcodec -lavformat -lavcodec -lpthread"
+FFMPEG_LIBS="$with_ffmpeg/libavformat/libavformat.a $with_ffmpeg/libavcodec/libavcodec.a"
 FFMPEG_CFLAGS="-I$with_ffmpeg/libavformat -I$with_ffmpeg/libavcodec"
+echo -n "checking ffmpeg version..."
+CFLAGS="$CFLAGS $FFMPEG_CFLAGS"
+#LDFLAGS="$LDFLAGS $FFMPEG_LIBS"
+LIBS="$LIBS $FFMPEG_LIBS"
+AC_RUN_IFELSE([
+	#include <stdio.h>
+	#include "avcodec.h"
+	#include "avformat.h"
+	
+	#if LIBAVCODEC_VERSION_INT != LIBAVFORMAT_VERSION_INT
+		#error "FFMPEG libraries mismatch"
+	#endif
+	
+	#if LIBAVCODEC_VERSION_INT != 0x000408
+		#error "AVview now requires ffmpeg 0.4.8"
+	#endif
+	
+	int main(void)
+	{
+	if(avcodec_version()!=LIBAVCODEC_VERSION_INT){
+		fprintf(stderr,"AVcodec header and library mismatch detected\n");
+		exit(-1);
+		}
+	#if 0 
+	/* no check for avformat version yet */
+	if(avformat_version()!=LIBAVFORMAT_VERSION_INT){
+		fprintf(stderr,"AVcodec header and library mismatch detected\n");
+		exit(-1);
+		}
+	#endif
+	exit(0);
+	}
+	],,[ 
+	echo
+	echo
+	echo "*** AVview requires ffmpeg 0.4.8"
+	echo "If you are sure you are using correct version of ffmpeg check config.log for details"
+	exit])
+echo " ok"
 else
 FFMPEG_LIBS=
 FFMPEG_CFLAGS=

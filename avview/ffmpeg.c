@@ -180,6 +180,7 @@ while(1){
 			frames++;
 			picture.age=frames;
 			ob_free=avcodec_encode_video(&(sdata->video_codec_context), output_buf, ob_size, &picture);
+			
 			if(ob_free>0)sdata->encoded_stream_size+=ob_free; 
 			/* write out data */
 			ob_written=0;
@@ -561,8 +562,9 @@ if(arg_video_quality!=NULL)sdata->quality=atoi(arg_video_quality);
 if(sdata->quality<qmin)sdata->quality=qmin;
 if(sdata->quality>sdata->video_codec_context.qmax)sdata->quality=sdata->video_codec_context.qmax;
 
+sdata->video_codec_context.frame_rate_base=FFMPEG_FRAME_RATE_BASE;
 sdata->video_codec_context.max_qdiff=3;
-sdata->video_codec_context.aspect_ratio=FF_ASPECT_4_3_625;
+sdata->video_codec_context.aspect_ratio=0.0; /* guess assuming square pixels */
 sdata->video_codec_context.me_method=ME_FULL;
 sdata->video_codec_context.qblur=0.5;
 sdata->video_codec_context.qcompress=0.5;
@@ -573,6 +575,18 @@ sdata->video_codec_context.i_quant_offset=0.0;
 sdata->video_codec_context.gop_size=0;
 sdata->video_codec_context.get_buffer=avcodec_default_get_buffer;
 sdata->video_codec_context.release_buffer=avcodec_default_release_buffer;
+sdata->video_codec_context.pix_fmt=PIX_FMT_YUV420P;
+sdata->video_codec_context.rc_qsquish=1.0;
+sdata->video_codec_context.rc_max_rate = 0;
+sdata->video_codec_context.rc_min_rate = 0;
+sdata->video_codec_context.rc_buffer_size = 0;
+sdata->video_codec_context.rc_buffer_aggressivity= 1;
+sdata->video_codec_context.rc_initial_cplx= 0;
+sdata->video_codec_context.lumi_masking=0;
+sdata->video_codec_context.temporal_cplx_masking=0;
+sdata->video_codec_context.spatial_cplx_masking=0;
+sdata->video_codec_context.p_masking=0;
+sdata->video_codec_context.dark_masking=0;
 if((arg_video_codec!=NULL)&&(
   !strcmp(arg_video_codec, "MPEG-4") ||
   !strcmp(arg_video_codec, "MSMPEG-4")))
@@ -663,6 +677,7 @@ int ffmpeg_encode_v4l_stream(ClientData client_data,Tcl_Interp* interp,int argc,
 int i,k;
 const char *arg_filename;
 const char *arg_av_format;
+AVFormatParameters avfp;
 
 Tcl_ResetResult(interp);
 
@@ -783,7 +798,23 @@ if(sdata->format_context.oformat!=NULL){
 	sdata->format_context.copyright[0]=0;
 	sdata->format_context.author[0]=0;
 	sdata->format_context.comment[0]=0;
-	av_write_header(&(sdata->format_context));
+
+	memset(&avfp, 0, sizeof(avfp));
+
+	avfp.frame_rate=sdata->video_codec_context.frame_rate;
+	avfp.frame_rate_base=sdata->video_codec_context.frame_rate_base;
+	avfp.width=sdata->video_codec_context.width;
+	avfp.height=sdata->video_codec_context.height;
+	avfp.sample_rate=sdata->audio_codec_context.sample_rate;
+	avfp.channels=sdata->audio_codec_context.channels;
+	avfp.pix_fmt=sdata->video_codec_context.pix_fmt;
+
+	av_set_parameters(&(sdata->format_context), &avfp);
+
+	if(av_write_header(&(sdata->format_context))<0){
+		Tcl_AppendResult(interp,"Could not write header (incorrect codec parameters?)", NULL);
+		return TCL_OK;
+		}
 	} else {
 	fprintf(stderr,"Warning: sdata->format_context.oformat==NULL, report to volodya@mindspring.com if you did choose a valid file format\n");
 	}
@@ -804,7 +835,7 @@ if(argc<2){
 	Tcl_AppendResult(interp,"ERROR: ffmpeg_switch_file requires one argument\n");
 	return TCL_ERROR;
 	}
-fprintf(stderr, "Switching recording to file \"%s\"\n", argv[1]);
+fprintf(stderr, "Switching recording to file \"%s\" [NOT IMPLEMENTED]\n", argv[1]);
 return TCL_OK;
 }
 
@@ -1062,7 +1093,7 @@ long i;
 
 #if USE_FFMPEG
 av_register_all();
-avcodec_register_all();
+//avcodec_register_all();
 if((LIBAVCODEC_VERSION_INT!=avcodec_version())||(LIBAVFORMAT_VERSION_INT!=LIBAVCODEC_VERSION_INT)){
 	fprintf(stderr, "Detected mismatch between ffmpeg library headers and/or binaries. This error can only occur if somehow avview compilation used headers and/or binaries from different version of ffmpeg.\n");
 	fprintf(stderr,"avcodec.h version:0x%06x\n", LIBAVCODEC_VERSION_INT);
@@ -1070,6 +1101,7 @@ if((LIBAVCODEC_VERSION_INT!=avcodec_version())||(LIBAVFORMAT_VERSION_INT!=LIBAVC
 	fprintf(stderr,"libavcodec version:0x%06x\n", avcodec_version());
 	exit(-1);
 	}
+
 #endif
 
 for(i=0;ffmpeg_commands[i].name!=NULL;i++)
