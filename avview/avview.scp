@@ -128,6 +128,7 @@ set name [xv_port_attribute_name $video_window $port $attribute]
 if {$name == "XV_ENCODING" } { return "none" }
 if {$name == "XV_AUTOPAINT_COLORKEY" } { return "none" }
 if {$name == "XV_SET_DEFAULTS" } { return "button" }
+if {$name == "XV_COLORKEY" } { return "none" }
 if { [lsearch $type1 "gettable"] < 0 } { return "unreadable" }
 if { [lsearch $type1 "settable"] < 0 } { return "label" }
 if { "$range" == "0 1" } { return "toggle" }
