@@ -4,7 +4,7 @@ AC_PREREQ(2.57)
 # Note to self: always bump version number when there are changes
 # in setup window or avview_shell
 #
-AC_INIT([AVview], [0.12.5], [gatos-devel@lists.sf.net])
+AC_INIT([AVview], [0.12.6], [gatos-devel@lists.sf.net])
 #
 # For now I'll be happier without NEWS and Changelog files.
 #
@@ -71,8 +71,9 @@ if ! test "$enable_alsa" = "no" ; then
 
   if test "$ac_cv_lib_asound_snd_card_get_name" = "yes" ; then
   AC_TRY_LINK([#include <alsa/asoundlib.h> 
-	     #if (SND_LIB_MAJOR != 0) || (SND_LIB_MINOR < 9)  
-	     #error "Avview requires ALSA version 0.9.x" 
+	     /* #if (SND_LIB_MAJOR != 0) || (SND_LIB_MINOR < 9)  */
+	     #if (SND_LIB_MAJOR != 1) 
+	     #error "Avview requires ALSA version 1.0.x" 
 	     #endif], ,AC_DEFINE(USE_ALSA,1,[use alsa libraries]) ALSA_PRESENT=yes,)
   fi
 

@@ -24,8 +24,8 @@ scale $A.progress_scale -from 0 -to [llength $CHANNEL_LIST] -variable ch_scan_pr
 	-showvalue false
 eval $A.progress_scale configure [get_settings $A.progress_scale ChannelList]
 button $A.scan_now_button -text "Scan" -command do_scan -state disabled
-global tuner_status_present
-if { [set tuner_status_present] } {
+global tuner_status_index
+if { $tuner_status_index >= 0 } {
 	$A.scan_now_button configure -state normal
 	}
 eval $A.scan_now_button configure [get_settings $A.scan_now_button ChannelList]

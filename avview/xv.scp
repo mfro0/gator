@@ -4,7 +4,7 @@ proc find_attribute_widget {video_window port attribute} {
 set type1  [xv_port_attribute_type $video_window $port $attribute]
 set range [xv_port_attribute_range $video_window $port $attribute]
 set name [xv_port_attribute_name $video_window $port $attribute]
-if { [regexp {^XV_(LOCATION_ID|DEVICE_ID|INSTANCE_ID|ENCODING|AUTOPAINT_COLORKEY|COLORKEY|TUNER_STATUS)$} $name] } { return "none"}
+if { [regexp {^XV_(LOCATION_ID|DEVICE_ID|INSTANCE_ID|ENCODING|AUTOPAINT_COLORKEY|COLORKEY|TUNER_STATUS|OVERLAY_ALPHA|ALPHA_MODE)$} $name] } { return "none"}
 if { [lsearch $type1 "gettable"] < 0 } { 
 	if { ("$range" == "0 1") && ([lsearch $type1 "settable"] >=0 ) } {
 		return "button"
@@ -124,10 +124,12 @@ foreach {var value} [subst -nocommands {
 	LOCATION_ID "XV_PORT:$current_port"
 	INSTANCE_ID "XV_PORT:$current_port"
 	DEVICE_ID "XV_PORT:$current_port"
-	freq_present false
-	mute_present false
-	tuner_status_present false
-	autopaint_colorkey_present false
+	freq_index -1
+	mute_index -1
+	tuner_status_index -1
+	autopaint_colorkey_index -1
+	overlay_alpha_index	-1
+	alpha_mode_index	-1
 	}] {
 	global $var
 	set $var $value
@@ -153,16 +155,22 @@ for {set i 0 } { $i < $num_attributes} { incr i } {
 			set LOCATION_ID [winfo atomname $atom]
 			}
 		"XV_FREQ" {
-		 	set freq_present true
+		 	set freq_index $i
 		 	}
 		"XV_MUTE" {
-		  	set mute_present true
+		  	set mute_index $i
 			}
 		"XV_TUNER_STATUS" {
-		  	set tuner_status_present true
+		  	set tuner_status_index $i
 			}
 		"XV_AUTOPAINT_COLORKEY" {
-		  	set autopaint_colorkey_present true
+		  	set autopaint_colorkey_index $i
+			}
+		"XV_OVERLAY_ALPHA" {
+			set overlay_alpha_index $i
+			}
+		"XV_ALPHA_MODE" {
+			set alpha_mode_index $i
 			}
 		}
 	global $attr_var

@@ -61,6 +61,10 @@ foreach {variable value} {
 	warn_about_missing_km	"true"
 	control_screen ""
 	startup_script ""
+	mute_when_minimized   "false"
+	transparent_when_minimized "true"
+	transparency_ratio	200
+	is_minimized		"false"
 	} {
 	global $variable
 	set $variable $value
@@ -121,6 +125,8 @@ eval canvas .video [get_settings .video AVview]
 place .video -relx 0.0 -rely 0.0 -relwidth 1.0 -relheight 1.0 -anchor nw
 
 bind . <Configure> place_video_window
+bind . <Unmap> unmap_video_window
+bind . <Map> map_video_window
 
 proc place_video_window {} {
 global aspect_ratio use_physical_screen_size
@@ -146,6 +152,47 @@ catch {
 	}
 place configure .video -relx [expr (1.0-$rw)/2.0] -rely [expr (1.0-$rh)/2.0] \
 	-relw $rw -relh $rh -anchor nw
+}
+
+proc unmap_video_window {} {
+global is_minimized mute_when_minimized transparent_when_minimized transparency_ratio \
+	fullscreen_mode mute_index overlay_alpha_index alpha_mode_index previous_mute_value \
+	VIDEO_WINDOW current_port in_set_fullscreen
+
+if { $is_minimized || $fullscreen_mode || $in_set_fullscreen || ([wm state .]=="normal")} { return }
+set is_minimized true
+
+if { $mute_when_minimized && ($mute_index >= 0 )} { 
+	catch {
+		set previous_mute_value [xv_getportattribute $VIDEO_WINDOW $current_port "XV_MUTE"]
+		set_attribute_by_index $mute_index 1
+		}
+	}
+if { $transparent_when_minimized && ($overlay_alpha_index >=0 ) && ($alpha_mode_index >= 0) } {
+	set_attribute_by_index $overlay_alpha_index $transparency_ratio
+	set_attribute_by_index $alpha_mode_index 1
+	}
+}
+
+proc map_video_window {} {
+global is_minimized mute_when_minimized transparent_when_minimized transparency_ratio \
+	fullscreen_mode mute_index overlay_alpha_index alpha_mode_index previous_mute_value \
+	VIDEO_WINDOW current_port in_set_fullscreen
+
+if { (! $is_minimized) || $fullscreen_mode || $in_set_fullscreen } { return }
+set is_minimized false
+
+if { $mute_when_minimized && ($mute_index >= 0 )} { 
+	catch {
+		set_attribute_by_index $mute_index $previous_mute_value
+		}
+	unset previous_mute_value
+	}
+
+if { $transparent_when_minimized && ($overlay_alpha_index >=0 ) && ($alpha_mode_index >= 0) } {
+	set_attribute_by_index $overlay_alpha_index 255
+	set_attribute_by_index $alpha_mode_index 0
+	}
 }
 
 frame .video.onscreen_display -background [.video cget -background]
@@ -392,7 +439,8 @@ foreach variable {warn_about_missing_km current_port current_encoding_name curre
 	 show_control_window always_start_fullscreen remember_fullscreen_state
 	display_setup_window_on_startup file_save_path dpms_off_on_fullscreen_power_off
 	disable_fullscreen_switching use_physical_screen_size message_visible_secs
-	on_screen_cc_page save_settings_on_exit} {
+	on_screen_cc_page save_settings_on_exit transparent_when_minimized mute_when_minimized
+	transparency_ratio} {
 	global $variable
 	puts $fileid "\nglobal $variable"
 	puts $fileid "set $variable \"[set $variable]\""
@@ -860,6 +908,11 @@ add_parameter_pane "/Configuration/User interface settings/Fullscreen behaviour"
 		"Always start fullscreen" checkbutton always_start_fullscreen \
 		"Disable fullscreen switching" checkbutton disable_fullscreen_switching \
 		"Remote power off button turns off monitor in fullscreen mode" checkbutton dpms_off_on_fullscreen_power_off
+
+add_parameter_pane "/Configuration/User interface settings/Minimize behaviour" "Minimize behaviour" \
+		"Turn transparent when minimized" checkbutton transparent_when_minimized \
+		"Mute when minimized" checkbutton mute_when_minimized \
+		"Transparency" scale { transparency_ratio 0 255 }
 
 Tree:open .setup.tree "/Configuration"
 Tree:open .setup.tree "/Configuration/User interface settings"

@@ -99,19 +99,15 @@ set current_channel [find_first_favorite_channel $current_channel_index $dir]
 
 proc toggle_mute {} {
 global VIDEO_WINDOW
-global current_port
+global current_port mute_index
 if { $current_port == "none" } { return }
 set num_attributes [xv_num_port_attributes $VIDEO_WINDOW $current_port]
-for { set i 0 } { $i < $num_attributes } { incr i } {
-	set name [xv_port_attribute_name $VIDEO_WINDOW $current_port $i]
-	if { $name == "XV_MUTE" } {
-		set variable [find_attribute_variable $VIDEO_WINDOW $current_port $i]
-		global $variable
-		catch {
-			if { [xv_getportattribute $VIDEO_WINDOW $current_port $name] } { set $variable 0 } { set $variable 1 }
-			on_attribute_change XV_MUTE $variable a b
-			}
-		return
+if { $mute_index >= 0 } {
+	set variable [find_attribute_variable $VIDEO_WINDOW $current_port $mute_index]
+	global $variable
+	catch {
+		if { [xv_getportattribute $VIDEO_WINDOW $current_port "XV_MUTE"] } { set $variable 0 } { set $variable 1 }
+		on_attribute_change XV_MUTE $variable a b
 		}
 	}
 }

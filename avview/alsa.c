@@ -520,6 +520,7 @@ const char *arg_audio_rate;
 long rate;
 unsigned int buffer_time;
 int dir;
+snd_pcm_uframes_t uframes;
 
 snd_pcm_hw_params_alloca(&hwparams);
 snd_pcm_sw_params_alloca(&swparams);
@@ -607,11 +608,11 @@ if(a<0){
      	return -1;
 	}
 fprintf(stderr,"stop_threshhold:%ld pid:%d\n",
-	snd_pcm_sw_params_get_stop_threshold(swparams),
+	snd_pcm_sw_params_get_stop_threshold(swparams, &uframes),
         getpid());
 
 a=0;
-if(snd_pcm_sw_params_get_stop_threshold(swparams)<32768)
+if(snd_pcm_sw_params_get_stop_threshold(swparams, &uframes)<32768)
 	a=snd_pcm_sw_params_set_stop_threshold(ad->recording_handle, swparams, 32768);
 if(a<0){
      	fprintf(stderr, "Unable to set stop threshold: %s\n", snd_strerror(a));
@@ -628,7 +629,7 @@ if(a<0){
      	return -1;
  	}
 fprintf(stderr,"stop_threshhold:%ld pid:%d\n",
-	snd_pcm_sw_params_get_stop_threshold(swparams),
+	snd_pcm_sw_params_get_stop_threshold(swparams, &uframes),
         getpid());
 
 s->priv=ad;
