@@ -50,6 +50,7 @@ foreach {variable value} {
 	current_table_name "none"
 	current_channel "none"
 	current_connector "none"
+	current_alsa_device1 "none"
 	use_physical_screen_size "true"
 	aspect_ratio {4 3}
 	port_grabbed "false"
