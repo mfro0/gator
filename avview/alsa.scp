@@ -270,7 +270,7 @@ trace variable current_alsa_device1 w "set_alsa_device .controlwin.alsamixer ; s
 grid $cw.f - - -sticky news
 
 set save_alsa_device "$current_alsa_device"
-rescan_alsa_devices
+after idle rescan_alsa_devices
 global current_alsa_device1
 set current_alsa_device1 "$save_alsa_device"
 

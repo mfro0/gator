@@ -474,8 +474,8 @@ sdata->video_codec_context.flags=CODEC_FLAG_QSCALE;
 sdata->video_codec_context.qmin=qmin;
 sdata->video_codec_context.quality=qmin;
 if(arg_video_quality!=NULL)sdata->video_codec_context.quality=atoi(arg_video_quality);
-if(sdata->sdata->video_codec_context.quality<qmin)sdata->video_codec_context.quality=qmin;
-if(sdata->sdata->video_codec_context.quality>31)sdata->video_codec_context.quality=31;
+if(sdata->video_codec_context.quality<qmin)sdata->video_codec_context.quality=qmin;
+if(sdata->video_codec_context.quality>31)sdata->video_codec_context.quality=31;
 
 sdata->video_codec_context.qmax=15;
 sdata->video_codec_context.max_qdiff=3;
@@ -685,17 +685,22 @@ if(sdata->audio_stream_num>=0){
 return 0;
 }
 
+int ffmpeg_switch_file(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+{
+Tcl_ResetResult(interp);
+if(argc<2){
+	Tcl_AppendResult(interp,"ERROR: ffmpeg_switch_file requires one argument\n");
+	return TCL_ERROR;
+	}
+fprintf(stderr, "Switching recording to file \"%s\"\n", argv[1]);
+return TCL_OK;
+}
+
 int ffmpeg_stop_encoding(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
 {
 
 Tcl_ResetResult(interp);
 
-/* no don't raise errors if no capture is going on */
-
-if(argc<2){
-	Tcl_AppendResult(interp,"ERROR: ffmpeg_stop_encoding requires one argument", NULL);
-	return TCL_ERROR;
-	}
 if((sdata==NULL)||(sdata->type!=FFMPEG_CAPTURE_KEY)){
 	return 0;
 	}
@@ -907,6 +912,7 @@ struct {
 	} ffmpeg_commands[]={
 	{"ffmpeg_present", ffmpeg_present},
 	{"ffmpeg_encode_v4l_stream", ffmpeg_encode_v4l_stream},
+	{"ffmpeg_switch_file", ffmpeg_switch_file},
 	{"ffmpeg_stop_encoding", ffmpeg_stop_encoding},
 	{"ffmpeg_incoming_fifo_size", ffmpeg_incoming_fifo_size},
 	{"ffmpeg_encoding_status", ffmpeg_encoding_status},

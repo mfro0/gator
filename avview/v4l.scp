@@ -4,6 +4,8 @@
 
 global fifo_limit
 set fifo_limit 32
+global file_limit
+set file_limit 2000
 global current_video_rate
 set current_video_rate 59.94
 global current_video_bitrate 
@@ -153,12 +155,23 @@ if {[ffmpeg_present] == "yes"} {
 		global current_capture_filename; 
 		global file_save_path;
 		set result [tk_getSaveFile -initialfile "[file tail "$current_capture_filename"]" \
-			-parent .controlwin -title "Specify file to hold recorded video"  \
+			-parent .controlwin -title "Specify base name of file(s) to hold recorded video"  \
 			-filetypes { {"All files" { * } } { "Mpeg streams" { *.mpg *.MPG} } \
 				{ "\"AVI streams\"" { *.avi *.AVI} } }\
 				-initialdir "$file_save_path" \
 			] ; 
 		if { "$result" != "" } { 
+			set extension [file extension "$result"]
+			set rootname [file rootname "$result"]
+			if { [regsub -- "-\[0123456789\]\$" "$rootname" "" a] } {
+				set rootname "$a"
+				}
+			for { set i 1 } { 1 } { incr i } {
+				if { ![file exists "$rootname-$i$extension"] } {
+					break
+					}
+				}
+			set result "$rootname-$i$extension"
 			set current_capture_filename [file tail "$result"]
 			set file_save_path [file dirname "$result"]
 			}
@@ -176,7 +189,8 @@ if {[ffmpeg_present] == "yes"} {
 	checkbutton $cw.record_button -text "Record" -variable v4l_capture_on \
 		-indicatoron false 
 	eval $cw.record_button configure [get_settings $cw.record_button Capture V4L]
-	grid $cw.snapshot_button $cw.monitor_button $cw.record_button -sticky ns -padx 5
+#	grid $cw.snapshot_button $cw.monitor_button $cw.record_button -sticky ns -padx 5
+	grid $cw.snapshot_button $cw.record_button -sticky ns -padx 5
 
 	frame $cw.video_stats 
 	eval $cw.video_stats configure [get_settings $cw.video_stats Capture V4L]
@@ -190,12 +204,19 @@ if {[ffmpeg_present] == "yes"} {
 	eval $cw.fifo_limit_entry configure [get_settings $cw.fifo_limit_entry Capture V4L]
 	grid $cw.fifo_limit_label $cw.fifo_limit_entry -sticky news
 	grid configure $cw.fifo_limit_label -sticky nws
+
+	label $cw.file_limit_label -text "Recording chunk size (Mb):"
+	entry $cw.file_limit_entry -textvariable file_limit
+	eval $cw.file_limit_label configure [get_settings $cw.file_limit_label Capture V4L]
+	eval $cw.file_limit_entry configure [get_settings $cw.file_limit_entry Capture V4L]
+	grid $cw.file_limit_label $cw.file_limit_entry -sticky news
+	grid configure $cw.file_limit_label -sticky nws
 	} {
 	button $cw.snapshot_button -text "Snapshot" -command capture_snapshot -state disabled
 	eval $cw.snapshot_button configure [get_settings $cw.snapshot_button Capture V4L]
 	grid x $cw.snapshot_button
 	}
-rescan_v4l_devices
+after idle rescan_v4l_devices
 }
 
 proc rescan_v4l_devices {} {
@@ -442,14 +463,17 @@ if { $v4l_capture_on } {
 	puts "status=$status"
 	} {
 	if { [ffmpeg_present] == "yes" } {
-		ffmpeg_stop_encoding current_v4l_handle
+		ffmpeg_stop_encoding
 		}
 	}
 }
 
 proc check_fifo { cw } {
 global fifo_limit
+global file_limit
 global v4l_capture_on
+global file_save_path
+global current_capture_filename
 if { [ffmpeg_present] == "no" } { return }
 catch {
 	set status [ffmpeg_encoding_status]
@@ -462,6 +486,30 @@ catch {
 		set v4l_capture_on false
 		$cw.record_button flash
 		tk_dialog .controlwin.limit_reached "Fifo limit reached" "Fifo limit has been reached.\nCapture stopped." "" 0 "OK"
+		}
+	set length [get_value $status "-encoded_stream_size"]
+	if { $file_limit > 2000 } {
+		set file_limit 2000
+		}
+	if { $file_limit < 10 } {
+		set file_limit 10 
+		}
+	if { $file_limit < $length } {
+			set result "$file_save_path/$current_capture_filename"
+			set extension [file extension "$result"]
+			set rootname [file rootname "$result"]
+			if { [regsub -- "-\[0123456789\]\$" "$rootname" "" a] } {
+				set rootname "$a"
+				}
+			for { set i 1 } { 1 } { incr i } {
+				if { ![file exists "$rootname-$i$extension"] } {
+					break
+					}
+				}
+			set result "$rootname-$i$extension"
+			set current_capture_filename [file tail "$result"]
+			set file_save_path [file dirname "$result"]
+			ffmpeg_switch_file "$result"
 		}
 	update_video_stats $cw.video_stats $status
 	}
@@ -607,6 +655,7 @@ puts $fileid "global current_audio_bitrate"
 puts $fileid "global current_video_bitrate"
 puts $fileid "global current_video_quality"
 puts $fileid "global fifo_limit"
+puts $fileid "global file_limit"
 
 
 puts $fileid "set current_video_codec \"$current_video_codec\""
@@ -619,6 +668,7 @@ puts $fileid "set current_audio_bitrate \"$current_audio_bitrate\""
 puts $fileid "set current_video_bitrate \"$current_video_bitrate\""
 puts $fileid "set current_video_quality \"$current_video_quality\""
 puts $fileid "set fifo_limit \"$fifo_limit\""
+puts $fileid "set file_limit \"$file_limit\""
 
 puts $fileid "#\n# End of V4L and capture settings\n#"
 }

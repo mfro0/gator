@@ -356,10 +356,11 @@ if { $current_table_name != "none" } {
 puts $fileid "set attributes_window $attributes_window"
 puts $fileid "set capture_window $capture_window"
 puts $fileid "set alsa_window $alsa_window"
-puts $fileid "set current_alsa_device1 \"$current_alsa_device\""
 puts $fileid "set show_control_window \"$show_control_window\""
-
 save_theme $fileid
+puts $fileid "update idletasks"
+
+puts $fileid "set current_alsa_device1 \"$current_alsa_device\""
 puts $fileid ""
 save_v4l_capture $fileid
 puts $fileid ""
@@ -591,18 +592,18 @@ bind $VIDEO_WINDOW <Configure> {
 	}
 
 
-read_settings
+after 200 read_settings
 
 wm protocol . WM_DELETE_WINDOW { 
         if { [ffmpeg_present] == "yes" } {
-                ffmpeg_stop_encoding current_v4l_handle
+                ffmpeg_stop_encoding
                 }
 	save_settings  
 	exit 
 	}
 wm protocol .controlwin WM_DELETE_WINDOW {
         if { [ffmpeg_present] == "yes" } {
-                ffmpeg_stop_encoding current_v4l_handle
+                ffmpeg_stop_encoding
                 }
 	 save_settings
 	 exit 
