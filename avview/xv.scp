@@ -4,10 +4,8 @@ proc find_attribute_widget {video_window port attribute} {
 set type1  [xv_port_attribute_type $video_window $port $attribute]
 set range [xv_port_attribute_range $video_window $port $attribute]
 set name [xv_port_attribute_name $video_window $port $attribute]
-if {$name == "XV_ENCODING" } { return "none" }
-if {$name == "XV_AUTOPAINT_COLORKEY" } { return "none" }
 if {$name == "XV_SET_DEFAULTS" } { return "button" }
-if {$name == "XV_COLORKEY" } { return "none" }
+if { [regexp {^XV_(LOCATION_ID|DEVICE_ID|INSTANCE_ID|ENCODING|AUTOPAINT_COLORKEY|COLORKEY)$} $name] } { return "none"}
 if {$name == "XV_TUNER_STATUS" } { 
 	global tuner_status_present_$port
 	set tuner_status_present_$port true
@@ -293,4 +291,9 @@ if { $current_channel == "none" } {
 	}
 }
 
+proc get_location_id {} {
+global current_port VIDEO_WINDOW
+set atom [xv_getportattribute $VIDEO_WINDOW $current_port "XV_LOCATION_ID"]
+return [winfo atomname $atom]
+}
 

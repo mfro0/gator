@@ -7,9 +7,9 @@
 */
 
 #include <stdlib.h>
+#include <sys/types.h>
 #include <unistd.h>
 #include <sys/mman.h>
-#include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
@@ -115,6 +115,7 @@ AVPicture picture;
 char *output_buf;
 long ob_size, ob_free, ob_written;
 
+fprintf(stderr,"v4l_encoding pid %d\n", getpid());
 /* encode in the background */
 nice(1);
 data=(V4L_DATA *)s->priv;
@@ -249,6 +250,7 @@ PACKET *f;
 ob_size=sdata->alsa_param.chunk_size;
 out_buf=do_alloc(ob_size, 1);
 
+fprintf(stderr,"audio_encoding pid %d\n", getpid());
 /* encode in the background */
 nice(1);
 pthread_mutex_lock(&(s->ctr_mutex));
