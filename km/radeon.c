@@ -339,9 +339,15 @@ while(1){
 
 		/* Check interrupt status */
 	status=readl(kms->reg_aperture+RADEON_GEN_INT_STATUS);
+	#if 0
 	mask=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL) & ((1<<30)|7);
+	#endif
 	KM_DEBUG_LEVEL(3)("GEN_INT_STATUS=0x%08x mask=0x%08x\n", status, mask);
-	status &=mask & (INT_BIT_GUIDMA|INT_BIT_VLINE|INT_BIT_VSYNC|INT_BIT_VBLANK|INT_BIT_CAP0);
+	status &=INT_BIT_GUIDMA|
+		INT_BIT_VLINE|
+		INT_BIT_VSYNC|
+		INT_BIT_VBLANK|
+		INT_BIT_CAP0;
 	if(!status){
 		/* INT_BIT_CAP0 will tell us if any interrupt bits are high */
 		return;
