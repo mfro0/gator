@@ -41,7 +41,7 @@ int r128_inita(GENERIC_CARD *card)
      printk (KERN_INFO "Error initializing r128 card\n");
      return -ENODEV;
   }
-  printk (KERN_INFO "device id 0x%08x revision %d\n",id, rev);
+  printk (KERN_INFO "Rage128 device id 0x%08x revision %d\n",id, rev);
 
   /* figure out what i2c mode to use */
   if (i2c_init(card) != 0){
@@ -206,7 +206,7 @@ R128_CAP0_DEBUG = 0;
 
 /* enable streaming (turn on interrupts) */
   R128_CLOCK_CNTL_INDEX0 = (FCP_CNTL & 0x1F) | R128_PLL_WR_EN;
-  R128_CLOCK_CNTL_DATA = 0x001; // was 101
+  R128_CLOCK_CNTL_DATA = 0x101; // was 101
   R128_CLOCK_CNTL_INDEX0 = (FCP_CNTL & 0x1F) & ~R128_PLL_WR_EN;
 
 BTWRITE(card,BT829_VACTIVE_LO,LO(generic_tvnorms[card->tvnorm].sheight));
@@ -322,9 +322,7 @@ void rage128_disable_capture(GENERIC_CARD *card)
   R128_CLOCK_CNTL_DATA = 0x404;
   R128_CLOCK_CNTL_INDEX0 = (FCP_CNTL & 0x1F) & ~R128_PLL_WR_EN;
 
-printk (KERN_INFO "dis R128_CAP0_TRIG_CNTL is 0x%08x\n", R128_CAP0_TRIG_CNTL);
   R128_CAP0_TRIG_CNTL = 0x00000000; 
-printk (KERN_INFO "dis R128_CAP0_TRIG_CNTL is now 0x%08x\n", R128_CAP0_TRIG_CNTL);
   //make sure DMA transfers have stopped 
   R128_BUS_CNTL |= R128_BUS_MASTER_RESET;
 } 

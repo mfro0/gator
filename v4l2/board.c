@@ -220,9 +220,9 @@ int board_setbyte(GENERIC_CARD *card)
 
   if (card->driver_data & RAGE128CHIP){
     if (card->mux == 2) {
-      BTWRITE(card,0x3f,1); //set to tv for audio
+      BTWRITE(card,BT829_P_IO,1); //set to tv for audio
     } else {
-      BTWRITE(card,0x3f,0); //set to input for audio
+      BTWRITE(card,BT829_P_IO,0); //set to input for audio
     }
   } else if (card->driver_data & MACH64CHIP){
     u32 tmp;

@@ -689,6 +689,7 @@ void generic_enable_capture(GENERIC_CARD *card)
 
   /* set CAGC and CKILL (chroma agc and low color detector) */
   temp = BTREAD(card,BT829_SCLOOP);
+
   //temp |= BT829_CKILL | BT829_CAGC | BT829_PEAK;
   temp |= BT829_CKILL | BT829_CAGC;
   /* When decoding SECAM video this filter must be enabled */
@@ -701,7 +702,10 @@ printk (KERN_INFO "Enabling HFILT for SECAM video\n");
 /* break this into flags or remove since it is default? */
   BTWRITE(card,BT829_WC_UP,0xCF);
   BTWRITE(card,BT829_WC_DN,0x7F);
-  BTWRITE(card,BT829_P_IO,0x0);
+
+//  if (card->driver_data & MACH64CHIP){
+//    BTWRITE(card,BT829_P_IO,0x0);
+//  }
 
   /* free the card */
   up(&card->lock);
@@ -2054,7 +2058,6 @@ dprintk(2,"card(%d) VIDIOC_QBUF called\n",card->cardnum);
         return -EINVAL;
       }
       add_frame_to_queue(&card->frame_queue,b->index);
-
       return 0;
       }
     /* Exchange a buffer with the driver (dequeue)*/
@@ -2516,12 +2519,14 @@ int __devinit generic_probe(struct pci_dev *dev,
   if (card->driver_data & RAGE128CHIP) {
     /* force the rage128 to let us read the bios...
 	not sure why this works but it does (found by trial and error) */
-    if (*(biosptr) == 0x0) {
+    if (*(biosptr) == 0x0 || *(biosptr) == 0xFF) {
       printk (KERN_INFO "ERROR reading from bios, attempting to fix!\n");
       R128_I2C_CNTL_1 = 0x0;
       iounmap(card->atifb);
       card->atifb=ioremap(pci_resource_start(dev, 0),pci_resource_len(dev, 0)); 
-    } 
+    } else {
+printk (KERN_INFO "reading from bios, worked! %d \n", *(biosptr));
+    }
   }
   /* now read in some values from the rom */
   if (card->driver_data & MACH64CHIP){
@@ -2545,6 +2550,7 @@ int __devinit generic_probe(struct pci_dev *dev,
     ptr = biosptr + *((u16*)ptr) + 0x0E;
     /* before using divide by 100!!!! */
     card->refclock = *((u16*)ptr);
+printk (KERN_INFO "refclock is %d\n", refclock);
   }
 
   /* now unmap the rom so we dont waste ram */
@@ -2893,7 +2899,7 @@ static irqreturn_t generic_irq_handler(int irq, void *dev_id, struct pt_regs * r
     /* check if we have any frame captures ready */
     status = R128_CAP_INT_STATUS;
     mask = R128_CAP_INT_CNTL;
-printk (KERN_INFO "Cap Status is 0x%08x mask is 0x%08x\n", status, mask);
+//printk (KERN_INFO "Cap Status is 0x%08x mask is 0x%08x\n", status, mask);
 
     if (status & 1){
       handled = 1;
@@ -2912,7 +2918,7 @@ printk (KERN_INFO "Cap Status is 0x%08x mask is 0x%08x\n", status, mask);
     status = R128_GEN_INT_STATUS;
     mask = R128_GEN_INT_CNTL;
 
-printk (KERN_INFO "Gen Status is 0x%08x mask is 0x%08x\n", status, mask);
+//printk (KERN_INFO "Gen Status is 0x%08x mask is 0x%08x\n", status, mask);
 
     /* check if dma transfer finished */
     if (status & (1<<16)) {

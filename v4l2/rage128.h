@@ -21,7 +21,9 @@
 
 #define R128_CLOCK_FREQ   80000 /* 7.5kHz .. 100kHz */
 
+#define R128_CLOCK_CNTL_INDEX 		(*((u32*)(card->MMR+0x0008)))
 #define R128_CLOCK_CNTL_INDEX0 		(*(( u8*)(card->MMR+0x0008)))
+#define R128_CLOCK_CNTL_INDEX1 		(*(( u8*)(card->MMR+0x0009)))
 #define R128_CLOCK_CNTL_DATA            (*((u32*)(card->MMR+0x000C)))
 #define FCP_CNTL                     0x012
 #define R128_PLL_WR_EN               (1 << 7)
