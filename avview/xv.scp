@@ -8,7 +8,11 @@ if {$name == "XV_ENCODING" } { return "none" }
 if {$name == "XV_AUTOPAINT_COLORKEY" } { return "none" }
 if {$name == "XV_SET_DEFAULTS" } { return "button" }
 if {$name == "XV_COLORKEY" } { return "none" }
-if {$name == "XV_TUNER_STATUS" } { return "none" }
+if {$name == "XV_TUNER_STATUS" } { 
+	global tuner_status_present_$port
+	set tuner_status_present_$port true
+	return "none" 
+	}
 if { [lsearch $type1 "gettable"] < 0 } { return "unreadable" }
 if { [lsearch $type1 "settable"] < 0 } { return "label" }
 if { "$range" == "0 1" } { return "toggle" }

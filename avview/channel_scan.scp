@@ -26,7 +26,11 @@ grid $A.ch_list - -padx 5 -pady 5
 scale $A.progress_scale -from 0 -to [llength $CHANNEL_LIST] -variable ch_scan_progress -orient horizontal \
 	-showvalue false
 eval $A.progress_scale configure [get_settings $A.progress_scale ChannelList]
-button $A.scan_now_button -text "Scan" -command do_scan
+button $A.scan_now_button -text "Scan" -command do_scan -status disabled
+global tuner_status_present_${current_port}
+if { [set tuner_status_present_${current_port}] } {
+	$A.scan_now_button configure -state normal
+	}
 eval $A.scan_now_button configure [get_settings $A.scan_now_button ChannelList]
 grid $A.progress_scale $A.scan_now_button -padx 2
 global ch_scan_progress
