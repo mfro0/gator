@@ -467,14 +467,16 @@ switch(data->mode){
 	}
 sdata->video_codec_context.frame_rate=0;
 if(arg_v4l_rate!=NULL)sdata->video_codec_context.frame_rate=atol(arg_v4l_rate)*FRAME_RATE_BASE;
-if(sdata->video_codec_context.frame_rate<0)sdata->video_codec_context.frame_rate=0;
-sdata->video_codec_context.frame_rate=60*FRAME_RATE_BASE;
+if(sdata->video_codec_context.frame_rate<=0)sdata->video_codec_context.frame_rate=60*FRAME_RATE_BASE;
 if(sdata->step_frames>0)sdata->video_codec_context.frame_rate=sdata->video_codec_context.frame_rate/sdata->step_frames;
 a=(((800000.0*vwin.width)*vwin.height)*sdata->video_codec_context.frame_rate);
 b=(352.0*288.0*25.0*FRAME_RATE_BASE);
-sdata->video_codec_context.bit_rate=rint(a/b);
+sdata->video_codec_context.bit_rate=0;
 if(arg_video_bitrate!=NULL)sdata->video_codec_context.bit_rate=atol(arg_video_bitrate);
-fprintf(stderr,"Using bitrate=%d, frame_rate=%d a=%g b=%g\n", sdata->video_codec_context.bit_rate, sdata->video_codec_context.frame_rate,a,b);
+if(sdata->video_codec_context.bit_rate< (sdata->video_codec_context.frame_rate/FRAME_RATE_BASE+1))
+	sdata->video_codec_context.bit_rate=rint(a/b);
+
+fprintf(stderr,"video: using bitrate=%d, frame_rate=%d\n", sdata->video_codec_context.bit_rate, sdata->video_codec_context.frame_rate);
 sdata->video_codec_context.pix_fmt=PIX_FMT_YUV422;
 sdata->video_codec_context.flags=CODEC_FLAG_QSCALE;
 sdata->video_codec_context.quality=2;
@@ -493,10 +495,12 @@ return 1;
 int ffmpeg_create_audio_codec(Tcl_Interp* interp, int argc, char * argv[])
 {
 char *arg_audio_codec;
+char *arg_audio_bitrate;
 if(alsa_setup_reader_thread(sdata->audio_s, argc, argv, &(sdata->alsa_param))<0){
 	return 0;
 	}
 arg_audio_codec=get_value(argc, argv, "-audio_codec");
+arg_audio_bitrate=get_value(argc, argv, "-audio_bitrate");
 sdata->audio_codec=avcodec_find_encoder(CODEC_ID_PCM_S16LE); 
 fprintf(stderr,"Using audio_codec=%s\n", arg_audio_codec);
 if(arg_audio_codec==NULL){
@@ -515,6 +519,7 @@ if(sdata->audio_codec==NULL){
 	}
 memset(&(sdata->audio_codec_context), 0, sizeof(AVCodecContext));
 sdata->audio_codec_context.bit_rate=64000;
+if(arg_audio_bitrate!=NULL)sdata->audio_codec_context.bit_rate=atoi(arg_audio_bitrate);
 sdata->audio_codec_context.sample_rate=sdata->alsa_param.sample_rate;
 sdata->audio_codec_context.channels=sdata->alsa_param.channels;
 sdata->audio_codec_context.codec_id=sdata->audio_codec->id;

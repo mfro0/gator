@@ -6,6 +6,9 @@ global fifo_limit
 set fifo_limit 32
 global current_video_rate
 set current_video_rate 60
+global current_video_bitrate 
+set current_video_bitrate 300000
+
 
 #
 #
@@ -79,13 +82,13 @@ if {[ffmpeg_present] == "yes"} {
 	grid configure $cw.video_ratel -sticky nws
 	grid configure $cw.video_rate_entry -sticky news
 
-#	eval label $cw.video_bitratel -text "\"Video bitrate:\"" [get_settings $cw.video_bitratel Capture V4L]
-#	set menu [tk_optionMenu $cw.video_bitrate_optionmenu current_video_codec "256]
-#	eval $cw.video_bitrate_optionmenu configure [get_settings $cw.video_bitrate_optionmenu Capture V4L]
-#	eval $menu configure [get_settings $menu Capture V4L menu]
-#	grid $cw.video_bitratel $cw.video_bitrate_optionmenu
-#	grid configure $cw.video_bitratel -sticky nws
-#	grid configure $cw.video_bitrate_optionmenu -sticky news
+	eval label $cw.video_bitratel -text "\"Video bitrate:\"" [get_settings $cw.video_bitratel Capture V4L]
+	entry $cw.video_bitrate_entry -textvariable current_video_bitrate 
+	button $cw.video_bitrate_button -command recompute_video_bitrate -text "Default"
+	eval $cw.video_bitrate_entry configure [get_settings $cw.video_bitrate_entry Capture V4L]
+	grid $cw.video_bitratel $cw.video_bitrate_entry $cw.video_bitrate_button -sticky news
+	grid configure $cw.video_bitratel -sticky nws
+#	grid configure $cw.video_bitrate_entry -sticky news
 
 	eval label $cw.acodecl -text "\"Audio codec:\"" [get_settings $cw.acodecl Capture V4L]
 	set menu [tk_optionMenu $cw.acodec_optionmenu current_audio_codec "PCM" "MPEG-2" "AC-3"]
@@ -102,6 +105,14 @@ if {[ffmpeg_present] == "yes"} {
 	grid $cw.aratel $cw.arate_optionmenu
 	grid configure $cw.aratel -sticky nws
 	grid configure $cw.arate_optionmenu -sticky news
+
+	eval label $cw.audio_bitratel -text "\"Audio bitrate:\"" [get_settings $cw.audio_bitratel Capture V4L]
+	set menu [tk_optionMenu $cw.audio_bitrate_optionmenu current_audio_bitrate "384000" "320000" "256000" "224000" "192000" "160000" "128000" "112000" "96000" "80000" "64000" "56000" "48000" "32000"]
+	eval $cw.audio_bitrate_optionmenu configure [get_settings $cw.audio_bitrate_optionmenu Capture V4L]
+	eval $menu configure [get_settings $menu Capture V4L menu]
+	grid $cw.audio_bitratel $cw.audio_bitrate_optionmenu
+	grid configure $cw.audio_bitratel -sticky nws
+	grid configure $cw.audio_bitrate_optionmenu -sticky news
 
 	eval label $cw.av_formatl -text "\"File format:\"" [get_settings $cw.av_formatl Capture V4L]
 	set menu [tk_optionMenu $cw.av_format_optionmenu current_av_format "none" "AVI" "ASF" "MPEG"]
@@ -371,6 +382,8 @@ global current_alsa_device
 global file_save_path
 global current_audio_rate
 global current_video_rate
+global current_audio_bitrate
+global current_video_bitrate
 if { $v4l_capture_on } {
 	if { ! [verify_v4l_stream_parameters] } {
 		set v4l_capture_on 0
@@ -385,6 +398,7 @@ if { $v4l_capture_on } {
 				-av_format $current_av_format \
 				-audio_device "$current_alsa_device" \
 				-audio_rate "$current_audio_rate" \
+				-audio_bitrate "$current_audio_bitrate" \
 				-v4l_rate "$current_video_rate" \
 				-filename "$file_save_path/$current_capture_filename"]
 	if { "$status" == "" } { 
@@ -422,6 +436,8 @@ global current_av_format
 global current_video_codec
 global current_audio_codec
 global current_audio_rate
+global current_video_bitrate
+global current_audio_bitrate
 global fifo_limit
 
 puts $fileid "#\n# V4L and capture settings\n#"
@@ -432,6 +448,8 @@ puts $fileid "global current_av_format"
 puts $fileid "global current_video_codec"
 puts $fileid "global current_audio_codec"
 puts $fileid "global current_audio_rate"
+puts $fileid "global current_audio_bitrate"
+puts $fileid "global current_video_bitrate"
 puts $fileid "global fifo_limit"
 
 
@@ -441,7 +459,26 @@ puts $fileid "set current_v4l_mode \"$current_v4l_mode\""
 puts $fileid "set current_v4l_rrate \"$current_v4l_rrate\""
 puts $fileid "set current_av_format \"$current_av_format\""
 puts $fileid "set current_audio_rate \"$current_audio_rate\""
+puts $fileid "set current_audio_bitrate \"$current_audio_bitrate\""
+puts $fileid "set current_video_bitrate \"$current_video_bitrate\""
 puts $fileid "set fifo_limit \"$fifo_limit\""
 
 puts $fileid "#\n# End of V4L and capture settings\n#"
+}
+
+proc recompute_video_bitrate {} {
+global current_v4l_rrate
+global current_v4l_mode
+global current_video_rate
+global current_video_bitrate
+set current_video_bitrate 600000
+catch {
+	switch "$current_v4l_mode" {
+		"half-width"  { set current_video_bitrate [ expr $current_video_bitrate/2] }
+		}
+	switch "$current_v4l_rrate" {
+		"as is" { set current_video_bitrate [expr $current_video_bitrate * 2] }
+		"one quarter" { set current_video_bitrate [expr $current_video_bitrate / 2] }
+		}
+	}
 }
