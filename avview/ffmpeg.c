@@ -745,7 +745,9 @@ if((sdata->video_s!=NULL) && (sdata->video_s->stop_stream & STOP_PRODUCER_THREAD
 	!sdata->video_s->consumer_thread_running &&
 	!sdata->video_s->producer_thread_running &&
 	(sdata->video_s->total==0)){
+	#if 0 /* not necessary now */
 	data->priv=NULL;
+	#endif
 	free(sdata->video_s);
 	sdata->video_s=NULL;
 	}
