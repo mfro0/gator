@@ -266,11 +266,16 @@ trace variable show_control_window w "show_control_window_proc ; skip_args3"
 proc show_control_window_proc {} {
 global show_control_window
 if { $show_control_window } {
-	after idle { wm deiconify .controlwin }
+	after idle { 
+		global show_control_window
+		if { $show_control_window } {
+			wm deiconify .controlwin
+			}
+		}
 	} {
 	after idle {
 		global show_control_window
-		if { "[winfo screen .controlwin]" != "[winfo screen . ]" } {
+		if { [winfo screen .controlwin] != [winfo screen . ] } {
 			set ans [tk_dialog .controlwin.withdraw_question "Hide main control window ?" \
 				"The main control window is displayed on the monitor different from main viewer window. If you hide it you will only be able to restore it from the main viewer window. Perhaps you would prefer to iconify control window?" "" 0 "Iconify" "Hide" "Never mind" ]
 			update
@@ -281,11 +286,16 @@ if { $show_control_window } {
 				"2"  { set show_control_window 1 }
 			update
 			} {
-			after idle { wm withdraw .controlwin }
+			after idle { 
+				global show_control_window
+				if { ! $show_control_window } {
+					wm withdraw .controlwin 
+					}
+				}
 			}
 		}
 	}
-} 
+}
 
 proc hide_cursor_timer { window } {
 global hct_$window
@@ -434,9 +444,9 @@ puts $fileid "\n# General settings"
 # The order these come in is really important
 #
 
-foreach variable {warn_about_missing_km current_port current_encoding_name current_table_name
-	current_channel attributes_window capture_window alsa_window
-	 show_control_window always_start_fullscreen remember_fullscreen_state
+foreach variable {show_control_window warn_about_missing_km current_port current_encoding_name current_table_name
+	current_channel  attributes_window capture_window alsa_window
+	always_start_fullscreen remember_fullscreen_state
 	display_setup_window_on_startup file_save_path dpms_off_on_fullscreen_power_off
 	disable_fullscreen_switching use_physical_screen_size message_visible_secs
 	on_screen_cc_page save_settings_on_exit transparent_when_minimized mute_when_minimized
