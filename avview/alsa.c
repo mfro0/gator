@@ -65,10 +65,18 @@ Tcl_AppendResult(interp, card_longname, NULL);
 return 0;
 }
 
+int alsa_present(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+{
+Tcl_ResetResult(interp);
+Tcl_AppendResult(interp,"yes", NULL);
+return 0;
+}
+
 struct {
 	char *name;
 	Tcl_CmdProc *command;
 	} alsa_commands[]={
+	{"alsa_present", alsa_present},
 	{"alsa_card_get_name", alsa_card_get_name},
 	{"alsa_card_get_longname", alsa_card_get_longname},
 	{NULL, NULL}
@@ -76,10 +84,18 @@ struct {
 
 #else /* USE_ALSA */
 
+int alsa_present(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+{
+Tcl_ResetResult(interp);
+Tcl_AppendResult(interp,"no", NULL);
+return 0;
+}
+
 struct {
 	char *name;
 	Tcl_CmdProc *command;
 	} alsa_commands[]={
+	{"alsa_present", alsa_present},
 	{NULL, NULL}
 	};
 
