@@ -171,7 +171,7 @@ static void RADEONSetCursorPosition(ScrnInfoPtr pScrn, int x, int y)
 	OUTREG(RADEON_CUR_HORZ_VERT_POSN, (RADEON_CUR_LOCK
 					   | ((xorigin ? 0 : x) << 16)
 					   | (yorigin ? 0 : y)));
-	OUTREG(RADEON_CUR_OFFSET, info->cursor_start + yorigin * stride);
+	OUTREG(RADEON_CUR_OFFSET, info->cursor_start + info->cursor_buffer + yorigin * stride);
     } else {
 	OUTREG(RADEON_CUR2_HORZ_VERT_OFF,  (RADEON_CUR2_LOCK
 					    | (xorigin << 16)
@@ -180,7 +180,7 @@ static void RADEONSetCursorPosition(ScrnInfoPtr pScrn, int x, int y)
 					    | ((xorigin ? 0 : x) << 16)
 					    | (yorigin ? 0 : y)));
 	OUTREG(RADEON_CUR2_OFFSET,
-	       info->cursor_start + pScrn->fbOffset + yorigin * stride);
+	       info->cursor_start + info->cursor_buffer + pScrn->fbOffset + yorigin * stride);
     }
 
     if (info->Clone) {
@@ -198,7 +198,7 @@ static void RADEONSetCursorPosition(ScrnInfoPtr pScrn, int x, int y)
 					    | ((xorigin ? 0 : X2) << 16)
 					    | (yorigin ? 0 : Y2)));
 	OUTREG(RADEON_CUR2_OFFSET,
-	       info->cursor_start + pScrn->fbOffset + yorigin * stride);
+	       info->cursor_start + info->cursor_buffer + pScrn->fbOffset + yorigin * stride);
     }
 }
 
@@ -215,15 +215,12 @@ static void RADEONLoadCursorImage(ScrnInfoPtr pScrn, unsigned char *image)
     CARD32         save1      = 0;
     CARD32         save2      = 0;
 
-    if (!info->IsSecondary) {
-	save1 = INREG(RADEON_CRTC_GEN_CNTL) & ~(CARD32) (3 << 20);
-	OUTREG(RADEON_CRTC_GEN_CNTL, save1 & (CARD32)~RADEON_CRTC_CUR_EN);
-    }
-
-    if (info->IsSecondary || info->Clone) {
-	save2 = INREG(RADEON_CRTC2_GEN_CNTL) & ~(CARD32) (3 << 20);
-	OUTREG(RADEON_CRTC2_GEN_CNTL, save2 & (CARD32)~RADEON_CRTC2_CUR_EN);
-    }
+    if(info->cursor_buffer==0){
+    	info->cursor_buffer=(info->cursor_end-info->cursor_start+0x03)&~0x3;
+	} else {
+    	info->cursor_buffer=0;
+	}
+    d+=info->cursor_buffer/4;
 
 #ifdef ARGB_CURSOR
     info->cursor_argb = FALSE;
@@ -281,11 +278,21 @@ static void RADEONLoadCursorImage(ScrnInfoPtr pScrn, unsigned char *image)
 	*d++ = 0x00000000;
     }
 
-    if (!info->IsSecondary)
+    
+    if (!info->IsSecondary) {
+	save1 = INREG(RADEON_CRTC_GEN_CNTL) & ~(CARD32) (3 << 20);
+	OUTREG(RADEON_CRTC_GEN_CNTL, save1 & (CARD32)~RADEON_CRTC_CUR_EN);
+        OUTREG(RADEON_CUR_OFFSET, INREG(RADEON_CUR_OFFSET)+(info->cursor_buffer-(info->cursor_end-info->cursor_start)));
 	OUTREG(RADEON_CRTC_GEN_CNTL, save1);
+    }
 
-    if (info->IsSecondary || info->Clone)
+    if (info->IsSecondary || info->Clone) {
+	save2 = INREG(RADEON_CRTC2_GEN_CNTL) & ~(CARD32) (3 << 20);
+	OUTREG(RADEON_CRTC2_GEN_CNTL, save2 & (CARD32)~RADEON_CRTC2_CUR_EN);
+        OUTREG(RADEON_CUR2_OFFSET, INREG(RADEON_CUR_OFFSET)+(info->cursor_buffer-(info->cursor_end-info->cursor_start)));
 	OUTREG(RADEON_CRTC2_GEN_CNTL, save2);
+    }
+
 }
 
 /* Hide hardware cursor. */
@@ -353,18 +360,13 @@ static void RADEONLoadCursorARGB (ScrnInfoPtr pScrn, CursorPtr pCurs)
     if (!image)
 	return;	/* XXX can't happen */
     
-    if (!info->IsSecondary) {
-	save1 = INREG(RADEON_CRTC_GEN_CNTL) & ~(CARD32) (3 << 20);
-	save1 |= (CARD32) 2 << 20;
-	OUTREG(RADEON_CRTC_GEN_CNTL, save1 & (CARD32)~RADEON_CRTC_CUR_EN);
-    }
-
-    if (info->IsSecondary || info->Clone) {
-	save2 = INREG(RADEON_CRTC2_GEN_CNTL) & ~(CARD32) (3 << 20);
-	save2 |= (CARD32) 2 << 20;
-	OUTREG(RADEON_CRTC2_GEN_CNTL, save2 & (CARD32)~RADEON_CRTC2_CUR_EN);
-    }
-
+    if(info->cursor_buffer==0){
+    	info->cursor_buffer=(info->cursor_end-info->cursor_start+0x3)&~0x3;
+	} else {
+    	info->cursor_buffer=0;
+	}
+    d+=info->cursor_buffer/4;
+    
 #ifdef ARGB_CURSOR
     info->cursor_argb = TRUE;
 #endif
@@ -390,11 +392,24 @@ static void RADEONLoadCursorARGB (ScrnInfoPtr pScrn, CursorPtr pCurs)
 	for (x = 0; x < 64; x++)
 	    *d++ = 0;
     
-    if (!info->IsSecondary)
-	OUTREG(RADEON_CRTC_GEN_CNTL, save1);
 
-    if (info->IsSecondary || info->Clone)
+    if (!info->IsSecondary) {
+	save1 = INREG(RADEON_CRTC_GEN_CNTL) & ~(CARD32) (3 << 20);
+	save1 |= (CARD32) 2 << 20;
+	OUTREG(RADEON_CRTC_GEN_CNTL, save1 & (CARD32)~RADEON_CRTC_CUR_EN);
+        OUTREG(RADEON_CUR_OFFSET, INREG(RADEON_CUR_OFFSET)+(info->cursor_buffer-(info->cursor_end-info->cursor_start)));
+	OUTREG(RADEON_CRTC_GEN_CNTL, save1);
+    }
+
+    if (info->IsSecondary || info->Clone) {
+	save2 = INREG(RADEON_CRTC2_GEN_CNTL) & ~(CARD32) (3 << 20);
+	save2 |= (CARD32) 2 << 20;
+	OUTREG(RADEON_CRTC2_GEN_CNTL, save2 & (CARD32)~RADEON_CRTC2_CUR_EN);
+        OUTREG(RADEON_CUR2_OFFSET, INREG(RADEON_CUR_OFFSET)+(info->cursor_buffer-(info->cursor_end-info->cursor_start)));
 	OUTREG(RADEON_CRTC2_GEN_CNTL, save2);
+    }
+
+
 }
 
 #endif
@@ -460,6 +475,7 @@ Bool RADEONCursorInit(ScreenPtr pScreen)
 					     * info->CurrentLayout.pixel_bytes,
 					     stride);
 	info->cursor_end      = info->cursor_start + size;
+	info->cursor_buffer   = 0;
     }
 
     RADEONTRACE(("RADEONCursorInit (0x%08x-0x%08x)\n",

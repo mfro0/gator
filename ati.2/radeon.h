@@ -349,6 +349,7 @@ typedef struct {
     xf86CursorInfoPtr cursor;
     unsigned long     cursor_start;
     unsigned long     cursor_end;
+    unsigned long     cursor_buffer;
 #ifdef ARGB_CURSOR
     Bool	      cursor_argb;
 #endif
