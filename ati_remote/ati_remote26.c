@@ -1,6 +1,7 @@
 /*
  *
  *  Copyright (c) 2002 Vladimir Dergachev
+ *  Copyright (c) 2003 Brian S. Julin (2.6 port)
  *
  *  USB ATI Remote support
  *
