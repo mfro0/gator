@@ -16,6 +16,7 @@ scp_DATA = alsa.scp bindings.scp ffmpeg.scp themes.scp video_device.scp \
 # Well, it doesn't exist !
 #
 nodist_start_avview_SOURCES = start_avview.c
+dist_start_avview_SOURCES = start_avview.in
 
 avview_shell_LDADD = @X_PRE_LIBS@ @X_LIBS@ @X_EXTRA_LIBS@
 avview_shell_CFLAGS = -DAVVIEW_VERSION=\"@PACKAGE_VERSION@\"
