@@ -44,21 +44,21 @@ start_avview.desktop: start_avview.desktop.in configure.in Makefile.am
 	echo 'Exec=$(bindir)/start_avview' >> start_avview.desktop
 	echo 'Icon=$(datadir)/AVview/avview-48x48.png' >> start_avview.desktop
 
-install-data-hook:
+install-data-hook: reminders
 	@echo ""
 	@echo " ************************************************"
 	@echo ""
 	@echo "   To start AVview use $(bindir)/start_avview"
 	@echo ""
 
-install-exec-hook:
+install-exec-hook: reminders
 	@echo ""
 	@echo " ************************************************"
 	@echo ""
 	@echo "   To start AVview use $(bindir)/start_avview"
 	@echo ""
 	
-all-local:
+all-local: reminders
 	@echo ""
 	@echo " *****************************************************"
 	@echo ""
@@ -69,3 +69,23 @@ all-local:
 	@echo "  This will always use code in current directory,"
 	@echo "     even if another installed version of AVview exists"
 	@echo ""
+
+reminders: .reminder-install .reminder-readme
+
+.reminder-install: INSTALL
+	@echo ""
+	@echo " *********************************************** "
+	@echo "   Please do not forget to review INSTALL file "
+	@echo " *********************************************** "
+	@echo ""
+	@touch .reminder-install
+	
+.reminder-readme: README
+	@echo ""
+	@echo " *********************************************** "
+	@echo "   Please do not forget to review README file "
+	@echo " *********************************************** "
+	@echo ""
+	@touch .reminder-readme
+	
+	

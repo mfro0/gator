@@ -27,3 +27,7 @@ You can now run avview with the command:
 If you would like to run avview without installing it use command:
 	./start_avview.no_install
 	
+Notes:
+
+	* if README or INSTALL files have been updated during your last
+	  CVS checkout make will ask you to review them
