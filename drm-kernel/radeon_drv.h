@@ -283,6 +283,8 @@ extern int radeon_emit_irq(drm_device_t *dev);
 #	define RADEON_SW_INT_TEST		(1 << 25)
 #	define RADEON_SW_INT_TEST_ACK   	(1 << 25)
 #	define RADEON_SW_INT_FIRE		(1 << 26)
+#	define RADEON_CAP0_INT			(1 << 8)
+#	define RADEON_GUIDMA_STAT		(1 << 30)
 
 #define RADEON_HOST_PATH_CNTL		0x0130
 #	define RADEON_HDP_SOFT_RESET		(1 << 26)
