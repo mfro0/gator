@@ -113,6 +113,8 @@ proc vbi_set_cc_page_on_screen { } {
 global on_screen_cc_page
 if { $on_screen_cc_page == "Off" } {
 	vbi_close_device primary
+	.video delete cc_text
+	return
 	}
 global primary_vbi_device on_screen_page
 if { ! [info exists primary_vbi_device] } { update_primary_globals } 
@@ -120,7 +122,7 @@ if { $primary_vbi_device == "" } { update_primary_globals }
 catch {
 	vbi_open_device primary $primary_vbi_device	
 	vbi_set_event_handler primary vbi_event_handler_on_screen
-	}
+	} err
 }
 
 #vbi_open_device primary /dev/vbi0

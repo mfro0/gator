@@ -20,6 +20,7 @@ typedef struct {
 	int fd[2];  /* pipe - this is used to signal Tcl/Tk */
 	char *event_command;
 	Tcl_Interp *interp;
+	pthread_t vbi_loop;
 	} VBI_DATA;
 
 void init_vbi(Tcl_Interp *interp);

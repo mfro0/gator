@@ -23,6 +23,7 @@
 
 #include <libzvbi.h>
 #include <math.h>
+#include <string.h>
 
 #include "global.h"
 #include "string_cache.h"
@@ -46,7 +47,7 @@ void vbi_pipe_handler(ClientData clientData, int mask)
 VBI_DATA *data=(VBI_DATA *)clientData;
 DATAGRAM d;
 int r,a;
-char str[20];
+char str[2000];
 r=0;
 do{
 	a=read(data->fd[0], ((unsigned char *)&d)+r, sizeof(d)-r);
@@ -71,7 +72,23 @@ switch(d.type){
 				Tcl_VarEval(data->interp, data->event_command, " caption ", str, NULL);
 				break;
 			case VBI_EVENT_PROG_INFO:
-				Tcl_VarEval(data->interp, data->event_command, " program_info {}", NULL);
+				sprintf(str, " future %d month %d day %d hour %d min %d"
+					 " tape_delayed %d length_hour %d length_min %d"
+					 " elapsed_hour %d elapsed_min %d elapsed_sec %d"
+					 " name \"%s\" ",
+					 d.ev.ev.prog_info->future,
+					 d.ev.ev.prog_info->month,
+					 d.ev.ev.prog_info->day,
+					 d.ev.ev.prog_info->hour,
+					 d.ev.ev.prog_info->min,
+					 d.ev.ev.prog_info->tape_delayed,
+					 d.ev.ev.prog_info->length_hour,
+					 d.ev.ev.prog_info->length_min,
+					 d.ev.ev.prog_info->elapsed_hour,
+					 d.ev.ev.prog_info->elapsed_min,
+					 d.ev.ev.prog_info->elapsed_sec,
+					 d.ev.ev.prog_info->title);
+				Tcl_VarEval(data->interp, data->event_command, " program_info {", str , "}", NULL);
 				break;
 			case VBI_EVENT_TTX_PAGE:
 				sprintf(str, "%d", d.ev.ev.ttx_page.pgno);
@@ -99,11 +116,12 @@ int r;
 int lines,i;
 DATAGRAM d;
 
+pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
 w=data->par->bytes_per_line/1;
 h=data->par->count[0]+data->par->count[1];
 buf=alloca(w*h);
 buf_sliced=alloca(h*sizeof(vbi_sliced));
-fprintf(stderr,"Hello\n");
 while(1){
 	tv.tv_sec=5;
 	tv.tv_usec=0;
@@ -113,6 +131,10 @@ while(1){
 		return;
 		}
 	pthread_mutex_lock(&(data->mutex));
+	if(data->dec==NULL){
+		pthread_mutex_unlock(&(data->mutex));
+		return; /* close thread */
+		}
 	vbi_decode(data->dec, buf_sliced, lines, timestamp);
 	pthread_mutex_unlock(&(data->mutex));
 	}
@@ -151,11 +173,16 @@ if(argc<3){
 i=add_string(vbi_sc, (char*)argv[1]);
 if(vbi_sc->data[i]!=NULL){
 	data=(VBI_DATA*) vbi_sc->data[i];
+	pthread_mutex_lock(&(data->mutex));	
+	Tcl_DeleteFileHandler(data->fd[0]);
 	close(data->fd[0]);
 	close(data->fd[1]);
 	vbi_capture_delete(data->cap);
 	vbi_decoder_delete(data->dec);
 	if(data->event_command!=NULL)free(data->event_command);
+	pthread_mutex_unlock(&(data->mutex));
+	pthread_cancel(data->vbi_loop);
+	pthread_join(data->vbi_loop, NULL);
 	} else {
 	vbi_sc->data[i]=do_alloc(1, sizeof(VBI_DATA));
 	}
@@ -234,7 +261,8 @@ if((a=pipe(data->fd))<0){
 	return TCL_ERROR;
 	}
 Tcl_CreateFileHandler(data->fd[0], TCL_READABLE, vbi_pipe_handler, data);
-if(pthread_create(&(a), NULL, vbi_loop, data)!=0){
+if(pthread_create(&(data->vbi_loop), NULL, vbi_loop, data)!=0){
+	Tcl_DeleteFileHandler(data->fd[0]);
 	close(data->fd[0]);
 	close(data->fd[1]);
 	vbi_capture_delete(data->cap);	
@@ -729,11 +757,19 @@ data=(VBI_DATA *)vbi_sc->data[i];
 if(data==NULL){
 	return 0;
 	}
+pthread_mutex_lock(&(data->mutex));
+Tcl_DeleteFileHandler(data->fd[0]);
 close(data->fd[0]);
 close(data->fd[1]);
 vbi_capture_delete(data->cap);
 vbi_decoder_delete(data->dec);
+data->cap=NULL;
+data->dec=NULL;
 if(data->event_command!=NULL)free(data->event_command);
+pthread_mutex_unlock(&(data->mutex));
+pthread_cancel(data->vbi_loop);
+
+pthread_join(data->vbi_loop, NULL);
 free(data);
 vbi_sc->data[i]=NULL;
 return 0;
