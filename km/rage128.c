@@ -124,20 +124,20 @@ rage128_wait_for_idle(kms);
 /* wait for at least one available queue */
 do {
 	status=readl(kms->reg_aperture+RAGE128_DMA_GUI_STATUS);
-	printk("status=0x%08x\n", status);
+	KM_DEBUG("status=0x%08x\n", status);
 	} while (!(status & 0x1f));
 #endif
 /* start transfer */
-if(kms->frame.dma_active)printk("DMA overrun\n");
+if(kms->frame.dma_active)KM_DEBUG("DMA overrun\n");
 if(kms->frame.buf_ptr!=kms->frame.buf_free){
 	kms->overrun++;
-	printk("Data overrun\n");
+	KM_DEBUG("Data overrun\n");
 	}
 kms->total_frames++;
 kms->frame.dma_active=1;
 writel(kvirt_to_pa(kms->frame.dma_table)|RAGE128_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM, 
 	kms->reg_aperture+RAGE128_BM_VIDCAP_BUF0);
-printk("start_frame_transfer_buf0\n");
+KM_DEBUG("start_frame_transfer_buf0\n");
 }
 
 static void rage128_start_frame_transfer_buf0_even(KM_STRUCT *kms)
@@ -154,20 +154,20 @@ rage128_wait_for_idle(kms);
 /* wait for at least one available queue */
 do {
 	status=readl(kms->reg_aperture+RAGE128_DMA_GUI_STATUS);
-	printk("status=0x%08x\n", status);
+	KM_DEBUG("status=0x%08x\n", status);
 	} while (!(status & 0x1f));
 #endif
 /* start transfer */
-if(kms->frame_even.dma_active)printk("DMA overrun\n");
+if(kms->frame_even.dma_active)KM_DEBUG("DMA overrun\n");
 if(kms->frame_even.buf_ptr!=kms->frame_even.buf_free){
 	kms->overrun++;
-	printk("Data overrun\n");
+	KM_DEBUG("Data overrun\n");
 	}
 kms->total_frames++;
 kms->frame_even.dma_active=1;
 writel(kvirt_to_pa(kms->frame_even.dma_table)|RAGE128_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM, 
 	kms->reg_aperture+RAGE128_BM_VIDCAP_BUF0);
-printk("start_frame_transfer_buf0_even\n");
+KM_DEBUG("start_frame_transfer_buf0_even\n");
 }
 
 static int rage128_is_capture_irq_active(KM_STRUCT *kms)
@@ -199,7 +199,7 @@ kms->interrupt_count++;
 count=10000;
 
 while(1){
-/*	printk("beep %ld\n", kms->interrupt_count); */
+/*	KM_DEBUG("beep %ld\n", kms->interrupt_count); */
 	if(!rage128_is_capture_irq_active(kms)){
 		status=readl(kms->reg_aperture+RAGE128_GEN_INT_STATUS);
 		mask=readl(kms->reg_aperture+RAGE128_GEN_INT_CNTL);
@@ -208,7 +208,7 @@ while(1){
 		writel(status & mask, kms->reg_aperture+RAGE128_GEN_INT_STATUS);
 		count--;
 		if(count<0){
-			printk(KERN_ERR "Kmultimedia: IRQ %d locked up, disabling interrupts in the hardware\n", irq);
+			KM_DEBUG(KERN_ERR "Kmultimedia: IRQ %d locked up, disabling interrupts in the hardware\n", irq);
 			writel(0, kms->reg_aperture+RAGE128_GEN_INT_STATUS);
 			}
 		}

@@ -49,4 +49,10 @@ int acknowledge_dma(KM_STRUCT *kms);
 #define HARDWARE_RAGE128	1
 #define HARDWARE_RADEON		2
 
+#ifndef __KM_C__
+extern int km_debug;
+#endif
+
+#define KM_DEBUG   if(km_debug)printk
+
 #endif

@@ -82,18 +82,18 @@ radeon_setup_single_frame_buffer(kms, &(kms->frame), offset);
 /* wait for at least one available queue */
 do {
 	status=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
-	printk("status=0x%08x\n", status);
+	KM_DEBUG("status=0x%08x\n", status);
 	} while (!(status & 0x1f));
 /* start transfer */
-if(kms->frame.dma_active)printk("DMA overrun\n");
+if(kms->frame.dma_active)KM_DEBUG("DMA overrun\n");
 if(kms->frame.buf_ptr!=kms->frame.buf_free){
 	kms->overrun++;
-	printk("Data overrun\n");
+	KM_DEBUG("Data overrun\n");
 	}
 kms->total_frames++;
 kms->frame.dma_active=1;
 writel(kvirt_to_pa(kms->frame.dma_table), kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR);
-printk("start_frame_transfer_buf0\n");
+KM_DEBUG("start_frame_transfer_buf0\n");
 }
 
 static void radeon_start_frame_transfer_buf0_even(KM_STRUCT *kms)
@@ -106,18 +106,18 @@ radeon_setup_single_frame_buffer(kms, &(kms->frame_even), offset);
 /* wait for at least one available queue */
 do {
 	status=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
-	printk("status=0x%08x\n", status);
+	KM_DEBUG("status=0x%08x\n", status);
 	} while (!(status & 0x1f));
 /* start transfer */
-if(kms->frame_even.dma_active)printk("DMA overrun\n");
+if(kms->frame_even.dma_active)KM_DEBUG("DMA overrun\n");
 if(kms->frame_even.buf_ptr!=kms->frame_even.buf_free){
 	kms->overrun++;
-	printk("Data overrun\n");
+	KM_DEBUG("Data overrun\n");
 	}
 kms->total_frames++;
 kms->frame_even.dma_active=1;
 writel(kvirt_to_pa(kms->frame_even.dma_table), kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR);
-printk("start_frame_transfer_buf0_even\n");
+KM_DEBUG("start_frame_transfer_buf0_even\n");
 }
 
 static int radeon_is_capture_irq_active(KM_STRUCT *kms)
@@ -129,7 +129,9 @@ status=readl(kms->reg_aperture+RADEON_CAP_INT_STATUS);
 mask=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
 if(!(status & mask))return 0;
 writel(status & mask, kms->reg_aperture+RADEON_CAP_INT_STATUS);
-printk("CAP_INT_STATUS=0x%08x\n", status);
+KM_DEBUG("CAP_INT_STATUS=0x%08x\n", status);
+/* do not start dma transfer if capture is not active anymore */
+if(!radeon_is_capture_active(kms))return 1;
 if(status & 1)radeon_start_frame_transfer_buf0(kms);
 if(status & 2)radeon_start_frame_transfer_buf0_even(kms); 
 return 1;
@@ -148,7 +150,7 @@ kms->interrupt_count++;
 count=10000;
 
 while(1){
-/*	printk("beep %ld\n", kms->interrupt_count); */
+/*	KM_DEBUG("beep %ld\n", kms->interrupt_count); */
 	if(!radeon_is_capture_irq_active(kms)){
 		status=readl(kms->reg_aperture+RADEON_GEN_INT_STATUS);
 		mask=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
@@ -157,7 +159,7 @@ while(1){
 		writel(status & mask, kms->reg_aperture+RADEON_GEN_INT_STATUS);
 		count--;
 		if(count<0){
-			printk(KERN_ERR "Kmultimedia: IRQ %d locked up, disabling interrupts in the hardware\n", irq);
+			KM_DEBUG(KERN_ERR "Kmultimedia: IRQ %d locked up, disabling interrupts in the hardware\n", irq);
 			writel(0, kms->reg_aperture+RADEON_GEN_INT_STATUS);
 			}
 		}

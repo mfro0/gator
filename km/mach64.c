@@ -69,7 +69,7 @@ u32 a;
 a=readl(kms->reg_aperture+MACH64_BUS_CNTL);
 writel((a | (3<<1) )&(~(1<<6)), kms->reg_aperture+MACH64_BUS_CNTL);
 a=readl(kms->reg_aperture+MACH64_CRTC_INT_CNTL);
-printk("CRTC_INT_CNTL=0x%08x\n", a);
+KM_DEBUG("CRTC_INT_CNTL=0x%08x\n", a);
 writel(a|MACH64_CAPBUF0_INT_ACK|MACH64_CAPBUF1_INT_ACK|MACH64_BUSMASTER_INT_ACK, kms->reg_aperture+MACH64_CRTC_INT_CNTL);
 writel(a|MACH64_CAPBUF0_INT_EN|MACH64_CAPBUF1_INT_EN|MACH64_BUSMASTER_INT_EN, kms->reg_aperture+MACH64_CRTC_INT_CNTL);
 }
@@ -112,20 +112,20 @@ mach64_setup_single_frame_buffer(kms, &(kms->frame), offset+640*10);
 /* wait for at least one available queue */
 do {
 	status=readl(kms->reg_aperture+MACH64_DMA_GUI_STATUS);
-	printk("status=0x%08x\n", status);
+	KM_DEBUG("status=0x%08x\n", status);
 	} while (!(status & 0x1f));
 #endif
 /* start transfer */
-if(kms->frame.dma_active)printk("DMA overrun\n");
+if(kms->frame.dma_active)KM_DEBUG("DMA overrun\n");
 if(kms->frame.buf_ptr!=kms->frame.buf_free){
 	kms->overrun++;
-	printk("Data overrun\n");
+	KM_DEBUG("Data overrun\n");
 	}
 kms->total_frames++;
 kms->frame.dma_active=1;
 writel(kvirt_to_pa(kms->frame.dma_table)|MACH64_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM, 
 	kms->reg_aperture+MACH64_BM_SYSTEM_TABLE);
-printk("start_frame_transfer_buf0\n");
+KM_DEBUG("start_frame_transfer_buf0\n");
 }
 
 static void mach64_start_frame_transfer_buf0_even(KM_STRUCT *kms)
@@ -141,20 +141,20 @@ mach64_setup_single_frame_buffer(kms, &(kms->frame_even), offset+640*10);
 /* wait for at least one available queue */
 do {
 	status=readl(kms->reg_aperture+MACH64_DMA_GUI_STATUS);
-	printk("status=0x%08x\n", status);
+	KM_DEBUG("status=0x%08x\n", status);
 	} while (!(status & 0x1f));
 #endif
 /* start transfer */
-if(kms->frame_even.dma_active)printk("DMA overrun\n");
+if(kms->frame_even.dma_active)KM_DEBUG("DMA overrun\n");
 if(kms->frame_even.buf_ptr!=kms->frame_even.buf_free){
 	kms->overrun++;
-	printk("Data overrun\n");
+	KM_DEBUG("Data overrun\n");
 	}
 kms->total_frames++;
 kms->frame_even.dma_active=1;
 writel(kvirt_to_pa(kms->frame_even.dma_table)|MACH64_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM, 
 	kms->reg_aperture+MACH64_BM_SYSTEM_TABLE);
-printk("start_frame_transfer_buf0_even\n");
+KM_DEBUG("start_frame_transfer_buf0_even\n");
 }
 
 static int mach64_is_capture_irq_active(KM_STRUCT *kms)
@@ -163,7 +163,9 @@ long status;
 status=readl(kms->reg_aperture+MACH64_CRTC_INT_CNTL);
 if(!(status & (MACH64_CAPBUF0_INT_ACK|MACH64_CAPBUF1_INT_ACK)))return 0;
 writel(ACK_INTERRUPT(status, MACH64_CAPBUF0_INT_ACK|MACH64_CAPBUF1_INT_ACK), kms->reg_aperture+MACH64_CRTC_INT_CNTL);
-printk("CRTC_INT_CNTL=0x%08x\n", status);
+KM_DEBUG("CRTC_INT_CNTL=0x%08x\n", status);
+/* do not start dma transfer if capture is not active anymore */
+if(!mach64_is_capture_active(kms))return 1;
 if(status & MACH64_CAPBUF0_INT_ACK)mach64_start_frame_transfer_buf0(kms);
 if(status & MACH64_CAPBUF1_INT_ACK)mach64_start_frame_transfer_buf0_even(kms); 
 return 1;
@@ -185,15 +187,15 @@ count=10000;
 while(1){
 	/* a little imprecise.. should work for now */
 	mach64_wait_for_idle(kms);
-/*	printk("beep %ld\n", kms->interrupt_count); */
+/*	KM_DEBUG("beep %ld\n", kms->interrupt_count); */
 	count--;
 	if(count<0){
-		printk(KERN_ERR "Kmultimedia: IRQ %d locked up, disabling interrupts in the hardware\n", irq);
+		KM_DEBUG(KERN_ERR "Kmultimedia: IRQ %d locked up, disabling interrupts in the hardware\n", irq);
 		writel(0, kms->reg_aperture+MACH64_CRTC_INT_CNTL);
 		}
 	if(!mach64_is_capture_irq_active(kms)){
 		status=readl(kms->reg_aperture+MACH64_CRTC_INT_CNTL);
-/*		printk("mach64: status=0x%08x\n", status); */
+/*		KM_DEBUG("mach64: status=0x%08x\n", status); */
 		if((status & MACH64_BUSMASTER_INT_ACK))acknowledge_dma(kms);
 /*		writel((status|MACH64_BUSMASTER_INT_ACK) & ~(MACH64_ACKS_MASK & ~MACH64_BUSMASTER_INT_ACK), kms->reg_aperture+MACH64_CRTC_INT_CNTL); */
 		/* hack admittedly.. but so what ? */

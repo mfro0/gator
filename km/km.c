@@ -1,3 +1,5 @@
+#define __KM_C__
+
 #include <linux/types.h>
 #include <linux/config.h>
 #include <linux/version.h>
@@ -10,12 +12,18 @@
 #include <linux/wrapper.h>
 #include <linux/videodev.h>
 
+
 #include "km.h"
 #include "km_memory.h"
 #include "km_v4l.h"
 #include "radeon.h"
 #include "mach64.h"
 #include "rage128.h"
+
+MODULE_PARM(km_debug, "i");
+MODULE_PARM_DESC(km_debug, "kmultimedia debugging level");
+
+int km_debug=1;
 
 void generic_deallocate_single_frame_buffer(KM_STRUCT *kms, SINGLE_FRAME *frame)
 {
