@@ -586,7 +586,7 @@ proc flash_message { message } {
 global VIDEO_WINDOW
 set bg [$VIDEO_WINDOW cget -background]
 set f_size 0
-set message_font_id [font create message_font -size -$f_size -family Helvetica -slant roman -weight normal]
+set message_font_id [font create message_font -size -$f_size -family Helvetica -slant roman -weight bold]
 
 set m $VIDEO_WINDOW.onscreen_display.message
 destroy $m
@@ -872,6 +872,7 @@ if { $v4l_capture_on } {
 				-step_frames $current_v4l_rrate \
 				-av_format $current_av_format \
 				-audio_device "$current_alsa_device" \
+				-audio_rate 48000 \
 				-filename "$current_capture_filename"]
 	if { "$status" == "" } { 
 		after cancel "check_fifo $cw"

@@ -15,6 +15,7 @@ s->last=NULL;
 s->total=0;
 s->threshhold=0;
 s->consumer_thread_running=0;
+s->producer_thread_running=0;
 s->stop_stream=0;
 s->consume_func=NULL;
 s->priv=NULL;

@@ -150,18 +150,13 @@ while(1){
 #endif
 	pthread_mutex_lock(&(s->ctr_mutex));
 	if(s->stop_stream){
-		pthread_mutex_lock(&(sdata->format_context_mutex));
-		if(sdata->format_context.format!=NULL)
-			sdata->format_context.format->write_trailer(&(sdata->format_context));
-		pthread_mutex_unlock(&(sdata->format_context_mutex));
 		avcodec_close(&(sdata->video_codec_context));
-		close(sdata->fd_out);
 		for(f=s->first;f!=NULL;f=f->next)f->discard=1;
 		discard_packets(s);
 		free(picture.data[0]);
 		s->consumer_thread_running=0;
 		pthread_mutex_unlock(&(s->ctr_mutex));
-		fprintf(stderr,"Recording finished\n");
+		fprintf(stderr,"Video encoding finished\n");
 		pthread_exit(NULL);
 		}
 	pthread_mutex_unlock(&(s->ctr_mutex));
@@ -208,15 +203,16 @@ while(1){
 		pthread_mutex_lock(&(s->ctr_mutex));
 		discard_packets(s); 
 		pthread_mutex_unlock(&(s->ctr_mutex));
-		}	
+		}
 	pthread_mutex_lock(&(s->ctr_mutex));	
 	if(s->stop_stream){
+		avcodec_close(&(sdata->audio_codec_context));
 		for(f=s->first;f!=NULL;f=f->next)f->discard=1;
 		discard_packets(s);
-		free(out_buf);
 		s->consumer_thread_running=0;
 		pthread_mutex_unlock(&(s->ctr_mutex));
-		fprintf(stderr,"Recording finished\n");
+		free(out_buf);
+		fprintf(stderr,"Audio encoding finished\n");
 		pthread_exit(NULL);
 		}
 	pthread_mutex_unlock(&(s->ctr_mutex));
@@ -260,6 +256,7 @@ while(!s->stop_stream){
 	}
 data->priv=NULL;
 sdata->v4l_data=NULL;
+s->producer_thread_running=0;
 pthread_mutex_unlock(&(s->ctr_mutex));
 fprintf(stderr,"v4l_reader_thread finished\n");
 pthread_exit(NULL);
@@ -493,6 +490,8 @@ motion_estimation_method=ME_FULL;
 memset(&(sdata->format_context), 0, sizeof(AVFormatContext));
 
 sdata->format_context.nb_streams=0;
+sdata->video_stream_num=-1;
+sdata->audio_stream_num=-1;
 if(ffmpeg_create_video_codec(interp, argc, argv)){
 	k=sdata->format_context.nb_streams;
 	sdata->video_stream_num=k;
@@ -510,6 +509,8 @@ if(ffmpeg_create_audio_codec(interp, argc, argv)){
 	memset(sdata->format_context.streams[k], 0, sizeof(AVStream));
 	memcpy(&(sdata->format_context.streams[k]->codec), &(sdata->audio_codec_context), sizeof(AVCodecContext));	
 	}
+fprintf(stderr,"video stream num=%d audio stream num=%d\n",
+	sdata->video_stream_num, sdata->audio_stream_num);
 if(sdata->format_context.nb_streams==0){
 	close(sdata->fd_out);
 	free(sdata);
@@ -552,8 +553,14 @@ sdata->video_s->consume_func=ffmpeg_v4l_encoding_thread;
 sdata->audio_s->consume_func=ffmpeg_audio_encoding_thread;
 /* set threshhold to two frames worth of data */
 sdata->video_s->threshhold=sdata->video_size*2;
-pthread_create(&(sdata->video_reader_thread), NULL, v4l_reader_thread, sdata->v4l_data); 
-pthread_create(&(sdata->audio_reader_thread), NULL, alsa_reader_thread, sdata->audio_s); 
+if(sdata->video_stream_num>=0){
+	sdata->video_s->producer_thread_running=1;
+	pthread_create(&(sdata->video_reader_thread), NULL, v4l_reader_thread, sdata->v4l_data); 
+	}
+if(sdata->audio_stream_num>=0){
+	sdata->audio_s->producer_thread_running=1;
+	pthread_create(&(sdata->audio_reader_thread), NULL, alsa_reader_thread, sdata->audio_s); 
+	}
 return 0;
 }
 
@@ -620,12 +627,16 @@ if(sdata->video_s!=NULL){
 if(sdata->audio_s!=NULL){
 	pthread_mutex_lock(&(sdata->audio_s->ctr_mutex));
 	}
-if((sdata->video_s!=NULL) && sdata->video_s->stop_stream && !sdata->video_s->consumer_thread_running){
+if((sdata->video_s!=NULL) && sdata->video_s->stop_stream && 
+	!sdata->video_s->consumer_thread_running &&
+	!sdata->video_s->producer_thread_running){
 	data->priv=NULL;
 	free(sdata->video_s);
 	sdata->video_s=NULL;
 	}
-if((sdata->audio_s!=NULL) && sdata->audio_s->stop_stream && !sdata->audio_s->consumer_thread_running){
+if((sdata->audio_s!=NULL) && sdata->audio_s->stop_stream && 
+	!sdata->audio_s->consumer_thread_running &&
+	!sdata->audio_s->producer_thread_running){
 	free(sdata->audio_s);
 	sdata->audio_s=NULL;
 	}
@@ -641,8 +652,14 @@ if(sdata->audio_s!=NULL){
 
 Tcl_SetObjResult(interp, Tcl_NewIntObj(total));
 if((sdata!=NULL)&&(sdata->audio_s==NULL)&&(sdata->video_s==NULL)){
+	pthread_mutex_lock(&(sdata->format_context_mutex));
+	if(sdata->format_context.format!=NULL)
+		sdata->format_context.format->write_trailer(&(sdata->format_context));
+	pthread_mutex_unlock(&(sdata->format_context_mutex));
+	close(sdata->fd_out);
 	free(sdata);
 	sdata=NULL;
+	fprintf(stderr,"Recording finished\n");
 	return TCL_OK; 
 	}
 if(sdata->video_s!=NULL){

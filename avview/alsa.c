@@ -442,6 +442,7 @@ void alsa_reader_thread(PACKET_STREAM *s)
 PACKET *p;
 ALSA_DATA *data=(ALSA_DATA *)s->priv;
 int a;
+int frames_to_read;
 /* lock mutex before testing s->stop_stream */
 data->recording_chunk_size=data->param->chunk_size;
 p=new_generic_packet(data->recording_chunk_size); 
@@ -450,9 +451,11 @@ while(!s->stop_stream){
 	pthread_mutex_unlock(&(s->ctr_mutex));
 	
 	/* do the reading */
-	if((a=snd_pcm_readi(data->recording_handle, p->buf+p->free, (p->size-p->free)/data->frame_size))>0){
+	frames_to_read=snd_pcm_avail_update(data->recording_handle);
+	if(frames_to_read>(p->size-p->free)/data->frame_size)frames_to_read=(p->size-p->free)/data->frame_size;
+	if(frames_to_read<=0)frames_to_read=1;
+	if((a=snd_pcm_readi(data->recording_handle, p->buf+p->free, frames_to_read))>0){
 		p->free+=a*data->frame_size;
-		/* deliver always */
 		#if 0
 		fprintf(stderr,"Read %d samples\n", a);
 		#endif
@@ -465,8 +468,13 @@ while(!s->stop_stream){
 			pthread_mutex_unlock(&(s->ctr_mutex));
 			}
 		} else
-	if(a<0){
+	if(a==-EPIPE){
+		fprintf(stderr,"Audio reader: overrun occurred, resetting pcm device\n");
+		snd_pcm_reset(data->recording_handle);
+		} else
+	if(a<0){		
 		fprintf(stderr,"snd_pcm_readi error: %s\n", snd_strerror(a));
+		sleep(1);
 		} 
 	pthread_mutex_lock(&(s->ctr_mutex));
 	}
@@ -474,6 +482,7 @@ data->priv=NULL;
 s->priv=NULL;
 snd_pcm_drop(data->recording_handle);
 snd_pcm_close(data->recording_handle);
+s->producer_thread_running=0;
 pthread_mutex_unlock(&(s->ctr_mutex));
 pthread_exit(NULL);
 }
@@ -612,6 +621,9 @@ for(i=0;alsa_commands[i].name!=NULL;i++)
 
 void alsa_reader_thread(PACKET_STREAM *s)
 {
+pthread_mutex_lock(&(s->ctr_mutex));
+s->producer_thread_running=0;
+pthread_mutex_unlock(&(s->ctr_mutex));
 }
 
 
