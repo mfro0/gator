@@ -509,18 +509,6 @@ close $fileid
 
 proc read_settings {} {
 #
-# Read settings saved automatically during exit
-#
-if { [file exists "~/.avview_state"] } {
-	catch {
-		set fileid [open "~/.avview_state" r]
-		if { [catch "[read $fileid]" err_msg] } {
-			puts "Error loading settings from ~/.avview_state: $err_msg"
-			}
-		close $fileid
-		} err_msg
-	}
-#
 # Read user-specific customizations
 #
 if { [file exists "~/.avview"] } {
@@ -531,6 +519,18 @@ if { [file exists "~/.avview"] } {
 			}
 		close $fileid
 		} 
+	}
+#
+# Read settings saved automatically during exit
+#
+if { [file exists "~/.avview_state"] } {
+	catch {
+		set fileid [open "~/.avview_state" r]
+		if { [catch "[read $fileid]" err_msg] } {
+			puts "Error loading settings from ~/.avview_state: $err_msg"
+			}
+		close $fileid
+		} err_msg
 	}
 }
 

@@ -1,0 +1,40 @@
+Here is how to add a new theme:
+
+A theme is defined by a procedure:
+
+proc new_theme { widget args1 } {
+return ""
+}
+
+
+which returns the attributes given the name of the widget and a list 
+of optional arguments.
+(Note: do not use args for the name of the second argument. It is reserved
+by Tcl/Tk - see man proc )
+
+To let AVview know about a new theme you do this:
+
+global theme_list
+set theme_list(New\ Theme\ Name) new_theme
+
+this specifies both the name of the new theme and the theme procedure.
+
+So what you do is create a separate file: your_theme.scp.
+Open up themes.scp and copy an existing procedure (I recommend theme_pink 
+at the moment), rename it and put the two lines mentioned above.
+
+Next, open up (or create) ~/.avview  and put in it one line
+
+source /path/to/your/new/theme/your_theme.scp
+
+This will make avview load it automatically during start.
+
+Next modify the theme procedure to fit your needs. You can change not only colors
+but many other settings, see 
+  man button
+  man checkbutton
+  man scale
+  man scrollbar
+  ...
+  
+                         Vladimir Dergachev 
