@@ -32,6 +32,8 @@ avview_shell.static: $(SRCS) main.c
 	$(CC) -static $(X11CFLAGS) @FFMPEG_CFLAGS@ $(SRCS) $(TCLLIBS) $(LIBS) main.c -lm -dl -o avview_shell.static
 	strip avview_shell.static
 	
+write_test: write_test.c
+	$(CC) write_test.c -o write_test	
 	
 tarball:
 	(cd .. ; tar cvf - avview/*.scp avview/*.[c,h] avview/Makefile.in avview/configure.in avview/configure avview/config.h.in avview/README| gzip - ) > avview.tgz

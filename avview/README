@@ -26,3 +26,9 @@ Next run
 	./configure
 	make
 	
+*** NOTES ***
+
+       * right-clicking in the video window will bring up a menu
+       * People with newer cards with SPDIF - if your sound is distorted
+         try muting/unmuting various channels (like CD).
+	 LET ME KNOW (volodya@mindspring.com) if this helps.       
