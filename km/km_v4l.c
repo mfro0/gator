@@ -216,7 +216,7 @@ while(size>0){
                 size-=PAGE_SIZE;
 	if((pos-(unsigned long)frame->buffer)>frame->buf_size){
 		frame=&(kms->frame_even);
-		pos=frame->buffer;
+		pos=(unsigned long)frame->buffer;
 		}
         }
 return 0;
@@ -242,8 +242,12 @@ if(frame->buf_ptr==frame->buf_free)
 #if 0
 	if (btv->vbip < VBIBUF_SIZE)
 #endif
-/* by now we have more data.. */
-mask |= (POLLIN | POLLRDNORM);
+if(kms->buf_read_from==0)frame=&(kms->frame);
+	else frame=&(kms->frame_even);
+
+if(frame->buf_ptr<frame->buf_free)
+	/* Now we have more data.. */
+	mask |= (POLLIN | POLLRDNORM);
 
 return mask;
 }

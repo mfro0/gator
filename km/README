@@ -9,16 +9,12 @@ hints:
     * compile
     * become root and issue "make test"
     * start X
-    * start xawtv
-    * get xv_stream, compile it
-    * run xv_stream --device=/dev/video0 
-      (preferably over network from a different computer with Xv capable
-      video card)
+    * get AVview, compile it
+    * run AVview
     * enjoy
     * tweak
     
     kmultimedia websites: http://gatos.sf.net
-                          http://www.linuxvideo.org/gatos
     
 
 Additional notes:
