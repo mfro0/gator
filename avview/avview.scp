@@ -38,6 +38,7 @@ source channel_scan.scp
 source ffmpeg.scp
 source video_device.scp
 source diag.scp
+source bindings.scp
 
 foreach {variable value} {
 	show_control_window 1
@@ -468,14 +469,14 @@ if { $fullscreen_mode } {
 			0 0 0 0 off
 		display_video
 		update
-		puts "1. state=[wm state .]"
+#		puts "1. state=[wm state .]"
 		while { [wm state .] != "normal" } {
-			puts "2. state=[wm state .]"
+#			puts "2. state=[wm state .]"
 			wm state . normal
 			update
 			update idletasks
 			}
-		puts "3. state=[wm state .] mapped=[winfo ismapped .]"
+#		puts "3. state=[wm state .] mapped=[winfo ismapped .]"
 		$VIDEO_WINDOW configure -width ${screen_width} \
 			-height ${screen_height}
 		wm geometry . =${screen_width}x${screen_height}+0+0
@@ -710,6 +711,7 @@ Tree:open .setup.tree "/User interface settings"
 replace_parameter_choices "/Video device parameters" 0 a
 
 after 200 {
+	assign_default_bindings
 	read_settings
 	switch_to_pane "/User interface settings"
 	if { $display_setup_window_on_startup } {

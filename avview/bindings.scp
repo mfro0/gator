@@ -1,0 +1,24 @@
+
+#
+#
+#  Default bindings
+#
+#
+proc assign_default_bindings {} {
+
+foreach {action sequence} {
+	toggle_fullscreen "<Control--KeyPress-f>"
+	} {
+	bind all $sequence $action
+	}
+}
+	
+	
+proc toggle_fullscreen {} {
+global fullscreen_mode
+if { $fullscreen_mode } {
+	set fullscreen_mode false
+	} {
+	set fullscreen_mode true
+	}
+}
