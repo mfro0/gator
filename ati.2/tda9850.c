@@ -35,14 +35,14 @@ TDA9850Ptr Detect_tda9850(I2CBusPtr b, I2CSlaveAddr addr)
   
   if(!I2C_WriteRead(&(t->d), NULL, 0, &a, 1))
   {
-     free(t);
+     xfree(t);
      return NULL;
   }
   
   /* set default parameters */
   if(!I2CDevInit(&(t->d)))
   {
-     free(t);
+     xfree(t);
      return NULL;
   }
 

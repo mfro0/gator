@@ -611,6 +611,7 @@ ATIChipID
             return ATI_CHIP_R200;
 	
         case OldChipID('Q', 'W'):  case NewChipID('Q', 'W'):
+	case OldChipID('B', 'B'):  case NewChipID('B', 'B'):
             return ATI_CHIP_RV200;
 
         case OldChipID('H', 'D'):  case NewChipID('H', 'D'):

@@ -26,14 +26,14 @@ TDA8425Ptr Detect_tda8425(I2CBusPtr b, I2CSlaveAddr addr, Bool force)
   
   if(!force && !I2CProbeAddress(b, addr))
   {
-     free(t);
+     xfree(t);
      return NULL;
   }
   
   /* set default parameters */
   if(!I2CDevInit(&(t->d)))
   {
-     free(t);
+     xfree(t);
      return NULL;
   }
 

@@ -119,9 +119,9 @@ MSP3430Ptr DetectMSP3430(I2CBusPtr b, I2CSlaveAddr addr)
 	m->standard=MSP3430_NTSC;
 	m->connector=MSP3430_CONNECTOR_1;
 	m->mode=MSPMODE_STEREO_A;	/*stereo or chanel A if avail. */
-    m->c_format=MSPFORMAT_UNKNOWN;
-    m->c_standard=MSPSTANDARD_UNKNOWN;
-    m->c_matrix=m->c_fmmatrix=m->c_source=0;
+    	m->c_format=MSPFORMAT_UNKNOWN;
+    	m->c_standard=MSPSTANDARD_UNKNOWN;
+    	m->c_matrix=m->c_fmmatrix=m->c_source=0;
 	m->volume=0;
 	m->recheck=FALSE;
 
@@ -151,8 +151,8 @@ MSP3430Ptr DetectMSP3430(I2CBusPtr b, I2CSlaveAddr addr)
 	  	m->chip_family=MSPFAMILY_UNKNOWN;
    }
    
-	xf86DrvMsg(m->d.pI2CBus->scrnIndex, X_INFO, "Found %s%s, rom version 0x%02x\n",
-		MSP_getProductName(m->chip_id), supported?"":" (unsupported)", rom_version);
+	xf86DrvMsg(m->d.pI2CBus->scrnIndex, X_INFO, "Found %s%s, rom version 0x%02x, chip_id=0x%04x\n",
+		MSP_getProductName(m->chip_id), supported?"":" (unsupported)", rom_version, m->chip_id);
 
 	if (!supported) {
 	   	free(m);
@@ -178,10 +178,11 @@ void MSP3430SetVolume (MSP3430Ptr m, CARD8 value)
 {
     CARD8 result;
     CARD8 old_volume;
-	
+
     GetMSP3430Data(m, RD_DSP, 0x00, 0x00, &old_volume, &result);   
 
     SetMSP3430Data(m, WR_DSP, 0x00, 0x00, value, result);
+
     SetMSP3430Data(m, WR_DSP, 0x00, 0x07, value, 0);
 	m->volume=value;
 

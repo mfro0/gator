@@ -1144,6 +1144,7 @@ static Bool RADEONPreInitConfig(ScrnInfoPtr pScrn)
             info->HasCRTC2 = TRUE;  
             info->IsR200 = TRUE;
             break;
+	case PCI_CHIP_RV200_BB:
    	case PCI_CHIP_RV200_QW:   /* RV200 desktop */
    	case PCI_CHIP_RADEON_LW:  /* M7 */
             info->HasCRTC2 = TRUE;  
@@ -1284,6 +1285,7 @@ static Bool RADEONPreInitConfig(ScrnInfoPtr pScrn)
 	case PCI_CHIP_RADEON_QG:
 	case PCI_CHIP_R200_QL:
 	case PCI_CHIP_RV200_QW:
+	case PCI_CHIP_RV200_BB:
 	default:                 info->IsPCI = FALSE; break;
 	}
     }

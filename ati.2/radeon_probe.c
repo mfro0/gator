@@ -85,6 +85,7 @@ SymTabRec RADEONChipsets[] = {
     { PCI_CHIP_RADEON_LZ, "ATI Radeon Mobility LZ (AGP)" },
     { PCI_CHIP_R200_QL, "ATI Radeon 8500 QL (AGP)" },
     { PCI_CHIP_RV200_QW, "ATI Radeon 7500 QW (AGP)" },
+    { PCI_CHIP_RV200_BB, "ATI Radeon 8500 BB (AGP)"},
     { -1,                 NULL }
 };
 
@@ -100,6 +101,7 @@ PciChipsets RADEONPciChipsets[] = {
     { PCI_CHIP_RADEON_LZ, PCI_CHIP_RADEON_LZ, RES_SHARED_VGA },
     { PCI_CHIP_R200_QL, PCI_CHIP_R200_QL, RES_SHARED_VGA },
     { PCI_CHIP_RV200_QW, PCI_CHIP_RV200_QW, RES_SHARED_VGA },
+    { PCI_CHIP_RV200_BB, PCI_CHIP_RV200_BB, RES_SHARED_VGA},
     { -1,                 -1,                 RES_UNDEFINED }
 };
 
@@ -228,6 +230,7 @@ RADEONProbe(DriverPtr drv, int flags)
            pEnt->chipset == PCI_CHIP_RADEON_QZ ||
            pEnt->chipset == PCI_CHIP_R200_QL ||
            pEnt->chipset == PCI_CHIP_RV200_QW ||
+	   pEnt->chipset == PCI_CHIP_RV200_BB ||
            pEnt->chipset == PCI_CHIP_RADEON_LW ||
            pEnt->chipset == PCI_CHIP_RADEON_LY ||
            pEnt->chipset == PCI_CHIP_RADEON_LZ)
