@@ -52,7 +52,7 @@ TheatrePtr DetectTheatre(GENERIC_BUS_Ptr b)
 	}
 	if(val)xf86DrvMsg(b->scrnIndex, X_INFO, "Device %d on VIP bus ids as 0x%08x\n",i,val);
    }
-   if(t->theatre_num>0)xf86DrvMsg(b->scrnIndex, X_INFO, "Detected Rage Theatre as device %d on VIP bus with ids 0x%08x\n",i,val);
+   if(t->theatre_num>=0)xf86DrvMsg(b->scrnIndex, X_INFO, "Detected Rage Theatre as device %d on VIP bus with ids 0x%08x\n",t->theatre_num,val);
 
    if(t->theatre_num < 0)
    {
