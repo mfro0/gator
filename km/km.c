@@ -481,6 +481,13 @@ KM_FIELD kmfl_template[]={
 	  priv: NULL,
 	  read_complete: NULL,
 	},
+	{ type: KM_FIELD_TYPE_LEVEL_TRIGGER,
+	  name: "VIDEO_STREAM_ACTIVE",
+	  changed: 0,
+	  lock: NULL,
+	  priv: NULL,
+	  read_complete: NULL,
+	},
 	{ type: KM_FIELD_TYPE_DYNAMIC_INT,
 	  name: "VIDEO_STREAM_DATA_UNIT",
 	  changed: 0,
@@ -516,9 +523,36 @@ KM_FIELD kmfl_template[]={
 	  priv: NULL,
 	  read_complete: NULL,
 	},
+	{ type: KM_FIELD_TYPE_LEVEL_TRIGGER,
+	  name: "VBI_STREAM_ACTIVE",
+	  changed: 0,
+	  lock: NULL,
+	  priv: NULL,
+	  read_complete: NULL,
+	},
 	{ type: KM_FIELD_TYPE_EOL
 	}
 	};
+
+void video_stream_on(KM_FIELD *kf)
+{
+printk("Video stream on\n");
+}
+
+void video_stream_off(KM_FIELD *kf)
+{
+printk("Video stream off\n");
+}
+
+void vbi_stream_on(KM_FIELD *kf)
+{
+printk("VBI stream on\n");
+}
+
+void vbi_stream_off(KM_FIELD *kf)
+{
+printk("VBI stream off\n");
+}
 
 static int __devinit km_probe(struct pci_dev *dev, const struct pci_device_id *pci_id)
 {
@@ -663,6 +697,9 @@ FIELD("VLINE_COUNT").data.i.field=&(kms->vline_count);
 
 FIELD("V4L_DEVICE").data.i.field=&(kms->vd.minor);
 
+FIELD("VIDEO_STREAM_ACTIVE").data.t.zero2one=video_stream_on;
+FIELD("VIDEO_STREAM_ACTIVE").data.t.one2zero=video_stream_off;
+
 FIELD("VIDEO_STREAM_DATA_UNIT").data.i.field=&(kms->capture.du);
 
 FIELD("VIDEO_STREAM_INFO_DATA_UNIT").data.i.field=&(kms->capture.info_du);
@@ -672,6 +709,9 @@ FIELD("VBI_DEVICE").data.i.field=&(kms->vbi_vd.minor);
 FIELD("VBI_STREAM_DATA_UNIT").data.i.field=&(kms->vbi.du);
 
 FIELD("VBI_STREAM_INFO_DATA_UNIT").data.i.field=&(kms->vbi.info_du);
+
+FIELD("VBI_STREAM_ACTIVE").data.t.zero2one=vbi_stream_on;
+FIELD("VBI_STREAM_ACTIVE").data.t.one2zero=vbi_stream_off;
 
 kms->kmd=add_km_device(kms->kmfl, kms);
 printk("Device %s %s (0x%04x:0x%04x) corresponds to /dev/video%d\n",
