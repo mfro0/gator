@@ -49,6 +49,7 @@ PACKET *new_generic_packet(PACKET_STREAM *s, size_t size);
 void free_generic_packet(PACKET *p);
 void deliver_packet(PACKET_STREAM *s, PACKET *p);
 void discard_packets(PACKET_STREAM *s);
+void start_consumer_thread(PACKET_STREAM *s);
 
 #define STOP_CONSUMER_THREAD	1
 #define STOP_PRODUCER_THREAD	2

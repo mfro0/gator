@@ -88,6 +88,19 @@ if(p->buf!=NULL)do_free(p->buf);
 do_free(p);
 }
 
+void start_consumer_thread(PACKET_STREAM *s)
+{
+if(!s->consumer_thread_running && (s->consume_func!=NULL)) {
+	if(pthread_create(&(s->consumer_thread_id), NULL, s->consume_func, s)!=0){
+		fprintf(stderr, "packet_stream: cannot create thread (s=%p s->consume_func=%p s->total=%d): ",
+			s, s->consume_func, s->total);
+		perror("");
+		} else {
+		s->consumer_thread_running=1;
+		}
+	}
+}
+
 void deliver_packet(PACKET_STREAM *s, PACKET *p)
 {
 /* put the packet into the queue */
@@ -101,15 +114,7 @@ s->total+=p->free;
 if((s->total>s->threshold) && 
 	!(s->stop_stream & STOP_CONSUMER_THREAD)){
 	/* start consumer thread */
-	if(!s->consumer_thread_running && (s->consume_func!=NULL)) {
-		if(pthread_create(&(s->consumer_thread_id), NULL, s->consume_func, s)!=0){
-			fprintf(stderr, "packet_stream: cannot create thread (s=%p s->consume_func=%p s->total=%d): ",
-				s, s->consume_func, s->total);
-			perror("");
-			} else {
-			s->consumer_thread_running=1;
-			}
-		}
+	start_consumer_thread(s);
 	/* wake up anything that may be waiting on us */
 	pthread_cond_broadcast(&(s->suspend_consumer_thread));
 	}
