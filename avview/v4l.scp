@@ -498,26 +498,26 @@ catch {
 #	if { $ffmpeg_recording_chunk_size > 2000 } {
 #		set ffmpeg_recording_chunk_size 2000
 #		}
-	if { $ffmpeg_recording_chunk_size < 10 } {
-		set ffmpeg_recording_chunk_size 10 
-		}
-	if { $ffmpeg_recording_chunk_size < $length } {
-			set result "$file_save_path/$current_capture_filename"
-			set extension [file extension "$result"]
-			set rootname [file rootname "$result"]
-			if { [regsub -- "-\[0123456789\]\$" "$rootname" "" a] } {
-				set rootname "$a"
-				}
-			for { set i 1 } { 1 } { incr i } {
-				if { ![file exists "$rootname-$i$extension"] } {
-					break
-					}
-				}
-			set result "$rootname-$i$extension"
-			set current_capture_filename [file tail "$result"]
-			set file_save_path [file dirname "$result"]
-			ffmpeg_switch_file "$result"
-		}
+#	if { $ffmpeg_recording_chunk_size < 10 } {
+#		set ffmpeg_recording_chunk_size 10 
+#		}
+#	if { $ffmpeg_recording_chunk_size < $length } {
+#			set result "$file_save_path/$current_capture_filename"
+#			set extension [file extension "$result"]
+#			set rootname [file rootname "$result"]
+#			if { [regsub -- "-\[0123456789\]\$" "$rootname" "" a] } {
+#				set rootname "$a"
+#				}
+#			for { set i 1 } { 1 } { incr i } {
+#				if { ![file exists "$rootname-$i$extension"] } {
+#					break
+#					}
+#				}
+#			set result "$rootname-$i$extension"
+#			set current_capture_filename [file tail "$result"]
+#			set file_save_path [file dirname "$result"]
+#			ffmpeg_switch_file "$result"
+#		}
 	update_video_stats $cw.video_stats $status
 	}
 after 800 "check_fifo $cw"
