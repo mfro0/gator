@@ -142,7 +142,6 @@ return 0;
 
 static void rage128_start_request_transfer(KM_TRANSFER_REQUEST *kmtr)
 {
-long status;
 KM_STRUCT *kms=kmtr->user_data;
 rage128_wait_for_idle(kms);
 wmb();

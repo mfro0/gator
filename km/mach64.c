@@ -132,7 +132,6 @@ return 0;
 
 static void mach64_start_request_transfer(KM_TRANSFER_REQUEST *kmtr)
 {
-long status;
 KM_STRUCT *kms=kmtr->user_data;
 mach64_wait_for_idle(kms);
 wmb();
@@ -172,7 +171,7 @@ km_add_transfer_request(&(kms->gui_dma_queue),
 irqreturn_t mach64_km_irq(int irq, void *dev_id, struct pt_regs *regs)
 {
 KM_STRUCT *kms;
-long status, status_cap, mask;
+long status;
 int count;
 
 kms=dev_id;
@@ -193,7 +192,7 @@ while(1){
 		}
 
 	status=readl(kms->reg_aperture+MACH64_CRTC_INT_CNTL);
-	KM_DEBUG("CRTC_INT_CNTL=0x%08x\n", status);
+	KM_DEBUG("CRTC_INT_CNTL=0x%08lx\n", status);
 	writel(ACK_INTERRUPT(status, status & (MACH64_CAPBUF0_INT_ACK|
 		MACH64_CAPBUF1_INT_ACK|
 		MACH64_BUSMASTER_INT_ACK)), kms->reg_aperture+MACH64_CRTC_INT_CNTL);
@@ -211,7 +210,8 @@ while(1){
 		mach64_wait_for_idle(kms);
 		acknowledge_dma(kms);
 		}
-	if(!(status & (MACH64_CAPBUF0_INT_ACK|MACH64_CAPBUF1_INT_ACK|MACH64_BUSMASTER_INT_ACK)))return;
+	if(!(status & (MACH64_CAPBUF0_INT_ACK|MACH64_CAPBUF1_INT_ACK|MACH64_BUSMASTER_INT_ACK)))
+		return IRQ_NONE;
 	}
  return IRQ_HANDLED; 
 }
