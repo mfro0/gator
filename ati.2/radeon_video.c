@@ -3319,17 +3319,17 @@ switch(pPriv->encoding){
         case 1:
                 xf86_RT_SetConnector(pPriv->theatre,DEC_COMPOSITE, 0);
                 xf86_RT_SetStandard(pPriv->theatre,DEC_PAL | extPAL);
-                pPriv->v=24;
+                pPriv->v=25;
                 break;
         case 2:
                 xf86_RT_SetConnector(pPriv->theatre,DEC_TUNER,0);
                 xf86_RT_SetStandard(pPriv->theatre,DEC_PAL | extPAL);
-                pPriv->v=24;
+                pPriv->v=25;
                 break;
         case 3:
                 xf86_RT_SetConnector(pPriv->theatre,DEC_SVIDEO,0);
                 xf86_RT_SetStandard(pPriv->theatre,DEC_PAL | extPAL);
-                pPriv->v=24;
+                pPriv->v=25;
                 break;
         case 4:
                 xf86_RT_SetConnector(pPriv->theatre, DEC_COMPOSITE,0);
@@ -3364,17 +3364,17 @@ switch(pPriv->encoding){
         case 10:
                 xf86_RT_SetConnector(pPriv->theatre,DEC_COMPOSITE, 0);
                 xf86_RT_SetStandard(pPriv->theatre,DEC_PAL | extPAL_60);
-                pPriv->v=24;
+                pPriv->v=25;
                 break;
         case 11:
                 xf86_RT_SetConnector(pPriv->theatre,DEC_TUNER,0);
                 xf86_RT_SetStandard(pPriv->theatre,DEC_PAL | extPAL_60);
-                pPriv->v=24;
+                pPriv->v=25;
                 break;
         case 12:
                 xf86_RT_SetConnector(pPriv->theatre,DEC_SVIDEO,0);
                 xf86_RT_SetStandard(pPriv->theatre,DEC_PAL | extPAL_60);
-                pPriv->v=24;
+                pPriv->v=25;
                 break;
         default:
                 pPriv->v=0;
