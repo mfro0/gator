@@ -439,7 +439,7 @@ static void radeon_clear_box( drm_radeon_private_t *dev_priv,
 		  RADEON_ROP3_P |
 		  RADEON_GMC_CLR_CMP_CNTL_DIS );
 
-	OUT_RING( (pitch << 22) | (offset >> 5) );
+	OUT_RING( (pitch << 22) | ((offset) >> 5) );
 	OUT_RING( color );
 
 	OUT_RING( (x << 16) | y );
@@ -497,6 +497,7 @@ static void radeon_cp_dispatch_clear( drm_device_t *dev,
 	int i;
 	RING_LOCALS;
 	DRM_DEBUG( "%s\n", __FUNCTION__ );
+	printk("radeon_cp_dispatch_clear\n");
 
 	if ( dev_priv->page_flipping && dev_priv->current_page == 1 ) {
 		unsigned int tmp = flags;
@@ -653,7 +654,7 @@ static void radeon_cp_dispatch_swap( drm_device_t *dev )
 	int i;
 	RING_LOCALS;
 	DRM_DEBUG( "%s\n", __FUNCTION__ );
-
+	printk("radeon_cp_dispatch_swap\n");
 #if RADEON_PERFORMANCE_BOXES
 	/* Do some trivial performance monitoring...
 	 */
@@ -720,6 +721,7 @@ static void radeon_cp_dispatch_flip( drm_device_t *dev )
 	drm_radeon_private_t *dev_priv = dev->dev_private;
 	RING_LOCALS;
 	DRM_DEBUG( "%s: page=%d\n", __FUNCTION__, dev_priv->current_page );
+	printk("radeon_cp_displatch_flip\n");
 
 #if RADEON_PERFORMANCE_BOXES
 	/* Do some trivial performance monitoring...
@@ -764,13 +766,14 @@ static void radeon_cp_dispatch_vertex( drm_device_t *dev,
 	drm_radeon_buf_priv_t *buf_priv = buf->dev_private;
 	drm_radeon_sarea_t *sarea_priv = dev_priv->sarea_priv;
 	int format = sarea_priv->vc_format;
-	int offset = dev_priv->agp_buffers_offset + buf->offset;
+	int offset = dev_priv->agp_buffers_offset + buf->offset+dev_priv->fb->offset;
 	int size = buf->used;
 	int prim = buf_priv->prim;
 	int i = 0;
 	RING_LOCALS;
 	DRM_DEBUG( "%s: nbox=%d\n", __FUNCTION__, sarea_priv->nbox );
 
+        printk("radeon_cp_dispatch_vertex\n");
 	if ( 0 )
 		radeon_print_dirty( "dispatch_vertex", sarea_priv->dirty );
 
@@ -837,9 +840,10 @@ static void radeon_cp_dispatch_indirect( drm_device_t *dev,
 	DRM_DEBUG( "indirect: buf=%d s=0x%x e=0x%x\n",
 		   buf->idx, start, end );
 
+        printk("radeon_cp_dispatch_indirect\n");
 	if ( start != end ) {
 		int offset = (dev_priv->agp_buffers_offset
-			      + buf->offset + start);
+			      + buf->offset + start+dev_priv->fb->offset);
 		int dwords = (end - start + 3) / sizeof(u32);
 
 		/* Indirect buffer data must be an even number of
@@ -891,7 +895,7 @@ static void radeon_cp_dispatch_indices( drm_device_t *dev,
 	drm_radeon_buf_priv_t *buf_priv = buf->dev_private;
 	drm_radeon_sarea_t *sarea_priv = dev_priv->sarea_priv;
 	int format = sarea_priv->vc_format;
-	int offset = dev_priv->agp_buffers_offset;
+	int offset = dev_priv->agp_buffers_offset+dev_priv->fb->offset;
 	int prim = buf_priv->prim;
 	u32 *data;
 	int dwords;
@@ -899,6 +903,7 @@ static void radeon_cp_dispatch_indices( drm_device_t *dev,
 	RING_LOCALS;
 	DRM_DEBUG( "indices: s=%d e=%d c=%d\n", start, end, count );
 
+	printk("radeon_cp_dispatch_indices\n");
 	if ( 0 )
 		radeon_print_dirty( "dispatch_indices", sarea_priv->dirty );
 
@@ -979,6 +984,7 @@ static int radeon_cp_dispatch_texture( drm_device_t *dev,
 
 	/* FIXME: Be smarter about this...
 	 */
+	 printk("radeon_cp_dispatch_texture\n");
 	buf = radeon_freelist_get( dev );
 	if ( !buf ) return -EAGAIN;
 
@@ -1078,7 +1084,7 @@ static int radeon_cp_dispatch_texture( drm_device_t *dev,
 		     RADEON_GMC_CLR_CMP_CNTL_DIS |
 		     RADEON_GMC_WR_MSK_DIS);
 
-	buffer[2] = (tex->pitch << 22) | (tex->offset >> 10);
+	buffer[2] = (tex->pitch << 22) | ((tex->offset) >> 10);
 	buffer[3] = 0xffffffff;
 	buffer[4] = 0xffffffff;
 	buffer[5] = (y << 16) | image->x;
@@ -1137,6 +1143,8 @@ static void radeon_cp_dispatch_stipple( drm_device_t *dev, u32 *stipple )
 	int i;
 	RING_LOCALS;
 	DRM_DEBUG( "%s\n", __FUNCTION__ );
+
+        printk("radeon_cp_dispatch_stipple\n");
 
 	BEGIN_RING( 35 );
 
@@ -1208,7 +1216,7 @@ int radeon_cp_swap( struct inode *inode, struct file *filp,
 		dev_priv->sarea_priv->dirty |= (RADEON_UPLOAD_CONTEXT |
 						RADEON_UPLOAD_MASKS);
 	} else {
-		radeon_cp_dispatch_flip( dev );
+		radeon_cp_dispatch_flip( dev ); 
 	}
 
 	return 0;

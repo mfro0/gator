@@ -578,15 +578,28 @@ static void radeon_cp_init_ring_buffer( drm_device_t *dev,
 	u32 ring_start, cur_read_ptr;
 	u32 tmp;
 
+	printk("fb_offset=0x%08x\n", dev_priv->fb->offset);
+
 	/* Initialize the memory controller */
+	#if 0
 	RADEON_WRITE( RADEON_MC_FB_LOCATION,
 		      (dev_priv->agp_vm_start - 1) & 0xffff0000 );
+	#endif
+	RADEON_WRITE( RADEON_MC_FB_LOCATION, 
+			((dev_priv->fb->offset>>16)&0xffff)|
+			((dev_priv->fb->offset+dev_priv->fb->size-1)&0xffff0000));
+
+	RADEON_WRITE( RADEON_DISPLAY_BASE_ADDR, dev_priv->fb->offset);
+	RADEON_WRITE( RADEON_OVERLAY_BASE_ADDR, dev_priv->fb->offset);
+	RADEON_WRITE( RADEON_DEFAULT_OFFSET, 
+		(RADEON_READ(RADEON_DEFAULT_OFFSET) & (~0x3FFFFF)) |
+		((dev_priv->fb->offset>>10)& 0x3FFFFF));
 
 	if ( !dev_priv->is_pci ) {
 		RADEON_WRITE( RADEON_MC_AGP_LOCATION,
 			      (((dev_priv->agp_vm_start - 1 +
-				 dev_priv->agp_size) & 0xffff0000) |
-			       (dev_priv->agp_vm_start >> 16)) );
+				 dev_priv->agp_size+dev_priv->fb->offset) & 0xffff0000) |
+			       ((dev_priv->agp_vm_start+dev_priv->fb->offset) >> 16)) );
 	}
 
 #if __REALLY_HAVE_AGP
@@ -600,7 +613,7 @@ static void radeon_cp_init_ring_buffer( drm_device_t *dev,
 			      - dev->sg->handle
 			      + dev_priv->agp_vm_start);
 
-	RADEON_WRITE( RADEON_CP_RB_BASE, ring_start );
+	RADEON_WRITE( RADEON_CP_RB_BASE, ring_start+dev_priv->fb->offset);
 
 	/* Set the write pointer delay */
 	RADEON_WRITE( RADEON_CP_RB_WPTR_DELAY, 0 );
@@ -613,7 +626,7 @@ static void radeon_cp_init_ring_buffer( drm_device_t *dev,
 
 	if ( !dev_priv->is_pci ) {
 		RADEON_WRITE( RADEON_CP_RB_RPTR_ADDR,
-			      dev_priv->ring_rptr->offset );
+			      dev_priv->ring_rptr->offset);
 	} else {
 		drm_sg_mem_t *entry = dev->sg;
 		unsigned long tmp_ofs, page_ofs;
@@ -731,12 +744,15 @@ static int radeon_do_init_cp( drm_device_t *dev, drm_radeon_init_t *init )
 	dev_priv->depth_offset	= init->depth_offset;
 	dev_priv->depth_pitch	= init->depth_pitch;
 
+	printk("fo=0x%08x bo=0x%08x do=0x%08x\n", dev_priv->front_offset,
+		dev_priv->back_offset, dev_priv->depth_offset);
+
 	dev_priv->front_pitch_offset = (((dev_priv->front_pitch/64) << 22) |
-					(dev_priv->front_offset >> 10));
+					((dev_priv->front_offset+dev_priv->fb->offset) >> 10));
 	dev_priv->back_pitch_offset = (((dev_priv->back_pitch/64) << 22) |
-				       (dev_priv->back_offset >> 10));
+				       ((dev_priv->back_offset+dev_priv->fb->offset) >> 10));
 	dev_priv->depth_pitch_offset = (((dev_priv->depth_pitch/64) << 22) |
-					(dev_priv->depth_offset >> 10));
+					((dev_priv->depth_offset+dev_priv->fb->offset) >> 10));
 
 	/* Hardware state for depth clears.  Remove this if/when we no
 	 * longer clear the depth buffer with a 3D rectangle.  Hard-code
@@ -865,6 +881,8 @@ static int radeon_do_init_cp( drm_device_t *dev, drm_radeon_init_t *init )
 
 	dev_priv->agp_size = init->agp_size;
 	dev_priv->agp_vm_start = RADEON_READ( RADEON_CONFIG_APER_SIZE );
+	printk("fb->offset=0x%08x agp_vm_start=0x%08x\n",
+		dev_priv->fb->offset, dev_priv->agp_vm_start);
 #if __REALLY_HAVE_AGP
 	if ( !dev_priv->is_pci )
 		dev_priv->agp_buffers_offset = (dev_priv->buffers->offset

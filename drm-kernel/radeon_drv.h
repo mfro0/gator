@@ -255,6 +255,10 @@ extern int radeon_cp_indirect( struct inode *inode, struct file *filp,
 
 #define RADEON_MC_AGP_LOCATION		0x014c
 #define RADEON_MC_FB_LOCATION		0x0148
+#define RADEON_DISPLAY_BASE_ADDR	0x023C
+#define RADEON_OVERLAY_BASE_ADDR	0x043C
+#define RADEON_DEFAULT_OFFSET		0x16E0
+
 #define RADEON_MCLK_CNTL		0x0012
 #	define RADEON_FORCEON_MCLKA		(1 << 16)
 #	define RADEON_FORCEON_MCLKB		(1 << 17)
