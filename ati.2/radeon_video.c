@@ -2313,24 +2313,29 @@ void RADEONSetColorKey(ScrnInfoPtr pScrn, CARD32 pixel)
     RADEONInfoPtr info = RADEONPTR(pScrn);
     unsigned char *RADEONMMIO = info->MMIO;
     CARD8 R, G, B;
+    CARD32 upper, lower;
 
+    if(info->CurrentLayout.depth > 8)
+    {
     R = (pixel & pScrn->mask.red) >> pScrn->offset.red;
     G = (pixel & pScrn->mask.green) >> pScrn->offset.green;
     B = (pixel & pScrn->mask.blue) >> pScrn->offset.blue;
 
-    RADEONWaitForFifo(pScrn, 2);
-    if(pScrn->offset.green == 5)
-    {  /* 5.6.5 mode, 
-          note that these values depend on DAC_CNTL.EXPAND_MODE setting */
-       R = (R<<3);
-       G = (G<<2);
-       B = (B<<3);
-       OUTREG(RADEON_OV0_GRAPHICS_KEY_CLR_HIGH, ((R | 0x7)<<16) | ((G | 0x3) <<8) | (B | 0x7) | (0xff << 24));
-    } else 
+    R = R << (8 - pScrn->weight.red);
+    G = G << (8 - pScrn->weight.green);
+    B = B << (8 - pScrn->weight.blue);
+    } 
+    else 
     {
-       OUTREG(RADEON_OV0_GRAPHICS_KEY_CLR_HIGH, ((R)<<16) | ((G) <<8) | (B) | (0xff << 24));
+    G = B = R = pixel & ((1 << info->CurrentLayout.depth)-1);
     }
-    OUTREG(RADEON_OV0_GRAPHICS_KEY_CLR_LOW, (R<<16) | (G<<8) | (B) | (0x00 << 24));
+
+    lower = (R<<16) | (G << 8) | (B);
+    upper = (0xff<<24) | lower;
+
+    RADEONWaitForFifo(pScrn, 2);
+    OUTREG(RADEON_OV0_GRAPHICS_KEY_CLR_HIGH, upper);
+    OUTREG(RADEON_OV0_GRAPHICS_KEY_CLR_LOW, lower);
 }
 
 static void
