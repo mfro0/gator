@@ -79,6 +79,7 @@ if(result==-EBUSY){
 	}
 if(result<0){
 	printk(KERN_ERR "km: could not install irq handler\n");
+	printk(" Perhaps you need to let your BIOS assign an IRQ to your video card\n");
 	goto fail;
 	}
 return 0;
