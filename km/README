@@ -51,5 +51,7 @@ Additional notes:
        this version has a bug and will not work otherwise
 
     4) you cannot use this module simultaneously with Linux framebuffer devices.
+
+    5) you need Linux 2.4.9 (or later) to compile it properly
        
                                    Vladimir Dergachev
