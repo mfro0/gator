@@ -865,7 +865,7 @@ if { [alsa_present] } {
 		"Display capture(V4L) subsection" checkbutton capture_window \
 		"Use physical screen size for aspect ratio" checkbutton use_physical_screen_size \
 		"Temporary message stays visible for as long as (secs)" choice { message_visible_secs 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 } \
-		"Warn about missing km" checkbutton warn_about_missing_km
+		"Warn about missing km" checkbutton warn_about_missing_km \
 		"Color theme" choice [concat theme_name $theme_names]
 	}
 
