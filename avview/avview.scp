@@ -22,17 +22,19 @@ proc skip_args3 { a b c } {
 
 global VIDEO_WINDOW
 
+set VIDEO_WINDOW .video
+
 destroy .video
 
 . configure -width 320 -height 240
 frame .video -background #102030
 
 place .video -relx 0.0 -rely 0.0 -relwidth 1.0 -relheight 1.0 -anchor nw
+# .video configure -cursor no
 
 frame .video.onscreen_display -background [.video cget -background]
 place .video.onscreen_display -x 20 -y 30
 
-set VIDEO_WINDOW .video
 
 if { $control_screen != "" } {
 	toplevel .controlwin -screen "$control_screen"
@@ -111,14 +113,15 @@ global current_table_name
 global current_channel_menu
 global current_channel
 set current_table [lsearch -exact $TABLE_LIST "$current_table_name"]
-$current_channel_menu delete 0 end
 if { $current_table < 0 } { return }
 set CHANNEL_LIST [freq_get_channel_list $current_table]
-set i 0 
+$current_channel_menu delete 0 end
 foreach channel $CHANNEL_LIST {	
 	$current_channel_menu add radiobutton -label "$channel" -value "$channel" -variable current_channel
-	if { (($i-16) %16)==0 } { $current_channel_menu entryconfigure "$channel" -columnbreak 1}
-	incr i
+	}
+set num_channels [llength $CHANNEL_LIST]
+for {set i 16} { $i < $num_channels } {incr i 16 } {
+	$current_channel_menu entryconfigure $i -columnbreak 1
 	}
 }
 

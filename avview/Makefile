@@ -30,6 +30,8 @@ avview.static: $(OBJS) main.c
 	strip avview.static
 	
 	
-	
+tarball:
+	(cd .. ; tar cvf - avview/*.scp avview/*.[c,h] avview/Makefile avview/README | gzip - ) > avview.tgz
+
 clean:
 	rm -f *.o *.bck *.bak core
