@@ -59,6 +59,10 @@ KM_STREAM_BUFFER_INFO *kmsbi=stream->dvb.kmsbi;
 next=stream->next_buf;
 while(kmsbi[next].flag & KM_STREAM_BUF_PINNED)next=kmsbi[next].next;
 stream->next_buf=kmsbi[next].next;
+if((next>stream->num_buffers) || (next<0)){
+	printk("km: Invalid next buffer %d, forcing to 0\n", next);
+	next=0;
+	}
 return next;
 }
 
