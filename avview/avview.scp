@@ -419,9 +419,13 @@ global current_encoding_name
 global current_channel
 global attributes_window
 global capture_window
-global current_codec
+global current_video_codec
+global current_audio_codec
 global alsa_window
 global current_alsa_device
+global current_v4l_rrate
+global current_v4l_mode
+global current_av_format
 catch {
 	set fileid [open "~/.avview_state" w]
 	}
@@ -429,10 +433,18 @@ puts $fileid "global current_port"
 puts $fileid "global current_encoding_name"
 puts $fileid "global current_table_name"
 puts $fileid "global current_channel"
-puts $fileid "global current_codec"
+puts $fileid "global current_video_codec"
+puts $fileid "global current_audio_codec"
 puts $fileid "global attributes_window"
 puts $fileid "global capture_window"
-puts $fileid "set current_codec $current_codec"
+puts $fileid "global current_v4l_mode"
+puts $fileid "global current_v4l_rrate"
+puts $fileid "global current_av_format"
+puts $fileid "set current_video_codec \"$current_video_codec\""
+puts $fileid "set current_audio_codec \"$current_audio_codec\""
+puts $fileid "set current_v4l_mode \"$current_v4l_mode\""
+puts $fileid "set current_v4l_rrate \"$current_v4l_rrate\""
+puts $fileid "set current_av_format \"$current_av_format\""
 puts $fileid "global alsa_window"
 puts $fileid "global current_alsa_device1"
 if { $current_port != "none" } {
@@ -461,9 +473,11 @@ proc read_settings {} {
 if { [file exists "~/.avview_state"] } {
 	catch {
 		set fileid [open "~/.avview_state" r]
-		catch "[read $fileid]"
+		if { [catch "[read $fileid]" err_msg] } {
+			puts "Error loading settings from ~/.avview_state: $err_msg"
+			}
 		close $fileid
-		}
+		} err_msg
 	}
 #
 # Read user-specific customizations
@@ -471,9 +485,11 @@ if { [file exists "~/.avview_state"] } {
 if { [file exists "~/.avview"] } {
 	catch {
 		set fileid [open "~/.avview" r]
-		catch "[read $fileid]"
+		if { [catch "[read $fileid]" err_msg] } {
+			puts "Error loading user customizations from ~/.avview: $err_msg"
+			}
 		close $fileid
-		}
+		} 
 	}
 }
 
@@ -625,11 +641,17 @@ if {[ffmpeg_present] == "yes"} {
 	grid $cw.rratel $cw.rrateom - -sticky news
 	grid configure $cw.rratel -sticky nws
 
-	label $cw.codecl -text "Video format:"
-	tk_optionMenu $cw.codecom current_codec "H263" "H263I" "H263P" "MJPEG" "MPEG-1" "MPEG-4" "MSMPEG-4" "RV10"
-	grid $cw.codecl $cw.codecom
-	grid configure $cw.codecl -sticky nws
-	grid configure $cw.codecom -sticky news
+	label $cw.vcodecl -text "Video codec:"
+	tk_optionMenu $cw.vcodecom current_video_codec "H263" "H263I" "H263P" "MJPEG" "MPEG-1" "MPEG-4" "MSMPEG-4" "RV10"
+	grid $cw.vcodecl $cw.vcodecom
+	grid configure $cw.vcodecl -sticky nws
+	grid configure $cw.vcodecom -sticky news
+
+	label $cw.acodecl -text "Audio codec:"
+	tk_optionMenu $cw.acodecom current_audio_codec "PCM" "MPEG-2" "AC-3"
+	grid $cw.acodecl $cw.acodecom
+	grid configure $cw.acodecl -sticky nws
+	grid configure $cw.acodecom -sticky news
 
 	label $cw.av_formatl -text "File format:"
 	tk_optionMenu $cw.av_formatom current_av_format "none" "AVI" "ASF" "MPEG"
@@ -643,7 +665,7 @@ if {[ffmpeg_present] == "yes"} {
 		global current_capture_filename
 		set result [tk_getSaveFile -initialfile "$current_capture_filename" \
 			-parent .controlwin -title "Specify file to hold recorded video"  \
-			-filetypes { {"All files" { * } } { "Mpeg streams" { mpg MPG} } { "AVI streams" { avi AVI} } }
+			-filetypes { {"All files" { * } } { "Mpeg streams" { *.mpg *.MPG} } { "AVI streams" { *.avi *.AVI} } }
 			]
 		if { "$result" != "" } {
 			set current_capture_filename "$result"
@@ -691,6 +713,12 @@ for {set i 0 } {$i < 10 } { incr i } {
 proc update_v4l_window_info {cw} {
 global current_v4l_device
 global current_v4l_mode
+if { ! [winfo exists $cw] } {
+	return 
+	}
+if { ! [winfo exists $cw.window] } {
+	return
+	}
 if { "$current_v4l_device" == "none" } { 
 	$cw.window configure -text "N/A"
 	return 
@@ -827,7 +855,8 @@ switch "$save_type" \
 
 proc on_v4l_capture_set {cw name1 name2 w } {
 global v4l_capture_on
-global current_codec
+global current_video_codec
+global current_audio_codec
 global current_v4l_mode
 global current_v4l_rrate
 global current_av_format
@@ -835,7 +864,8 @@ global current_capture_filename
 global current_alsa_device
 if { $v4l_capture_on } {
 	set status [ffmpeg_encode_v4l_stream -v4l_handle current_v4l_handle \
-				-video_codec $current_codec \
+				-video_codec $current_video_codec \
+				-audio_code $current_audio_codec \
 				-deinterlace_mode $current_v4l_mode \
 				-step_frames $current_v4l_rrate \
 				-av_format $current_av_format \
@@ -876,13 +906,21 @@ trace variable capture_window w  { generate_capture_window .controlwin.capture ;
 global current_v4l_device
 trace variable current_v4l_device w  "set_v4l_device .controlwin.capture"
 global current_v4l_mode
-set current_v4l_mode single-frame
+set current_v4l_mode "single-frame"
 trace variable current_v4l_mode w {update_v4l_window_info .controlwin.capture ; skip_args3 }
 global v4l_capture_on
 set v4l_capture_on false
 trace variable v4l_capture_on w "on_v4l_capture_set .controlwin.capture"
-global current_codec
-set current_codec "MPEG-4"
+global current_video_codec
+set current_video_codec "MPEG-4"
+global current_audio_codec
+set current_audio_codec "PCM"
+global current_av_format
+set current_av_format "AVI"
+global current_v4l_rrate
+set current_v4l_rrate "as is"
+global current_v4l_device
+set current_v4l_device "none"
 global alsa_window
 trace variable alsa_window w "generate_alsa_window .controlwin.alsamixer ; skip_args3"
 trace variable current_alsa_device1 w "set_alsa_device .controlwin.alsamixer ; skip_args3"

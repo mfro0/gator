@@ -408,11 +408,21 @@ return 1;
 
 int ffmpeg_create_audio_codec(Tcl_Interp* interp, int argc, char * argv[])
 {
+char *arg_audio_codec;
 if(alsa_setup_reader_thread(sdata->audio_s, argc, argv, &(sdata->alsa_param))<0){
 	return 0;
 	}
-/* sdata->audio_codec=avcodec_find_encoder(CODEC_ID_MP2); */
-sdata->audio_codec=avcodec_find_encoder(CODEC_ID_PCM_S16LE);
+arg_audio_codec=get_value(argc, argv, "-audio_codec");
+sdata->audio_codec=avcodec_find_encoder(CODEC_ID_PCM_S16LE); 
+if(arg_audio_codec==NULL){
+	/* nothing */
+	} else
+if(!strcasecmp(arg_audio_codec,"MPEG-2")){
+	sdata->audio_codec=avcodec_find_encoder(CODEC_ID_MP2); 
+	} else 
+if(!strcasecmp(arg_audio_codec,"AC-3")){
+	sdata->audio_codec=avcodec_find_encoder(CODEC_ID_AC3); 
+	}
 if(sdata->audio_codec==NULL){
 	fprintf(stderr,"Could not find audio codec\n");
 	return 0;
@@ -422,6 +432,7 @@ sdata->audio_codec_context.bit_rate=64000;
 sdata->audio_codec_context.sample_rate=sdata->alsa_param.sample_rate;
 sdata->audio_codec_context.channels=sdata->alsa_param.channels;
 sdata->audio_codec_context.codec_id=sdata->audio_codec->id;
+sdata->audio_codec_context.sample_fmt=SAMPLE_FMT_S16;
 sdata->audio_codec_context.codec_type=sdata->audio_codec->type;
 if(avcodec_open(&(sdata->audio_codec_context), sdata->audio_codec)<0){
 	return 0;
