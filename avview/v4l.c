@@ -681,8 +681,8 @@ void monitor_consumer(PACKET_STREAM *s)
 {
 char a=1;
 MONITOR_INFO *m;
+PACKET *p;
 m=(MONITOR_INFO *)s->priv;
-/* get rid of older packets */
 while(1){
 	fprintf(stderr,"X");
 	write(m->filedes[1], &a, 1); /* signal TCL to do something about this */
@@ -693,6 +693,12 @@ while(1){
 		pthread_mutex_unlock(&(s->ctr_mutex));
 		pthread_exit(NULL);
 		}
+	/* get rid of older packets */
+	while(packet_count(s)>3){
+		p=get_packet(s);
+		if((p!=NULL) && (p->free_func!=NULL))p->free_func(p);
+		}
+	
 	pthread_mutex_unlock(&(s->ctr_mutex));
 	fprintf(stderr,"Z");
 	}

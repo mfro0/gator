@@ -53,6 +53,7 @@ void deliver_packet(PACKET_STREAM *s, PACKET *p);
 PACKET * get_packet(PACKET_STREAM *s);
 void start_consumer_thread(PACKET_STREAM *s);
 void trim_excess_consumer(PACKET_STREAM *s);
+int packet_count(PACKET_STREAM *s);
 
 #define STOP_CONSUMER_THREAD	1
 #define STOP_PRODUCER_THREAD	2

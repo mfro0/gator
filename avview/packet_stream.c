@@ -120,6 +120,11 @@ if((s->total>s->threshold) &&
 	}
 }
 
+int packet_count(PACKET_STREAM *s)
+{
+return (s->free[0]-s->bottom[0]+s->free[1]-s->bottom[1]);
+}
+
 PACKET * get_packet(PACKET_STREAM *s)
 {
 int i;
