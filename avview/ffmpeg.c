@@ -494,11 +494,13 @@ int ffmpeg_create_audio_codec(Tcl_Interp* interp, int argc, char * argv[])
 {
 char *arg_audio_codec;
 char *arg_audio_bitrate;
+char *arg_audio_rate;
 if(alsa_setup_reader_thread(sdata->audio_s, argc, argv, &(sdata->alsa_param))<0){
 	return 0;
 	}
 arg_audio_codec=get_value(argc, argv, "-audio_codec");
 arg_audio_bitrate=get_value(argc, argv, "-audio_bitrate");
+arg_audio_rate=get_value(argc, argv, "-audio_rate");
 sdata->audio_codec=avcodec_find_encoder(CODEC_ID_PCM_S16LE); 
 fprintf(stderr,"Using audio_codec=%s\n", arg_audio_codec);
 if(arg_audio_codec==NULL){
@@ -518,7 +520,13 @@ if(sdata->audio_codec==NULL){
 memset(&(sdata->audio_codec_context), 0, sizeof(AVCodecContext));
 sdata->audio_codec_context.bit_rate=64000;
 if(arg_audio_bitrate!=NULL)sdata->audio_codec_context.bit_rate=atoi(arg_audio_bitrate);
+#if 0 /* the correct code below does not work as ffmpeg is only able to encode
+         at a small set of rates */
 sdata->audio_codec_context.sample_rate=sdata->alsa_param.sample_rate;
+#else
+sdata->audio_codec_context.sample_rate=24000;
+if(arg_audio_rate!=NULL)sdata->audio_codec_context.sample_rate=atol(arg_audio_rate);
+#endif
 sdata->audio_codec_context.channels=sdata->alsa_param.channels;
 sdata->audio_codec_context.codec_id=sdata->audio_codec->id;
 sdata->audio_codec_context.sample_fmt=SAMPLE_FMT_S16;
