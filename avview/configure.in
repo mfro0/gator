@@ -5,7 +5,10 @@ AC_PREREQ(2.52)
 # in setup window or avview_shell
 #
 AC_INIT([AVview], [0.10.4], [gatos-devel@lists.sf.net])
-AM_INIT_AUTOMAKE()
+#
+# For now I'll be happier without NEWS and Changelog files.
+#
+AM_INIT_AUTOMAKE(foreign)
 AC_CONFIG_SRCDIR([frequencies.c])
 AM_CONFIG_HEADER([config.h])
 
