@@ -177,11 +177,13 @@ static void send_packet(struct ati_remote *ati_remote, u16 cmd, unsigned char* d
 	if (usb_submit_urb(&ati_remote->out)) {
 		set_current_state(TASK_RUNNING);
 		remove_wait_queue(&ati_remote->wait, &wait);
+		printk("done\n");
 		return;
 		}
 
-	while (timeout && ati_remote->out.status == -EINPROGRESS)
+	while (timeout && ati_remote->out.status == -EINPROGRESS){
 		timeout = schedule_timeout(timeout);
+		}
 
 	set_current_state(TASK_RUNNING);
 	remove_wait_queue(&ati_remote->wait, &wait);
@@ -189,6 +191,8 @@ static void send_packet(struct ati_remote *ati_remote, u16 cmd, unsigned char* d
 	if (!timeout)
 		usb_unlink_urb(&ati_remote->out);
 }
+
+static int count=0;
 
 static void ati_remote_irq(struct urb *urb)
 {
@@ -297,8 +301,10 @@ static int ati_remote_open(struct input_dev *dev)
 		return 0;
 
 	ati_remote->irq.dev = ati_remote->usbdev;
-	if (usb_submit_urb(&ati_remote->irq))
+	if (usb_submit_urb(&ati_remote->irq)){
+		printk(KERN_ERR "ati_remote: error submitting urb\n");
 		return -EIO;
+		}
 
 /*	printk("done: ati_remote_open now open=%d\n", ati_remote->open); */
 	return 0;
@@ -408,12 +414,12 @@ static void *ati_remote_probe(struct usb_device *dev, unsigned int ifnum,
 	ati_remote->dr.index = 0;
 	ati_remote->dr.length = 16;
 	
+	printk("bInterval=%d\n", endpoint->bInterval);
 	FILL_INT_URB(&ati_remote->irq, dev, pipe, ati_remote->data, maxp > 8 ? 8 : maxp,
 		ati_remote_irq, ati_remote, endpoint->bInterval);
 
 	FILL_INT_URB(&ati_remote->out, dev, usb_sndintpipe(dev, epout->bEndpointAddress),
 			ati_remote + 1, 32, ati_remote_usb_out, ati_remote, epout->bInterval);
-
 
 	printk(KERN_INFO "%s on usb%d:%d.%d\n",
 			 ati_remote->name, dev->bus->busnum, dev->devnum, ifnum);
@@ -425,8 +431,10 @@ static void *ati_remote_probe(struct usb_device *dev, unsigned int ifnum,
 		}
 
 	send_packet(ati_remote, 0x8004, init1);
+	usb_unlink_urb(&(ati_remote->out)); 
 	send_packet(ati_remote, 0x8007, init2);
-	usb_unlink_urb(&(ati_remote->out));
+	usb_unlink_urb(&(ati_remote->out)); 
+
 	return ati_remote;
 }
 
