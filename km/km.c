@@ -55,6 +55,8 @@ MODULE_PARM_DESC(km_debug, "kmultimedia debugging level");
 MODULE_PARM_DESC(km_debug_overruns, "kmultimedia debug overruns");
 MODULE_PARM_DESC(km_buffers, "how many buffers to use for video capture per each device");
 
+#define POINTER_TO_INT( x ) ((unsigned long)(x))
+
 int km_debug=0;
 int km_debug_overruns=0;
 int km_buffers=5;
@@ -67,7 +69,7 @@ int find_free_buffer(KM_STREAM *stream)
 	while(kmsbi[next].flag & KM_STREAM_BUF_PINNED)next=kmsbi[next].next;
 	stream->next_buf=kmsbi[next].next;
 	if((next>stream->num_buffers) || (next<0)){
-		printk("km: Invalid next buffer %d, forcing to 0\n", next);
+		printk(KERN_DEBUG "km: Invalid next buffer %d, forcing to 0\n", next);
 		next=0;
 	}
 	return next;
@@ -77,7 +79,7 @@ int generic_allocate_dvb(KM_STREAM *stream, int num_buffers,  long size)
 {
 	int i,k;
 	if(size>(4096*4096/sizeof(bm_list_descriptor))){
-		printk("Too large buffer allocation requested: %ld bytes\n", size);
+		printk(KERN_ERR "km.c: Too large buffer allocation requested: %ld bytes\n", size);
 		return -1;
 	}
 	spin_lock_init(&(stream->lock));
@@ -125,13 +127,13 @@ int generic_allocate_dvb(KM_STREAM *stream, int num_buffers,  long size)
 		stream->dvb.kmsbi[k].prev=k-1;
 		stream->dvb.kmsbi[k].age=-1;
 		stream->dma_table[k]=rvmalloc(4096);
-		stream->dma_table_physical[k]=kvirt_to_bus(stream->dma_table[k]);
+		stream->dma_table_physical[k]=kvirt_to_bus(POINTER_TO_INT(stream->dma_table[k]));
 		stream->free[k]=size;
 		memset(stream->dma_table[k], 0, 4096);
-		KM_DEBUG("dma_table[%d]=0x%08x\n", k, stream->dma_table[k]);
+		KM_DEBUG("dma_table[%d]=%p\n", k, stream->dma_table[k]);
 		/* create DMA table */
 		for(i=0;i<(stream->dvb.size/PAGE_SIZE);i++){
-			stream->dma_table[k][i].to_addr=kvirt_to_bus(stream->buffer[k]+i*PAGE_SIZE);
+			stream->dma_table[k][i].to_addr=kvirt_to_bus(POINTER_TO_INT(stream->buffer[k]+i*PAGE_SIZE));
 			KM_DEBUG("dma_table[%d][%d].to_addr=0x%08x\n", k, i,stream->dma_table[k][i].to_addr);
 		}
 	}
@@ -146,7 +148,7 @@ int verify_dvb(KM_STRUCT *kms, KM_STREAM *stream)
 	int i,k;
 #define VERIFY_PAGE(addr)    ((kms->verify_page==NULL)||kms->verify_page(kms, (addr)))
 	for(k=0;k<stream->num_buffers;k++){
-		if(!VERIFY_PAGE(kvirt_to_bus(stream->dma_table[k])))return 0;
+		if(!VERIFY_PAGE(POINTER_TO_INT(kvirt_to_bus(POINTER_TO_INT(stream->dma_table[k]))))) return 0;
 		for(i=0;i<(stream->dvb.size/PAGE_SIZE);i++){
 			if(!VERIFY_PAGE(stream->dma_table[k][i].to_addr))return 0;
 		}
@@ -180,7 +182,7 @@ KM_TRANSFER_QUEUE * km_make_transfer_queue(int size)
 	KM_TRANSFER_QUEUE *kmtq;
 	kmtq=kmalloc(sizeof(KM_TRANSFER_QUEUE)+size*sizeof(KM_TRANSFER_REQUEST), GFP_KERNEL);
 	if(kmtq==NULL)return NULL;
-	kmtq->request=((u8 *)kmtq)+sizeof(KM_TRANSFER_QUEUE);
+	kmtq->request=(KM_TRANSFER_REQUEST *)((u8 *)kmtq)+sizeof(KM_TRANSFER_QUEUE);
 	kmtq->size=size;
 	kmtq->first=0;
 	kmtq->last=0;
@@ -310,7 +312,7 @@ int start_video_capture(KM_STRUCT *kms)
 		goto fail;
 	}
 	if(!kms->is_capture_active(kms)){
-		printk("km: no data is available until AVview or xawtv is started\n");
+		printk(KERN_ERR "km: no data is available until AVview or xawtv is started\n");
 		result=-ENODATA;
 		goto fail;
 	}
@@ -544,30 +546,37 @@ KM_FIELD kmfl_template[]={
 int video_stream_on(KM_STRUCT *kms)
 {
 	printk("Video stream on\n");
+	return 0;
 }
 
 int video_stream_off(KM_STRUCT *kms)
 {
 	printk("Video stream off\n");
+	return 0;
 }
 
 int vbi_stream_on(KM_STRUCT *kms)
 {
 	printk("VBI stream on\n");
+	return 0;
 }
 
 int vbi_stream_off(KM_STRUCT *kms)
 {
 	printk("VBI stream off\n");
+	return 0;
 }
 
 static int __devinit km_probe(struct pci_dev *dev, const struct pci_device_id *pci_id)
 {
 	KM_STRUCT *kms;
-	int result;
+
 	char *tag;
-/* too many */
+
+	/* too many */
 	if(num_devices>=MAX_DEVICES)return -1;
+
+	printk(KERN_INFO "km: probing %s\n",dev->pretty_name);
 
 	switch(pci_id->driver_data){
 	case HARDWARE_RADEON:
@@ -582,7 +591,7 @@ static int __devinit km_probe(struct pci_dev *dev, const struct pci_device_id *p
 	default:
 		tag="km_ati (unknown)";
 	}
-		
+
 	kms=&(km_devices[num_devices]);
 	memset(kms, 0, sizeof(KM_STRUCT));
 	kms->dev=dev;
@@ -604,10 +613,10 @@ static int __devinit km_probe(struct pci_dev *dev, const struct pci_device_id *p
 	kms->vbi.du=-1;
 	kms->vbi.info_du=-1;
 	spin_lock_init(&(kms->kms_lock));
-	printk("km: using irq %ld\n", kms->irq);
+	printk(KERN_DEBUG "km: using irq %ld\n", kms->irq);
 	if (pci_enable_device(dev))
 		return -EIO;	
-	printk("Register aperture is 0x%08lx 0x%08lx\n", pci_resource_start(dev, 2), pci_resource_len(dev, 2));
+	printk(KERN_DEBUG "Register aperture is 0x%08lx 0x%08lx\n", pci_resource_start(dev, 2), pci_resource_len(dev, 2));
 /*
   if (!request_mem_region(pci_resource_start(dev,2),
   pci_resource_len(dev,2),
@@ -616,7 +625,7 @@ static int __devinit km_probe(struct pci_dev *dev, const struct pci_device_id *p
   }
 */
 	kms->reg_aperture=ioremap(pci_resource_start(dev, 2), pci_resource_len(dev, 2));
-	printk("kms variables: reg_aperture=0x%p\n",
+	printk(KERN_DEBUG "kms variables: reg_aperture=0x%p\n",
 	       kms->reg_aperture);
 	switch(pci_id->driver_data){
 #ifndef OMIT_RADEON_DRIVER
@@ -679,7 +688,14 @@ static int __devinit km_probe(struct pci_dev *dev, const struct pci_device_id *p
 			return -EIO;		
 		}
 	}
-	init_km_v4l(kms);
+	if (init_km_v4l(kms)){
+		free_irq(kms->irq, kms);
+		iounmap(kms->reg_aperture);
+		release_mem_region(pci_resource_start(dev,2),
+				   pci_resource_len(dev,2));
+		pci_set_drvdata(dev, NULL);
+		return -EIO;		
+	}
 	printk("sizeof(kmfl_template)=%d sizeof(KM_FIELD)=%d\n", sizeof(kmfl_template), sizeof(KM_FIELD));
 
 	kms->kmfl=kmalloc(sizeof(kmfl_template), GFP_KERNEL);
@@ -705,13 +721,13 @@ static int __devinit km_probe(struct pci_dev *dev, const struct pci_device_id *p
 	FIELD("INSTANCE_ID").data.c.string=kmalloc(20, GFP_KERNEL);
 	sprintf(FIELD("INSTANCE_ID").data.c.string, "KM_DEVICE:%d", num_devices);
 
-	FIELD("VSYNC_COUNT").data.i.field=&(kms->vsync_count);
+	FIELD("VSYNC_COUNT").data.i.field=(u32 *)&(kms->vsync_count);
 
-	FIELD("VBLANK_COUNT").data.i.field=&(kms->vblank_count);
+	FIELD("VBLANK_COUNT").data.i.field=(u32 *)&(kms->vblank_count);
 
-	FIELD("VLINE_COUNT").data.i.field=&(kms->vline_count);
+	FIELD("VLINE_COUNT").data.i.field=(u32 *)&(kms->vline_count);
 
-	FIELD("V4L_DEVICE").data.i.field=&(kms->vd.minor);
+	FIELD("V4L_DEVICE").data.i.field=(u32 *)&(kms->vd->minor);
 
 	FIELD("VIDEO_STREAM_ACTIVE").data.t.zero2one=start_video_capture;
 	FIELD("VIDEO_STREAM_ACTIVE").data.t.one2zero=stop_video_capture;
@@ -721,7 +737,7 @@ static int __devinit km_probe(struct pci_dev *dev, const struct pci_device_id *p
 
 	FIELD("VIDEO_STREAM_INFO_DATA_UNIT").data.i.field=&(kms->capture.info_du);
 
-	FIELD("VBI_DEVICE").data.i.field=&(kms->vbi_vd.minor);
+	FIELD("VBI_DEVICE").data.i.field=&(kms->vbi_vd->minor);
 
 	FIELD("VBI_STREAM_DATA_UNIT").data.i.field=&(kms->vbi.du);
 
@@ -735,26 +751,32 @@ static int __devinit km_probe(struct pci_dev *dev, const struct pci_device_id *p
 #ifdef LINUX_2_6
 #ifdef CONFIG_PCI_NAMES
 	printk("Device %s %s (0x%04x:0x%04x) corresponds to /dev/video%d\n",
-	       dev->pretty_name, dev->slot_name, dev->vendor, dev->device, kms->vd.minor);
+	       dev->pretty_name, dev->slot_name, dev->vendor, dev->device, kms->vd->minor);
 #else
 	printk("Device %s (0x%04x:0x%04x) corresponds to /dev/video%d\n",
-	       dev->slot_name, dev->vendor, dev->device, kms->vd.minor);
+	       dev->slot_name, dev->vendor, dev->device, kms->vd->minor);
 #endif
 #else
 	printk("Device %s %s (0x%04x:0x%04x) corresponds to /dev/video%d\n",
-	       dev->name, dev->slot_name, dev->vendor, dev->device, kms->vd.minor);
+	       dev->name, dev->slot_name, dev->vendor, dev->device, kms->vd->minor);
 #endif
 	pci_set_master(dev);
-	printk("kms variables: reg_aperture=0x%08x\n",
-	       kms->reg_aperture);
+	printk("kms variables: reg_aperture=%p\n",kms->reg_aperture);
 	num_devices++;
 	return 0;
 }
 
-
-static void __devexit km_remove(struct pci_dev *pci_dev, KM_STRUCT *kms)
+static void __devexit km_remove(struct pci_dev *pci_dev)
 {
-	printk("Removing Kmultimedia supported device /dev/video%d. Interrupt_count=%ld\n", kms->vd.minor,  kms->interrupt_count);
+	KM_STRUCT *kms = 0;
+	int i;
+	for (i=0;i<num_devices;++i)
+		if (km_devices[i].dev==pci_dev) kms = &(km_devices[i]);
+	if (!kms){
+		printk(KERN_ERR "km_remove: couldn't find km_device corresponding to pci_dev at %p\n",pci_dev);
+		return;
+	}
+	printk("Removing Kmultimedia supported device /dev/video%d. Interrupt_count=%ld\n", kms->vd->minor,  kms->interrupt_count);
 	if(kms->uninit_hardware!=NULL)kms->uninit_hardware(kms);
 	remove_km_device(kms->kmd);
 	cleanup_km_v4l(kms);
@@ -828,7 +850,10 @@ static void __devexit km_remove(struct pci_dev *pci_dev, KM_STRUCT *kms)
 #define PCI_DEVICE_ID_ATI_RADEON_RD    0x5147
 #endif
 
-static struct pci_device_id km_pci_tbl[] __devinitdata = {
+
+/*-------------------------------------------------------------------------*/
+
+static struct pci_device_id km_pci_tbl [] = {
 	/* mach64 cards */
         {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_215GB,
          PCI_ANY_ID, PCI_ANY_ID, 0, 0, HARDWARE_MACH64},
@@ -1010,59 +1035,43 @@ static struct pci_device_id km_pci_tbl[] __devinitdata = {
          PCI_ANY_ID, PCI_ANY_ID, 0, 0, HARDWARE_RADEON},
         {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_RADEON_QL,
          PCI_ANY_ID, PCI_ANY_ID, 0, 0, HARDWARE_RADEON},
-        {0,}
+	{PCI_DEVICE( 0x0000, 0x0000 )}
 };
 
 MODULE_DEVICE_TABLE(pci, km_pci_tbl);
 
-/*
-  static struct pci_driver radeon_km_pci_driver = {
-  name:     "km",
-  id_table: km_pci_tbl,
-  probe:    km_probe,
-  remove:   km_remove,
-  };
-*/
+
+static struct pci_driver km_pci_driver = {
+	.name		= "Km",
+	.id_table	= km_pci_tbl,
+	.probe		= km_probe,
+	.remove		= __devexit_p(km_remove)
+};
+
 
 #ifdef MODULE
 static int km_init_module(void)
 {
-	int result;
-	struct pci_dev *pdev=0;
-	const struct pci_device_id *pdid;
 
-/* this does not do anything useful at the moment */
+	/* this does not do anything useful at the moment */
 	request_module("km_api_drv");
 	request_module("videodev");
 
-	printk("Kmultimedia module version %s loaded\n", KM_VERSION);
-	printk("Page size is %ld sizeof(bm_list_descriptor)=%d sizeof(KM_STRUCT)=%d\n", PAGE_SIZE, sizeof(bm_list_descriptor), sizeof(KM_STRUCT));
+	printk(KERN_INFO "Kmultimedia module version %s loaded\n", KM_VERSION);
+	printk(KERN_DEBUG "Page size is %ld sizeof(bm_list_descriptor)=%d sizeof(KM_STRUCT)=%d\n", PAGE_SIZE, sizeof(bm_list_descriptor), sizeof(KM_STRUCT));
 	num_devices=0;
-	result=-1;
-#ifdef LINUX_2_6
-	while( (pdev = pci_get_device(PCI_VENDOR_ID_ATI, PCI_ANY_ID, pdev))!=NULL ){
-#else
-		pci_for_each_dev(pdev){
-#endif
-			if((pdid=pci_match_device(km_pci_tbl, pdev))!=NULL){
-				if(km_probe(pdev, pdid)>=0)result=0;
-			}
-		}
-		if(result<0)printk("km: **** no supported devices found ****\n");
+	pci_module_init( &km_pci_driver );
 
-		return result;
-	}
+	return 0;
+}
 
-	void km_cleanup_module(void)
-		{
-			int i;
-			for(i=0;i<num_devices;i++)
-				km_remove(km_devices[i].dev, &(km_devices[i]));
-			return;
-		}
+void km_cleanup_module(void)
+{
+	pci_unregister_driver( &km_pci_driver );
+	return;
+}
 
-	module_init(km_init_module);
-	module_exit(km_cleanup_module);
-
+module_init(km_init_module);
+module_exit(km_cleanup_module);
 
 #endif
