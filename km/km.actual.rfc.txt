@@ -24,6 +24,11 @@ So far the following commands are supported:
 				  or non-blocking IO)
 	     REPORT=FIELD_NAME -  turn on out-of-sequence updates if
 	                          field value changes.
+				  
+	     VIDEO_STREAM_ACTIVE=1 - turn on video capture
+	     VIDEO_STREAM_ACTIVE=0 - turn off video capture
+	     VBI_STREAM_ACTIVE=1   - turn on vbi capture
+	     VBI_STREAM_ACTIVE=0   - turn off vbi capture
 	     
 
 ***** NOTES ******
@@ -31,4 +36,4 @@ So far the following commands are supported:
 For now, the write calls to controlX files should be done with one complete command 
 per call.
 	 
-For example see test1.tcl
+For example see test1.tcl or test3.tcl

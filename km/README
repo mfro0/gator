@@ -39,18 +39,21 @@ Additional notes:
        ATI cards have only one overlay scaler unit and both xawtv and
        xv_stream need it.
 
-    3) what can you do if you have one computer ? Get AVview and CVS
-       version of ffmpeg off Sourceforge and capture snapshots and streams 
-       with AVview. You can view them later with xine, for example.
+    3) what can you do if you have one computer ? Get AVview and 
+       matching version of ffmpeg off GATOS website on Sourceforge 
+       and capture snapshots and streams with AVview. 
        
-       If you have got ffmpeg 0.4.5 get the patch from www.linuxvideo.org/gatos
-       this version has a bug and will not work otherwise
-
+       You can view them later with xine, for example.
+       
     4) you cannot use this module simultaneously with Linux framebuffer devices.
+       (More precisely your mileage will vary.. I have not tried this for a long
+        time)
 
     5) you need Linux 2.4.20 (or later) to compile it properly
        
-    6) You might have problems if you don't let your BIOS assign an irq to 
-       your video card.
+    6) You might (will !) have problems if you don't let your BIOS assign an 
+       irq to your video card.
 
-	                        Vladimir Dergachev
+	                   Vladimir Dergachev
+			   
+			   http://www.an-vo.com/

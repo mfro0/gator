@@ -149,7 +149,7 @@ void close_km_device(KM_FILE_PRIVATE_DATA *kmfpd);
 int km_fo_control_perform_command(KM_FILE_PRIVATE_DATA *kmfpd, const char *command, size_t count);
 
 
-#if 1
+#if 0
 #define KM_CHECKPOINT printk("**CKPT %s %s %d\n", __FILE__, __FUNCTION__, __LINE__);
 #define KM_API_DEBUG  printk
 #else
