@@ -36,7 +36,7 @@ write_test: write_test.c
 	$(CC) write_test.c -o write_test	
 	
 tarball:
-	(cd .. ; tar cvf - avview/*.scp avview/*.[c,h] avview/Makefile.in avview/configure.in avview/configure avview/config.h.in avview/README| gzip - ) > avview.tgz
+	(cd .. ; tar cvf - avview/*.scp avview/*.[c,h] avview/Makefile.in avview/configure.in avview/configure avview/config.h.in avview/README* | gzip - ) > avview.tgz
 
 clean:
 	rm -f *.o *.bck *.bak core
