@@ -1,4 +1,6 @@
 # Process this file with autoconf to produce a configure script.
+AC_PREREQ(2.52)
+
 AC_INIT([AV viewer], [0.3.0], [livid-ati@linuxvideo.org])
 AC_CONFIG_SRCDIR([frequencies.c])
 AC_CONFIG_HEADER([config.h])
