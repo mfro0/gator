@@ -34,6 +34,8 @@ typedef struct {
 	int num_buffers;
 	/* dma buffers */
 	bm_list_descriptor **dma_table;
+	u32 *dma_table_physical;
+	
 	int du;
 	KM_DATA_VIRTUAL_BLOCK dvb;
 	long next_buf;

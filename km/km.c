@@ -109,6 +109,7 @@ memset(stream->dvb.kmsbi, 0 , stream->dvb_info.size);
 
 
 stream->dma_table=kmalloc(sizeof(*(stream->dma_table))*num_buffers, GFP_KERNEL);
+stream->dma_table_physical=kmalloc(sizeof(u32)*num_buffers, GFP_KERNEL);
 for(k=0;k<num_buffers;k++){
 	stream->dvb.free[k]=size;
 	stream->dvb.kmsbi[k].flag=0;
@@ -117,6 +118,7 @@ for(k=0;k<num_buffers;k++){
 	stream->dvb.kmsbi[k].prev=k-1;
 	stream->dvb.kmsbi[k].age=-1;
 	stream->dma_table[k]=rvmalloc(4096);
+	stream->dma_table_physical[k]=kvirt_to_bus(stream->dma_table[k]);
 	stream->free[k]=size;
 	memset(stream->dma_table[k], 0, 4096);
 	KM_DEBUG("dma_table[%d]=0x%08x\n", k, stream->dma_table[k]);
@@ -152,6 +154,7 @@ spin_lock(&(stream->lock));
 for(k=0;k<stream->num_buffers;k++){
 	rvfree(stream->dma_table[k], 4096);
 	}
+kfree(stream->dma_table_physical);	
 kfree(stream->dma_table);
 stream->dma_table=NULL;
 km_deallocate_data(stream->du);
