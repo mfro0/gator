@@ -97,7 +97,7 @@ return 1;
 
 int radeon_is_capture_active(KM_STRUCT *kms)
 {
-return (radeon_check_mc_settings(kms) && (readl(kms->reg_aperture+RADEON_CAP0_CONFIG) & 0x1));
+return (kms->capture_active && (readl(kms->reg_aperture+RADEON_CAP0_CONFIG) & 0x1));
 }
 
 void radeon_get_window_parameters(KM_STRUCT *kms, struct video_window *vwin)
@@ -118,6 +118,9 @@ void radeon_start_transfer(KM_STRUCT *kms)
 {
 u32 a;
 
+kms->capture_active=radeon_check_mc_settings(kms);
+if(!kms->capture_active)return;
+wmb();
 a=readl(kms->reg_aperture+RADEON_BUS_CNTL);
 printk("RADEON_BUS_CNTL=0x%08x\n", a);
 /* enable bus mastering */
@@ -142,6 +145,8 @@ a=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
 writel(a & ~3, kms->reg_aperture+RADEON_CAP_INT_CNTL);
 a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
 writel(a & ~(1<<30), kms->reg_aperture+RADEON_GEN_INT_CNTL);
+wmb();
+kms->capture_active=0;
 }
 
 static int radeon_setup_single_frame_buffer(KM_STRUCT *kms, SINGLE_FRAME *frame, long offset)
@@ -224,7 +229,7 @@ if(!(status & (1<<8)))return 0;
 status=readl(kms->reg_aperture+RADEON_CAP_INT_STATUS);
 mask=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
 if(!(status & mask))return 0;
-radeon_wait_for_idle(kms);
+/*radeon_wait_for_idle(kms); */
 wmb();
 writel(status & mask, kms->reg_aperture+RADEON_CAP_INT_STATUS);
 KM_DEBUG("CAP_INT_STATUS=0x%08x\n", status);
@@ -258,7 +263,6 @@ while(1){
 			return;
 			}
 		if(status & (1<<30)){
-			radeon_wait_for_idle(kms);
 			wmb();
 			acknowledge_dma(kms);
 			}

@@ -127,7 +127,7 @@ if(i<0)return -EINVAL;
 if(i>=devices_free)return -EINVAL;
 
 kmd=&(devices[i]);
-
+spin_lock(&(kmd->lock));
 kmfpd=kmalloc(sizeof(KM_FILE_PRIVATE_DATA), GFP_KERNEL);
 memset(kmfpd, sizeof(KM_FILE_PRIVATE_DATA), 0);
 
@@ -142,6 +142,7 @@ memset(kmfpd->field_flags, sizeof(*(kmfpd->field_flags))*kmd->num_fields, 0);
 
 file->private_data=kmfpd;
 kmd->use_count++;
+spin_unlock(&(kmd->lock));
 
 return 0;
 }
@@ -154,7 +155,9 @@ kfree(kmfpd->field_flags);
 kfree(kmfpd->buffer_read);
 kfree(kmfpd);
 file->private_data=NULL;
+spin_lock(&(kmd->lock));
 kmd->use_count--;
+spin_unlock(&(kmd->lock));
 return 0;
 }
 
@@ -258,7 +261,9 @@ char temp[32];
 KM_DEVICE * kmd=NULL;
 num=-1;
 for(i=0;(num<0)&&(i<devices_free);i++){
-	if(devices[i].number<0)num=i;
+	spin_lock(&(devices[i].lock));
+	if(devices[i].use_count<1)num=i;
+	spin_unlock(&(devices[i].lock));
 	}
 if(num<0){
 	num=devices_free;
@@ -283,7 +288,7 @@ kmd->control->data=kmd;
 kmd->control->proc_fops=&km_control_file_operations;
 
 kmd->data->data=kmd;
-
+kmd->use_count=1;
 devices_free++;
 MOD_INC_USE_COUNT;
 return num;
@@ -302,15 +307,17 @@ char temp[32];
 if(num<0)return -EINVAL;
 if(num>devices_free)return -EINVAL;
 if(devices[num].number<0)return -EINVAL;
+spin_lock(&(devices[num].lock));
 sprintf(temp, "control%d", num);
 remove_proc_entry(temp, km_root);
 sprintf(temp, "data%d", num);
 remove_proc_entry(temp, km_root);
-devices[num].number=-1;
 devices[num].control=NULL;
 devices[num].data=NULL;
 devices[num].fields=NULL;
 devices[num].priv=NULL;
+devices[num].use_count--;
+spin_unlock(&(devices[num].lock));
 MOD_DEC_USE_COUNT;
 return 0;
 }
