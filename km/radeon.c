@@ -341,7 +341,7 @@ while(1){
              /* Check capture registers first */
 	status_cap=readl(kms->reg_aperture+RADEON_CAP_INT_STATUS);
 	mask=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
-	KM_DEBUG("CAP_INT_STATUS=0x%08x mask=0x%08x\n", status_cap, mask);
+	KM_DEBUG_LEVEL(3)("CAP_INT_STATUS=0x%08x mask=0x%08x\n", status_cap, mask);
 	status_cap&=(CAP_INT_BIT_BUF0|CAP_INT_BIT_BUF0_EVEN|
 		     CAP_INT_BIT_BUF1|CAP_INT_BIT_BUF1_EVEN|
 		     CAP_INT_BIT_VBI0|CAP_INT_BIT_VBI1) & mask; /* be nice to other users */
@@ -360,7 +360,7 @@ while(1){
              /* check DMA and vblank bits in GEN_INT_STATUS */
 	status=readl(kms->reg_aperture+RADEON_GEN_INT_STATUS);
 	mask=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL) & ((1<<30)|7);
-	KM_DEBUG("GEN_INT_STATUS=0x%08x mask=0x%08x\n", status, mask);
+	KM_DEBUG_LEVEL(3)("GEN_INT_STATUS=0x%08x mask=0x%08x\n", status, mask);
 	status &=mask & (INT_BIT_GUIDMA|INT_BIT_VLINE|INT_BIT_VSYNC|INT_BIT_VBLANK|INT_BIT_CAP0);
 	if(!status && !status_cap){
 		return;

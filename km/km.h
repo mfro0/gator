@@ -152,6 +152,7 @@ extern int km_debug;
 #endif
 
 #define KM_DEBUG   if(km_debug)printk
+#define KM_DEBUG_LEVEL(a) 	if(km_debug>=(a))printk
 
 #if 1
 #define KM_CHECKPOINT printk("**CKPT %s %s %d\n", __FILE__, __FUNCTION__, __LINE__);
