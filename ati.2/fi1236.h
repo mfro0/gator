@@ -76,6 +76,7 @@ typedef struct {
 #define FI1236_JUST_BELOW 1
 #define FI1236_JUST_ABOVE -1
 #define FI1236_OFF      4
+#define FI1236_STILL_TUNING      5
 
 
 FI1236Ptr Detect_FI1236(I2CBusPtr b, I2CSlaveAddr addr);

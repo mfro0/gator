@@ -123,12 +123,15 @@ while(1){
 	while(1){
 		n2--;
 		f_test=f_test-m->f_lo2;
-/*		xf86DrvMsg(0, X_INFO, "testing f_test=%g n1=%d n2=%d f_lo1=%g f_lo2=%g f_if2=%g\n", f_test, n1, n2, m->f_lo1, m->f_lo2, m->f_if2);  */
+		xf86DrvMsg(0, X_INFO, "testing f_test=%g n1=%d n2=%d f_lo1=%g f_lo2=%g f_if2=%g\n", f_test, n1, n2, m->f_lo1, m->f_lo2, m->f_if2);  
+		xf86DrvMsg(0, X_INFO, "d_f=%g f_ifbw=%g\n",fabs(fabs(f_test)-m->f_if2), m->f_ifbw);  
 		if((fabs(fabs(f_test)-m->f_if2)*2.0)<=m->f_ifbw)return 0;
 		if(n2<=-n_max)break;
   		/* this line in the manual is bogus. I say it is faster
 		and more correct to go over all harmonics.. */
-/*		if(f_test<(m->f_lo2-m->f_if2-m->f_ifbw))break; */
+		#if 1
+		if(f_test<(m->f_lo2-m->f_if2-m->f_ifbw))break; 
+		#endif
 		}
 	n1++;
 	if(n1>=n_max)return 1;
@@ -286,14 +289,19 @@ CARD8 AFC;
 in=0x0e;
 I2C_WriteRead(&(f->d), (I2CByte *)&in, 1, out, 1);
 AFC=(out[0]>>4) & 0x7;
+#if 0
+xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "AFC=%d TAD1=%d TAD2=%d\n", AFC, out[1] & 0x7, (out[1]>>4)& 0x07);
+#endif
 if(AFC==2)return FI1236_TUNED;
 if(AFC==3)return FI1236_JUST_BELOW;
 if(AFC==1)return FI1236_JUST_ABOVE;
 return FI1236_OFF;
 }
 
+/* this function is for external use only */
 int TUNER_get_afc_hint(FI1236Ptr f)
 {
+if(f->afc_timer_installed)return FI1236_STILL_TUNING;
 if(f->type==TUNER_TYPE_MT2032)
 	return MT2032_get_afc_hint(f);
 	else
@@ -340,7 +348,10 @@ MT2032_parameters m;
 CARD8 data[10];
 /* NTSC IF is 44mhz.. but 733/16=45.8125 and all TDAXXXX docs mention
      45.75, 39, 58.75 and 30. */
+#if 0
 MT2032_calculate_register_settings(&m, freq, 1090.0, 45.125, 5.25, 6.0, step);
+#endif
+MT2032_calculate_register_settings(&m, freq, 1090.0, 45.7812, 5.25, 6.0, step);
 MT2032_implement_settings(f, &m);
 MT2032_optimize_VCO(f, &m);
 /* MT2032_dump_parameters(f, &m); */
