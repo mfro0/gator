@@ -250,30 +250,13 @@ bell
 
 global current_ch_input
 set current_ch_input ""
+global current_ch_number_input
+set current_ch_number_input ""
 
 proc input_channel { state keysym} {
-global current_ch_input current_table
+global current_ch_input current_ch_number_input
+
 if { ($state & (1<<2)) != 0 } { return }
-if { $keysym == "Return" || $keysym == "KP_Enter" } {
-	if { $current_ch_input == "" } { return }
-	switch_to_channel $current_ch_input
-	set current_ch_input ""
-	return
-	}
-if { $keysym == "Delete" || $keysym == "KP_Delete" } {
-	global current_channel
-	flash_message " Channel $current_channel "
-	set current_ch_input ""
-	return
-	}
-if { $keysym == "BackSpace" } {
-	if { $current_ch_input == "" } { 
-		return 
-		}
-	set current_ch_input [string range $current_ch_input 0 end-1]
-	flash_message " $current_ch_input "
-	return
-	}
 # translate keypad keysyms
 foreach {keysym2 translation} {
 	KP_End  1
@@ -292,9 +275,48 @@ foreach {keysym2 translation} {
 		break
 		}
 	}
+
+if { $current_ch_input != "" || ![string is integer -strict $keysym] ||
+     $keysym == "apostrophe" } {
+	set current_ch_number_input ""
+	input_channel_name $keysym
+	} else {
+	input_channel_number $keysym
+	}
+}
+
+proc input_channel_name { keysym } {
+global current_ch_input current_table
+if { $keysym == "Return" || $keysym == "KP_Enter" } {
+	if { $current_ch_input == "" } { return }
+	switch_to_channel $current_ch_input
+	set current_ch_input ""
+	return
+	}
+if { $keysym == "Delete" || $keysym == "KP_Delete" } {
+	global current_channel
+	flash_message " [get_station_name $current_channel true] "
+	set current_ch_input ""
+	return
+	}
+if { $keysym == "BackSpace" } {
+	if { $current_ch_input == "" } { 
+		return 
+		}
+	set current_ch_input [string range $current_ch_input 0 end-1]
+	flash_message " $current_ch_input "
+	return
+	}
+if { $keysym == "apostrophe" } {
+	# Apostrophe is used to indicate start of all-digit channel
+	# name. Set current_ch_input to non-empty so that next key is
+	# handled by input_channel_name even if it was a digit.
+	set current_ch_input " "
+	return
+	}
 # we are only interested in single letters 
 if { [string length $keysym] > 1 } { return }
-set new_input "${current_ch_input}$keysym"
+set new_input [string trim "${current_ch_input}$keysym"]
 set valid 0
 foreach channel [freq_get_channel_list $current_table] {
 	if { [regexp -nocase "^$new_input" $channel] } {
@@ -311,6 +333,39 @@ elseif { $valid == 1 } {
 	} {
 	bell
 	}
+}
+
+proc input_channel_number { keysym } {
+global current_ch_number_input current_channel
+
+if { ![string is integer -strict $keysym] || 
+     ($current_ch_number_input == "" && $keysym == 0) } {
+	return
+	}
+
+set new_input "${current_ch_number_input}$keysym"
+set new_channel [get_favorite_channel_by_number [expr $new_input-1]]
+if { $new_channel == "" } {
+	flash_message " No channel $new_input "
+	set current_ch_number_input ""
+	} else {
+	set current_channel $new_channel
+	set next_digit "${new_input}0"
+	if { [get_favorite_channel_by_number [expr $next_digit-1]] != "" } {
+		flash_message " ${new_input}_ "
+		set current_ch_number_input $new_input
+		after 2000 expire_channel_number_selection
+		} else {
+		set current_ch_number_input ""
+		}
+	}
+}
+
+proc expire_channel_number_selection {} {
+global current_ch_number_input current_channel
+
+set current_ch_number_input ""
+flash_message " [get_station_name $current_channel true] "
 }
 
 proc toggle_screensaver {} {

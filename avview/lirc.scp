@@ -12,6 +12,7 @@ set lirc_bindings {
     "next_encoding 1" "next_encoding"
     "remote_power_off" "remote_power_off"
     "switch_to_channel" "channel"
+    "input_channel_number" "channel_number"
 }
 
 proc handle_lirc_command { lircstring } {

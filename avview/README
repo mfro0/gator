@@ -60,7 +60,10 @@
 
 	*** Pressed in main window (with TV display) ***
 	
-	1-9,0, single letters    input channel name
+	1-9,0			 input channel number
+	1-9,0, single letters	 input channel name
+	' (apostrophe)		 begin entering channel name (required
+				 for all-digit channel names)
 	Enter, Return		 switch to keyed in channel
 	Delete			 erase keyed in channel name and show 
 				 current channel
@@ -97,3 +100,4 @@
 	 remote_power_off	 exit or toggle screensaver
 	 channel val		 select channel val. val is channel
 				 name (e.g. E5)
+	 channel_number val	 select channel number val

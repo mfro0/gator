@@ -402,10 +402,11 @@ return $connector
 }
 
 proc find_first_favorite_channel {start_with dir} {
-global current_port all_favorites LOCATION_ID current_table CHANNEL_LIST
+global current_port all_favorites LOCATION_ID current_table
 
 if { $current_port == "none" } { return "none" }
-if { [info exists all_favorites(${LOCATION_ID}_${current_table})] } {
+if { [info exists all_favorites(${LOCATION_ID}_${current_table})] &&
+     [llength $all_favorites(${LOCATION_ID}_${current_table})] > 0 } {
 	set channels $all_favorites(${LOCATION_ID}_${current_table})
 	} else {
 	set channels [freq_get_channel_list $current_table]
@@ -423,5 +424,23 @@ if {$answer == ""} {
 	return "none"
 	} else {
 	return $answer
+	}
+}
+
+proc get_favorite_channel_by_number {index} {
+global current_port all_favorites LOCATION_ID current_table
+
+if { $current_port == "none" } { return "" }
+if { [info exists all_favorites(${LOCATION_ID}_${current_table})] &&
+     [llength $all_favorites(${LOCATION_ID}_${current_table})] > 0 } {
+	set channels $all_favorites(${LOCATION_ID}_${current_table})
+	} else {
+	set channels [freq_get_channel_list $current_table]
+	}
+
+if { $index >= 0 && $index < [llength $channels] } {
+	return [lindex $channels $index]
+	} else {
+	return ""
 	}
 }
