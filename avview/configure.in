@@ -1,5 +1,5 @@
 # Process this file with autoconf to produce a configure script.
-AC_PREREQ(2.52)
+AC_PREREQ(2.57)
 #
 # Note to self: always bump version number when there are changes
 # in setup window or avview_shell
@@ -14,7 +14,7 @@ AM_CONFIG_HEADER([config.h])
 
 # Checks for programs.
 AC_PROG_CC
-#AC_GNU_SOURCE
+AC_GNU_SOURCE
 
 AC_PATH_XTRA
 AC_SYS_LARGEFILE
