@@ -36,6 +36,8 @@ snd_rawmidi_info_t *rawmidiinfo;
 typedef struct {
 	snd_ctl_t *ctl;
 	snd_ctl_card_info_t *info;
+	snd_ctl_elem_list_t *elist;
+	snd_ctl_elem_info_t *einfo;
 	} ALSA_DATA;
 
 #include "global.h"
@@ -148,16 +150,93 @@ if((a=snd_ctl_card_info(ad->ctl, ad->info))<0){
 	alsa_sc->data[i]=NULL;
 	return TCL_ERROR;
 	}
+snd_ctl_elem_list_alloca(&(ad->elist));
+if((a=snd_ctl_elem_list(ad->ctl, ad->elist))<0){
+	Tcl_AppendResult(interp,"ERROR: alsa_ctl_open: ", NULL);
+	Tcl_AppendResult(interp, snd_strerror(a), NULL);
+	snd_ctl_close(ad->ctl);
+	free(ad->elist);
+	free(ad->info);
+	free(alsa_sc->data[i]);
+	alsa_sc->data[i]=NULL;
+	return TCL_ERROR;
+	}
+snd_ctl_elem_info_alloca(&(ad->einfo));
+if((a=snd_ctl_elem_list(ad->ctl, ad->einfo))<0){
+	Tcl_AppendResult(interp,"ERROR: alsa_ctl_open: ", NULL);
+	Tcl_AppendResult(interp, snd_strerror(a), NULL);
+	free(ad->einfo);
+	snd_ctl_elem_list_free_space(ad->elist);
+	snd_ctl_close(ad->ctl);
+	free(ad->info);
+	free(alsa_sc->data[i]);
+	alsa_sc->data[i]=NULL;
+	return TCL_ERROR;
+	}
+
 ans=Tcl_NewListObj(0, NULL);
+/* ok, we can't simply count on the order of entries being fixed */
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-card", -1));
 Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj(snd_ctl_card_info_get_card(ad->info)));
+
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-id", -1));
 Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj(snd_ctl_card_info_get_id(ad->info), -1));
+
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-driver", -1));
 Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj(snd_ctl_card_info_get_driver(ad->info), -1));
+
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-name", -1));
 Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj(snd_ctl_card_info_get_name(ad->info), -1));
+
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-longname", -1));
 Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj(snd_ctl_card_info_get_longname(ad->info), -1));
+
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-mixer", -1));
 Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj(snd_ctl_card_info_get_mixername(ad->info), -1));
+
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-components", -1));
 Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj(snd_ctl_card_info_get_components(ad->info), -1));
+
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-controls", -1));
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj(snd_ctl_elem_list_get_count(ad->elist)));
+
 Tcl_SetObjResult(interp, ans);
-return 0;
+return TCL_OK;
+}
+
+
+int alsa_ctl_get_element_info(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+{
+int a,i;
+int mode;
+ALSA_DATA *ad;
+Tcl_Obj *ans;
+snd_ctl_elem_id_t *elem_id;
+snd_ctl_elem_iface_t iface;
+snd_ctl_elem_type_t type;
+int index;
+
+Tcl_ResetResult(interp);
+if(argc<3){
+	Tcl_AppendResult(interp,"ERROR: alsa_ctl_get_element_info requires two arguments", NULL);
+	return TCL_ERROR;
+	}
+i=lookup_string(alsa_sc, argv[1]);
+if((i<0)||((ad=(ALSA_DATA *)alsa_sc->data[i])==NULL)){
+	Tcl_AppendResult(interp,"ERROR: alsa_ctl_get_element_info: no such control open", NULL);
+	return TCL_ERROR;
+	}
+index=atoi(argv[2]);
+snd_ctl_elem_id_alloca(&elem_id);
+/* snd_ctl_elem_list_get_id(ad->elist, index, elem_id); 
+  iface=snd_ctl_elem_id_get_interface(elem_id);
+*/
+ans=Tcl_NewListObj(0, NULL);
+/* ok, we can't simply count on the order of entries being fixed */
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-interface", -1));
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj(snd_ctl_elem_iface_name(snd_ctl_elem_list_get_interface(ad->elist, index)), -1));
+/* snd_ctl_elem_id_free(elem_id); */
+return TCL_OK;
 }
 
 int alsa_present(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
@@ -177,6 +256,7 @@ struct {
 	{"alsa_card_next", alsa_card_next},
 	{"alsa_card_load", alsa_card_load},
 	{"alsa_ctl_open", alsa_ctl_open},
+	{"alsa_ctl_get_element_info", alsa_ctl_get_element_info},
 	{NULL, NULL}
 	};
 
