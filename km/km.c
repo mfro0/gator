@@ -210,7 +210,8 @@ static int km_fire_transfer_request(KM_TRANSFER_QUEUE *kmtq)
 
 int km_add_transfer_request(KM_TRANSFER_QUEUE *kmtq, 
 			    KM_STREAM *stream, int buffer, int flag,
-			    int (*start_transfer)(KM_TRANSFER_REQUEST *kmtr), void *user_data)
+			    void (*start_transfer)(KM_TRANSFER_REQUEST *kmtr), 
+			    void *user_data)
 {
 	int last;
 	last=kmtq->last;
@@ -733,8 +734,10 @@ static int __devinit km_probe(struct pci_dev *dev, const struct pci_device_id *p
 
 	FIELD("V4L_DEVICE").data.i.field=(u32 *)&(kms->vd->minor);
 
-	FIELD("VIDEO_STREAM_ACTIVE").data.t.zero2one=start_video_capture;
-	FIELD("VIDEO_STREAM_ACTIVE").data.t.one2zero=stop_video_capture;
+	FIELD("VIDEO_STREAM_ACTIVE").data.t.zero2one=
+		(int (*)(void *))start_video_capture;
+	FIELD("VIDEO_STREAM_ACTIVE").data.t.one2zero=
+		(void (*)(void *))stop_video_capture;
 	FIELD("VIDEO_STREAM_ACTIVE").data.t.priv=kms;
 
 	FIELD("VIDEO_STREAM_DATA_UNIT").data.i.field=&(kms->capture.du);
@@ -747,8 +750,10 @@ static int __devinit km_probe(struct pci_dev *dev, const struct pci_device_id *p
 
 	FIELD("VBI_STREAM_INFO_DATA_UNIT").data.i.field=&(kms->vbi.info_du);
 
-	FIELD("VBI_STREAM_ACTIVE").data.t.zero2one=start_video_capture;
-	FIELD("VBI_STREAM_ACTIVE").data.t.one2zero=stop_video_capture;
+	FIELD("VBI_STREAM_ACTIVE").data.t.zero2one=
+		(int (*)(void *))start_video_capture;
+	FIELD("VBI_STREAM_ACTIVE").data.t.one2zero=
+		(void (*)(void *))stop_video_capture;
 	FIELD("VBI_STREAM_ACTIVE").data.t.priv=kms;
 
 	kms->kmd=add_km_device(kms->kmfl, kms);

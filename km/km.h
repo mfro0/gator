@@ -70,7 +70,7 @@ typedef struct S_KM_TRANSFER_REQUEST {
 	#define KM_TRANSFER_TO_SYSTEM_RAM	1
 	#define KM_TRANSFER_FROM_SYSTEM_RAM	2
 	#define KM_TRANSFER_IN_PROGRESS		(1<<31)
-	int (*start_transfer)(struct S_KM_TRANSFER_REQUEST *kmtr);
+	void (*start_transfer)(struct S_KM_TRANSFER_REQUEST *kmtr);
 	void * user_data;		/* whatever the code that submitted the request
 					has use for */	
 	} KM_TRANSFER_REQUEST;
@@ -158,7 +158,7 @@ int start_vbi_capture(KM_STRUCT *kms);
 void stop_vbi_capture(KM_STRUCT *kms);
 int km_add_transfer_request(KM_TRANSFER_QUEUE *kmtq, 
 	KM_STREAM *stream, int buffer, int flag,
-	int (*start_transfer)(KM_TRANSFER_REQUEST *kmtr), void *user_data);
+	void (*start_transfer)(KM_TRANSFER_REQUEST *kmtr), void *user_data);
 
 #define HARDWARE_MACH64		0
 #define HARDWARE_RAGE128	1
@@ -171,7 +171,7 @@ extern int km_debug;
 #define KM_DEBUG   if(km_debug)printk
 #define KM_DEBUG_LEVEL(a) 	if(km_debug>=(a))printk
 
-#if 1
+#if 0
 #define KM_CHECKPOINT printk("**CKPT %s %s %d\n", __FILE__, __FUNCTION__, __LINE__);
 #else
 #define KM_CHECKPOINT

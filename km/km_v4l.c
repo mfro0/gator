@@ -175,12 +175,12 @@ static int km_v4l_ioctl(struct inode *inode, struct file *file, unsigned int cmd
 /* ignore this - it is bogus */
 static int km_v4l_mmap(struct file *file, struct vm_area_struct *vma)
 {
+#if 0
 	struct video_device *dev = video_devdata(file);
 
 	KM_STRUCT *kms=(KM_STRUCT *)video_get_drvdata(dev);
 	KDU_FILE_PRIVATE_DATA *kdufpd=kms->v4l_kdufpd;
 	return -ENOMEM;
-#if 0
 	if (size>(kms->frame_info[FRAME_ODD].buf_size+kms->frame_info[FRAME_EVEN].buf_size))
 		return -EINVAL;
 	if (!kms->frame_info[FRAME_ODD].buffer || !kms->frame_info[FRAME_EVEN].buffer) {

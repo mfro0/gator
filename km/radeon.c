@@ -346,7 +346,7 @@ do {
 	if(count==10){
 		printk(KERN_ERR "radeon DMA_GUI queue full DMA_GUI_STATUS=0x%08x\n", status);
 		}
-	KM_DEBUG("status=0x%08lx\n", status);
+	KM_DEBUG("status=0x%08x\n", status);
 	} while (!(status & 0x1f));
 wmb();
 writel(kmtr->stream->dma_table_physical[kmtr->buffer]&~1, kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR);
@@ -575,11 +575,11 @@ mc_fb_location=readl(kms->reg_aperture+RADEON_MC_FB_LOCATION);
 mc_agp_location=readl(kms->reg_aperture+RADEON_MC_AGP_LOCATION);
 addr=(addr>>16) & 0xffff;
 if((addr>=(mc_fb_location & 0xffff))&& (addr<=((mc_fb_location >> 16)& 0xffff))){
-	printk(KERN_ERR "km: page address 0x%08x is within framebuffer aperture\n", addr);
+	printk(KERN_ERR "km: page address 0x%08lx is within framebuffer aperture\n", addr);
 	return 0;
 	}
 if((addr>=(mc_agp_location & 0xffff))&& (addr<=((mc_agp_location >> 16)& 0xffff))){
-	printk(KERN_ERR "km: page address 0x%08x is within AGP aperture\n", addr);
+	printk(KERN_ERR "km: page address 0x%08lx is within AGP aperture\n", addr);
 	return 0;
 	}
 return 1;
