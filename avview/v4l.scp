@@ -61,7 +61,8 @@ grid configure $cw.devicel -sticky nws
 
 if { [alsa_present] } {
 	eval label $cw.alsadevicel -text "\"ALSA device: \"" [get_settings $cw.alsadevicel Capture V4L]
-	global v4l_alsadevice_menu
+	global v4l_alsadevice_menu current_alsa_capture_device
+	set old_value $current_alsa_capture_device
 	set v4l_alsadevice_menu [tk_optionMenu $cw.alsadevice_optionmenu current_alsa_capture_device none]
 	eval $cw.alsadevice_optionmenu configure [get_settings $cw.alsadevice_optionmenu Capture V4L]
 	eval $v4l_alsadevice_menu configure [get_settings $v4l_alsadevice_menu Capture V4L menu]
@@ -69,7 +70,11 @@ if { [alsa_present] } {
 	$cw.rescan_ad_button configure -command "rescan_alsa_devices $v4l_alsadevice_menu current_alsa_capture_device"
 	grid $cw.alsadevicel $cw.alsadevice_optionmenu $cw.rescan_ad_button -sticky news
 	grid configure $cw.alsadevicel -sticky nws
-	after idle "$cw.rescan_ad_button invoke"
+	after idle [subst -nocommands {
+		$cw.rescan_ad_button invoke
+		global current_alsa_capture_device
+		set current_alsa_capture_device "$old_value"
+		} ]
 	}
 
 
@@ -200,8 +205,6 @@ for {set i 0 } {$i < 10 } { incr i } {
 			}
 		v4l_close_device rescan_handle
 		}
-	update
-	update idletasks
 	}
 }
 
@@ -349,7 +352,6 @@ grid $sw.f.sab $sw.f.type -padx 5
 eval $cw.c configure [get_settings $cw.c Capture V4L]
 eval $sw.vscroll configure [get_settings $sw.vscroll Capture V4L]
 eval $sw.hscroll configure [get_settings $sw.hscroll Capture V4L]
-update
 }
 
 proc save_image_as { sw image } {

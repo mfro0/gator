@@ -221,9 +221,12 @@ foreach element $current_alsa_info {
 	incr i 
 	}
 
-update
-set bbox [grid bbox $mw]
-$canvas configure -scrollregion "[grid bbox $mw]" -width [expr [lindex $bbox 2]+8]
+after idle [ subst -nocommands {
+	catch {
+		set bbox [grid bbox $mw]
+		$canvas configure -scrollregion "[grid bbox $mw]" -width [expr [lindex \$bbox 2]+8]
+		}
+	} ]
 }
 	
 proc generate_alsa_window { cw } {
@@ -262,6 +265,7 @@ label $cw.devicel -text "ALSA Audio device: "
 eval $cw.devicel configure [get_settings $cw.devicel ALSA]
 global alsa_device_menu
 global current_alsa_device1
+set save_alsa_device $current_alsa_device1
 trace vdelete current_alsa_device1 w "set_alsa_device .controlwin.alsamixer ; skip_args3"
 set alsa_device_menu [tk_optionMenu $cw.device_optionmenu current_alsa_device1 none]
 eval $cw.device_optionmenu configure [get_settings $cw.device_optionmenu ALSA]
@@ -275,10 +279,13 @@ trace variable current_alsa_device1 w "set_alsa_device .controlwin.alsamixer ; s
 
 grid $cw.f - - -sticky news
 
-set save_alsa_device "$current_alsa_device"
-after idle "global current_alsa_device ; set current_alsa_device none ; rescan_alsa_devices $alsa_device_menu current_alsa_device1"
-global current_alsa_device1
-set current_alsa_device1 "$save_alsa_device"
+after idle [subst -nocommands {
+	global current_alsa_device 
+	set current_alsa_device none 
+	rescan_alsa_devices $alsa_device_menu current_alsa_device1
+	global current_alsa_device1
+	set current_alsa_device1 "$save_alsa_device"
+	} ]
 
 frame $cw.f1 -relief groove -borderwidth 2
 eval $cw.f1 configure [get_settings $cw.f1 ALSA]

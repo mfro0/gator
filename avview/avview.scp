@@ -261,38 +261,24 @@ update idletasks
 xmisc_hidecursor .
 xmisc_hidecursor .video
 
-trace variable show_control_window w "show_control_window_proc ; skip_args3"
 
 proc show_control_window_proc {} {
 global show_control_window
 if { $show_control_window } {
-	after idle { 
-		global show_control_window
-		if { $show_control_window } {
-			wm deiconify .controlwin
-			}
-		}
+	wm deiconify .controlwin
 	} {
-	after idle {
-		global show_control_window
-		if { [winfo screen .controlwin] != [winfo screen . ] } {
-			set ans [tk_dialog .controlwin.withdraw_question "Hide main control window ?" \
-				"The main control window is displayed on the monitor different from main viewer window. If you hide it you will only be able to restore it from the main viewer window. Perhaps you would prefer to iconify control window?" "" 0 "Iconify" "Hide" "Never mind" ]
-			update
-			update idletasks
-			switch "$ans" \
-				"0"  { after idle {wm iconify .controlwin ; set show_control_window 1 } } \
-				"1"  { after idle { wm withdraw .controlwin } } \
-				"2"  { set show_control_window 1 }
-			update
-			} {
-			after idle { 
-				global show_control_window
-				if { ! $show_control_window } {
-					wm withdraw .controlwin 
-					}
-				}
-			}
+	if { [winfo screen .controlwin] != [winfo screen . ] } {
+		set ans [tk_dialog .controlwin.withdraw_question "Hide main control window ?" \
+			"The main control window is displayed on the monitor different from main viewer window. If you hide it you will only be able to restore it from the main viewer window. Perhaps you would prefer to iconify control window?" "" 0 "Iconify" "Hide" "Never mind" ]
+		update
+		update idletasks
+		switch "$ans" \
+			"0"  { after idle {wm iconify .controlwin ; set show_control_window 1 } } \
+			"1"  { after idle { wm withdraw .controlwin } } \
+			"2"  { set show_control_window 1 }
+		update
+		} {
+				wm withdraw .controlwin 
 		}
 	}
 }
@@ -828,10 +814,6 @@ global current_channel
 trace variable current_channel w "set_channel"
 global fullscreen_mode
 trace variable fullscreen_mode w "set_fullscreen ; skip_args3"
-global attributes_window
-trace variable attributes_window w  { generate_attributes_window .controlwin.allattributes ; skip_args3 }
-global capture_window
-trace variable capture_window w  { generate_capture_window .controlwin.capture ; skip_args3 }
 global current_v4l_device
 trace variable current_v4l_device w  "set_v4l_device .controlwin.capture"
 global current_v4l_mode
@@ -842,10 +824,6 @@ trace variable aspect_ratio w "place_video_window ; skip_args3"
 trace variable use_physical_screen_size w "place_video_window ; skip_args3"
 global on_screen_cc_page
 trace variable on_screen_cc_page w "vbi_set_cc_page_on_screen ; skip_args3"
-
-if {[alsa_present] == "yes" } {
-	trace variable alsa_window w "generate_alsa_window .controlwin.alsamixer ; skip_args3"
-	}
 
 bind $VIDEO_WINDOW <Configure> {
 	global $VIDEO_WINDOW
@@ -945,6 +923,20 @@ foreach {var value} {
 set_encoding_theme
 }
 
+proc set_ui_traces {} {
+global show_control_window attributes_window capture_window alsa_window
+trace variable show_control_window w "show_control_window_proc ; skip_args3"
+trace variable attributes_window w  { generate_attributes_window .controlwin.allattributes ; skip_args3 }
+trace variable capture_window w  { generate_capture_window .controlwin.capture ; skip_args3 }
+if {[alsa_present] == "yes" } {
+	trace variable alsa_window w "generate_alsa_window .controlwin.alsamixer ; skip_args3"
+	}
+
+
+foreach var {show_control_window attributes_window capture_window alsa_window} {
+	set $var [set $var]
+	}
+}
 
 after idle {
 	avview_set_icon . "avview-16x16.ppm"
@@ -963,6 +955,7 @@ after 100 {
 		set fullscreen_mode true 
 		}
 	xv_pick_defaults
+	set_ui_traces
 	global startup_script
 	eval $startup_script	
 	}	

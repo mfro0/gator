@@ -246,9 +246,12 @@ for { set i 0 } {$i < $NUM_ATTRIBUTES } { incr i } {
 	create_attribute_widget $af.f1.c.f $VIDEO_WINDOW $current_port $i
 	}
 grid columnconfigure $af 1 -weight 1
-update
-set bbox [grid bbox $af.f1.c.f]
-$af.f1.c configure -scrollregion "[grid bbox $af.f1.c.f]" -width [expr [lindex $bbox 2]+8]
+after idle [subst -nocommands {
+	catch {
+		set bbox [grid bbox $af.f1.c.f]
+		$af.f1.c configure -scrollregion "[grid bbox $af.f1.c.f]" -width [expr [lindex \$bbox 2]+8]
+		}
+	} ]
 
 }
 
