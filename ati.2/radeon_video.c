@@ -2674,7 +2674,7 @@ RADEONDisplayVideo(
     step_by_uv = step_by_y;
 
     /* if the source width was larger than what would fit in overlay scaler increase step_by values */
-    i=drw_w;
+    i=src_w;
     while(i>1536){
     	step_by_y++;
 	step_by_uv++;
