@@ -920,8 +920,8 @@ if((sdata!=NULL)&&(sdata->audio_s==NULL)&&(sdata->video_s==NULL)){
 	pthread_mutex_lock(&(sdata->format_context_mutex));
 	if(sdata->format_context.oformat!=NULL)
 		av_write_trailer(&(sdata->format_context));
-	pthread_mutex_unlock(&(sdata->format_context_mutex));
 	close(sdata->fd_out);
+	pthread_mutex_unlock(&(sdata->format_context_mutex));
 	free(sdata);
 	sdata=NULL;
 	fprintf(stderr,"Recording finished\n");
