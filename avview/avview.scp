@@ -104,8 +104,11 @@ global current_channel
 $current_channel_menu delete 0 end
 if { $current_table < 0 } { return }
 set CHANNEL_LIST [freq_get_channel_list $current_table]
-foreach channel $CHANNEL_LIST {
+set i 0 
+foreach channel $CHANNEL_LIST {	
 	$current_channel_menu add radiobutton -label "$channel" -value [freq_get_channel_value $current_table [lsearch -exact $CHANNEL_LIST "$channel" ]] -variable current_channel
+	if { (($i-16) %16)==0 } { $current_channel_menu entryconfigure "$channel" -columnbreak 1}
+	incr i
 	}
 }
 
