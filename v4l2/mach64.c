@@ -27,6 +27,9 @@
 #include "mach64.h"
 #include "memory.h"
 
+static const int videoRamSizes[] =
+    {0, 256, 512, 1024, 2*1024, 4*1024, 6*1024, 8*1024, 12*1024, 16*1024, 0};
+
 struct tuner_types generic_tuners[] = {
   {  0,1, NULL,           NULL,                   NULL },
   {  1,1, "Philips",      "FI1236",               "NTSC M/N" },
@@ -88,19 +91,6 @@ int m64_inita(GENERIC_CARD *card)
 {
   u32 id;
 
-  card->videoram = MACH64_MEM_CNTL & 15;
-  if (card->videoram < 8)
-    card->videoram = 512*(card->videoram+1);
-  else if (card->videoram < 12)
-    card->videoram = 1024*(card->videoram-3);
-  else
-    card->videoram = 2048*(card->videoram-7);
-
-  printk(KERN_INFO "videoram is %d\n",card->videoram);
-
-  /* 8192 space for registers in framebuffer happens on pro version */
-  card->vbibuffer = 1024*card->videoram - 32768 - 8192;
-
   /* figure out what i2c mode to use */
   if (i2c_init(card) != 0){
     printk (KERN_ERR "Could not find i2c bus driver\n");
@@ -112,6 +102,27 @@ int m64_inita(GENERIC_CARD *card)
   card->board.revision = (id & 0x07000000) >> 24 ;    /* Chip Version */
 
   printk (KERN_INFO "genericv4l(%d): ati deviceid 0x%04X revision %d\n",card->cardnum,card->board.deviceid, card->board.revision);
+
+  /* for 264 CT ET VT GT we probe for memory differently
+   * I only know the id for 264VT though :) */
+  if (card->board.deviceid == 0x5654) {
+    card->videoram = (MACH64_MEM_CNTL & 7) + 2;
+    card->videoram = videoRamSizes[card->videoram];
+  } else {
+    card->videoram = MACH64_MEM_CNTL & 15;
+    if (card->videoram < 8)
+      card->videoram = 512*(card->videoram+1);
+    else if (card->videoram < 12)
+      card->videoram = 1024*(card->videoram-3);
+    else
+      card->videoram = 2048*(card->videoram-7);
+  }
+
+  printk(KERN_INFO "videoram is %d\n",card->videoram);
+
+  /* 8192 space for registers in framebuffer happens on pro version */
+  card->vbibuffer = 1024*card->videoram - 32768 - 8192;
+
 
   /* find board address */
   card->board.addr = 0x70; //standalone card
@@ -564,33 +575,28 @@ if (disableinterlace){
 
 /* set crop register based on tuner type and size of image capture */
   switch (card->tuner) {
-    case 1: case 2: case 12: /* NTSC M/N and NTSC Japan */
-    case 6:               /* NTSC M/N Mk2 */
-    case 8:               /* NTSC M/N (Samsung) */
-    case 16: case 17:     /* NTSC M/N */
-    case 18:              /* NTSC M/N with FM */
-      if (card->width <= 320){
-        BTWRITE(card,BT829_CROP,0x11);
-      } else {
-        BTWRITE(card,BT829_CROP,0x12);
-      }
-      break;
     case 3: case 4: case 9: case 10:    /* PAL B/G and PAL I */
     case 7:               /* SECAM D/K */
     case 5: case 11:      /* PAL B/G, SECAM L/L' */
     case 13:              /* PAL I/B/G/DK, SECAM D/K */
-      if (card->width <= 320){
+      if (card->width <= generic_tvnorms[card->tvnorm].swidth / 2){
         BTWRITE(card,BT829_CROP,0x21);
       } else {
         BTWRITE(card,BT829_CROP,0x23);
       }
       break;
+    /* NTSC M/N and NTSC Japan */
+    /* NTSC M/N Mk2 */
+    /* NTSC M/N (Samsung) */
+    /* NTSC M/N */
+    /* NTSC M/N with FM */
     default: 
-      if (card->width <= 320){
+      if (card->width <= generic_tvnorms[card->tvnorm].swidth / 2){
         BTWRITE(card,BT829_CROP,0x11);
       } else {
         BTWRITE(card,BT829_CROP,0x12);
       }
+      break;
   } 
 
 //if less than half height then do not interlace

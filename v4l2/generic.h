@@ -368,7 +368,8 @@ struct S_GENERIC_CARD {
    /* dma tables and frame buffers */
    DMA_BM_TABLE *dma_table_buf0,*dma_table_buf1,*dma_table_buf2,*dma_table_buf3;
    DMA_BM_TABLE *dma_table_vbi;
-   u32 *framebuffer1,*framebuffer2, *vbidatabuffer;
+   //u32 *framebuffer1,*framebuffer2, *vbidatabuffer;
+   u8 *framebuffer1,*framebuffer2, *vbidatabuffer;
    int frame; /* which frame they want to capture to */
    int whichfield; /* which field we just captured */
    unsigned int field_count; 

@@ -54,6 +54,9 @@ MODULE_PARM_DESC(debug, "Debugging level");
 int disablev4l2=0;
 MODULE_PARM(disablev4l2, "i");
 MODULE_PARM_DESC(disablev4l2, "disable v4l2 support");
+int disabledma=0;
+MODULE_PARM(disabledma, "i");
+MODULE_PARM_DESC(disabledma, "disable dma support");
 int disableinterlace=0;
 MODULE_PARM(disableinterlace, "i");
 MODULE_PARM_DESC(disableinterlace, "disable interlace modes");
@@ -941,7 +944,7 @@ unsigned int generic_poll(struct file *file, poll_table *wait)
 
     /* if this is a poll for vbi make sure a vbi frame is ready */
     if (fh->type == V4L2_BUF_TYPE_VBI_CAPTURE)  {
-      if (card->status & STATUS_VBI_DMABUF_READY){
+      if (disabledma || card->status & STATUS_VBI_DMABUF_READY){
         return POLLIN|POLLRDNORM;
       }
       return 0;
@@ -1364,19 +1367,21 @@ void grab_frame(GENERIC_CARD *card)
     }
   } 
 
-  down_interruptible(&card->lock);
-  // pass the dma_table to the card
-  MACH64_BM_SYSTEM_TABLE = virt_to_bus(ptr) | FRAME_BUFFER_TO_SYSTEM;
+  if (!disabledma) {
+    down_interruptible(&card->lock);
+    // pass the dma_table to the card
+    MACH64_BM_SYSTEM_TABLE = virt_to_bus(ptr) | FRAME_BUFFER_TO_SYSTEM;
   
-  //wait for dma to finish
-  /* this should transfer the vbi information as well */
-  stall=0;
-  wait_event_interruptible(generic_wait, (card->status & STATUS_DMABUF_READY) 
-  	|| (stall++ > 10));
-  card->status &= ~STATUS_DMABUF_READY;
+    //wait for dma to finish
+    /* this should transfer the vbi information as well */
+    stall=0;
+    wait_event_interruptible(generic_wait, (card->status & STATUS_DMABUF_READY) 
+    	|| (stall++ > 10));
+    card->status &= ~STATUS_DMABUF_READY;
 
-  // release the lock so we can transfer data again
-  up(&card->lock);
+    // release the lock so we can transfer data again
+    up(&card->lock);
+  }
   up(&card->lockcap);
 }
 
@@ -1402,12 +1407,12 @@ int grab_vbi(GENERIC_CARD *card)
   down_interruptible(&card->lock);
   // odd vbi is 0 even is 1;
   whichfield = BTREAD(card,BT829_DSTATUS) & BT829_DSTATUS_FIELD;
-
-  MACH64_BM_SYSTEM_TABLE = virt_to_bus(card->dma_table_vbi) |
+  if (!disabledma) {
+    MACH64_BM_SYSTEM_TABLE = virt_to_bus(card->dma_table_vbi) |
         FRAME_BUFFER_TO_SYSTEM;
-  wait_event_interruptible(generic_wait, (card->status & STATUS_DMABUF_READY));
-  card->status &= ~STATUS_DMABUF_READY;
-
+    wait_event_interruptible(generic_wait, (card->status & STATUS_DMABUF_READY));
+    card->status &= ~STATUS_DMABUF_READY;
+  }
   up(&card->lock);
   up(&card->lockvbi);
   return whichfield;
@@ -2408,9 +2413,11 @@ int __devinit generic_probe(struct pci_dev *dev,
   }
 
   /* tell the card we can do DMA transfers with any memory */
-  if (pci_set_dma_mask(dev, 0xffffffff) != 0) {
-    printk(KERN_WARNING "genericv4l(%d): No suitable DMA available.\n", num_cards_detected);
-    return -EIO;
+  if (!disabledma) {
+    if (pci_set_dma_mask(dev, 0xffffffff) != 0) {
+      printk(KERN_WARNING "genericv4l(%d): No suitable DMA available.\n", num_cards_detected);
+      return -EIO;
+    }
   }
 
   /* reserve the cards i/o resources, tag is just a name to associate with this lock */
@@ -2421,6 +2428,7 @@ int __devinit generic_probe(struct pci_dev *dev,
     /* keep going it still might work! */
   }
 
+  /* request end memory region 720x480x2 and 2 frames (so x2) */
   if (!request_mem_region(pci_resource_start(dev,0) + 
 			  pci_resource_len(dev,0) - 1382400,
   			  1382400,
@@ -2455,7 +2463,14 @@ int __devinit generic_probe(struct pci_dev *dev,
   one of the cards resources (change the number to get to others) */ 
   /* since we are doing dma its we dont really need to map atifb... */
   card->atifb=ioremap(pci_resource_start(dev, 0),pci_resource_len(dev, 0)); 
-  card->MMR=ioremap(pci_resource_start(dev, 2),pci_resource_len(dev, 2)); 
+
+  if (pci_resource_start(dev, 2) == 0 || pci_resource_len(dev, 2) == 0) {
+    card->MMR = (u8*)(card->atifb + 0x007FF800);
+    printk(KERN_INFO "Using default value for mmr at atifb+0x007FF800\n");
+  } else {
+    card->MMR=ioremap(pci_resource_start(dev, 2),pci_resource_len(dev, 2));
+  }
+
   card->MEM_0 = ((u32*)card->MMR)+256;  
   card->MEM_1 = ((u32*)card->MMR);  
 
@@ -2552,44 +2567,46 @@ int __devinit generic_probe(struct pci_dev *dev,
   //should check cards max capture and set max size to that?
   //dma table can transfer 4096 per entry, so we need 150 entries to transfer
   //640*480*2 (614400/4096 = 150) each one has 256 so we have more than enough
-  card->dma_table_buf0 = kmalloc(sizeof(DMA_BM_TABLE) * 256,GFP_KERNEL);
-  card->dma_table_buf1 = kmalloc(sizeof(DMA_BM_TABLE) * 256,GFP_KERNEL);
-  card->dma_table_buf2 = kmalloc(sizeof(DMA_BM_TABLE) * 256,GFP_KERNEL);
-  card->dma_table_buf3 = kmalloc(sizeof(DMA_BM_TABLE) * 256,GFP_KERNEL);
+  if (!disabledma) {
+    card->dma_table_buf0 = kmalloc(sizeof(DMA_BM_TABLE) * 256,GFP_KERNEL);
+    card->dma_table_buf1 = kmalloc(sizeof(DMA_BM_TABLE) * 256,GFP_KERNEL);
+    card->dma_table_buf2 = kmalloc(sizeof(DMA_BM_TABLE) * 256,GFP_KERNEL);
+    card->dma_table_buf3 = kmalloc(sizeof(DMA_BM_TABLE) * 256,GFP_KERNEL);
 
-  /* 8 should hold enough for 32k and we need two one for each field */
-  card->dma_table_vbi = kmalloc(sizeof(DMA_BM_TABLE) * 15,GFP_KERNEL);
+    /* 8 should hold enough for 32k and we need two one for each field */
+    card->dma_table_vbi = kmalloc(sizeof(DMA_BM_TABLE) * 15,GFP_KERNEL);
 
-  if (card->dma_table_buf0 == NULL || card->dma_table_buf1 == NULL ||
-  card->dma_table_buf2 == NULL || card->dma_table_buf3 == NULL ||
-  card->dma_table_vbi == NULL){
-     if (card->dma_table_buf0 != NULL) 
-       kfree(card->dma_table_buf0);
-     else 
-       printk("Could not allocate dma table 1\n");
-     if (card->dma_table_buf1 != NULL) 
-       kfree(card->dma_table_buf1);
-     else 
-       printk("Could not allocate dma table 2\n");
-     if (card->dma_table_buf2 != NULL) 
-       kfree(card->dma_table_buf2);
-     else 
-       printk("Could not allocate dma table 3\n");
-     if (card->dma_table_buf3 != NULL) 
-       kfree(card->dma_table_buf3);
-     else 
-       printk("Could not allocate dma table 4\n");
+    if (card->dma_table_buf0 == NULL || card->dma_table_buf1 == NULL ||
+    card->dma_table_buf2 == NULL || card->dma_table_buf3 == NULL ||
+    card->dma_table_vbi == NULL){
+       if (card->dma_table_buf0 != NULL) 
+         kfree(card->dma_table_buf0);
+       else 
+         printk("Could not allocate dma table 1\n");
+       if (card->dma_table_buf1 != NULL) 
+         kfree(card->dma_table_buf1);
+       else 
+         printk("Could not allocate dma table 2\n");
+       if (card->dma_table_buf2 != NULL) 
+         kfree(card->dma_table_buf2);
+       else 
+         printk("Could not allocate dma table 3\n");
+       if (card->dma_table_buf3 != NULL) 
+         kfree(card->dma_table_buf3);
+       else 
+         printk("Could not allocate dma table 4\n");
 
-     if (card->dma_table_vbi != NULL)
-       kfree(card->dma_table_vbi);
-     else
-       printk("Could not allocate dma table for vbi\n");
+       if (card->dma_table_vbi != NULL)
+         kfree(card->dma_table_vbi);
+       else
+         printk("Could not allocate dma table for vbi\n");
 
-     iounmap(card->atifb);
-     iounmap(card->MMR);
-     release_mem_region(pci_resource_start(dev,2),pci_resource_len(dev,2));
-     pci_set_drvdata(dev, NULL);
-     return -ENOMEM;
+       iounmap(card->atifb);
+       iounmap(card->MMR);
+       release_mem_region(pci_resource_start(dev,2),pci_resource_len(dev,2));
+       pci_set_drvdata(dev, NULL);
+       return -ENOMEM;
+    }
   }
 
   /* override tunertype that we found with module param */
@@ -2597,29 +2614,6 @@ int __devinit generic_probe(struct pci_dev *dev,
     card->tvnorm = tunertype;
   }
   set_tvnorm(card, card->tvnorm);
-
-  /* allocate space for two frames of max size eg 640*480*2) */
-  card->fbmallocsize = generic_tvnorms[card->tvnorm].swidth * generic_tvnorms[card->tvnorm].sheight * 2;
-  /* make sure its a page size multiple, because i am grabing a buffer for each frame (v4l2) instead of one large buffer (v4l1) so v4l1 programs expect an offset ... blah blah blah i will fix it :) */
-  card->fbmallocsize = (card->fbmallocsize + PAGE_SIZE -1) & ~(PAGE_SIZE -1);
-
-  card->framebuffer1 = rvmalloc(card->fbmallocsize);
-  card->framebuffer2 = rvmalloc(card->fbmallocsize);
-  card->vbidatabuffer = rvmalloc(32768);
-  if (card->framebuffer1 == NULL || card->framebuffer2 == NULL ||
-      card->vbidatabuffer == NULL){
-     printk("Could not allocate dma buffer\n");
-     kfree(card->dma_table_buf0);
-     kfree(card->dma_table_buf1);
-     kfree(card->dma_table_buf2);
-     kfree(card->dma_table_buf3);
-     kfree(card->dma_table_vbi);
-     iounmap(card->atifb);
-     iounmap(card->MMR);
-     release_mem_region(pci_resource_start(dev,2),pci_resource_len(dev,2));
-     pci_set_drvdata(dev, NULL);
-     return -ENOMEM;
-  }
 
   //set default values
   card->width=generic_tvnorms[card->tvnorm].swidth;
@@ -2644,6 +2638,48 @@ int __devinit generic_probe(struct pci_dev *dev,
   card->buffer1 = card->buffer0 - bufsize;
   card->vbibuffer = card->buffer1 - 32768;
 
+  /* allocate space for two frames of max size eg 640*480*2) */
+  card->fbmallocsize = generic_tvnorms[card->tvnorm].swidth * generic_tvnorms[card->tvnorm].sheight * 2;
+  /* make sure its a page size multiple, because i am grabing a buffer for each frame (v4l2) instead of one large buffer (v4l1) so v4l1 programs expect an offset ... blah blah blah i will fix it :) */
+  card->fbmallocsize = (card->fbmallocsize + PAGE_SIZE -1) & ~(PAGE_SIZE -1);
+
+  if (!disabledma) {
+    card->framebuffer1 = rvmalloc(card->fbmallocsize);
+    card->framebuffer2 = rvmalloc(card->fbmallocsize);
+    card->vbidatabuffer = rvmalloc(32768);
+    if (card->framebuffer1 == NULL || card->framebuffer2 == NULL ||
+        card->vbidatabuffer == NULL){
+       printk("Could not allocate dma buffer\n");
+       kfree(card->dma_table_buf0);
+       kfree(card->dma_table_buf1);
+       kfree(card->dma_table_buf2);
+       kfree(card->dma_table_buf3);
+       kfree(card->dma_table_vbi);
+       iounmap(card->atifb);
+       iounmap(card->MMR);
+       release_mem_region(pci_resource_start(dev,2),pci_resource_len(dev,2));
+       pci_set_drvdata(dev, NULL);
+       return -ENOMEM;
+    }
+  } else {
+    /* no dma so just point to the cards memory and the copy
+     * routines will read it from there 
+     * oh and make sure we capture on page boundaries :) */
+     card->buffer0 = 1024*card->videoram - bufsize - 8000;
+     card->buffer0 = (card->buffer0 + PAGE_SIZE -1) & ~(PAGE_SIZE -1);
+     card->buffer1 = card->buffer0 - bufsize;
+     card->buffer1 = (card->buffer1 + PAGE_SIZE -1) & ~(PAGE_SIZE -1);
+     card->vbibuffer = card->buffer1 - 32768;
+     card->vbibuffer = (card->vbibuffer + PAGE_SIZE -1) & ~(PAGE_SIZE -1);
+
+    card->framebuffer1 = (u8*) card->atifb+card->buffer0;
+    card->framebuffer2 = (u8*) card->atifb+card->buffer1;
+    card->vbidatabuffer = (u8*) card->atifb+card->vbibuffer;
+printk (KERN_INFO "atifb is 0x%p\n", card->atifb);
+printk (KERN_INFO "framebuffer1 is 0x%p\n", card->framebuffer1);
+printk (KERN_INFO "framebuffer2 is 0x%p\n", card->framebuffer2);
+  }
+
   //set location of capture buffers
   MACH64_CAPTURE_BUF0_OFFSET = card->buffer0;
   MACH64_CAPTURE_BUF1_OFFSET = card->buffer1;
@@ -2654,13 +2690,15 @@ int __devinit generic_probe(struct pci_dev *dev,
   flags &= ~MACH64_VIDEO_IN; //clear video_in
   MACH64_VIDEO_FORMAT = flags | MACH64_VIDEO_VYUY422;
 
-  // build dma tables (dma table, from_addr, to_addr, bufsize)
-  build_dma_table(card->dma_table_buf0, card->buffer0,(unsigned long)card->framebuffer1, bufsize);
-  build_dma_table(card->dma_table_buf1, card->buffer1,(unsigned long)card->framebuffer1, bufsize);
-  build_dma_table(card->dma_table_buf2, card->buffer0,(unsigned long)card->framebuffer2, bufsize);
-  build_dma_table(card->dma_table_buf3, card->buffer1,(unsigned long)card->framebuffer2, bufsize);
-  // build the vbi buffers while we are at it
-  build_dma_table(card->dma_table_vbi, card->vbibuffer,(unsigned long)card->vbidatabuffer, 32768);
+  if (!disabledma) {
+    // build dma tables (dma table, from_addr, to_addr, bufsize)
+    build_dma_table(card->dma_table_buf0, card->buffer0,(unsigned long)card->framebuffer1, bufsize);
+    build_dma_table(card->dma_table_buf1, card->buffer1,(unsigned long)card->framebuffer1, bufsize);
+    build_dma_table(card->dma_table_buf2, card->buffer0,(unsigned long)card->framebuffer2, bufsize);
+    build_dma_table(card->dma_table_buf3, card->buffer1,(unsigned long)card->framebuffer2, bufsize);
+    // build the vbi buffers while we are at it
+    build_dma_table(card->dma_table_vbi, card->vbibuffer,(unsigned long)card->vbidatabuffer, 32768);
+  }
 
   /* add proc interface for this card */
   sprintf (buf,"%d",card->cardnum);
@@ -2895,14 +2933,16 @@ void __devexit generic_remove(struct pci_dev *pci_dev)
   pci_set_drvdata(pci_dev, NULL);
 
   /* remove the dma table and frame memory */
-  rvfree(card->framebuffer1,card->fbmallocsize);
-  rvfree(card->framebuffer2,card->fbmallocsize);
-  rvfree(card->vbidatabuffer,32768);
-  kfree(card->dma_table_buf0);
-  kfree(card->dma_table_buf1);
-  kfree(card->dma_table_buf2);
-  kfree(card->dma_table_buf3);
-  kfree(card->dma_table_vbi);
+  if (!disabledma) {
+    rvfree(card->framebuffer1,card->fbmallocsize);
+    rvfree(card->framebuffer2,card->fbmallocsize);
+    rvfree(card->vbidatabuffer,32768);
+    kfree(card->dma_table_buf0);
+    kfree(card->dma_table_buf1);
+    kfree(card->dma_table_buf2);
+    kfree(card->dma_table_buf3);
+    kfree(card->dma_table_vbi);
+  }
 
   /* free proc interface for this card */
   sprintf (buf, "%d", card->cardnum);
