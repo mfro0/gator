@@ -31,6 +31,7 @@
 
 #include <alsa/asoundlib.h>
 #include <endian.h>
+#include "alsa.h"
 
 STRING_CACHE *alsa_sc;
 
@@ -47,6 +48,7 @@ typedef struct {
 	long recording_chunk_size;
 	long frame_size;
 	void *priv;
+	ALSA_PARAMETERS *param;
 	} ALSA_DATA;
 
 #include "global.h"
@@ -441,6 +443,7 @@ PACKET *p;
 ALSA_DATA *data=(ALSA_DATA *)s->priv;
 int a;
 /* lock mutex before testing s->stop_stream */
+data->recording_chunk_size=data->param->chunk_size;
 p=new_generic_packet(data->recording_chunk_size); 
 pthread_mutex_lock(&(s->ctr_mutex));
 while(!s->stop_stream){
@@ -542,8 +545,11 @@ if(a<0){
         return -1;
         }
 param->sample_rate=a;
+param->channels=2;
 ad->recording_chunk_size=4096*ad->frame_size; /* multiple of pages this way */
 if(a>40960)ad->recording_chunk_size=(a*ad->frame_size)/10;
+param->chunk_size=ad->recording_chunk_size; /* suggest chunk size.. */
+ad->param=param;
 fprintf(stderr,"Using sample rate %ld Hz frame_size=%d\n", param->sample_rate, ad->frame_size);
 #if 0 /* don't know what to do with this */
         /* set buffer time */

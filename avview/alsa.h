@@ -6,6 +6,8 @@
 typedef struct {
 	long sample_rate;  /* in Hz */
 	long format;
+	long channels;
+	long chunk_size;
 	} ALSA_PARAMETERS;
 
 void alsa_reader_thread(PACKET_STREAM *s);

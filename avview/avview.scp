@@ -632,7 +632,7 @@ if {[ffmpeg_present] == "yes"} {
 	grid configure $cw.codecom -sticky news
 
 	label $cw.av_formatl -text "File format:"
-	tk_optionMenu $cw.av_formatom current_av_format "none" "AVI" "ASF"
+	tk_optionMenu $cw.av_formatom current_av_format "none" "AVI" "ASF" "MPEG"
 	grid $cw.av_formatl $cw.av_formatom
 	grid configure $cw.av_formatl -sticky nws
 	grid configure $cw.av_formatom -sticky news
