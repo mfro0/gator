@@ -61,7 +61,7 @@ void DRM(dma_service)( DRM_IRQ_ARGS )
 	   (drm_radeon_private_t *)dev->dev_private;
    	u32 stat;
 
-	stat = RADEON_READ(RADEON_GEN_INT_STATUS);
+	stat = RADEON_READ(RADEON_GEN_INT_STATUS) & ~(RADEON_CAP0_INT|RADEON_GUIDMA_STAT);
 	if (!stat)
 		return;
 
@@ -85,7 +85,7 @@ void DRM(dma_service)( DRM_IRQ_ARGS )
 
 static __inline__ void radeon_acknowledge_irqs(drm_radeon_private_t *dev_priv)
 {
-	u32 tmp = RADEON_READ( RADEON_GEN_INT_STATUS );
+	u32 tmp = RADEON_READ( RADEON_GEN_INT_STATUS ) & ~(RADEON_CAP0_INT|RADEON_GUIDMA_STAT);
 	if (tmp)
 		RADEON_WRITE( RADEON_GEN_INT_STATUS, tmp );
 }
