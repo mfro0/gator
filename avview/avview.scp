@@ -621,6 +621,7 @@ global fullscreen_mode
 
 if {$fullscreen_mode} {
 	set fullscreen_mode 0
+	after idle "set_video_window_size $w $h"
 	return
 	}
 	
@@ -700,6 +701,7 @@ place $VIDEO_WINDOW.onscreen_display -relx 0.05 -rely 0.05 -anchor nw
 
 menu .video_menu -type normal -tearoff false
 menu .video_menu.size_menu -type normal -tearoff false
+menu .video_menu.aspect_menu -type normal -tearoff false
 menu .video_menu.channel_menu -type normal -tearoff false
 menu .video_menu.connector_menu -type normal -tearoff false
 menu .video_menu.interface_menu -type normal -tearoff false
@@ -712,6 +714,7 @@ menu .video_menu.cc_menu -type normal -tearoff false
 .video_menu add cascade -menu .video_menu.connector_menu -label "Connector"
 .video_menu add cascade -menu .video_menu.cc_menu -label "Closed caption"
 .video_menu add cascade -menu .video_menu.size_menu -label "Size"
+.video_menu add cascade -menu .video_menu.aspect_menu -label "Aspect ratio"
 .video_menu add separator
 .video_menu add cascade -menu .video_menu.interface_menu -label "User interface"
 .video_menu add separator
@@ -736,11 +739,13 @@ for { set i 1 } { $i <= 8 } { incr i } {
 .video_menu.size_menu add command -label "480x360" -command "set_video_window_size 480 360"
 .video_menu.size_menu add command -label "640x480" -command "set_video_window_size 640 480"
 .video_menu.size_menu add command -label "800x600" -command "set_video_window_size 800 600"
-.video_menu.size_menu add radiobutton -label "Unconstrained aspect ratio" -variable aspect_ratio -value [list NONE NONE]
-.video_menu.size_menu add radiobutton -label "Aspect ratio 4:3" -variable aspect_ratio -value [list 4 3]
-.video_menu.size_menu add radiobutton -label "Aspect ratio 3:4" -variable aspect_ratio -value [list 3 4]
-.video_menu.size_menu add radiobutton -label "Aspect ratio 16:9" -variable aspect_ratio -value [list 16 9]
-.video_menu.size_menu add radiobutton -label "Aspect ratio 9:16" -variable aspect_ratio -value [list 9 16]
+
+
+.video_menu.aspect_menu add radiobutton -label "Unconstrained aspect ratio" -variable aspect_ratio -value [list NONE NONE]
+.video_menu.aspect_menu add radiobutton -label "Aspect ratio 4:3" -variable aspect_ratio -value [list 4 3]
+.video_menu.aspect_menu add radiobutton -label "Aspect ratio 3:4" -variable aspect_ratio -value [list 3 4]
+.video_menu.aspect_menu add radiobutton -label "Aspect ratio 16:9" -variable aspect_ratio -value [list 16 9]
+.video_menu.aspect_menu add radiobutton -label "Aspect ratio 9:16" -variable aspect_ratio -value [list 9 16]
 
 .video_menu.interface_menu add command -label "Show setup window" -command "create_setup_window"
 .video_menu.interface_menu add command -label "Favorite channel editor" -command scan_channels
