@@ -2,27 +2,25 @@
 #
 #
 
-global ffmpeg_max_fifo_size
-set ffmpeg_max_fifo_size 32
-global ffmpeg_recording_chunk_size
-set ffmpeg_recording_chunk_size 2000
-global current_video_rate
-set current_video_rate 59.94
-global ffmpeg_video_bitrate 
-set ffmpeg_video_bitrate 300000
-global ffmpeg_audio_sample_rate 
-set ffmpeg_audio_sample_rate 48000
-global ffmpeg_audio_bitrate 
-set ffmpeg_audio_bitrate 64000
-global ffmpeg_video_quality 
-set ffmpeg_video_quality 2
-global ffmpeg_video_bitrate_control
-set ffmpeg_video_bitrate_control "Fix quality"
-global ffmpeg_video_codec
-set ffmpeg_video_codec "MPEG-1"
-global ffmpeg_audio_codec
-set ffmpeg_audio_codec "MPEG-2"
 
+#
+# Initialize some global variables
+#
+foreach {variable value } {
+	ffmpeg_max_fifo_size 32
+	ffmpeg_recording_chunk_size 2000
+	current_video_rate 59.94
+	ffmpeg_video_bitrate 300000
+	ffmpeg_video_quality 2
+	ffmpeg_video_bitrate_control "Fix quality"
+	ffmpeg_video_codec "MPEG-1"
+	ffmpeg_audio_sample_rate 48000
+	ffmpeg_audio_bitrate 64000
+	ffmpeg_audio_codec "MPEG-2"
+	} {
+	global $variable
+	set $variable $value
+	}
 
 #
 #
@@ -86,72 +84,12 @@ if {[ffmpeg_present] == "yes"} {
 	grid $cw.rratel $cw.rrate_optionmenu - -sticky news
 	grid configure $cw.rratel -sticky nws
 
-#	eval label $cw.vcodecl -text "\"Video codec:\"" [get_settings $cw.vcodecl Capture V4L]
-#	set menu [tk_optionMenu $cw.vcodec_optionmenu ffmpeg_video_codec "H263" "H263I" "H263P" "MJPEG" "MPEG-1" "MPEG-4" "MSMPEG-4" "RV10"]
-#	eval $cw.vcodec_optionmenu configure [get_settings $cw.vcodec_optionmenu Capture V4L]
-#	eval $menu configure [get_settings $menu Capture V4L menu]
-#	grid $cw.vcodecl $cw.vcodec_optionmenu
-#	grid configure $cw.vcodecl -sticky nws
-#	grid configure $cw.vcodec_optionmenu -sticky news
-
 	eval label $cw.video_ratel -text "\"V4L device framerate:\"" [get_settings $cw.video_ratel Capture V4L]
 	entry $cw.video_rate_entry -textvariable current_video_rate
 	eval $cw.video_rate_entry configure [get_settings $cw.video_rate_entry Capture V4L]
 	grid $cw.video_ratel $cw.video_rate_entry
 	grid configure $cw.video_ratel -sticky nws
 	grid configure $cw.video_rate_entry -sticky news
-
-#	eval label $cw.video_bitratel -text "\"Video bitrate (bits/sec):\"" [get_settings $cw.video_bitratel Capture V4L]
-#	entry $cw.video_bitrate_entry -textvariable ffmpeg_video_bitrate 
-#	button $cw.video_bitrate_button -command recompute_video_bitrate -text "Default"
-#	eval $cw.video_bitrate_entry configure [get_settings $cw.video_bitrate_entry Capture V4L]
-#	eval $cw.video_bitrate_button configure [get_settings $cw.video_bitrate_button Capture V4L]
-#	grid $cw.video_bitratel $cw.video_bitrate_entry $cw.video_bitrate_button -sticky news
-#	grid configure $cw.video_bitratel -sticky nws
-##	grid configure $cw.video_bitrate_entry -sticky news
-
-#	eval label $cw.video_qualityl -text "\"Video quality:\"" [get_settings $cw.video_qualityl Capture V4L]
-##	entry $cw.video_quality_entry -textvariable ffmpeg_video_quality 
-##	eval $cw.video_quality_entry configure [get_settings $cw.video_quality_entry Capture V4L]
-#	scale $cw.video_quality_scale -from 2 -to 31 -showvalue false -tickinterval 0 -variable ffmpeg_video_quality \
-#		-orient horizontal
-#	eval label $cw.video_quality_value_label -text "\"\"" [get_settings $cw.video_qualityl Capture V4L] \
-#		-width 14
-#	eval $cw.video_quality_scale configure [get_settings $cw.video_quality_scale Capture V4L]
-#	grid $cw.video_qualityl $cw.video_quality_scale $cw.video_quality_value_label -sticky news
-#	grid configure $cw.video_qualityl -sticky nws
-
-#	eval label $cw.acodecl -text "\"Audio codec:\"" [get_settings $cw.acodecl Capture V4L]
-#	set menu [tk_optionMenu $cw.acodec_optionmenu ffmpeg_audio_codec "PCM" "MPEG-2" "AC-3"]
-#	eval $cw.acodec_optionmenu configure [get_settings $cw.acodec_optionmenu Capture V4L]
-#	eval $menu configure [get_settings $menu Capture V4L menu]
-#	grid $cw.acodecl $cw.acodec_optionmenu
-#	grid configure $cw.acodecl -sticky nws
-#	grid configure $cw.acodec_optionmenu -sticky news
-
-#	eval label $cw.aratel -text "\"Audio rate (samples/sec):\"" [get_settings $cw.aratel Capture V4L]
-#	set menu [tk_optionMenu $cw.arate_optionmenu ffmpeg_audio_sample_rate "48000" "44100" "32000" "24000" "22050" "16000"]
-#	eval $cw.arate_optionmenu configure [get_settings $cw.arate_optionmenu Capture V4L]
-#	eval $menu configure [get_settings $menu Capture V4L menu]
-#	grid $cw.aratel $cw.arate_optionmenu
-#	grid configure $cw.aratel -sticky nws
-#	grid configure $cw.arate_optionmenu -sticky news
-
-#	eval label $cw.audio_bitratel -text "\"Audio bitrate (bits/sec):\"" [get_settings $cw.audio_bitratel Capture V4L]
-#	set menu [tk_optionMenu $cw.audio_bitrate_optionmenu ffmpeg_audio_bitrate "384000" "320000" "256000" "224000" "192000" "160000" "128000" "112000" "96000" "80000" "64000" "56000" "48000" "32000"]
-#	eval $cw.audio_bitrate_optionmenu configure [get_settings $cw.audio_bitrate_optionmenu Capture V4L]
-#	eval $menu configure [get_settings $menu Capture V4L menu]
-#	grid $cw.audio_bitratel $cw.audio_bitrate_optionmenu
-#	grid configure $cw.audio_bitratel -sticky nws
-#	grid configure $cw.audio_bitrate_optionmenu -sticky news
-
-#	eval label $cw.av_formatl -text "\"File format:\"" [get_settings $cw.av_formatl Capture V4L]
-#	set menu [tk_optionMenu $cw.av_format_optionmenu ffmpeg_file_format "none" "AVI" "ASF" "MPEG"]
-#	eval $cw.av_format_optionmenu configure [get_settings $cw.av_format_optionmenu Capture V4L]
-#	eval $menu configure [get_settings $menu Capture V4L menu]
-#	grid $cw.av_formatl $cw.av_format_optionmenu
-#	grid configure $cw.av_formatl -sticky nws
-#	grid configure $cw.av_format_optionmenu -sticky news
 
 	eval label $cw.filenamel -text "\"Save to file:\"" [get_settings $cw.filenamel Capture V4L]
 	eval entry $cw.filename_entry -textvariable current_capture_filename [get_settings $cw.filename_entry Capture V4L]
@@ -164,21 +102,23 @@ if {[ffmpeg_present] == "yes"} {
 				{ "\"AVI streams\"" { *.avi *.AVI} } }\
 				-initialdir "$file_save_path" \
 			] ; 
-		if { "$result" != "" } { 
-			set extension [file extension "$result"]
-			set rootname [file rootname "$result"]
-			if { [regsub -- "-\[0123456789\]\$" "$rootname" "" a] } {
-				set rootname "$a"
-				}
-			for { set i 1 } { 1 } { incr i } {
-				if { ![file exists "$rootname-$i$extension"] } {
-					break
-					}
-				}
-			set result "$rootname-$i$extension"
-			set current_capture_filename [file tail "$result"]
-			set file_save_path [file dirname "$result"]
-			}
+#		if { ($result != "") && [file exists $result] } { 
+#			set extension [file extension $result]
+#			set rootname [file rootname $result]
+#			if { [regsub -- "-\[0123456789\]\$" $rootname "" a] } {
+#				set rootname "$a"
+#				}
+#			for { set i 1 } { 1 } { incr i } {
+#				if { ![file exists "$rootname-$i$extension"] } {
+#					break
+#					}
+#				}
+#			set result "$rootname-$i$extension"
+#			}
+		if { ($result != "") } {
+			set current_capture_filename [file tail $result]
+			set file_save_path [file dirname $result]
+			}		
 		}
 	eval $cw.filename_button configure [get_settings $cw.filename_button Capture V4L]
 	grid $cw.filenamel $cw.filename_entry $cw.filename_button
@@ -202,19 +142,6 @@ if {[ffmpeg_present] == "yes"} {
 
         make_video_stats $cw.video_stats
 
-#	label $cw.ffmpeg_max_fifo_size_label -text "Fifo limit (Mb):"
-#	entry $cw.ffmpeg_max_fifo_size_entry -textvariable ffmpeg_max_fifo_size
-#	eval $cw.ffmpeg_max_fifo_size_label configure [get_settings $cw.ffmpeg_max_fifo_size_label Capture V4L]
-#	eval $cw.ffmpeg_max_fifo_size_entry configure [get_settings $cw.ffmpeg_max_fifo_size_entry Capture V4L]
-#	grid $cw.ffmpeg_max_fifo_size_label $cw.ffmpeg_max_fifo_size_entry -sticky news
-#	grid configure $cw.ffmpeg_max_fifo_size_label -sticky nws
-
-#	label $cw.ffmpeg_recording_chunk_size_label -text "Recording chunk size (Mb):"
-#	entry $cw.ffmpeg_recording_chunk_size_entry -textvariable ffmpeg_recording_chunk_size
-#	eval $cw.ffmpeg_recording_chunk_size_label configure [get_settings $cw.ffmpeg_recording_chunk_size_label Capture V4L]
-#	eval $cw.ffmpeg_recording_chunk_size_entry configure [get_settings $cw.ffmpeg_recording_chunk_size_entry Capture V4L]
-#	grid $cw.ffmpeg_recording_chunk_size_label $cw.ffmpeg_recording_chunk_size_entry -sticky news
-#	grid configure $cw.ffmpeg_recording_chunk_size_label -sticky nws
 	} {
 	button $cw.snapshot_button -text "Snapshot" -command capture_snapshot -state disabled
 	eval $cw.snapshot_button configure [get_settings $cw.snapshot_button Capture V4L]
