@@ -13,8 +13,8 @@ To compile:
 	make
 	
 If you are using code from CVS you need to run these commands first:
-	automake
 	autoconf
+	automake
 
 To install:
 	make install

@@ -11,34 +11,24 @@
    Requirements: TV input capable card with Xv support, Tcl/Tk 8.3.x or 
                  later. 
 		  
-*** INSTALLATION ****
-
-Get ffmpeg tarball corresponding to this version of AVview from http://gatos.sf.net/
-If you are compiling from CVS get the latest ffmpeg tarball from http://gatos.sf.net/
-
-Get ALSA libraries/drivers from http://www.alsa-project.org/ - latest 0.9.x.
-
-If you downloaded this code from CVS run the following command first:
-
-        autoconf   (you need version 2.52 or later)
-      
-Next run
-
-	./configure
-	make
 	
 *** NOTES ***
 
        * right-clicking in the video window will bring up a menu
+       
        * People with newer cards with SPDIF - if your sound is distorted
          try muting/unmuting various channels (like CD).
 	 LET ME KNOW (volodya@mindspring.com) if this helps.       
-       * since we are working off ffmpeg CVS it is a good idea to 
-         run make clean; cvs update -d; make ; in ffmpeg directory
-	 before installing newer version of avview. Since CVS might turn
-	 out to be screwed up I recommend making a tarbal of ffmpeg tree
-	 right after make clean - it is not that big and you would be able
-	 to untar it and continue as before if anything breaks.
+
+       * If you are working off ffmpeg CVS it is a good idea to run
+         
+	 make clean; cvs update -d; make 
+
+	 in ffmpeg directory before installing newer version of avview. 
+	 Since CVS might turn out to be screwed up I recommend making a 
+	 tarball of ffmpeg tree right after make clean - it is not that 
+	 big and you would be able to untar it and continue as before if 
+	 anything breaks.
 
 *** KEYBOARD BINDINGS ***
 
