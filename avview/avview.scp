@@ -44,6 +44,7 @@ foreach {variable value} {
 	show_control_window 0
 	file_save_path "."
 	current_capture_filename "test3.avi"
+	fullscreen_mode false
 	remember_fullscreen_state false
 	always_start_fullscreen false
 	} {
@@ -130,8 +131,6 @@ $current_channel_menu delete 0 end
 grid $c.channell $c.channel_optionmenu -sticky news
 grid configure $c.channell -sticky nsw
 
-global fullscreen_mode
-set fullscreen_mode false
 
 #eval checkbutton $c.fullscreen_checkbutton -text "Fullscreen"  \
 #	-indicatoron false -variable fullscreen_mode [get_settings $c.fullscreen_checkbutton]
