@@ -69,6 +69,20 @@ do {									\
 } while (0)
 #endif
 
+/* Set cursor foreground and background colors */
+static void RADEONWaitForVBlank(ScrnInfoPtr pScrn)
+{
+    RADEONInfoPtr  info       = RADEONPTR(pScrn);
+    unsigned char *RADEONMMIO = info->MMIO;
+    long i = 0;
+ 
+    OUTREG(RADEON_GEN_INT_STATUS, 1);
+    while(!(INREG(RADEON_GEN_INT_STATUS) & 1)){
+	i++;
+	if(i>2000000)break; /* should not take more than 1/5ths of a second */
+	}
+
+}
 
 /* Set cursor foreground and background colors */
 static void RADEONSetCursorColors(ScrnInfoPtr pScrn, int bg, int fg)
@@ -271,7 +285,7 @@ static void RADEONLoadCursorImage(ScrnInfoPtr pScrn, unsigned char *image)
 
     /* Set the area after the cursor to be all transparent so that we
        won't display corrupted cursors on the screen */
-    for (y = 0; y < 64; y++) {
+    for (; y < 64; y++) {
 	*d++ = 0xffffffff; /* The AND bits */
 	*d++ = 0xffffffff;
 	*d++ = 0x00000000; /* The XOR bits */
@@ -279,13 +293,16 @@ static void RADEONLoadCursorImage(ScrnInfoPtr pScrn, unsigned char *image)
     }
 
     write_mem_barrier();
-    
+
+    RADEONWaitForVBlank(pScrn);
+
     if (!info->IsSecondary) {
 	save1 = INREG(RADEON_CRTC_GEN_CNTL) & ~(CARD32) (3 << 20);
 	#if 0
 	OUTREG(RADEON_CRTC_GEN_CNTL, save1 & (CARD32)~RADEON_CRTC_CUR_EN);
 	#endif
-        OUTREG(RADEON_CUR_OFFSET, INREG(RADEON_CUR_OFFSET)+(info->cursor_buffer-(info->cursor_end-info->cursor_start)));
+        OUTREG(RADEON_CUR_OFFSET, (INREG(RADEON_CUR_OFFSET)+(2*info->cursor_buffer-(info->cursor_end-info->cursor_start)))|RADEON_CUR_LOCK);
+        OUTREG(RADEON_CUR_OFFSET, INREG(RADEON_CUR_OFFSET)&~RADEON_CUR_LOCK);
 	OUTREG(RADEON_CRTC_GEN_CNTL, save1);
     }
 
@@ -294,7 +311,7 @@ static void RADEONLoadCursorImage(ScrnInfoPtr pScrn, unsigned char *image)
 	#if 0
 	OUTREG(RADEON_CRTC2_GEN_CNTL, save2 & (CARD32)~RADEON_CRTC2_CUR_EN);
 	#endif
-        OUTREG(RADEON_CUR2_OFFSET, INREG(RADEON_CUR_OFFSET)+(info->cursor_buffer-(info->cursor_end-info->cursor_start)));
+        OUTREG(RADEON_CUR2_OFFSET, INREG(RADEON_CUR_OFFSET)+(2*info->cursor_buffer-(info->cursor_end-info->cursor_start)));
 	OUTREG(RADEON_CRTC2_GEN_CNTL, save2);
     }
 
@@ -364,7 +381,7 @@ static void RADEONLoadCursorARGB (ScrnInfoPtr pScrn, CursorPtr pCurs)
 
     if (!image)
 	return;	/* XXX can't happen */
-    
+
     if(info->cursor_buffer==0){
     	info->cursor_buffer=(info->cursor_end-info->cursor_start+0x3)&~0x3;
 	} else {
@@ -375,7 +392,7 @@ static void RADEONLoadCursorARGB (ScrnInfoPtr pScrn, CursorPtr pCurs)
 #ifdef ARGB_CURSOR
     info->cursor_argb = TRUE;
 #endif
-    
+
     w = pCurs->bits->width;
     if (w > 64)
 	w = 64;
@@ -399,13 +416,16 @@ static void RADEONLoadCursorARGB (ScrnInfoPtr pScrn, CursorPtr pCurs)
     
     write_mem_barrier();
 
+    RADEONWaitForVBlank(pScrn);
+
     if (!info->IsSecondary) {
 	save1 = INREG(RADEON_CRTC_GEN_CNTL) & ~(CARD32) (3 << 20);
 	save1 |= (CARD32) 2 << 20;
 	#if 0
 	OUTREG(RADEON_CRTC_GEN_CNTL, save1 & (CARD32)~RADEON_CRTC_CUR_EN);
 	#endif
-        OUTREG(RADEON_CUR_OFFSET, INREG(RADEON_CUR_OFFSET)+(info->cursor_buffer-(info->cursor_end-info->cursor_start)));
+        OUTREG(RADEON_CUR_OFFSET, (INREG(RADEON_CUR_OFFSET)+(2*info->cursor_buffer-(info->cursor_end-info->cursor_start)))|RADEON_CUR_LOCK);
+        OUTREG(RADEON_CUR_OFFSET, INREG(RADEON_CUR_OFFSET)&~RADEON_CUR_LOCK);
 	OUTREG(RADEON_CRTC_GEN_CNTL, save1);
     }
 
@@ -415,7 +435,8 @@ static void RADEONLoadCursorARGB (ScrnInfoPtr pScrn, CursorPtr pCurs)
 	#if 0
 	OUTREG(RADEON_CRTC2_GEN_CNTL, save2 & (CARD32)~RADEON_CRTC2_CUR_EN);
 	#endif
-        OUTREG(RADEON_CUR2_OFFSET, INREG(RADEON_CUR_OFFSET)+(info->cursor_buffer-(info->cursor_end-info->cursor_start)));
+        OUTREG(RADEON_CUR2_OFFSET, INREG(RADEON_CUR2_OFFSET)+(2*info->cursor_buffer-(info->cursor_end-info->cursor_start)));
+        OUTREG(RADEON_CUR2_OFFSET, INREG(RADEON_CUR2_OFFSET));
 	OUTREG(RADEON_CRTC2_GEN_CNTL, save2);
     }
 
@@ -491,5 +512,7 @@ Bool RADEONCursorInit(ScreenPtr pScreen)
     RADEONTRACE(("RADEONCursorInit (0x%08x-0x%08x)\n",
 		 info->cursor_start, info->cursor_end));
 
+	xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+		   "chkpt 1\n");
     return xf86InitCursor(pScreen, cursor);
 }

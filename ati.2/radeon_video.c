@@ -149,7 +149,7 @@ typedef struct {
    Atom          device_id, location_id, instance_id;
 } RADEONPortPrivRec, *RADEONPortPrivPtr;
 
-void RADEON_RT_SetEncoding(RADEONPortPrivPtr pPriv);
+void RADEON_RT_SetEncoding(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv);
 void RADEON_board_setmisc(RADEONPortPrivPtr pPriv);
 void RADEON_MSP_SetEncoding(RADEONPortPrivPtr pPriv);
 void RADEONSetColorKey(ScrnInfoPtr pScrn, CARD32 pixel);
@@ -995,6 +995,8 @@ static Bool R200_I2CWriteRead(I2CDevPtr d, I2CByte *WriteBuffer, int nWrite,
                         I2C_GO | I2C_START | ((nRead >0)?0:I2C_STOP) | I2C_DRIVE_EN;
        OUTREG(RADEON_I2C_CNTL_0, i2c_cntl_0);
     
+       write_mem_barrier();
+
        while(INREG8(RADEON_I2C_CNTL_0+1) & (I2C_GO >> 8));
 
        status=RADEON_I2C_WaitForAck(pScrn,pPriv);
@@ -1022,22 +1024,21 @@ static Bool R200_I2CWriteRead(I2CDevPtr d, I2CByte *WriteBuffer, int nWrite,
                         I2C_GO | I2C_START | I2C_STOP | I2C_DRIVE_EN | I2C_RECEIVE;
        OUTREG(RADEON_I2C_CNTL_0, i2c_cntl_0);
     
-       RADEONWaitForIdleMMIO(pScrn);
+       write_mem_barrier();
        while(INREG8(RADEON_I2C_CNTL_0+1) & (I2C_GO >> 8));
 
        status=RADEON_I2C_WaitForAck(pScrn,pPriv);
   
        usleep(1000);
 
+       RADEONWaitForIdleMMIO(pScrn);
        /* Write Value into the buffer */
        for (loop = 0; loop < nRead; loop++)
        {
-          RADEONWaitForFifo(pScrn, 1);
           if((status == I2C_HALT) || (status == I2C_NACK))
           {
           ReadBuffer[loop]=0xff;
           } else {
-          RADEONWaitForIdleMMIO(pScrn);
           ReadBuffer[loop]=INREG8(RADEON_I2C_DATA) & 0xff;
           }
        }
@@ -1387,6 +1388,7 @@ static Bool RADEONVIP_read(GENERIC_BUS_Ptr b, CARD32 address, CARD32 count, CARD
    
    RADEONWaitForFifo(pScrn, 2);
    OUTREG(VIPH_REG_ADDR, address | 0x2000);
+   write_mem_barrier();
    while(VIP_BUSY == (status = RADEONVIP_idle(b)));
    if(VIP_IDLE != status) return FALSE;
    
@@ -1398,6 +1400,7 @@ static Bool RADEONVIP_read(GENERIC_BUS_Ptr b, CARD32 address, CARD32 count, CARD
 */      
    RADEONWaitForIdleMMIO(pScrn);
    OUTREG(VIPH_TIMEOUT_STAT, INREG(VIPH_TIMEOUT_STAT) & (0xffffff00 & ~VIPH_TIMEOUT_STAT__VIPH_REGR_DIS) );
+   write_mem_barrier();
 /*
          the value returned here is garbage.  The read merely initiates
          a register cycle
@@ -1405,7 +1408,7 @@ static Bool RADEONVIP_read(GENERIC_BUS_Ptr b, CARD32 address, CARD32 count, CARD
     RADEONWaitForIdleMMIO(pScrn);
     INREG(VIPH_REG_DATA);
     
-    while(VIP_BUSY == (status = RADEONVIP_idle(b)))usleep(10);
+    while(VIP_BUSY == (status = RADEONVIP_idle(b)));
     if(VIP_IDLE != status) return FALSE;
 /*
         set VIPH_REGR_DIS so that the read won't take too long.
@@ -1413,6 +1416,7 @@ static Bool RADEONVIP_read(GENERIC_BUS_Ptr b, CARD32 address, CARD32 count, CARD
     RADEONWaitForIdleMMIO(pScrn);
     tmp=INREG(VIPH_TIMEOUT_STAT);
     OUTREG(VIPH_TIMEOUT_STAT, (tmp & 0xffffff00) | VIPH_TIMEOUT_STAT__VIPH_REGR_DIS);         
+    write_mem_barrier();
     RADEONWaitForIdleMMIO(pScrn);
     switch(count){
         case 1:
@@ -1425,12 +1429,13 @@ static Bool RADEONVIP_read(GENERIC_BUS_Ptr b, CARD32 address, CARD32 count, CARD
              *(CARD32 *)buffer=(CARD32) ( INREG(VIPH_REG_DATA) & 0xffffffff);
              break;
         }
-     while(VIP_BUSY == (status = RADEONVIP_idle(b)))usleep(10);
+     while(VIP_BUSY == (status = RADEONVIP_idle(b)))usleep(100);
      if(VIP_IDLE != status) return FALSE;
  /*     
  so that reading VIPH_REG_DATA would not trigger unnecessary vip cycles.
 */
      OUTREG(VIPH_TIMEOUT_STAT, (INREG(VIPH_TIMEOUT_STAT) & 0xffffff00) | VIPH_TIMEOUT_STAT__VIPH_REGR_DIS);
+     write_mem_barrier();
      return TRUE;
 }
 
@@ -1451,7 +1456,7 @@ static Bool RADEONVIP_write(GENERIC_BUS_Ptr b, CARD32 address, CARD32 count, CAR
     
     RADEONWaitForFifo(pScrn, 2);
     OUTREG(VIPH_REG_ADDR, address & (~0x2000));
-    while(VIP_BUSY == (status = RADEONVIP_idle(b)))usleep(10);
+    while(VIP_BUSY == (status = RADEONVIP_idle(b)))usleep(100);
     
     if(VIP_IDLE != status) return FALSE;
     
@@ -1461,7 +1466,8 @@ static Bool RADEONVIP_write(GENERIC_BUS_Ptr b, CARD32 address, CARD32 count, CAR
              OUTREG(VIPH_REG_DATA, *(CARD32 *)buffer);
              break;
         }
-    while(VIP_BUSY == (status = RADEONVIP_idle(b)))usleep(10);
+    write_mem_barrier();
+    while(VIP_BUSY == (status = RADEONVIP_idle(b)))usleep(100);
     if(VIP_IDLE != status) return FALSE;
     return TRUE;
 }
@@ -1774,7 +1780,8 @@ RADEONSetupImageVideo(ScreenPtr pScreen)
     RADEONInfoPtr info = RADEONPTR(pScrn);
 
     info->accel->Sync(pScrn);
-
+    RADEONWaitForIdleMMIO(pScrn);
+        
     if(info->adaptor != NULL){
     	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Reinitializing Xvideo subsystems\n");
     	RADEONResetVideo(pScrn);
@@ -1785,7 +1792,7 @@ RADEONSetupImageVideo(ScreenPtr pScreen)
 	return NULL;
 
     pPriv = (RADEONPortPrivPtr)(adapt->pPortPrivates[0].ptr);
-    
+
     RADEONReadMM_TABLE(pScrn,pPriv);
     RADEONVIP_init(pScrn,pPriv);
 
@@ -1827,7 +1834,7 @@ RADEONSetupImageVideo(ScreenPtr pScreen)
        xf86_RT_SetSharpness(pPriv->theatre, RT_NORM_SHARPNESS);
        xf86_RT_SetContrast(pPriv->theatre, pPriv->dec_contrast);
        xf86_RT_SetBrightness(pPriv->theatre, pPriv->dec_brightness);  
-       RADEON_RT_SetEncoding(pPriv);
+       RADEON_RT_SetEncoding(pScrn, pPriv);
     }
     
     adapt->type = XvWindowMask | XvInputMask | XvImageMask | XvVideoMask;
@@ -2147,7 +2154,7 @@ RADEONSetPortAttribute(ScrnInfoPtr  pScrn,
         pPriv->encoding = value;
         if(pPriv->video_stream_active)
         {
-           if(pPriv->theatre != NULL) RADEON_RT_SetEncoding(pPriv);
+           if(pPriv->theatre != NULL) RADEON_RT_SetEncoding(pScrn, pPriv);
            if(pPriv->msp3430 != NULL) RADEON_MSP_SetEncoding(pPriv);
            if(pPriv->tda9885 != NULL) RADEON_TDA9885_SetEncoding(pPriv);
            if(pPriv->i2c != NULL) RADEON_board_setmisc(pPriv);
@@ -2159,7 +2166,7 @@ RADEONSetPortAttribute(ScrnInfoPtr  pScrn,
         /* mute volume if it was not muted before */
         if((pPriv->msp3430!=NULL)&& !pPriv->mute)xf86_MSP3430SetVolume(pPriv->msp3430, MSP3430_FAST_MUTE);
         if(pPriv->fi1236 != NULL) xf86_TUNER_set_frequency(pPriv->fi1236, value);
-/*        if(pPriv->theatre != NULL) RADEON_RT_SetEncoding(pPriv);  */
+/*        if(pPriv->theatre != NULL) RADEON_RT_SetEncoding(pScrn, pPriv);  */
         if((pPriv->msp3430 != NULL) && (pPriv->msp3430->recheck))
                 xf86_InitMSP3430(pPriv->msp3430);
         if((pPriv->msp3430 != NULL)&& !pPriv->mute) xf86_MSP3430SetVolume(pPriv->msp3430, MSP3430_VOLUME(pPriv->volume));
@@ -2171,6 +2178,13 @@ RADEONSetPortAttribute(ScrnInfoPtr  pScrn,
   } else 
   if(attribute == xvSAP) {
         pPriv->sap_channel = value;
+	if(pPriv->tda9885 != NULL){
+		xf86_tda9885_getstatus(pPriv->tda9885);
+		xf86_tda9885_dumpstatus(pPriv->tda9885);
+		}
+	if(pPriv->fi1236!=NULL){
+		fi1236_dump_status(pPriv->fi1236);
+		}
         if(pPriv->msp3430 != NULL) xf86_MSP3430SetSAP(pPriv->msp3430, pPriv->sap_channel?4:3);
   } else 
   if(attribute == xvVolume) {
@@ -3082,67 +3096,68 @@ void RADEON_board_setmisc(RADEONPortPrivPtr pPriv)
     }
 }
 
-void RADEON_RT_SetEncoding(RADEONPortPrivPtr pPriv)
+void RADEON_RT_SetEncoding(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
 {
+RADEONWaitForIdleMMIO(pScrn);
 switch(pPriv->encoding){
         case 1:
-                xf86_RT_SetStandard(pPriv->theatre,DEC_PAL | extPAL);
                 xf86_RT_SetConnector(pPriv->theatre,DEC_COMPOSITE, 0);
+                xf86_RT_SetStandard(pPriv->theatre,DEC_PAL | extPAL);
                 pPriv->v=24;
                 break;
         case 2:
-                xf86_RT_SetStandard(pPriv->theatre,DEC_PAL | extPAL);
                 xf86_RT_SetConnector(pPriv->theatre,DEC_TUNER,0);
+                xf86_RT_SetStandard(pPriv->theatre,DEC_PAL | extPAL);
                 pPriv->v=24;
                 break;
         case 3:
-                xf86_RT_SetStandard(pPriv->theatre,DEC_PAL | extPAL);
                 xf86_RT_SetConnector(pPriv->theatre,DEC_SVIDEO,0);
+                xf86_RT_SetStandard(pPriv->theatre,DEC_PAL | extPAL);
                 pPriv->v=24;
                 break;
         case 4:
-                xf86_RT_SetStandard(pPriv->theatre,DEC_NTSC | extNONE);
                 xf86_RT_SetConnector(pPriv->theatre, DEC_COMPOSITE,0);
+                xf86_RT_SetStandard(pPriv->theatre,DEC_NTSC | extNONE);
                 pPriv->v=23;
                 break;
         case 5:
-                xf86_RT_SetStandard(pPriv->theatre,DEC_NTSC | extNONE);
                 xf86_RT_SetConnector(pPriv->theatre, DEC_TUNER, 0);
+                xf86_RT_SetStandard(pPriv->theatre,DEC_NTSC | extNONE);
                 pPriv->v=23;
                 break;
         case 6:
-                xf86_RT_SetStandard(pPriv->theatre,DEC_NTSC | extNONE);
                 xf86_RT_SetConnector(pPriv->theatre, DEC_SVIDEO, 0);
+                xf86_RT_SetStandard(pPriv->theatre,DEC_NTSC | extNONE);
                 pPriv->v=23;
                 break;
         case 7:
-                xf86_RT_SetStandard(pPriv->theatre,DEC_SECAM | extNONE);
                 xf86_RT_SetConnector(pPriv->theatre, DEC_COMPOSITE, 0);
+                xf86_RT_SetStandard(pPriv->theatre,DEC_SECAM | extNONE);
                 pPriv->v=25;
                 break;
         case 8:
-                xf86_RT_SetStandard(pPriv->theatre,DEC_SECAM | extNONE);
                 xf86_RT_SetConnector(pPriv->theatre, DEC_TUNER, 0);
+                xf86_RT_SetStandard(pPriv->theatre,DEC_SECAM | extNONE);
                 pPriv->v=25;
                 break;
         case 9:
-                xf86_RT_SetStandard(pPriv->theatre,DEC_SECAM | extNONE);
                 xf86_RT_SetConnector(pPriv->theatre, DEC_SVIDEO, 0);
+                xf86_RT_SetStandard(pPriv->theatre,DEC_SECAM | extNONE);
                 pPriv->v=25;
                 break;
         case 10:
-                xf86_RT_SetStandard(pPriv->theatre,DEC_PAL | extPAL_60);
                 xf86_RT_SetConnector(pPriv->theatre,DEC_COMPOSITE, 0);
+                xf86_RT_SetStandard(pPriv->theatre,DEC_PAL | extPAL_60);
                 pPriv->v=24;
                 break;
         case 11:
-                xf86_RT_SetStandard(pPriv->theatre,DEC_PAL | extPAL_60);
                 xf86_RT_SetConnector(pPriv->theatre,DEC_TUNER,0);
+                xf86_RT_SetStandard(pPriv->theatre,DEC_PAL | extPAL_60);
                 pPriv->v=24;
                 break;
         case 12:
-                xf86_RT_SetStandard(pPriv->theatre,DEC_PAL | extPAL_60);
                 xf86_RT_SetConnector(pPriv->theatre,DEC_SVIDEO,0);
+                xf86_RT_SetStandard(pPriv->theatre,DEC_PAL | extPAL_60);
                 pPriv->v=24;
                 break;
         default:
@@ -3485,18 +3500,12 @@ RADEONPutVideo(
       xf86DrvMsg(pScrn->scrnIndex, X_INFO, "RADEON_VIDEOMUX_CNT=0x%08x\n", INREG(RADEON_VIDEOMUX_CNTL));
       OUTREG(RADEON_VIDEOMUX_CNTL, INREG(RADEON_VIDEOMUX_CNTL)|1 ); 
       OUTREG(RADEON_CAP0_PORT_MODE_CNTL, (pPriv->theatre!=NULL)? 1: 0);
-/* Rage128 setting seems to induce a lockup. What gives ? 
-   we need this to activate capture unit 
-
-   Explanation: FCP_CNTL is now apart from PLL registers   
-*/   
-
       OUTREG(RADEON_FCP_CNTL, RADEON_FCP0_SRC_PCLK);
       OUTREG(RADEON_CAP0_TRIG_CNTL, 0x11);
       if(pPriv->theatre != NULL) 
       {
+         RADEON_RT_SetEncoding(pScrn, pPriv); 
          xf86_RT_SetInterlace(pPriv->theatre, 1);
-         RADEON_RT_SetEncoding(pPriv); 
          xf86_RT_SetOutputVideoSize(pPriv->theatre, width, height*2, 0, 0);   
       }
       if(pPriv->msp3430 != NULL) RADEON_MSP_SetEncoding(pPriv);

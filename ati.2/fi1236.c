@@ -121,6 +121,7 @@ CARD8 data[10];
 CARD8 value;
 
 MT2032_getid(f);
+MT2032_shutdown(f);
 
 data[0]=0x02; /* start with register 0x02 */
 data[1]=0xFF; 
@@ -142,20 +143,23 @@ data[1]=0x32;
 I2C_WriteRead(&(f->d), (I2CByte *)data, 2, NULL, 0);
 
 while(1) {
-	usleep(15000); /* wait 150 milliseconds */
+	usleep(15000); /* wait 50 milliseconds */
 
 	data[0]=0x0e; /* register number 7, status */
 	I2C_WriteRead(&(f->d), (I2CByte *)data, 1, &value, 1);
-/*	xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: XOK=%d\n", value & 0x01); */
+	xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: XOK=%d\n", value & 0x01); 
 	if(value & 1) break;
 	
 	data[0]=0x07; /* register number 7, control byte 2 */
 	I2C_WriteRead(&(f->d), (I2CByte *)data, 1, &value, 1);
-/*	xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: try XOGC=%d\n", (value & 0x07)-1); */
+	xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: try XOGC=%d\n", (value & 0x07)-1); 
 	if((value & 0x7)==4)break; /* XOGC has reached 4.. stop */
 	data[1]=(value & (~0x7)	) | ((value & 0x7)-1);
 	I2C_WriteRead(&(f->d), (I2CByte *)data, 2, NULL, 0);	
 	}
+/* wait before continuing */
+usleep(15000); /* wait 50 milliseconds */
+MT2032_dump_status(f);
 }
 
 static int MT2032_no_spur_in_band(MT2032_parameters *m)
@@ -379,6 +383,9 @@ TAD2=(out[1]>>4) & 0x7;
 
 xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: status: XOK=%d LO1LK=%d LO2LK=%d LDONrb=%d AFC=%d TAD1=%d TAD2=%d\n", 
 	XOK, LO1LK, LO2LK, LDONrb, AFC, TAD1, TAD2);
+xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: status: OSCILLATOR:%s PLL1:%s PLL2:%s\n", 
+	XOK ? "ok":"off", LO1LK ? "locked" : "off" , LO2LK ? "locked" : "off");
+
 }
 
 static void MT2032_tune(FI1236Ptr f, double freq, double step)
@@ -514,4 +521,11 @@ int FI1236_AFC(FI1236Ptr f)
 	return 1; /* call me again */
 	}
     return 0; /* done */
+}
+
+void fi1236_dump_status(FI1236Ptr f)
+{
+if(f->type==TUNER_TYPE_MT2032){
+	MT2032_dump_status(f);
+	}
 }

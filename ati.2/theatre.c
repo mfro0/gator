@@ -1814,13 +1814,12 @@ void RT_SetConnector (TheatrePtr t, CARD16 wConnector, int tunerFlag)
     WriteRT_fld (fld_COMB_CNTL1, ReadRT_fld (fld_COMB_CNTL1) ^ 0x100);
 
     /* wait at most 1 sec here */
-    i = 1000;
+    i = 100000;
     
     xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre Checkpoint 3\n");
     while ((i>=0) && (! ReadRT_fld (fld_HS_GENLOCKED)))
     {
-      usleep(50000);
-      xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "checkpoint 3a i=%ld\n", i);
+      usleep(10);
       i--;
     }
     if(i<0) xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre: waiting for fld_HS_GENLOCKED failed\n");

@@ -90,6 +90,8 @@ I2C_WriteRead(&(t->d), data, 4, NULL, 0);
 
 void tda9885_dumpstatus(TDA9885Ptr t)
 {
-xf86DrvMsg(t->d.pI2CBus->scrnIndex,X_INFO,"TDA9885 status: after_reset=%d afc_status=%d vif_level=%d afc_win=%d\n",
-		t->after_reset, t->afc_status, t->vif_level, t->afc_win);
+xf86DrvMsg(t->d.pI2CBus->scrnIndex,X_INFO,"TDA9885 status: after_reset=%d afc_status=%d (%3.1f kHz off) vif_level=%d afc_win=%d %s\n",
+		t->after_reset, t->afc_status, 
+		(t->afc_status<8)?-12.5-t->afc_status*25.0:-12.5+(16-t->afc_status)*25.0,
+		t->vif_level, t->afc_win, t->afc_win?"VCO in": "VCO out");
 }

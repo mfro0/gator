@@ -86,6 +86,7 @@ void FI1236_set_tuner_type(FI1236Ptr f, int type);
 void TUNER_set_frequency(FI1236Ptr f, CARD32 frequency);
 int FI1236_AFC(FI1236Ptr f);
 int TUNER_get_afc_hint(FI1236Ptr f);
+void fi1236_dump_status(FI1236Ptr f);
 
 #define FI1236SymbolsList  \
 		"Detect_FI1236", \
