@@ -1811,6 +1811,7 @@ ATIDisplayVideo(
 ){
     ATIPtr pATI = ATIPTR(pScrn);
     int v_inc, h_inc, tmp;
+    double v_inc_d;
     int p1_h_accum_init, p23_h_accum_init;
     int p1_v_accum_init;
     int start;
@@ -1821,15 +1822,18 @@ ATIDisplayVideo(
       setting */
     pPriv->ecp_div = (pATI->NewHW.pll_vclk_cntl & PLL_ECP_DIV) >> 4;
 
-    v_inc = ((src_h) << (12
+    v_inc = (1 << (12
 		+((pScrn->currentMode->Flags & V_INTERLACE)?1:0)
 		-((pScrn->currentMode->Flags & V_DBLSCAN)?1:0)));
 
-    v_inc = v_inc * pScrn->currentMode->VDisplay;
+    v_inc_d = src_h * pScrn->currentMode->VDisplay;
     if((pATI->LCDPanelID>=0) && !pATI->OptionPanelDisplay)
-	v_inc = v_inc/(drw_h*pATI->LCDVertical);
+	v_inc_d = v_inc_d/(drw_h*pATI->LCDVertical);
 	else
-	v_inc = v_inc/(drw_h*pScrn->currentMode->VDisplay);
+	v_inc_d = v_inc_d/(drw_h*pScrn->currentMode->VDisplay);
+	
+    v_inc = v_inc * v_inc_d;
+    
     h_inc = ((src_w << (12
     		+pPriv->ecp_div)) / drw_w);
 

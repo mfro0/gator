@@ -2014,6 +2014,7 @@ R128DisplayVideo422(
     R128InfoPtr info = R128PTR(pScrn);
     unsigned char *R128MMIO = info->MMIO;
     int v_inc, h_inc, step_by, tmp;
+    double v_inc_d;
     int p1_h_accum_init, p23_h_accum_init;
     int p1_v_accum_init;
     long counter;
@@ -2027,9 +2028,13 @@ R128DisplayVideo422(
 
     OUTPLL(R128_VCLK_ECP_CNTL, (INPLL(pScrn, R128_VCLK_ECP_CNTL) & 0xfffffCff) | (pPriv->ecp_div << 8));
 
-    v_inc = (src_h << (20
+    v_inc = (1 << (20
 		+ ((pScrn->currentMode->Flags & V_INTERLACE)?1:0)
-		- ((pScrn->currentMode->Flags & V_DBLSCAN)?1:0))) / drw_h;
+		- ((pScrn->currentMode->Flags & V_DBLSCAN)?1:0)));
+
+    v_inc_d = src_h/drw_h;
+    v_inc = v_inc * v_inc_d;
+
     h_inc = ((src_w << (12
     		+ pPriv->ecp_div)) / drw_w);
     step_by = 1;
