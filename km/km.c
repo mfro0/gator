@@ -144,12 +144,13 @@ init_waitqueue_head(&(kms->frameq));
 if (pci_enable_device(dev))
 	return -EIO;	
 printk("Register aperture is 0x%08lx 0x%08lx\n", pci_resource_start(dev, 2), pci_resource_len(dev, 2));
+/*
 if (!request_mem_region(pci_resource_start(dev,2),
 			pci_resource_len(dev,2),
 			tag)) {
 	return -EBUSY;
 	}
-
+*/
 kms->reg_aperture=ioremap(pci_resource_start(dev, 2), pci_resource_len(dev, 2));
 printk("kms variables: reg_aperture=0x%p\n",
 	kms->reg_aperture);
@@ -202,7 +203,6 @@ kms->kmd=add_km_device(kms->kmfl, kms);
 printk("Device %s %s (0x%04x:0x%04x) corresponds to /dev/video%d\n",
 	dev->name, dev->slot_name, dev->vendor, dev->device, kms->vd.minor);
 pci_set_master(dev);
-pci_set_drvdata(dev, kms);
 printk("kms variables: reg_aperture=0x%08x\n",
 	kms->reg_aperture);
 num_devices++;
@@ -213,20 +213,19 @@ fail:
 }
 
 
-static void __devexit km_remove(struct pci_dev *pci_dev)
+static void __devexit km_remove(struct pci_dev *pci_dev, KM_STRUCT *kms)
 {
-KM_STRUCT *kms;
-kms=pci_get_drvdata(pci_dev);
-printk("Removing Kmultimedia supported device. interrupt_count=%ld\n", kms->interrupt_count);
+printk("Removing Kmultimedia supported device /dev/video%d. Interrupt_count=%ld\n", kms->vd.minor,  kms->interrupt_count);
 remove_km_device(kms->kmd);
 cleanup_km_v4l(kms);
 free_irq(kms->irq, kms);
 kms->deallocate_single_frame_buffer(kms, &(kms->frame));
 kms->deallocate_single_frame_buffer(kms, &(kms->frame_even));
 iounmap(kms->reg_aperture);
+/* 
 release_mem_region(pci_resource_start(pci_dev,2),
                            pci_resource_len(pci_dev,2));
-pci_set_drvdata(pci_dev, NULL);
+*/
 }
 
 #ifndef PCI_DEVICE_ID_ATI_RADEON_BB 
@@ -405,31 +404,39 @@ static struct pci_device_id km_pci_tbl[] __devinitdata = {
 
 MODULE_DEVICE_TABLE(pci, km_pci_tbl);
 
+/*
 static struct pci_driver radeon_km_pci_driver = {
         name:     "km",
         id_table: km_pci_tbl,
         probe:    km_probe,
         remove:   km_remove,
 };
-
+*/
 
 #ifdef MODULE
 static int __init init_module(void)
 {
 int result;
-long i;
+struct pci_dev *pdev;
+const struct pci_device_id *pdid;
 printk("Kmultimedia module version %s loaded\n", KM_VERSION);
 printk("Page size is %ld sizeof(bm_list_descriptor)=%d sizeof(KM_STRUCT)=%d\n", PAGE_SIZE, sizeof(bm_list_descriptor), sizeof(KM_STRUCT));
 num_devices=0;
-
-result=pci_module_init(&radeon_km_pci_driver);
-
+result=-1;
+pci_for_each_dev(pdev){
+	if((pdid=pci_match_device(km_pci_tbl, pdev))!=NULL){
+		if(km_probe(pdev, pdid)>=0)result=0;
+		}
+	}
+if(result<0)printk("km: **** no supported devices found ****\n");
 return result;
 }
 
 void cleanup_module(void)
 {
-pci_unregister_driver(&radeon_km_pci_driver);
+int i;
+for(i=0;i<num_devices;i++)
+	km_remove(km_devices[i].dev, &(km_devices[i]));
 return;
 }
 
