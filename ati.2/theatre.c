@@ -50,6 +50,7 @@ TheatrePtr DetectTheatre(GENERIC_BUS_Ptr b)
            t->theatre_num=i;
 	   break;
 	}
+	if(val)xf86DrvMsg(b->scrnIndex, X_INFO, "Device %d on VIP bus ids as %x\n",i,val);
    }
    xf86DrvMsg(b->scrnIndex, X_INFO, "Device %d on VIP bus ids as %x\n",i,val);
 
