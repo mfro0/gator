@@ -45,6 +45,7 @@ typedef struct {
 	long frame_count;
 	long frames_encoded;
 	int64 encoded_stream_size;
+	V4L_DATA *v4l_device;
 	int fd_out;
 	AVCodec *video_codec;
 	AVCodecContext video_codec_context;
@@ -68,7 +69,6 @@ typedef struct {
 	pthread_mutex_t format_context_mutex;
 	PACKET_STREAM *video_s;
 	PACKET_STREAM *audio_s;
-	pthread_t video_reader_thread;
 	pthread_t audio_reader_thread;
 	ALSA_PARAMETERS alsa_param;
 	} FFMPEG_ENCODING_DATA;
@@ -482,6 +482,7 @@ sdata->video_s->consume_func=ffmpeg_v4l_encoding_thread;
 /* set threshold to two frames worth of data */
 sdata->video_s->threshold=data->video_size*2;
 v4l_attach_output_stream(data, sdata->video_s);
+sdata->v4l_device=data;
 return 1;
 }
 
@@ -655,12 +656,6 @@ if(sdata->format_context.format!=NULL){
 	strcpy(sdata->format_context.title, arg_filename);
 	sdata->format_context.format->write_header(&(sdata->format_context));
 	}
-if(sdata->video_stream_num>=0){
-	sdata->video_s->producer_thread_running=1;
-	if(pthread_create(&(sdata->video_reader_thread), NULL, v4l_reader_thread, sdata->video_s)!=0){
-		sdata->video_s->producer_thread_running=0;
-		}
-	}
 if(sdata->audio_stream_num>=0){
 	sdata->audio_s->producer_thread_running=1;
 	if(pthread_create(&(sdata->audio_reader_thread), NULL, alsa_reader_thread, sdata->audio_s)!=0){
@@ -690,6 +685,7 @@ sdata->video_s->stop_stream|=STOP_PRODUCER_THREAD;
 sdata->audio_s->stop_stream|=STOP_PRODUCER_THREAD;
 pthread_mutex_unlock(&(sdata->audio_s->ctr_mutex));
 pthread_mutex_unlock(&(sdata->video_s->ctr_mutex));
+v4l_detach_output_stream(sdata->v4l_device, sdata->video_s);
 return 0;
 }
 

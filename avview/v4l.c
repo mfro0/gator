@@ -110,6 +110,14 @@ if(data->streams_out_free>=data->streams_out_size){
 	}
 data->streams_out[data->streams_out_free]=s;
 data->streams_out_free++;
+s->producer_thread_running=1;
+if(data->streams_out_free==1){
+	/* start reader thread */
+	if(pthread_create(&(data->v4l_reader_thread), NULL, v4l_reader_thread, data)!=0){	
+		fprintf(stderr,"Error creating v4l reader thread:");
+		perror("");
+		}
+	}
 pthread_mutex_unlock(&data->streams_out_mutex);
 }
 
@@ -125,6 +133,8 @@ if(i<(data->streams_out_free-1)){
 if(i==data->streams_out_free){
 	fprintf(stderr,"V4L: Cannot detach packet stream - not attached\n");
 	}
+s->producer_thread_running=0;
+data->streams_out_free--;
 pthread_mutex_unlock(&data->streams_out_mutex);
 }
 
@@ -563,10 +573,9 @@ Tcl_SetObjResult(interp, ans);
 return TCL_OK;
 }
 
-void v4l_reader_thread(PACKET_STREAM *s)
+void v4l_reader_thread(V4L_DATA *data)
 {
 PACKET *p;
-V4L_DATA *data=s->priv;
 fd_set read_fds;
 PACKET_STREAM *stm;
 int a;
@@ -574,10 +583,10 @@ long incoming_frames_count=0;
 struct timeval tv;
 int i;
 /* lock mutex before testing s->stop_stream */
-p=new_generic_packet(s, data->video_size);
-pthread_mutex_lock(&(s->ctr_mutex));
-while(!(s->stop_stream & STOP_PRODUCER_THREAD)){
-	pthread_mutex_unlock(&(s->ctr_mutex));
+p=new_generic_packet(NULL, data->video_size);
+pthread_mutex_lock(&(data->streams_out_mutex));
+while(data->streams_out_free>0){
+	pthread_mutex_unlock(&(data->streams_out_mutex));
 	
 	/* do the reading */
 	if((a=read(data->fd, p->buf+p->free, p->size-p->free))>0){
@@ -599,7 +608,7 @@ while(!(s->stop_stream & STOP_PRODUCER_THREAD)){
 				}
 			pthread_mutex_unlock(&(data->streams_out_mutex));
 			p->free_func(p);
-			p=new_generic_packet(s, data->video_size);
+			p=new_generic_packet(NULL, data->video_size);
 			incoming_frames_count++;
 			}
 		} else
@@ -612,11 +621,10 @@ while(!(s->stop_stream & STOP_PRODUCER_THREAD)){
 		perror("");
 		#endif
 		} 
-	pthread_mutex_lock(&(s->ctr_mutex));
+	pthread_mutex_lock(&(data->streams_out_mutex));
 	}
 data->priv=NULL;
-s->producer_thread_running=0;
-pthread_mutex_unlock(&(s->ctr_mutex));
+pthread_mutex_unlock(&(data->streams_out_mutex));
 fprintf(stderr,"v4l_reader_thread finished\n");
 pthread_exit(NULL);
 }
