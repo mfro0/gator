@@ -77,7 +77,6 @@ pthread_mutex_unlock(&(s->ctr_mutex));
 void discard_packets(PACKET_STREAM *s)
 {
 PACKET *p;
-pthread_mutex_lock(&(s->ctr_mutex));
 while((s->first!=NULL) && (s->first->discard)){
 	p=s->first;
 	s->first=p->next;
@@ -85,5 +84,4 @@ while((s->first!=NULL) && (s->first->discard)){
 	s->total-=p->free;
 	if(p->free_func!=NULL)p->free_func(p);
 	}
-pthread_mutex_unlock(&(s->ctr_mutex));
 }

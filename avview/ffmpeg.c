@@ -122,7 +122,9 @@ while(1){
 		incoming_frames_count++;
 		/* get next one */
 		f->discard=1;
+		pthread_mutex_lock(&(s->ctr_mutex));
 		discard_packets(s);
+		pthread_mutex_unlock(&(s->ctr_mutex));
 		f=s->first;
 		}
 #if 0
@@ -135,11 +137,9 @@ while(1){
 		close(sdata->fd_out);
 		pthread_mutex_lock(&(s->ctr_mutex));
 		for(f=s->first;f!=NULL;f=f->next)f->discard=1;
-		pthread_mutex_unlock(&(s->ctr_mutex));
 		discard_packets(s);
 		free(picture.data[0]);
 		fprintf(stderr,"Recording finished\n");
-		pthread_mutex_lock(&(s->ctr_mutex));
 		s->consumer_thread_running=0;
 		pthread_mutex_unlock(&(s->ctr_mutex));
 		pthread_exit(NULL);
@@ -165,7 +165,7 @@ while(!s->stop_stream){
 	if((a=read(data->fd, p->buf+p->free, p->size-p->free))>0){
 		p->free+=a;
 		if(p->free==p->size){ /* deliver packet */
-			deliver_packet(s, p);
+			if(!s->stop_stream)deliver_packet(s, p);
 			p=new_generic_packet(sdata->size);
 			}
 		} else
