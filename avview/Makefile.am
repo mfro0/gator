@@ -26,7 +26,7 @@ dist_start_avview_SOURCES = start_avview.in
 avview_shell_LDADD = @X_PRE_LIBS@ @X_LIBS@ @X_EXTRA_LIBS@ @FFMPEG_LIBS@
 avview_shell_CFLAGS = -Wall -O2 -DAVVIEW_VERSION=\"@PACKAGE_VERSION@\" @FFMPEG_CFLAGS@
 
-start_avview$(EXEEXT): start_avview.in
+start_avview$(EXEEXT): start_avview.in configure.in
 	echo '#!$(bindir)/avview_shell' > start_avview
 	echo '' >> start_avview
 	echo 'global avview_version ; set avview_version "@PACKAGE_VERSION@" ' >> start_avview
