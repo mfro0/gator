@@ -33,7 +33,6 @@ int v4l_open_device(ClientData client_data,Tcl_Interp* interp,int argc,char *arg
 {
 long i;
 V4L_DATA *data;
-struct video_picture vpic;
 
 Tcl_ResetResult(interp);
 
@@ -63,20 +62,6 @@ if(ioctl(data->fd, VIDIOCGCAP, &(data->vcap))<0){
 	v4l_sc->data[i]=NULL;
 	Tcl_AppendResult(interp,"failed: not a v4l device", NULL);
 	}
-/* for now just require that the device supports YUV422 */
-/* ++++++++++++++++ FIXME ++++++++++++++++++++++++++++++*/
-if(ioctl(data->fd, VIDIOCGPICT, &vpic)<0){
-	Tcl_AppendResult(interp,"ERROR: v4l_capture_snapshot: error getting picture parameters", NULL);
-	return TCL_ERROR;
-	}
-vpic.palette=VIDEO_PALETTE_YUV422;
-if(ioctl(data->fd, VIDIOCSPICT, &vpic)<0){
-	close(data->fd);
-	free(data);
-	v4l_sc->data[i]=NULL;
-	Tcl_AppendResult(interp,"failed: v4l device cannot support YUV422", NULL);
-	return 0;
-	}
 data->mode=0;
 data->frame_count=0;
 data->priv=NULL;
@@ -85,6 +70,52 @@ data->streams_out_free=0;
 data->streams_out_size=10;
 data->streams_out=do_alloc(data->streams_out_size, sizeof(*(data->streams_out)));
 data->use_count=1;
+/* for now just require that the device supports YUV422 */
+/* ++++++++++++++++ FIXME ++++++++++++++++++++++++++++++*/
+if(ioctl(data->fd, VIDIOCGPICT, &(data->vpic))<0){
+	Tcl_AppendResult(interp,"ERROR: v4l_capture_snapshot: error getting picture parameters", NULL);
+	close(data->fd);
+	free(data->streams_out);
+	free(data);
+	v4l_sc->data[i]=NULL;
+	return TCL_ERROR;
+	}
+fprintf(stderr,"Current picture parameters: depth=%d palette=%d\n", 
+	data->vpic.depth,
+	data->vpic.palette);
+/* try to switch to YUV422 */
+data->vpic.palette=VIDEO_PALETTE_YUV422;
+if(ioctl(data->fd, VIDIOCSPICT, &(data->vpic))>=0) return 0;
+fprintf(stderr,"v4l device does not support YUV422\n");
+#if 0
+/* try to switch to YUYV */
+data->vpic.palette=VIDEO_PALETTE_YUYV;
+if(ioctl(data->fd, VIDIOCSPICT, &(data->vpic))>=0) return 0;
+fprintf(stderr,"v4l device does not support YUYV\n");
+/* try to switch to UYVY */
+data->vpic.palette=VIDEO_PALETTE_UYVY;
+if(ioctl(data->fd, VIDIOCSPICT, &(data->vpic))>=0) return 0;
+fprintf(stderr,"v4l device does not support UYVY\n");
+/* try to switch to YUV422P */
+data->vpic.palette=VIDEO_PALETTE_YUV422P;
+if(ioctl(data->fd, VIDIOCSPICT, &(data->vpic))>=0) return 0;
+fprintf(stderr,"v4l device does not support YUV422P\n");
+/* try to switch to YUV420 */
+data->vpic.palette=VIDEO_PALETTE_YUV420;
+if(ioctl(data->fd, VIDIOCSPICT, &(data->vpic))>=0) return 0;
+fprintf(stderr,"v4l device does not support YUV420\n");
+/* try to switch to YUV420P */
+data->vpic.palette=VIDEO_PALETTE_YUV420P;
+if(ioctl(data->fd, VIDIOCSPICT, &(data->vpic))>=0) return 0;
+fprintf(stderr,"v4l device does not support YUV420P\n");
+#endif
+/* the device does not support any formats we understand.. ignore it*/
+fprintf(stderr,"Device \"%s\" located at \"%s\" does not support any format AVview understands.\n", data->vcap.name, argv[2]);
+close(data->fd);
+free(data->streams_out);
+free(data);
+v4l_sc->data[i]=NULL;
+Tcl_AppendResult(interp,"failed: v4l device cannot support YUV422", NULL);
 return 0;
 }
 

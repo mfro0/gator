@@ -23,6 +23,7 @@ typedef struct S_V4L_DATA{
 	int fd;
 	/* V4L information fields */
 	struct video_capability vcap;
+	struct video_picture vpic;
 	struct video_window vwin;
 	
 	int use_count;
