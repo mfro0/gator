@@ -223,7 +223,7 @@ if { $current_v4l_device == "automatic" } {
 	set v4l_device "none"
 	set km_devs [list ]
 	catch {
-		set km_devs [split [exec ls /proc/km] " "]
+		set km_devs [split [exec ls -1 /proc/km] "\n"]
 		}
 	puts "km_devs=$km_devs"
 	foreach file $km_devs {

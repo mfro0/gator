@@ -1,6 +1,6 @@
 /*     avview preliminary version
 
-       (C) Vladimir Dergachev 2001-2002
+       (C) Vladimir Dergachev 2001-2003
        
        GNU Public License
        
@@ -494,7 +494,7 @@ snapshot_data->stm->threshold=2*snapshot_data->transfer_size;
 v4l_attach_output_stream(data, snapshot_data->stm);
 
 /* wait for data to arrive */
-timeout.tv_sec=time(NULL)+1;
+timeout.tv_sec=time(NULL)+2;
 timeout.tv_nsec=0;
 pthread_mutex_lock(&(snapshot_data->stm->ctr_mutex));
 pthread_cond_timedwait(&(snapshot_data->stm->suspend_consumer_thread), &(snapshot_data->stm->ctr_mutex), &timeout);
@@ -656,7 +656,7 @@ while(data->streams_out_free>0){
 		FD_ZERO(&read_fds);
 		FD_SET(data->fd, &read_fds);
 		a=select(data->fd+1, &read_fds, NULL, NULL, NULL);
-		#if 0
+		#if 1
 		fprintf(stderr,"a=%d\n", a);
 		perror("");
 		#endif
