@@ -29,6 +29,15 @@
 	 tarball of ffmpeg tree right after make clean - it is not that 
 	 big and you would be able to untar it and continue as before if 
 	 anything breaks.
+	 
+       * Do you want to use AVview remote bindings before AVview is launched ?
+         put the following line in your .xinitrc or .xsession file:
+
+	 xmodmap /usr/local/share/AVview/avview.modmap
+
+         You might need to replace /usr/local/ with whatever location 
+	 you installed AVview in.
+	 
 
 *** KEYBOARD BINDINGS ***
 
