@@ -13,9 +13,13 @@
 		  
 *** INSTALLATION ****
 
+Get ffmpeg from http://ffmpeg.sf.net/   (use version later than 0.4.5 or latest CVS)
+
+Get ALSA libraries/drivers from http://www.alsa-project.org/ - latest 0.9.x.
+
 If you downloaded this code from CVS run the following command first:
 
-      autoconf
+        autoconf
       
 Next run
 
