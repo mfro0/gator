@@ -311,12 +311,12 @@ if(odd)
 	
 KM_DEBUG("buf=%d offset=0x%08x odd=%d\n", buffer, offset, odd);
 stream->dvb.kmsbi[buffer].timestamp=jiffies;
-spin_unlock(&(stream->lock));
-radeon_setup_dma_table(kms, (stream->dma_table[buffer]), offset, stream->free[buffer]);
 /* start transfer */
 stream->total_frames++;
 stream->dvb.kmsbi[buffer].age=stream->total_frames;
 stream->dvb.kmsbi[buffer].flag|=KM_STREAM_BUF_BUSY;
+spin_unlock(&(stream->lock));
+radeon_setup_dma_table(kms, (stream->dma_table[buffer]), offset, stream->free[buffer]);
 wmb();
 km_add_transfer_request(&(kms->gui_dma_queue),
 	stream, buffer, KM_TRANSFER_TO_SYSTEM_RAM, radeon_start_request_transfer, kms);
