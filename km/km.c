@@ -576,7 +576,11 @@ static int __devinit km_probe(struct pci_dev *dev, const struct pci_device_id *p
 	/* too many */
 	if(num_devices>=MAX_DEVICES)return -1;
 
+#ifdef CONFIG_PCI_NAMES
 	printk(KERN_INFO "km: probing %s\n",dev->pretty_name);
+#else
+	printk(KERN_INFO "km: probing %s\n",dev->slot_name);
+#endif
 
 	switch(pci_id->driver_data){
 	case HARDWARE_RADEON:

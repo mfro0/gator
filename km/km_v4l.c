@@ -31,7 +31,7 @@ static int km_v4l_open(struct inode *inode, struct file *file)
 {
 	struct video_device *dev = video_devdata(file);
 
-	KM_STRUCT *kms=(KM_STRUCT *)dev->priv;
+	KM_STRUCT *kms=(KM_STRUCT *)video_get_drvdata(dev);
 	int result;
 
 	kms->kmfpd=open_km_device(kms->kmd);
@@ -58,7 +58,7 @@ static int km_v4l_close(struct inode *inode, struct file *file)
 {
 	struct video_device *dev = video_devdata(file);
 
-	KM_STRUCT *kms=(KM_STRUCT *)dev->priv;
+	KM_STRUCT *kms=(KM_STRUCT *)video_get_drvdata(dev);
 
 	km_data_destroy_kdufpd(kms->v4l_kdufpd);
 	kms->v4l_kdufpd=NULL;
@@ -78,7 +78,7 @@ static ssize_t km_v4l_read(struct file *file, char *buf, size_t count, loff_t *p
 	struct video_device *v = video_devdata(file);
 	int done, nonblock = O_NONBLOCK&(file->f_flags);
 
-	KM_STRUCT *kms=(KM_STRUCT *)v->priv;
+	KM_STRUCT *kms=(KM_STRUCT *)video_get_drvdata(v);
 	KDU_FILE_PRIVATE_DATA *kdufpd=kms->v4l_kdufpd;
 
 	done=km_data_generic_stream_read(kdufpd, &(kms->capture.dvb), 
@@ -97,7 +97,7 @@ static int km_v4l_ioctl(struct inode *inode, struct file *file, unsigned int cmd
 	void *arg = (void *)ul_arg;
 	struct video_device *dev = video_devdata(file);
 
-	KM_STRUCT *kms=(KM_STRUCT *)dev->priv;
+	KM_STRUCT *kms=(KM_STRUCT *)video_get_drvdata(dev);
 	spin_lock(&(kms->kms_lock));
 	switch(cmd){
 	case VIDIOCGCAP:{
@@ -177,7 +177,7 @@ static int km_v4l_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	struct video_device *dev = video_devdata(file);
 
-	KM_STRUCT *kms=(KM_STRUCT *)dev->priv;
+	KM_STRUCT *kms=(KM_STRUCT *)video_get_drvdata(dev);
 	KDU_FILE_PRIVATE_DATA *kdufpd=kms->v4l_kdufpd;
 	return -ENOMEM;
 #if 0
@@ -209,7 +209,7 @@ static unsigned int km_v4l_poll(struct file *file, poll_table *wait)
 {
 	struct video_device *dev = video_devdata(file);
 
-	KM_STRUCT *kms=(KM_STRUCT *)dev->priv;
+	KM_STRUCT *kms=(KM_STRUCT *)video_get_drvdata(dev);
 
 	return km_data_generic_stream_poll(kms->v4l_kdufpd, &(kms->capture.dvb), file, wait);
 }
@@ -218,7 +218,7 @@ static int km_vbi_open(struct inode *inode, struct file *file)
 {
 	struct video_device *dev = video_devdata(file);
 
-	KM_STRUCT *kms=(KM_STRUCT *)dev->priv;
+	KM_STRUCT *kms=(KM_STRUCT *)video_get_drvdata(dev);
 	int result;
 
 	if((result=start_vbi_capture(kms))<0)return result;
@@ -237,7 +237,7 @@ static int km_vbi_close(struct inode *inode, struct file *file)
 {
 	struct video_device *dev = video_devdata(file);
 
-	KM_STRUCT *kms=(KM_STRUCT *)dev->priv;
+	KM_STRUCT *kms=(KM_STRUCT *)video_get_drvdata(dev);
 
 	km_data_destroy_kdufpd(kms->vbi_kdufpd);
 	kms->vbi_kdufpd=NULL;
@@ -255,7 +255,7 @@ static ssize_t km_vbi_read(struct file *file, char *buf, size_t count, loff_t *p
 	struct video_device *v = video_devdata(file);
 	int done,r, nonblock = O_NONBLOCK&(file->f_flags);
 
-	KM_STRUCT *kms=(KM_STRUCT *)v->priv;
+	KM_STRUCT *kms=(KM_STRUCT *)video_get_drvdata(v);
 	KDU_FILE_PRIVATE_DATA *kdufpd=kms->vbi_kdufpd;
 
 /* V4L reading apps *expect* to receive *two* full fields of data.. wacky ! 
@@ -286,7 +286,7 @@ static int km_vbi_ioctl(struct inode *inode, struct file *file, unsigned int cmd
 	void *arg = (void *)ul_arg;
 	struct video_device *dev = video_devdata(file);
 
-	KM_STRUCT *kms=(KM_STRUCT *)dev->priv;
+	KM_STRUCT *kms=(KM_STRUCT *)video_get_drvdata(dev);
 	long size;
 
 	if(kms->vbi_kdufpd==NULL)return -EINVAL;
@@ -336,7 +336,7 @@ static unsigned int km_vbi_poll(struct file *file, poll_table *wait)
 {
 	struct video_device *dev = video_devdata(file);
 
-	KM_STRUCT *kms=(KM_STRUCT *)dev->priv;
+	KM_STRUCT *kms=(KM_STRUCT *)video_get_drvdata(dev);
 
 	if(kms->vbi_kdufpd==NULL)return -EINVAL;
 	return km_data_generic_stream_poll(kms->vbi_kdufpd, &(kms->vbi.dvb), file, wait);
@@ -391,18 +391,18 @@ static struct video_device km_v4l_vbi_template=
 
 int init_km_v4l(KM_STRUCT *kms)
 {
-	kms->vd = rvmalloc(sizeof(km_v4l_template));
+	kms->vd = video_device_alloc();
 	if (NULL == kms->vd) return -1;
 	memcpy(kms->vd, &km_v4l_template, sizeof(km_v4l_template));
-	kms->vd->priv=kms;
+	video_set_drvdata(kms->vd, kms);
 
-	kms->vbi_vd = rvmalloc(sizeof(km_v4l_vbi_template));
+	kms->vbi_vd = video_device_alloc();
 	if (NULL == kms->vbi_vd) {
-		rvfree(kms->vd, sizeof(km_v4l_template));
+		video_device_release(kms->vd);
 		return -1;
 	}
 	memcpy(kms->vbi_vd, &km_v4l_vbi_template, sizeof(km_v4l_vbi_template));
-	kms->vbi_vd->priv=kms;
+	video_set_drvdata(kms->vbi_vd, kms);
 
 	if(kms->is_capture_active!=NULL)
 		video_register_device(kms->vd, VFL_TYPE_GRABBER, -1);
@@ -417,6 +417,6 @@ void cleanup_km_v4l(KM_STRUCT *kms)
 		video_unregister_device(kms->vd);
 	if(kms->is_vbi_active!=NULL)
 		video_unregister_device(kms->vbi_vd);
-	rvfree(kms->vbi_vd, sizeof(km_v4l_vbi_template));
-	rvfree(kms->vd, sizeof(km_v4l_template));
+	video_device_release(kms->vbi_vd);
+	video_device_release(kms->vd);
 }
