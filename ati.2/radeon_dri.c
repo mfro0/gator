@@ -468,7 +468,7 @@ static void RADEONScreenToScreenCopyDepth(ScrnInfoPtr pScrn,
 					  int w, int h)
 {
     RADEONInfoPtr  info = RADEONPTR(pScrn);
-    unsigned char *buf  = info->FB + info->depthOffset;
+    unsigned char *buf  = info->FB + (info->depthOffset-info->membase);
     int            xstart, xend, xdir;
     int            ystart, yend, ydir;
     int            x, y, d;

@@ -278,7 +278,12 @@ void RADEONEngineRestore(ScrnInfoPtr pScrn)
     pitch64 = ((pScrn->displayWidth * (pScrn->bitsPerPixel / 8) + 0x3f)) >> 6;
 
     RADEONWaitForFifo(pScrn, 1);
+    #if 0
     OUTREG(RADEON_DEFAULT_OFFSET, ((INREG(RADEON_DEFAULT_OFFSET) & 0xC0000000)
+				   | (pitch64 << 22)));
+    #endif
+
+    OUTREG(RADEON_DEFAULT_OFFSET, ((INREG(RADEON_DISPLAY_BASE_ADDR) >> 10)
 				   | (pitch64 << 22)));
 
     RADEONWaitForFifo(pScrn, 1);

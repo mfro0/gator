@@ -3780,14 +3780,14 @@ Bool RADEONScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 
 				/* Reserve space for textures */
 	info->textureOffset = ((info->FbMapSize - info->textureSize +
-				RADEON_BUFFER_ALIGN) &
+				RADEON_BUFFER_ALIGN+info->membase) &
 			       ~(CARD32)RADEON_BUFFER_ALIGN);
 
 				/* Reserve space for the shared depth
                                  * buffer.
 				 */
 	info->depthOffset = ((info->textureOffset - bufferSize +
-			      RADEON_BUFFER_ALIGN) &
+			      RADEON_BUFFER_ALIGN+info->membase) &
 			     ~(CARD32)RADEON_BUFFER_ALIGN);
 	info->depthPitch = pScrn->displayWidth;
 
@@ -3802,8 +3802,8 @@ Bool RADEONScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	   info->backPitch = pScrn->displayWidth;
 	}
 
-	info->backY = info->backOffset / width_bytes;
-	info->backX = (info->backOffset - (info->backY * width_bytes)) / cpp;
+	info->backY = (info->backOffset-info->membase) / width_bytes;
+	info->backX = (info->backOffset - info->membase- (info->backY * width_bytes)) / cpp;
 
 	scanlines = info->FbMapSize / width_bytes;
 	if (scanlines > 8191) scanlines = 8191;
@@ -3846,9 +3846,9 @@ Bool RADEONScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 		 * textures
 		 */
 		info->depthTexLines = (scanlines
-				       - info->depthOffset / width_bytes);
+				       - (info->depthOffset-info->membase) / width_bytes);
 		info->backLines	    = (scanlines
-				       - info->backOffset / width_bytes
+				       - (info->backOffset-info->membase) / width_bytes
 				       - info->depthTexLines);
 		info->backArea	    = NULL;
 	    } else {
@@ -3870,13 +3870,13 @@ Bool RADEONScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 		   info->textureSize/1024, info->textureOffset);
 
 	info->frontPitchOffset = (((info->frontPitch * cpp / 64) << 22) |
-				  (info->frontOffset >> 10));
+				  (((info->frontOffset >> 10) & 0x3FFFFF)));
 
 	info->backPitchOffset = (((info->backPitch * cpp / 64) << 22) |
-				 (info->backOffset >> 10));
+				 (((info->backOffset >> 10) & 0x3FFFFF)));
 
 	info->depthPitchOffset = (((info->depthPitch * cpp / 64) << 22) |
-				  (info->depthOffset >> 10));
+				  (((info->depthOffset >> 10) & 0x3FFFFF)));
     } else
 #endif
     {
@@ -4033,6 +4033,39 @@ Bool RADEONScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
     return TRUE;
 }
 
+/* Setup memory controller */
+static void RADEONSetupMemoryController(ScrnInfoPtr pScrn,
+					 RADEONSavePtr restore)
+{
+    RADEONInfoPtr info        = RADEONPTR(pScrn);
+    unsigned char *RADEONMMIO = info->MMIO;
+    CARD32			membase;
+    CARD32			memsize;
+
+    membase		     = info->PciInfo->memBase[0] & 0xfc000000;
+    memsize		     = INREG(RADEON_CONFIG_APER_SIZE);
+    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "membase=0x%08x memsize=0x%08x agpSize=0x%08x\n",
+    	membase, memsize, info->agpSize);
+    restore->mc_fb_location  = ((membase+memsize-1)&0xffff0000)|((membase>>16) & 0xffff);
+    restore->display_base    = membase;
+    restore->overlay_base    = membase;
+#ifdef XF86DRI
+    restore->mc_agp_location = ((membase+memsize+info->agpSize*1024*1024-1)&0xffff0000)|((membase+memsize)>>16);
+#else
+     /* it is not being used - just hardcode value from BIOS */
+     restore->mc_agp_location = ((membase+memsize+0x100000-1)&0xffff0000)|((membase+memsize)>>16);
+     restore->mc_agp_location = 0x003fffc0;
+#endif
+    
+    OUTREG(RADEON_MC_FB_LOCATION,	restore->mc_fb_location);
+    OUTREG(RADEON_MC_AGP_LOCATION,	restore->mc_agp_location);
+    OUTREG(RADEON_DISPLAY_BASE_ADDR,	restore->display_base);
+    OUTREG(RADEON_OVERLAY_BASE_ADDR,	restore->overlay_base);
+    
+}
+
+
+
 /* Write common registers (initialized to 0) */
 static void RADEONRestoreCommonRegisters(ScrnInfoPtr pScrn,
 					 RADEONSavePtr restore)
@@ -4040,6 +4073,7 @@ static void RADEONRestoreCommonRegisters(ScrnInfoPtr pScrn,
     RADEONInfoPtr  info       = RADEONPTR(pScrn);
     unsigned char *RADEONMMIO = info->MMIO;
 
+    RADEONSetupMemoryController(pScrn, restore);
     OUTREG(RADEON_OVR_CLR,            restore->ovr_clr);
     OUTREG(RADEON_OVR_WID_LEFT_RIGHT, restore->ovr_wid_left_right);
     OUTREG(RADEON_OVR_WID_TOP_BOTTOM, restore->ovr_wid_top_bottom);
