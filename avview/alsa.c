@@ -178,7 +178,7 @@ if((i<0)||((ad=(ALSA_DATA *)alsa_sc->data[i])==NULL)){
 	}
 if(ad->elem_count>0){
 	for(k=0;k<ad->elem_count;k++){
-		snd_ctl_elem_info_free(ad->einfo[j]);
+		snd_ctl_elem_info_free(ad->einfo[k]);
 		}
 	free(ad->einfo);
 	free(ad->elem);
@@ -214,7 +214,7 @@ if((i<0)||((ad=(ALSA_DATA *)alsa_sc->data[i])==NULL)){
 	}
 if(ad->elem_count>0){
 	for(k=0;k<ad->elem_count;k++){
-		snd_ctl_elem_info_free(ad->einfo[j]);
+		snd_ctl_elem_info_free(ad->einfo[k]);
 		}
 	free(ad->einfo);
 	free(ad->elem);
@@ -268,6 +268,7 @@ for(elem=snd_hctl_first_elem(ad->hctl);elem!=NULL;elem=snd_hctl_elem_next(elem))
 			list2=Tcl_NewListObj(0, NULL);
 			for(k=0;k<items;k++){
 				snd_ctl_elem_info_set_item(ad->einfo[j], k);
+				fprintf(stderr,"item %d %s\n", k, snd_ctl_elem_info_get_item_name(ad->einfo[j]));
 				Tcl_ListObjAppendElement(interp, list2, Tcl_NewStringObj(snd_ctl_elem_info_get_item_name(ad->einfo[j]), -1));
 				}
 			Tcl_ListObjAppendElement(interp,list,list2);
@@ -343,7 +344,7 @@ return TCL_OK;
 
 int alsa_hctl_set_element_value(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
 {
-long i,e;
+long i,j,e;
 int a,k;
 ALSA_DATA *ad;
 snd_ctl_elem_value_t *value;
@@ -393,10 +394,12 @@ switch(ad->etype[e]){
 		snd_ctl_elem_value_set_boolean(value,k, atoi(argv[4]));
 		break;
 	case SND_CTL_ELEM_TYPE_ENUMERATED:
-		/*
-		snd_ctl_elem_info_set_item(ad->einfo[e], snd_ctl_elem_value_get_enumerated(value,k));
-		Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj(snd_ctl_elem_info_get_item_name(ad->einfo[e]),-1));			
-		*/
+		for(j=0;j<snd_ctl_elem_info_get_items(ad->einfo[j]);j++){
+			snd_ctl_elem_info_set_item(ad->einfo[e], j);
+			if(!strcmp(argv[4],snd_ctl_elem_info_get_item_name(ad->einfo[e]))){
+				snd_ctl_elem_value_set_enumerated(value,k,j);				
+				}
+			}
 		break;
 	default:
 		Tcl_AppendResult(interp,"ERROR: alsa_hctl_set_element_value: don't know how to set value for element of this type", NULL);
