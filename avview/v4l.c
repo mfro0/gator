@@ -44,8 +44,6 @@ if(argc<3){
 i=add_string(v4l_sc, argv[1]);
 if(v4l_sc->data[i]!=NULL){
 	data=(V4L_DATA*) v4l_sc->data[i];
-	Tcl_DeleteFileHandler(data->fd);
-	if(data->priv!=NULL)data->transfer_callback(data);
 	close(data->fd);
 	} else {
 	v4l_sc->data[i]=do_alloc(1, sizeof(V4L_DATA));
@@ -86,6 +84,7 @@ pthread_mutex_init(&data->streams_out_mutex, NULL);
 data->streams_out_free=0;
 data->streams_out_size=10;
 data->streams_out=do_alloc(data->streams_out_size, sizeof(*(data->streams_out)));
+data->use_count=1;
 return 0;
 }
 
@@ -96,6 +95,8 @@ i=lookup_string(v4l_sc, handle);
 if(i<0)return NULL;
 return (V4L_DATA *)v4l_sc->data[i];	
 }
+
+void v4l_reader_thread(V4L_DATA *data);
 
 void v4l_attach_output_stream(V4L_DATA *data, PACKET_STREAM *s)
 {
@@ -110,7 +111,9 @@ if(data->streams_out_free>=data->streams_out_size){
 	}
 data->streams_out[data->streams_out_free]=s;
 data->streams_out_free++;
-s->producer_thread_running=1;
+pthread_mutex_lock(&(s->ctr_mutex));
+s->producer_thread_running++;
+pthread_mutex_unlock(&(s->ctr_mutex));
 if(data->streams_out_free==1){
 	/* start reader thread */
 	if(pthread_create(&(data->v4l_reader_thread), NULL, v4l_reader_thread, data)!=0){	
@@ -133,7 +136,9 @@ if(i<(data->streams_out_free-1)){
 if(i==data->streams_out_free){
 	fprintf(stderr,"V4L: Cannot detach packet stream - not attached\n");
 	}
-s->producer_thread_running=0;
+pthread_mutex_lock(&(s->ctr_mutex));
+s->producer_thread_running--;
+pthread_mutex_unlock(&(s->ctr_mutex));
 data->streams_out_free--;
 pthread_mutex_unlock(&data->streams_out_mutex);
 }
@@ -252,6 +257,7 @@ for(j=0;j<pib->height;j++){
 
 typedef struct {
 	long type;
+	PACKET_STREAM *stm;
 	char *read_buffer;
 	long transfer_size;
 	long transfer_read;
@@ -260,121 +266,89 @@ typedef struct {
 	char *transfer_failed_script;
 	Tk_PhotoHandle ph;
 	Tk_PhotoImageBlock pib;
+	Tcl_TimerToken timer;
 	} V4L_SNAPSHOT_DATA;
 
-void v4l_transfer_handler(V4L_DATA *data, int mask)
-{
-long status;
-V4L_SNAPSHOT_DATA *sdata;
-sdata=(V4L_SNAPSHOT_DATA *)data->priv;
-if((sdata==NULL)||(sdata->type!=V4L_SNAPSHOT_KEY)){
-	fprintf(stderr,"INTERNAL ERROR: incorrect data->priv in v4l_transfer_callback\n");
-	Tcl_DeleteFileHandler(data->fd);
-	return;
-	}
-if(mask & TCL_READABLE){
-	status=read(data->fd, sdata->read_buffer+sdata->transfer_read, sdata->transfer_size-sdata->transfer_read);
-	if(status<0)return;
-	sdata->transfer_read+=status;
-	if((status==0) || (sdata->transfer_read==sdata->transfer_size)){
-		Tcl_DeleteFileHandler(data->fd);
-		data->transfer_callback(data);
-		}
-	}
-}
+V4L_SNAPSHOT_DATA *snapshot_data=NULL;
 
-void v4l_snapshot_callback(V4L_DATA *data)
+void v4l_snapshot_timer_callback(V4L_DATA *data)
 {
 char *p=NULL;
-V4L_SNAPSHOT_DATA *sdata;
-sdata=(V4L_SNAPSHOT_DATA *)data->priv;
-if((sdata==NULL)||(sdata->type!=V4L_SNAPSHOT_KEY)){
+PACKET *f1,*f2;
+if((snapshot_data==NULL)||(snapshot_data->type!=V4L_SNAPSHOT_KEY)){
 	fprintf(stderr,"INTERNAL ERROR: unset data->priv in v4l_snapshot_callback\n");
 	return;
 	}
-if(sdata->transfer_size==sdata->transfer_read){
-	sdata->pib.pixelPtr=do_alloc(sdata->pib.pitch*sdata->pib.height, 1);
-	switch(data->mode){
+if((snapshot_data->stm->total<snapshot_data->transfer_size)){
+	snapshot_data->timer=Tcl_CreateTimerHandler(30, v4l_snapshot_timer_callback, data);
+	return;
+	}
+v4l_detach_output_stream(data, snapshot_data->stm);
+snapshot_data->pib.pixelPtr=do_alloc(snapshot_data->pib.pitch*snapshot_data->pib.height, 1);
+pthread_mutex_lock(&(snapshot_data->stm->ctr_mutex));
+	fprintf(stderr,"Hello 3\n");
+f1=get_packet(snapshot_data->stm);
+f2=get_packet(snapshot_data->stm);
+switch(data->mode){
 		case MODE_SINGLE_FRAME:
 			data->frame_count++;
+			memcpy(snapshot_data->read_buffer, f1->buf, data->video_size);
 			break;
 		case MODE_DOUBLE_INTERPOLATE:
-			p=do_alloc(sdata->pib.width*sdata->pib.height*2, 1);
-			if(data->frame_count & 1){
-				deinterlace_422_double_interpolate(sdata->pib.width, sdata->pib.height/2, sdata->pib.width*2,
-					sdata->read_buffer+(sdata->transfer_size/3), sdata->read_buffer+2*(sdata->transfer_size/3),
+			p=do_alloc(snapshot_data->pib.width*snapshot_data->pib.height*2, 1);
+			deinterlace_422_double_interpolate(snapshot_data->pib.width, snapshot_data->pib.height/2, snapshot_data->pib.width*2,
+					f1->buf, f2->buf,
 					p);
-				data->frame_count+=3;
-				} else {
-				deinterlace_422_double_interpolate(sdata->pib.width, sdata->pib.height/2, sdata->pib.width*2,
-					sdata->read_buffer, sdata->read_buffer+(sdata->transfer_size/2),
-					p);
-				data->frame_count+=2;
-				}
-			free(sdata->read_buffer);
-			sdata->read_buffer=p;
+			free(snapshot_data->read_buffer);
+			snapshot_data->read_buffer=p;
 			break;
 		case MODE_DEINTERLACE_BOB:
-			p=do_alloc(sdata->pib.width*sdata->pib.height*2, 1);
-			if(data->frame_count & 1){
-				deinterlace_422_bob(sdata->pib.width, sdata->pib.height/2, sdata->pib.width*2,
-					sdata->read_buffer+(sdata->transfer_size/3), sdata->read_buffer+2*(sdata->transfer_size/3),
+			p=do_alloc(snapshot_data->pib.width*snapshot_data->pib.height*2, 1);
+			deinterlace_422_bob(snapshot_data->pib.width, snapshot_data->pib.height/2, snapshot_data->pib.width*2,
+					f1->buf, f2->buf,
 					p);
-				data->frame_count+=3;
-				} else {
-				deinterlace_422_bob(sdata->pib.width, sdata->pib.height/2, sdata->pib.width*2,
-					sdata->read_buffer, sdata->read_buffer+(sdata->transfer_size/2),
-					p);
-				data->frame_count+=2;
-				}
-			free(sdata->read_buffer);
-			sdata->read_buffer=p;
+			free(snapshot_data->read_buffer);
+			snapshot_data->read_buffer=p;
 			break;
 		case MODE_DEINTERLACE_WEAVE:
-			p=do_alloc(sdata->pib.width*sdata->pib.height*2, 1);
-			if(data->frame_count & 1){
-				deinterlace_422_weave(sdata->pib.width, sdata->pib.height/2, sdata->pib.width*2,
-					sdata->read_buffer+(sdata->transfer_size/3), sdata->read_buffer+2*(sdata->transfer_size/3),
+			p=do_alloc(snapshot_data->pib.width*snapshot_data->pib.height*2, 1);
+			deinterlace_422_weave(snapshot_data->pib.width, snapshot_data->pib.height/2, snapshot_data->pib.width*2,
+					f1->buf, f2->buf,
 					p);
-				data->frame_count+=3;
-				} else {
-				deinterlace_422_weave(sdata->pib.width, sdata->pib.height/2, sdata->pib.width*2,
-					sdata->read_buffer, sdata->read_buffer+(sdata->transfer_size/2),
-					p);
-				data->frame_count+=2;
-				}
-			free(sdata->read_buffer);
-			sdata->read_buffer=p;
+			free(snapshot_data->read_buffer);
+			snapshot_data->read_buffer=p;
 			break;
 		case MODE_DEINTERLACE_HALF_WIDTH:
-			p=do_alloc(sdata->pib.width*sdata->pib.height*2, 1);
-			deinterlace_422_half_width(sdata->pib.width*2, sdata->pib.height, sdata->pib.width*4,
-					sdata->read_buffer,p);
+			p=do_alloc(snapshot_data->pib.width*snapshot_data->pib.height*2, 1);
+			deinterlace_422_half_width(snapshot_data->pib.width*2, snapshot_data->pib.height, snapshot_data->pib.width*4,
+					f1->buf,p);
 			data->frame_count++;
-			free(sdata->read_buffer);
-			sdata->read_buffer=p;
+			free(snapshot_data->read_buffer);
+			snapshot_data->read_buffer=p;
 			break;
 		}
-	
-	vcvt_422_rgb32(sdata->pib.width, sdata->pib.height, sdata->pib.width, sdata->read_buffer, sdata->pib.pixelPtr);
-	set_transparency(&(sdata->pib), 0xff);
-	Tk_PhotoSetSize(sdata->ph, sdata->pib.width, sdata->pib.height);
-	Tk_PhotoPutBlock(sdata->ph, &(sdata->pib), 0, 0, sdata->pib.width, sdata->pib.height);
-	if(sdata->transfer_complete_script!=NULL)Tcl_Eval(sdata->interp, sdata->transfer_complete_script);
-	free(sdata->pib.pixelPtr);
-	sdata->pib.pixelPtr=NULL;
-	} else {
-	if(sdata->transfer_failed_script!=NULL)Tcl_Eval(sdata->interp, sdata->transfer_failed_script);
+if(f1!=NULL)f1->free_func(f1);
+if(f2!=NULL)f2->free_func(f2);	
+vcvt_422_rgb32(snapshot_data->pib.width, snapshot_data->pib.height, snapshot_data->pib.width, snapshot_data->read_buffer, snapshot_data->pib.pixelPtr);
+set_transparency(&(snapshot_data->pib), 0xff);
+Tk_PhotoSetSize(snapshot_data->ph, snapshot_data->pib.width, snapshot_data->pib.height);
+Tk_PhotoPutBlock(snapshot_data->ph, &(snapshot_data->pib), 0, 0, snapshot_data->pib.width, snapshot_data->pib.height);
+if(snapshot_data->transfer_complete_script!=NULL)Tcl_Eval(snapshot_data->interp, snapshot_data->transfer_complete_script);
+free(snapshot_data->pib.pixelPtr);
+snapshot_data->pib.pixelPtr=NULL;
+
+if(snapshot_data->read_buffer!=NULL){
+	free(snapshot_data->read_buffer);
+	snapshot_data->read_buffer=NULL;
 	}
-if(sdata->read_buffer!=NULL){
-	free(sdata->read_buffer);
-	sdata->read_buffer=NULL;
-	}
-if(sdata->transfer_complete_script!=NULL)free(sdata->transfer_complete_script);
-if(sdata->transfer_failed_script!=NULL)free(sdata->transfer_failed_script);
-free(sdata);
-data->priv=NULL;
-data->transfer_callback=NULL;
+if(snapshot_data->transfer_complete_script!=NULL)free(snapshot_data->transfer_complete_script);
+if(snapshot_data->transfer_failed_script!=NULL)free(snapshot_data->transfer_failed_script);
+while((f1=get_packet(snapshot_data->stm))!=NULL)f1->free_func(f1);
+snapshot_data->stm->consumer_thread_running=0;
+pthread_mutex_unlock(&(snapshot_data->stm->ctr_mutex));
+free(snapshot_data);
+snapshot_data=NULL;
+	fprintf(stderr,"Hello 4\n");
 }
 
 int v4l_capture_snapshot(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
@@ -382,8 +356,6 @@ int v4l_capture_snapshot(ClientData client_data,Tcl_Interp* interp,int argc,char
 long i;
 V4L_DATA *data;
 struct video_picture vpic;
-struct video_window vwin;
-V4L_SNAPSHOT_DATA *sdata;
 
 Tcl_ResetResult(interp);
 
@@ -401,19 +373,22 @@ if(data==NULL){
 	Tcl_AppendResult(interp,"ERROR: v4l_capture_snapshot: no such v4l handle", NULL);
 	return TCL_ERROR;
 	}
-if(data->priv!=NULL){
+if(snapshot_data!=NULL){
 	if(argc>=6)Tcl_Eval(interp, argv[5]);	
 	return 0;
+	}
+if(data->priv!=NULL){
 	} else {
+	fprintf(stderr,"Hello 2\n");
 	/* setup device for transfer */
-	if(ioctl(data->fd, VIDIOCGWIN, &vwin)<0){
+	if(ioctl(data->fd, VIDIOCGWIN, &data->vwin)<0){
 		Tcl_AppendResult(interp,"ERROR: v4l_capture_snapshot: error getting window parameters", NULL);
 		return TCL_ERROR;
 		}
 	if(ioctl(data->fd, VIDIOCGPICT, &vpic)<0){
 		Tcl_AppendResult(interp,"ERROR: v4l_capture_snapshot: error getting picture parameters", NULL);
 		return TCL_ERROR;
-	}
+		}
 	vpic.palette=VIDEO_PALETTE_YUV422;
 	if(ioctl(data->fd, VIDIOCSPICT, &vpic)<0){
 		if(argc>=6)Tcl_Eval(interp, argv[5]);	
@@ -432,52 +407,52 @@ if(data->priv!=NULL){
 	if(!strcmp("half-width", argv[3])){
 		data->mode=MODE_DEINTERLACE_HALF_WIDTH;
 		}
+	data->video_size=data->vwin.width*data->vwin.height*2;
 	}
-sdata=do_alloc(1, sizeof(V4L_SNAPSHOT_DATA));
-sdata->ph=Tk_FindPhoto(interp, argv[2]);
-if(sdata->ph==NULL){
-	free(sdata);
+snapshot_data=do_alloc(1, sizeof(V4L_SNAPSHOT_DATA));
+snapshot_data->ph=Tk_FindPhoto(interp, argv[2]);
+if(snapshot_data->ph==NULL){
+	free(snapshot_data);
 	Tcl_AppendResult(interp,"ERROR: v4l_capture_snapshot: no such photo image", NULL);
 	return TCL_ERROR;
 	}
-data->transfer_callback=v4l_snapshot_callback;
-data->priv=sdata;
-sdata->transfer_complete_script=strdup(argv[4]);
-sdata->type=V4L_SNAPSHOT_KEY;
-if(argc>=6)sdata->transfer_failed_script=strdup(argv[5]);
-sdata->interp=interp;
+snapshot_data->transfer_complete_script=strdup(argv[4]);
+snapshot_data->type=V4L_SNAPSHOT_KEY;
+if(argc>=6)snapshot_data->transfer_failed_script=strdup(argv[5]);
+snapshot_data->interp=interp;
 switch(data->mode){
 	case MODE_SINGLE_FRAME:
-		sdata->pib.width=vwin.width;
-		sdata->pib.height=vwin.height;
-		sdata->transfer_size=2*vwin.width*vwin.height; 
+		snapshot_data->pib.width=data->vwin.width;
+		snapshot_data->pib.height=data->vwin.height;
+		snapshot_data->transfer_size=data->video_size; 
 		break;
 	case MODE_DOUBLE_INTERPOLATE:
 	case MODE_DEINTERLACE_BOB:
 	case MODE_DEINTERLACE_WEAVE:
-		sdata->pib.width=vwin.width;
-		sdata->pib.height=vwin.height*2;
-		if(data->frame_count & 1)
-			sdata->transfer_size=3*2*vwin.width*vwin.height; 
-			else
-			sdata->transfer_size=2*2*vwin.width*vwin.height; 
+		snapshot_data->pib.width=data->vwin.width;
+		snapshot_data->pib.height=data->vwin.height*2;
+		snapshot_data->transfer_size=2*data->video_size; 
 		break;
 	case MODE_DEINTERLACE_HALF_WIDTH:
-		sdata->pib.width=vwin.width/2;
-		sdata->pib.height=vwin.height;
-		sdata->transfer_size=2*vwin.width*vwin.height; 
+		snapshot_data->pib.width=data->vwin.width/2;
+		snapshot_data->pib.height=data->vwin.height;
+		snapshot_data->transfer_size=data->video_size; 
 		break;
 	}
-sdata->pib.offset[0]=0;
-sdata->pib.offset[1]=1;
-sdata->pib.offset[2]=2;
-sdata->pib.offset[3]=3;
-sdata->pib.pixelSize=4;
-sdata->pib.pitch=sdata->pib.width*sdata->pib.pixelSize;
-sdata->pib.pixelPtr=NULL;
-sdata->transfer_read=0;
-sdata->read_buffer=do_alloc(sdata->transfer_size, 1);
-Tcl_CreateFileHandler(data->fd, TCL_READABLE, v4l_transfer_handler, data);
+snapshot_data->pib.offset[0]=0;
+snapshot_data->pib.offset[1]=1;
+snapshot_data->pib.offset[2]=2;
+snapshot_data->pib.offset[3]=3;
+snapshot_data->pib.pixelSize=4;
+snapshot_data->pib.pitch=snapshot_data->pib.width*snapshot_data->pib.pixelSize;
+snapshot_data->pib.pixelPtr=NULL;
+snapshot_data->transfer_read=0;
+snapshot_data->read_buffer=do_alloc(snapshot_data->transfer_size, 1);
+snapshot_data->stm=new_packet_stream();
+snapshot_data->stm->threshold=2*snapshot_data->transfer_size;
+snapshot_data->stm->consume_func=trim_excess_consumer;
+v4l_attach_output_stream(data, snapshot_data->stm);
+snapshot_data->timer=Tcl_CreateTimerHandler(30, v4l_snapshot_timer_callback, data);
 return 0;
 }
 
@@ -650,6 +625,7 @@ void init_v4l(Tcl_Interp *interp)
 long i;
 
 v4l_sc=new_string_cache();
+snapshot_data=NULL;
 
 for(i=0;v4l_commands[i].name!=NULL;i++)
 	Tcl_CreateCommand(interp, v4l_commands[i].name, v4l_commands[i].command, (ClientData)0, NULL);

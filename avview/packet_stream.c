@@ -8,11 +8,16 @@
 PACKET_STREAM *new_packet_stream(void)
 {
 PACKET_STREAM *s;
+int i;
 
 s=do_alloc(1, sizeof(PACKET_STREAM));
-s->first=NULL;
-s->last=NULL;
-s->unused=NULL;
+for(i=0;i<2;i++){
+	s->size[i]=100;
+	s->free[i]=0;
+	s->bottom[i]=0;
+	s->stack[i]=do_alloc(s->size[i], sizeof((*s->stack[i])));
+	}
+s->read_from=0;
 s->total=0;
 s->unused_total=0;
 s->threshold=0;
@@ -30,42 +35,9 @@ PACKET *new_generic_packet(PACKET_STREAM *s, size_t size)
 {
 PACKET *p;
 
-if(s!=NULL){
-	pthread_mutex_lock(&(s->ctr_mutex));
-	p=s->unused;
-	while(p!=NULL){
-		if((size>=p->size)&&(size<2*p->size)){
-			/* found good one */
-			/* unlink it */
-			if(p->prev!=NULL){
-				p->prev->next=p->next;
-				}
-			if(p->next!=NULL){
-				p->next->prev=p->prev;
-				}
-			if(p==s->unused){
-				s->unused=p->next;
-				}
-			/* clean it up */
-			p->prev=NULL;
-			p->next=NULL;
-			p->free=0;
-			p->discard=0;
-			s->unused_total-=p->size;
-			pthread_mutex_unlock(&(s->ctr_mutex));
-			return p;
-			}
-		p=p->next;
-		}
-	pthread_mutex_unlock(&(s->ctr_mutex));
-	}
-
 p=do_alloc(1, sizeof(PACKET));
-p->next=NULL;
-p->prev=NULL;
 p->size=size;
 p->free=0;
-p->recycle=0;
 p->use_count=0;
 if(size>0){
 	p->buf=do_alloc(size,1);
@@ -74,7 +46,6 @@ if(size>0){
 		p->buf=do_alloc(size, 1);
 		}
 	} else p->buf=NULL;
-p->discard=0;
 p->free_func=free_generic_packet;
 p->type="GENERIC";
 p->priv=NULL;
@@ -109,12 +80,19 @@ if(!s->consumer_thread_running && (s->consume_func!=NULL)) {
 
 void deliver_packet(PACKET_STREAM *s, PACKET *p)
 {
+long i;
 /* put the packet into the queue */
-p->next=NULL;
-p->prev=s->last;
-if(s->last!=NULL)s->last->next=p;
-s->last=p;
-if(s->first==NULL)s->first=p;
+i=!s->read_from;
+if(s->free[i]>=s->size[i]){
+	PACKET **pp;
+	s->size[i]=s->size[i]*2+10;
+	pp=do_alloc(s->size[i], sizeof(*p));
+	if(s->free[i]>0)memcpy(pp, s->stack[i], s->free[i]*sizeof(*pp));
+	free(s->stack[i]);
+	s->stack[i]=pp;
+	}
+s->stack[i][s->free[i]]=p;
+s->free[i]++;
 /* update total count and see if we need to spawn consumer thread*/
 s->total+=p->free;
 if((s->total>s->threshold) && 
@@ -126,48 +104,33 @@ if((s->total>s->threshold) &&
 	}
 }
 
-void discard_packets(PACKET_STREAM *s)
+PACKET * get_packet(PACKET_STREAM *s)
 {
+int i;
 PACKET *p;
-while((s->first!=NULL) && (s->first->discard) && (s->first->next!=NULL)){
-	p=s->first;
-	s->first=p->next;
-	if(s->first!=NULL)s->first->prev=NULL;
-	s->total-=p->free;
-	if(p->recycle && !(s->stop_stream & STOP_PRODUCER_THREAD) && (s->unused_total<=(s->total+s->threshold+2*p->size)/2)){
-		p->next=s->unused;
-		p->prev=NULL;
-		s->unused=p;
-		s->unused_total+=p->size;
-		} else
-	if(p->free_func!=NULL)p->free_func(p);
+i=s->read_from;
+if(s->bottom[i]==s->free[i]){
+	s->bottom[i]=0;
+	s->free[i]=0;
+	i=!i;	
+	s->read_from=i;
 	}
-if((s->first!=NULL) && (s->first->discard) && (s->first==s->last)){
-	p=s->first;
-	s->first=NULL;
-	s->last=NULL;
-	s->total-=p->free;
-	if(p->recycle && !(s->stop_stream & STOP_PRODUCER_THREAD) && (s->unused_total<=(s->total+s->threshold+2*p->size)/2)){
-		p->next=s->unused;
-		p->prev=NULL;
-		s->unused=p;
-		s->unused_total+=p->size;
-		} else
-	if(p->free_func!=NULL)p->free_func(p);
+if(s->bottom[i]==s->free[i])return NULL;
+p=s->stack[i][s->bottom[i]];
+s->bottom[i]++;
+s->total-=p->free;
+return p;
+}
+
+void trim_excess_consumer(PACKET_STREAM *s)
+{
+PACKET *f;
+pthread_mutex_lock(&(s->ctr_mutex));
+f=get_packet(s);
+while((f!=NULL)&&(s->total>(s->threshold+f->free))){
+	f=get_packet(s);
 	}
-while((s->unused_total>2*(s->total+s->threshold))
-      ||((s->stop_stream & STOP_PRODUCER_THREAD) && (s->unused!=NULL))){
-	if(s->unused==NULL){
-		fprintf(stderr,"INTERNAL ERROR: unused_total non-zero (%d) while unused==NULL\n",
-			s->unused_total);
-		break;
-		}
-	p=s->unused;
-	s->unused_total-=p->size;
-	s->unused=p->next;
-	if(p->next!=NULL){
-		p->next->prev=NULL;
-		}
-	if(p->free_func!=NULL)p->free_func(p);
-	}
+s->consumer_thread_running=0;
+pthread_mutex_lock(&(s->ctr_mutex));
+pthread_exit(NULL);
 }

@@ -21,8 +21,11 @@
 
 typedef struct S_V4L_DATA{
 	int fd;
+	/* V4L information fields */
 	struct video_capability vcap;
-	void (*transfer_callback)(struct S_V4L_DATA *);
+	struct video_window vwin;
+	
+	int use_count;
 	int mode;
 	int frame_count; /* to keep track of odd/even fields */
 	long step_frames;

@@ -436,6 +436,7 @@ global v4l_capture_on
 if { [ffmpeg_present] == "no" } { return }
 catch {
 	set status [ffmpeg_encoding_status]
+	puts "status=$status"
 	if { "$status" == "" } {
 		reset_video_stats $cw.video_stats
 		return

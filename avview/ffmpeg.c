@@ -136,13 +136,13 @@ picture.linesize[1]=sdata->video_codec_context.width/2;
 picture.linesize[2]=sdata->video_codec_context.width/2;
 while(1){
 	pthread_mutex_lock(&(s->ctr_mutex));
-	f=s->first;
-	if(!(s->stop_stream & STOP_PRODUCER_THREAD) &&((f==NULL)||(f->next==NULL))){
+	f=get_packet(s);
+	if(!(s->stop_stream & STOP_PRODUCER_THREAD) &&((f==NULL))){
 		/* no data to encode - pause thread instead of spinning */
 		pthread_cond_wait(&(s->suspend_consumer_thread), &(s->ctr_mutex));
 		}
 	pthread_mutex_unlock(&(s->ctr_mutex));
-	while((f!=NULL)&&((f->next!=NULL)||(s->stop_stream & STOP_PRODUCER_THREAD))){
+	while((f!=NULL)&&!(s->stop_stream & STOP_PRODUCER_THREAD)){
 		if(1){
 			/* encode frame */
 			ffmpeg_preprocess_frame(data, sdata, f, &picture);
@@ -190,10 +190,9 @@ while(1){
 			}
 		sdata->frames_encoded++;
 		/* get next one */
-		f->discard=1;
-		f=f->next;
+		f->free_func(f);
 		pthread_mutex_lock(&(s->ctr_mutex));
-		discard_packets(s); 
+		f=get_packet(s);
 		if(s->stop_stream & STOP_CONSUMER_THREAD){
 			pthread_cond_wait(&(s->suspend_consumer_thread), &(s->ctr_mutex));
 			}
@@ -203,8 +202,9 @@ while(1){
 	pthread_mutex_lock(&(s->ctr_mutex));
 	if((s->stop_stream & STOP_PRODUCER_THREAD) && !s->producer_thread_running){
 		avcodec_close(&(sdata->video_codec_context));
-		for(f=s->first;f!=NULL;f=f->next)f->discard=1;
-		discard_packets(s);
+		while((f=get_packet(s))!=NULL){
+			f->free_func(f);
+			}
 		do_free(picture.data[0]);
 		do_free(output_buf);
 		s->consumer_thread_running=0;
@@ -250,13 +250,13 @@ out_buf=do_alloc(ob_size, 1);
 nice(1);
 while(1){
 	pthread_mutex_lock(&(s->ctr_mutex));
-	f=s->first;
-	if(!(s->stop_stream & STOP_PRODUCER_THREAD) &&((f==NULL)||(f->next==NULL))){
+	f=get_packet(s);
+	if(!(s->stop_stream & STOP_PRODUCER_THREAD) &&((f==NULL))){
 		/* no data to encode - pause thread instead of spinning */
 		pthread_cond_wait(&(s->suspend_consumer_thread), &(s->ctr_mutex));
 		}
 	pthread_mutex_unlock(&(s->ctr_mutex));
-	while((f!=NULL)&&((f->next!=NULL)||(s->stop_stream & STOP_PRODUCER_THREAD))){
+	while((f!=NULL)&& !(s->stop_stream & STOP_PRODUCER_THREAD)){
 		ffmpeg_gather_audio_stats(f);
 		ob_free=avcodec_encode_audio(&(sdata->audio_codec_context), out_buf, ob_size, f->buf);	
 		if(ob_free>0){
@@ -287,20 +287,18 @@ while(1){
 			fprintf(stderr,"Done encoding audio packet with timestamp %lld\n", f->timestamp);
 			#endif
 			}
-		f->discard=1;
-		f=f->next;
+		f->free_func(f);
 		pthread_mutex_lock(&(s->ctr_mutex));
-		discard_packets(s); 
-		if(s->stop_stream & STOP_CONSUMER_THREAD){
+		f=get_packet(s);
+		if((s->stop_stream & STOP_CONSUMER_THREAD)){
 			pthread_cond_wait(&(s->suspend_consumer_thread), &(s->ctr_mutex));
 			}
 		pthread_mutex_unlock(&(s->ctr_mutex));
 		}
 	pthread_mutex_lock(&(s->ctr_mutex));	
 	if((s->stop_stream & STOP_PRODUCER_THREAD) && !s->producer_thread_running){
-		if(s->first!=NULL)avcodec_close(&(sdata->audio_codec_context));
-		for(f=sdata->audio_s->first;f!=NULL;f=f->next)f->discard=1;
-		discard_packets(sdata->audio_s);
+		avcodec_close(&(sdata->audio_codec_context));
+		while((f=get_packet(s))!=NULL)f->free_func(f);
 		s->consumer_thread_running=0;
 		pthread_mutex_unlock(&(s->ctr_mutex));
 		do_free(out_buf);
@@ -343,7 +341,6 @@ char *arg_video_bitrate;
 char *arg_deinterlace_mode;
 char *arg_step_frames;
 struct video_picture vpic;
-struct video_window vwin;
 double a,b;
 
 arg_v4l_handle=get_value(argc, argv, "-v4l_handle");
@@ -362,7 +359,7 @@ if(data->priv!=NULL){
 	Tcl_AppendResult(interp,"ERROR: ffmpeg_encode_v4l_stream: v4l device busy", NULL);
 	return 0;
 	}
-if(ioctl(data->fd, VIDIOCGWIN, &vwin)<0){
+if(ioctl(data->fd, VIDIOCGWIN, &data->vwin)<0){
 	Tcl_AppendResult(interp,"ERROR: ffmpeg_encode_v4l_stream: error getting window parameters", NULL);
 	return 0;
 	}
@@ -396,9 +393,9 @@ if(!strcmp("one half", arg_step_frames))data->step_frames=2;
 	else
 if(!strcmp("one quarter", arg_step_frames))data->step_frames=4;
 
-sdata->width=vwin.width;
-sdata->height=vwin.height;
-data->video_size=vwin.width*vwin.height*2;
+sdata->width=data->vwin.width;
+sdata->height=data->vwin.height;
+data->video_size=data->vwin.width*data->vwin.height*2;
 sdata->frame_count=1;
 sdata->frames_encoded=0;
 sdata->last_video_timestamp=0;
@@ -440,25 +437,25 @@ sdata->video_codec_context.codec_type=sdata->video_codec->type;
 
 switch(data->mode){
 	case MODE_SINGLE_FRAME:
-		sdata->video_codec_context.width=vwin.width;
-		sdata->video_codec_context.height=vwin.height;
+		sdata->video_codec_context.width=data->vwin.width;
+		sdata->video_codec_context.height=data->vwin.height;
 		break;
 	case MODE_DOUBLE_INTERPOLATE:
 	case MODE_DEINTERLACE_BOB:
 	case MODE_DEINTERLACE_WEAVE:
-		sdata->video_codec_context.width=vwin.width;
-		sdata->video_codec_context.height=vwin.height*2;
+		sdata->video_codec_context.width=data->vwin.width;
+		sdata->video_codec_context.height=data->vwin.height*2;
 		break;
 	case MODE_DEINTERLACE_HALF_WIDTH:
-		sdata->video_codec_context.width=vwin.width/2;
-		sdata->video_codec_context.height=vwin.height;
+		sdata->video_codec_context.width=data->vwin.width/2;
+		sdata->video_codec_context.height=data->vwin.height;
 		break;
 	}
 sdata->video_codec_context.frame_rate=0;
 if(arg_v4l_rate!=NULL)sdata->video_codec_context.frame_rate=rint(atof(arg_v4l_rate)*FRAME_RATE_BASE);
 if(sdata->video_codec_context.frame_rate<=0)sdata->video_codec_context.frame_rate=60*FRAME_RATE_BASE;
 if(data->step_frames>0)sdata->video_codec_context.frame_rate=sdata->video_codec_context.frame_rate/data->step_frames;
-a=(((800000.0*vwin.width)*vwin.height)*sdata->video_codec_context.frame_rate);
+a=(((800000.0*data->vwin.width)*data->vwin.height)*sdata->video_codec_context.frame_rate);
 b=(352.0*288.0*25.0*FRAME_RATE_BASE);
 sdata->video_codec_context.bit_rate=0;
 if(arg_video_bitrate!=NULL)sdata->video_codec_context.bit_rate=atol(arg_video_bitrate);

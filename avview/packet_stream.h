@@ -17,11 +17,8 @@
    indicated in comments */
 
 typedef struct S_PACKET{
-	struct S_PACKET *next, *prev;   
 	size_t size;
 	size_t free;
-	int discard;
-	int recycle;
 	int64 timestamp;
 	unsigned char *buf;
 	long use_count;
@@ -31,7 +28,9 @@ typedef struct S_PACKET{
 	} PACKET;
 
 typedef struct S_PACKET_STREAM {
-	struct S_PACKET *first, *last, *unused;
+	PACKET ** stack[2];
+	long size[2], free[2], bottom[2];
+	int read_from;
 	size_t total;
 	size_t unused_total;
 	size_t threshold;
@@ -49,8 +48,9 @@ PACKET_STREAM *new_packet_stream(void);
 PACKET *new_generic_packet(PACKET_STREAM *s, size_t size);
 void free_generic_packet(PACKET *p);
 void deliver_packet(PACKET_STREAM *s, PACKET *p);
-void discard_packets(PACKET_STREAM *s);
+PACKET * get_packet(PACKET_STREAM *s);
 void start_consumer_thread(PACKET_STREAM *s);
+void trim_excess_consumer(PACKET_STREAM *s);
 
 #define STOP_CONSUMER_THREAD	1
 #define STOP_PRODUCER_THREAD	2
