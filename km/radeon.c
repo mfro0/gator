@@ -231,7 +231,6 @@ kms->fi[buffer].timestamp_start=jiffies;
 radeon_setup_dma_table(kms, (kms->dma_table[buffer]), offset, kms->v4l_free[buffer]);
 /* start transfer */
 kms->total_frames++;
-kms->kmsbi[buffer].user_flag|=KM_FI_DMA_ACTIVE;
 kms->kmsbi[buffer].age=kms->total_frames;
 wmb();
 km_add_transfer_request(&(kms->gui_dma_queue),

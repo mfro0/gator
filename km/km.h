@@ -24,8 +24,6 @@ typedef struct {
 	} bm_list_descriptor;
 
 #define KM_FI_ODD		1
-#define KM_FI_DMA_ACTIVE	2
-#define KM_FI_PINNED		4
 
 typedef struct {
 	long timestamp_start;

@@ -55,7 +55,7 @@ int find_free_buffer(KM_STRUCT *kms)
 {
 int i;
 if(kms->fi==NULL)return -1;
-while(kms->kmsbi[kms->next_cap_buf].flag & KM_FI_PINNED)kms->next_cap_buf=kms->kmsbi[kms->next_cap_buf].next;
+while(kms->kmsbi[kms->next_cap_buf].flag & KM_STREAM_BUF_PINNED)kms->next_cap_buf=kms->kmsbi[kms->next_cap_buf].next;
 i=kms->next_cap_buf;
 kms->next_cap_buf=kms->kmsbi[kms->next_cap_buf].next;
 return i;
