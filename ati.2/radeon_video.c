@@ -1252,9 +1252,13 @@ static void RADEONReadMM_TABLE(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
      CARD16 mm_table;
      CARD16 bios_header;
 
-     if(info->VBIOS==NULL){
-     	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Cannot access BIOS: info->VBIOS==NULL.\n");
-     	}
+     if((info->VBIOS==NULL)||(info->VBIOS[0]!=0x55)||(info->VBIOS[1]!=0xaa)){
+     	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Cannot access BIOS or it is not valid.\n"
+		"\t\tYou will need to specify options RageTheatreCrystal, RageTheatreTunerPort, \n"
+		"\t\tRageTheatreSVideoPort and TunerType in /etc/XF86Config.\n"
+		);
+	pPriv->MM_TABLE_valid = FALSE;
+     	} else {
 
      xf86DrvMsg(pScrn->scrnIndex, X_INFO, "0x%02x 0x%02x\n", info->VBIOS[0],
                info->VBIOS[1]);	
@@ -1296,6 +1300,19 @@ static void RADEONReadMM_TABLE(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
          xf86DrvMsg(pScrn->scrnIndex,X_INFO,"No MM_TABLE found\n",bios_header,mm_table);
 	 pPriv->MM_TABLE_valid = FALSE;
      }    
+     }
+     
+     if(info->tunerType>=0){
+     		pPriv->MM_TABLE.tuner_type=info->tunerType;
+		pPriv->board_info=info->tunerType;
+     		}
+     /* enough information was provided in the options */
+     
+     if(!pPriv->MM_TABLE_valid && (info->tunerType>=0) && (info->RageTheatreCrystal>=0) &&
+            (info->RageTheatreTunerPort>=0) && (info->RageTheatreCompositePort>=0) &&
+	    (info->RageTheatreSVideoPort>=0) ) {
+	    	pPriv->MM_TABLE_valid = TRUE;
+	    	}
 }
 
 static Bool RADEONSetupTheatre(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv, TheatrePtr t)
@@ -1362,7 +1379,11 @@ static Bool RADEONSetupTheatre(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv, Theat
 	t->wSVideo0Connector=3;
 	 */
 	
-	switch(pll->reference_freq){
+	if(info->RageTheatreTunerPort>=0)t->wTunerConnector=info->RageTheatreTunerPort;
+	if(info->RageTheatreCompositePort>=0)t->wComp0Connector=info->RageTheatreCompositePort;
+	if(info->RageTheatreSVideoPort>=0)t->wSVideo0Connector=info->RageTheatreSVideoPort;
+	
+	switch((info->RageTheatreCrystal>=0)?info->RageTheatreCrystal:pll->reference_freq){
 		case 2700:
 			t->video_decoder_type=RT_FREF_2700;
 			break;
