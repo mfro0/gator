@@ -1560,7 +1560,7 @@ static void RADEONReadMM_TABLE(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
      mm_table=info->VBIOS[bios_header+0x38];
      if(mm_table==0)
      {
-         xf86DrvMsg(pScrn->scrnIndex,X_INFO,"No MM_TABLE found",bios_header,mm_table);
+         xf86DrvMsg(pScrn->scrnIndex,X_INFO,"No MM_TABLE found bios_header=0x%04x mm_table=0x%04x.\n",bios_header,mm_table);
          pPriv->MM_TABLE_valid = FALSE;
          goto forced_settings;
      }    
@@ -1794,7 +1794,7 @@ RADEONSetupImageVideo(ScreenPtr pScreen)
 
     if(!xf86LoadSubModule(pScrn,"theatre")) 
     {
-    	xf86DrvMsg(pScrn->scrnIndex,X_ERROR,"Unable to initialize Rage Theatre\n");
+    	xf86DrvMsg(pScrn->scrnIndex,X_ERROR,"Unable to load Rage Theatre module\n");
 	pPriv->i2c=NULL;
 	return NULL;
     } 
@@ -1811,8 +1811,13 @@ RADEONSetupImageVideo(ScreenPtr pScreen)
 	        xf86DrvMsg(pScrn->scrnIndex,X_INFO,"Detected Radeon Mobility M7, disabling i2c and Rage Theatre\n");
 		break;
 	default:
-	    pPriv->theatre=xf86_DetectTheatre(pPriv->VIP);
-	    RADEONInitI2C(pScrn,pPriv);
+	    if(!pPriv->MM_TABLE_valid){
+	        xf86DrvMsg(pScrn->scrnIndex,X_INFO,"Multimedia table is not valid and no forced settings have been specified\n");
+	        xf86DrvMsg(pScrn->scrnIndex,X_INFO,"Skipping i2c and Rage Theatre initialization code.\n");
+	    	} else {
+		    pPriv->theatre=xf86_DetectTheatre(pPriv->VIP);
+		    RADEONInitI2C(pScrn,pPriv);
+		    }
 	}
     if((pPriv->theatre!=NULL) && !RADEONSetupTheatre(pScrn,pPriv,pPriv->theatre))
     {
@@ -2203,6 +2208,11 @@ RADEONSetPortAttribute(ScrnInfoPtr  pScrn,
                 }                       
   } else 
   if(attribute == xvDumpStatus) {
+  	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Current mode flags 0x08x: %s%s\n",
+		pScrn->currentMode->Flags,
+		pScrn->currentMode->Flags & V_INTERLACE ? " interlaced" : "" ,
+		pScrn->currentMode->Flags & V_DBLSCAN ? " doublescan" : ""
+		);
 	if(pPriv->tda9885 != NULL){
 		xf86_tda9885_getstatus(pPriv->tda9885);
 		xf86_tda9885_dumpstatus(pPriv->tda9885);
