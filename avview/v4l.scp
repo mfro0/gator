@@ -76,11 +76,12 @@ if {[ffmpeg_present] == "yes"} {
 
 	eval label $cw.filenamel -text "\"Save to file:\"" [get_settings $cw.filenamel Capture V4L]
 	eval entry $cw.filename_entry -textvariable current_capture_filename [get_settings $cw.filename_entry Capture V4L]
-	button $cw.filename_button -text "Change" -command { 
+	button $cw.filename_button -text "Change" -command {
 		global current_capture_filename; 
 		set result [tk_getSaveFile -initialfile "$current_capture_filename" \
 			-parent .controlwin -title "Specify file to hold recorded video"  \
-			-filetypes { {"All files" { * } } { "Mpeg streams" { *.mpg *.MPG} } \ { "\"AVI streams\"" { *.avi *.AVI} } }\
+			-filetypes { {"All files" { * } } { "Mpeg streams" { *.mpg *.MPG} } \
+				{ "\"AVI streams\"" { *.avi *.AVI} } }\
 			] ; 
 		if { "$result" != "" } { 
 			set current_capture_filename "$result" 
