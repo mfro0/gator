@@ -317,6 +317,7 @@ count=10000;
 
 while(1){
 /*	KM_DEBUG("beep %ld\n", kms->interrupt_count); */
+             /* Check capture registers first */
 	status=readl(kms->reg_aperture+RADEON_CAP_INT_STATUS);
 	mask=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
 	KM_DEBUG("CAP_INT_STATUS=0x%08x mask=0x%08x\n", status, mask);
@@ -333,25 +334,29 @@ while(1){
 		if(status & 0x10)radeon_schedule_request(kms, &(kms->vbi),  kms->vbi0_offset, KM_FI_ODD);
 		if(status & 0x20)radeon_schedule_request(kms, &(kms->vbi),  kms->vbi1_offset, 0);		
 		}
-
+             /* check DMA and vblank bits in GEN_INT_STATUS */
 	status=readl(kms->reg_aperture+RADEON_GEN_INT_STATUS);
 	mask=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL) & ((1<<30)|7);
-	if(!(status & mask)){
+	status &=mask & ((1<<30)|7);
+	if(!status){
 		return;
 		}
+	writel(status, kms->reg_aperture+RADEON_GEN_INT_STATUS);
 	if(status & (1<<30)){
 		wmb();
 		acknowledge_dma(kms);
 		}
-	if(status & (1<<0))kms->vblank_count++;
-	if(status & (1<<1))kms->vline_count++;
-	if(status & (1<<2))kms->vsync_count++;
-	if(status & 7)kmd_signal_state_change(kms->kmd);
-	writel(status & mask, kms->reg_aperture+RADEON_GEN_INT_STATUS);
+	if(status & 7){
+		if(status & (1<<0))kms->vblank_count++;
+		if(status & (1<<1))kms->vline_count++;
+		if(status & (1<<2))kms->vsync_count++;
+		kmd_signal_state_change(kms->kmd);
+		}
 	count--;
 	if(count<0){
 		KM_DEBUG(KERN_ERR "Kmultimedia: IRQ %d locked up, disabling interrupts in the hardware\n", irq);
-		writel(0, kms->reg_aperture+RADEON_GEN_INT_STATUS);
+		writel(0, kms->reg_aperture+RADEON_GEN_INT_CNTL);
+		writel(0, kms->reg_aperture+RADEON_CAP_INT_CNTL);
 		}
 	}
 }
