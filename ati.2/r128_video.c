@@ -1656,7 +1656,7 @@ R128SetPortAttribute(
   if(attribute == xvSAP) {
         pPriv->sap_channel = value;
 	if(pPriv->msp3430!=NULL)xf86_MSP3430SetSAP(pPriv->msp3430, pPriv->sap_channel?4:3);
-	if(pPriv->tda9850)xf86_tda9850_sap_mute(pPriv->msp3430, pPriv->sap_channel?1:0);
+	if(pPriv->tda9850!=NULL)xf86_tda9850_sap_mute(pPriv->tda9850, pPriv->sap_channel?1:0);
   } else 
   if(attribute == xvVolume) {
   	if(value<0x01) value=0x01;
