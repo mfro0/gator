@@ -231,7 +231,7 @@ if(kmfpd->br_free==0){
 spin_unlock(&(kmfpd->lock));
 add_wait_queue(&(kmd->wait), &wait);
 current->state=TASK_INTERRUPTIBLE;
-while((kmfpd->br_free==0) || (kmfpd->request_flags & KM_STATUS_REQUESTED)){
+while((kmfpd->br_free==0)){
 	if(file->f_flags & O_NONBLOCK){
 		retval=-EAGAIN;
 		break;
@@ -240,7 +240,8 @@ while((kmfpd->br_free==0) || (kmfpd->request_flags & KM_STATUS_REQUESTED)){
 		retval=-ERESTARTSYS;
 		break;
 		}
-	schedule();
+	if(!kmfpd->request_flags)
+		schedule();
 	/* check that the devices has not been removed from under us */
 	if(kmd->fields!=NULL){
 		spin_lock(&(kmfpd->lock));
