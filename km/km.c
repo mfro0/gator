@@ -16,7 +16,6 @@
 #include "radeon_reg.h"
 
 
-
 static int allocate_single_frame_buffer(KM_STRUCT *kms, SINGLE_FRAME *frame, long size)
 {
 int i;
@@ -65,7 +64,7 @@ for(i=0;i<(frame->buf_size/PAGE_SIZE);i++){
 		frame->dma_table[i].command=PAGE_SIZE;
 		count-=PAGE_SIZE;
 		} else {
-		frame->dma_table[i].command=count | DMA_GUI_COMMAND__EOL;
+		frame->dma_table[i].command=count | RADEON_DMA_GUI_COMMAND__EOL;
 		}
 	}
 return 0;
@@ -75,11 +74,11 @@ static void start_frame_transfer_buf0(KM_STRUCT *kms)
 {
 long offset, status;
 kms->frame.timestamp=jiffies;
-offset=readl(kms->reg_aperture+CAP0_BUF0_OFFSET);
+offset=readl(kms->reg_aperture+RADEON_CAP0_BUF0_OFFSET);
 setup_single_frame_buffer(kms, &(kms->frame), offset);
 /* wait for at least one available queue */
 do {
-	status=readl(kms->reg_aperture+DMA_GUI_STATUS);
+	status=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
 	printk("status=0x%08x\n", status);
 	} while (!(status & 0x1f));
 /* start transfer */
@@ -90,7 +89,7 @@ if(kms->frame.buf_ptr!=kms->frame.buf_free){
 	}
 kms->total_frames++;
 kms->frame.dma_active=1;
-writel(kvirt_to_pa(kms->frame.dma_table), kms->reg_aperture+DMA_GUI_TABLE_ADDR);
+writel(kvirt_to_pa(kms->frame.dma_table), kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR);
 printk("start_frame_transfer_buf0\n");
 }
 
@@ -98,11 +97,11 @@ static void start_frame_transfer_buf0_even(KM_STRUCT *kms)
 {
 long offset, status;
 kms->frame_even.timestamp=jiffies;
-offset=readl(kms->reg_aperture+CAP0_BUF0_EVEN_OFFSET);
+offset=readl(kms->reg_aperture+RADEON_CAP0_BUF0_EVEN_OFFSET);
 setup_single_frame_buffer(kms, &(kms->frame_even), offset);
 /* wait for at least one available queue */
 do {
-	status=readl(kms->reg_aperture+DMA_GUI_STATUS);
+	status=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
 	printk("status=0x%08x\n", status);
 	} while (!(status & 0x1f));
 /* start transfer */
@@ -113,7 +112,7 @@ if(kms->frame_even.buf_ptr!=kms->frame_even.buf_free){
 	}
 kms->total_frames++;
 kms->frame_even.dma_active=1;
-writel(kvirt_to_pa(kms->frame_even.dma_table), kms->reg_aperture+DMA_GUI_TABLE_ADDR);
+writel(kvirt_to_pa(kms->frame_even.dma_table), kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR);
 printk("start_frame_transfer_buf0_even\n");
 }
 
@@ -140,12 +139,12 @@ return 0;
 static int is_capture_irq_active(int irq, KM_STRUCT *kms)
 {
 long status, mask;
-status=readl(kms->reg_aperture+GEN_INT_STATUS);
+status=readl(kms->reg_aperture+RADEON_GEN_INT_STATUS);
 if(!(status & (1<<8)))return 0;
-status=readl(kms->reg_aperture+CAP_INT_STATUS);
-mask=readl(kms->reg_aperture+CAP_INT_CNTL);
+status=readl(kms->reg_aperture+RADEON_CAP_INT_STATUS);
+mask=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
 if(!(status & mask))return 0;
-writel(status & mask, kms->reg_aperture+CAP_INT_STATUS);
+writel(status & mask, kms->reg_aperture+RADEON_CAP_INT_STATUS);
 printk("CAP_INT_STATUS=0x%08x\n", status);
 if(status & 1)start_frame_transfer_buf0(kms);
 if(status & 2)start_frame_transfer_buf0_even(kms); 
@@ -162,20 +161,20 @@ kms=dev_id;
 kms->interrupt_count++;
 printk("beep %ld\n", kms->interrupt_count);
 
-count=100;
+count=1000;
 
 while(1){
 	if(!is_capture_irq_active(irq, kms)){
-		status=readl(kms->reg_aperture+GEN_INT_STATUS);
-		mask=readl(kms->reg_aperture+GEN_INT_CNTL);
+		status=readl(kms->reg_aperture+RADEON_GEN_INT_STATUS);
+		mask=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
 		if(!(status & mask))return;
 		if(status & (1<<30))acknowledge_dma(kms);
 		printk("beep %ld\n", kms->interrupt_count);
-		writel(status & mask, kms->reg_aperture+GEN_INT_STATUS);
+		writel(status & mask, kms->reg_aperture+RADEON_GEN_INT_STATUS);
 		count--;
 		if(count<0){
 			printk(KERN_ERR "Kmultimedia: IRQ %d locked up, disabling interrupts in the hardware\n", irq);
-			writel(0, kms->reg_aperture+GEN_INT_STATUS);
+			writel(0, kms->reg_aperture+RADEON_GEN_INT_STATUS);
 			}
 		}
 	}
@@ -212,15 +211,12 @@ kms->reg_aperture=ioremap(pci_resource_start(dev, 2), 0x1000);
 printk("Register aperture is 0x%08x 0x%08x\n", pci_resource_start(dev, 2), pci_resource_len(dev, 2));
 printk("kms variables: reg_aperture=0x%08x\n",
 	kms->reg_aperture);
-if(allocate_single_frame_buffer(kms, &(kms->frame), 640*240*2)<0){
-	result=-1;
-	goto fail;
-	}
 
-if(allocate_single_frame_buffer(kms, &(kms->frame_even), 640*240*2)<0){
-	result=-1;
-	goto fail;
-	}
+kms->frame.buffer=NULL;
+kms->frame.dma_table=NULL;
+kms->frame_even.buffer=NULL;
+kms->frame_even.dma_table=NULL;
+
 
 result=request_irq(kms->irq, km_irq, SA_SHIRQ, "km", (void *)kms);
 if(result==-EINVAL){

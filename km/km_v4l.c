@@ -14,22 +14,67 @@
 #include "km_memory.h"
 #include "radeon_reg.h"
 
-static int km_open(struct video_device *dev, int flags)
+static void radeon_get_window_parameters(KM_STRUCT *kms, struct video_window *vwin)
 {
 u32 a;
+vwin->x=0;
+vwin->y=0;
+a=readl(kms->reg_aperture+RADEON_CAP0_BUF_PITCH);
+vwin->width=a/2;
+a=readl(kms->reg_aperture+RADEON_CAP0_V_WINDOW);
+vwin->height=(((a>>16)& 0xffff)-(a & 0xffff))+1;
+printk("radeon_get_window_parameters: width=%d height=%d\n", vwin->width, vwin->height);
+}
+
+static void radeon_start_transfer(KM_STRUCT *kms)
+{
+u32 a;
+
+writel(3, kms->reg_aperture+RADEON_CAP_INT_STATUS);
+writel(1<<30, kms->reg_aperture+RADEON_GEN_INT_STATUS);
+a=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
+writel(a|3, kms->reg_aperture+RADEON_CAP_INT_CNTL);
+a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
+writel(a|(1<<30), kms->reg_aperture+RADEON_GEN_INT_CNTL);
+}
+
+static int km_open(struct video_device *dev, int flags)
+{
+u32 buf_size;
+int result;
 KM_STRUCT *kms=(KM_STRUCT *)dev;
 kms->frame.buf_ptr=0;
 kms->frame_even.buf_ptr=0;
 kms->buf_read_from=0;
 kms->total_frames=0;
 kms->overrun=0;
-writel(3, kms->reg_aperture+CAP_INT_STATUS);
-writel(1<<30, kms->reg_aperture+GEN_INT_STATUS);
-a=readl(kms->reg_aperture+CAP_INT_CNTL);
-writel(a|3, kms->reg_aperture+CAP_INT_CNTL);
-a=readl(kms->reg_aperture+GEN_INT_CNTL);
-writel(a|(1<<30), kms->reg_aperture+GEN_INT_CNTL);
+radeon_get_window_parameters(kms, &(kms->vwin));
+
+
+buf_size=kms->vwin.width*kms->vwin.height*2;
+
+deallocate_single_frame_buffer(kms, &(kms->frame));
+deallocate_single_frame_buffer(kms, &(kms->frame_even));
+
+if(allocate_single_frame_buffer(kms, &(kms->frame), buf_size)<0){
+	result=-ENOMEM;
+	goto fail;
+	}
+
+if(allocate_single_frame_buffer(kms, &(kms->frame_even), buf_size)<0){
+	result=-ENOMEM;
+	goto fail;
+	}
+
+radeon_start_transfer(kms);
 return 0;
+
+fail:
+
+  deallocate_single_frame_buffer(kms, &(kms->frame));
+  deallocate_single_frame_buffer(kms, &(kms->frame_even));
+  return result;
+
 }
 
 
@@ -38,13 +83,15 @@ static void km_close(struct video_device *dev)
 u32 a;
 KM_STRUCT *kms=(KM_STRUCT *)dev;
 /* stop interrupts */
-a=readl(kms->reg_aperture+CAP_INT_CNTL);
-writel(a & ~3, kms->reg_aperture+CAP_INT_CNTL);
-a=readl(kms->reg_aperture+GEN_INT_CNTL);
-writel(a & ~(1<<30), kms->reg_aperture+GEN_INT_CNTL);
+a=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
+writel(a & ~3, kms->reg_aperture+RADEON_CAP_INT_CNTL);
+a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
+writel(a & ~(1<<30), kms->reg_aperture+RADEON_GEN_INT_CNTL);
 kms->frame.buf_ptr=0;
 kms->frame_even.buf_ptr=0;
 kms->buf_read_from=-1; /* none */
+deallocate_single_frame_buffer(kms, &(kms->frame));
+deallocate_single_frame_buffer(kms, &(kms->frame_even));
 printk("km: total frames: %ld, overrun: %ld\n", kms->total_frames, kms->overrun);
 }
 
@@ -135,10 +182,7 @@ switch(cmd){
 		}
 	case VIDIOCGWIN:{
 		struct video_window vwin;
-		vwin.x=0;
-		vwin.y=0;
-		vwin.width=640;
-		vwin.height=240;
+		radeon_get_window_parameters(kms, &(vwin));
 		if(copy_to_user(arg,&vwin,sizeof(vwin)))
 			return -EFAULT;
 		return 0;

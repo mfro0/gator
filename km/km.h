@@ -24,6 +24,7 @@ typedef struct {
 
 typedef struct {
 	struct video_device vd;
+	struct video_window vwin;
 	long irq;
 	struct pci_dev *dev;
 	long interrupt_count;
