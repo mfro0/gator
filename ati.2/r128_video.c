@@ -1068,16 +1068,15 @@ static void R128ReadMM_TABLE(ScrnInfoPtr pScrn, R128PortPrivPtr pPriv)
      CARD16 mm_table;
      CARD16 bios_header;
 
-     if(info->VBIOS==NULL){
-     	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Cannot access BIOS: info->VBIOS==NULL.\n");
-     	}
      
+     if((info->VBIOS==NULL)||(info->VBIOS[0]!=0x55)||(info->VBIOS[1]!=0xaa)){
+     	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Cannot access BIOS or it is not valid.\n"
+		"\t\tYou will need to specify options RageTheatreCrystal, RageTheatreTunerPort, \n"
+		"\t\tRageTheatreSVideoPort and TunerType in /etc/XF86Config.\n"
+		);
+	pPriv->MM_TABLE_valid = FALSE;
+     	} else {
 
-     if(!((info->VBIOS[0]==0x55)&&(info->VBIOS[1]==0xaa))){
-	     xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Required BIOS signature not found: 0x%02x 0x%02x, probably the card has OpenFirmware, no MM_TABLE found\n", info->VBIOS[0],
-                info->VBIOS[1]);	
-	     pPriv->MM_TABLE_valid=FALSE;
-	     }     	
 
      bios_header=info->VBIOS[0x48];
      bios_header+=(((int)info->VBIOS[0x49]+0)<<8);	     
@@ -1087,7 +1086,7 @@ static void R128ReadMM_TABLE(ScrnInfoPtr pScrn, R128PortPrivPtr pPriv)
      {
          xf86DrvMsg(pScrn->scrnIndex,X_INFO,"No MM_TABLE found\n",bios_header,mm_table);
 	 pPriv->MM_TABLE_valid = FALSE;
-	 return;
+	 goto forced_settings;
      }    
      
      mm_table+=(((int)info->VBIOS[bios_header+0x39]+0)<<8)-2;
@@ -1117,7 +1116,20 @@ static void R128ReadMM_TABLE(ScrnInfoPtr pScrn, R128PortPrivPtr pPriv)
      } else {
          xf86DrvMsg(pScrn->scrnIndex,X_INFO,"No MM_TABLE found",bios_header,mm_table);
 	 pPriv->MM_TABLE_valid = FALSE;
-     }    
+     } }
+     forced_settings:
+
+     if(info->tunerType>=0){
+     		pPriv->MM_TABLE.tuner_type=info->tunerType;
+		pPriv->board_info=info->tunerType;
+     		}
+     /* enough information was provided in the options */
+     
+     if(!pPriv->MM_TABLE_valid && (info->tunerType>=0) && (info->RageTheatreCrystal>=0) &&
+            (info->RageTheatreTunerPort>=0) && (info->RageTheatreCompositePort>=0) &&
+	    (info->RageTheatreSVideoPort>=0) ) {
+	    	pPriv->MM_TABLE_valid = TRUE;
+	    	}
 }
 
 static int R128_addon_addresses[] = { 0x70, 0x40, 0x78, 0x72, 0x42, 0};
@@ -1216,15 +1228,15 @@ Bool R128SetupTheatre(ScrnInfoPtr pScrn, R128PortPrivPtr pPriv, TheatrePtr t)
 			}
 		}
 
-	xf86DrvMsg(t->VIP->scrnIndex,X_INFO,"Connectors (detected): tuner=%d, composite=%d, svideo=%d\n",t->wTunerConnector, t->wComp0Connector, t->wSVideo0Connector);
-/* not implemented yet	
+	xf86DrvMsg(t->VIP->scrnIndex,X_INFO,"Rage Theatre: Connectors (detected): tuner=%d, composite=%d, svideo=%d\n",t->wTunerConnector, t->wComp0Connector, t->wSVideo0Connector);
+
 	if(info->RageTheatreTunerPort>=0)t->wTunerConnector=info->RageTheatreTunerPort;
 	if(info->RageTheatreCompositePort>=0)t->wComp0Connector=info->RageTheatreCompositePort;
 	if(info->RageTheatreSVideoPort>=0)t->wSVideo0Connector=info->RageTheatreSVideoPort;
-*/	
-	xf86DrvMsg(t->VIP->scrnIndex,X_INFO,"Connectors (using): tuner=%d, composite=%d, svideo=%d\n",t->wTunerConnector, t->wComp0Connector, t->wSVideo0Connector);
+	
+	xf86DrvMsg(t->VIP->scrnIndex,X_INFO,"Rage Theatre: Connectors (using): tuner=%d, composite=%d, svideo=%d\n",t->wTunerConnector, t->wComp0Connector, t->wSVideo0Connector);
 
-	switch(pll->reference_freq){
+	switch((info->RageTheatreCrystal>=0)?info->RageTheatreCrystal:pll->reference_freq){
 		case 2700:
 			t->video_decoder_type=RT_FREF_2700;
 			break;

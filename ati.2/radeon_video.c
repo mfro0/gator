@@ -1417,8 +1417,6 @@ static void RADEONReadMM_TABLE(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
 	pPriv->MM_TABLE_valid = FALSE;
      	} else {
 
-     xf86DrvMsg(pScrn->scrnIndex, X_INFO, "0x%02x 0x%02x\n", info->VBIOS[0],
-               info->VBIOS[1]);	
      bios_header=info->VBIOS[0x48];
      bios_header+=(((int)info->VBIOS[0x49]+0)<<8);	     
 	
@@ -1427,7 +1425,7 @@ static void RADEONReadMM_TABLE(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
      {
          xf86DrvMsg(pScrn->scrnIndex,X_INFO,"No MM_TABLE found",bios_header,mm_table);
 	 pPriv->MM_TABLE_valid = FALSE;
-	 return;
+	 goto forced_settings;
      }    
      mm_table+=(((int)info->VBIOS[bios_header+0x39]+0)<<8)-2;
 
@@ -1458,7 +1456,8 @@ static void RADEONReadMM_TABLE(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
 	 pPriv->MM_TABLE_valid = FALSE;
      }    
      }
-     
+
+     forced_settings:     
      if(info->tunerType>=0){
      		pPriv->MM_TABLE.tuner_type=info->tunerType;
 		pPriv->board_info=info->tunerType;
@@ -1536,13 +1535,13 @@ static Bool RADEONSetupTheatre(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv, Theat
 	t->wSVideo0Connector=3;
 	 */
 
-	xf86DrvMsg(t->VIP->scrnIndex,X_INFO,"Connectors (detected): tuner=%d, composite=%d, svideo=%d\n",t->wTunerConnector, t->wComp0Connector, t->wSVideo0Connector);
+	xf86DrvMsg(t->VIP->scrnIndex,X_INFO,"Rage Theatre: Connectors (detected): tuner=%d, composite=%d, svideo=%d\n",t->wTunerConnector, t->wComp0Connector, t->wSVideo0Connector);
 	
 	if(info->RageTheatreTunerPort>=0)t->wTunerConnector=info->RageTheatreTunerPort;
 	if(info->RageTheatreCompositePort>=0)t->wComp0Connector=info->RageTheatreCompositePort;
 	if(info->RageTheatreSVideoPort>=0)t->wSVideo0Connector=info->RageTheatreSVideoPort;
 	
-	xf86DrvMsg(t->VIP->scrnIndex,X_INFO,"Connectors (using): tuner=%d, composite=%d, svideo=%d\n",t->wTunerConnector, t->wComp0Connector, t->wSVideo0Connector);
+	xf86DrvMsg(t->VIP->scrnIndex,X_INFO,"RageTheatre: Connectors (using): tuner=%d, composite=%d, svideo=%d\n",t->wTunerConnector, t->wComp0Connector, t->wSVideo0Connector);
 
 	switch((info->RageTheatreCrystal>=0)?info->RageTheatreCrystal:pll->reference_freq){
 		case 2700:

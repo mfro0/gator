@@ -377,6 +377,11 @@ typedef struct {
     void              (*VideoTimerCallback)(ScrnInfoPtr, Time);
     int               videoKey;
     Bool              forceXvProbing;
+    int		      RageTheatreCrystal;
+    int               RageTheatreTunerPort;
+    int               RageTheatreCompositePort;
+    int               RageTheatreSVideoPort;
+    int               tunerType;
     Bool              showCache;
     OptionInfoPtr     Options;
 
