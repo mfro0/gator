@@ -793,7 +793,10 @@ global current_v4l_mode
 global current_v4l_rrate
 if { $v4l_capture_on } {
 	set status [ffmpeg_encode_v4l_stream current_v4l_handle $current_codec $current_v4l_mode $current_v4l_rrate "hello.mpg"]
-	after 800 "check_fifo $cw"
+	if { "$status" == "" } { 
+		after cancel "check_fifo $cw"
+		after 800 "check_fifo $cw"
+		}
 	puts "status=$status"
 	} {
 	ffmpeg_stop_encoding current_v4l_handle
