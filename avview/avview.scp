@@ -505,6 +505,9 @@ if { $fullscreen_mode } {
 					   
 	wm overrideredirect . false
 	wm withdraw .
+	wm geometry . =$saved_main_window_geometry
+	update 
+	update idletasks
 	wm deiconify .
 	update 
 	update idletasks
