@@ -27,7 +27,7 @@ KM_STRUCT *kms=(KM_STRUCT *)dev;
 
 spin_lock(&(kms->kms_lock));
 if(!kms->is_capture_active(kms)){
-	printk("km: no data is available until xawtv is started\n");
+	printk("km: no data is available until AVview or xawtv is started\n");
 	result=-ENODATA;
 	spin_unlock(&(kms->kms_lock));
 	goto fail;
