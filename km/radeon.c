@@ -167,13 +167,27 @@ printk("km: DMA_GUI_STATUS=0x%08x entries=%d\n", a, a & 0x1f);
 int radeon_start_gui_dma_queue(KM_STRUCT *kms)
 {
 u32 a;
+int count;
 
 a=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
 a=a& ~(3<<22); /* set swap control to no swap */
 if(a & RADEON_DMA_GUI_STATUS__ABORT){
 	if(a & RADEON_DMA_GUI_STATUS__ACTIVE){
-		printk("km: DMA_GUI_QUEUE stalled after abort\n");
-		return 0;
+		count=20;
+		while(count){
+			writel(a, kms->reg_aperture+RADEON_DMA_GUI_STATUS);	
+			udelay(1);
+			a=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
+			a=a& ~(3<<22); /* set swap control to no swap */
+			if(!(a & RADEON_DMA_GUI_STATUS__ACTIVE)){
+				break;
+				}
+			count--;
+			}
+		if(!count){
+			printk("km: DMA_GUI_QUEUE stalled after abort\n");
+			return 0;
+			}
 		}
 	wmb();
 	
