@@ -1405,7 +1405,7 @@ static Bool RADEONVIP_read(GENERIC_BUS_Ptr b, CARD32 address, CARD32 count, CARD
     RADEONWaitForIdleMMIO(pScrn);
     INREG(VIPH_REG_DATA);
     
-    while(VIP_BUSY == (status = RADEONVIP_idle(b)));
+    while(VIP_BUSY == (status = RADEONVIP_idle(b)))usleep(10);
     if(VIP_IDLE != status) return FALSE;
 /*
         set VIPH_REGR_DIS so that the read won't take too long.
@@ -1425,7 +1425,7 @@ static Bool RADEONVIP_read(GENERIC_BUS_Ptr b, CARD32 address, CARD32 count, CARD
              *(CARD32 *)buffer=(CARD32) ( INREG(VIPH_REG_DATA) & 0xffffffff);
              break;
         }
-     while(VIP_BUSY == (status = RADEONVIP_idle(b)));
+     while(VIP_BUSY == (status = RADEONVIP_idle(b)))usleep(10);
      if(VIP_IDLE != status) return FALSE;
  /*     
  so that reading VIPH_REG_DATA would not trigger unnecessary vip cycles.
@@ -1451,7 +1451,7 @@ static Bool RADEONVIP_write(GENERIC_BUS_Ptr b, CARD32 address, CARD32 count, CAR
     
     RADEONWaitForFifo(pScrn, 2);
     OUTREG(VIPH_REG_ADDR, address & (~0x2000));
-    while(VIP_BUSY == (status = RADEONVIP_idle(b)));
+    while(VIP_BUSY == (status = RADEONVIP_idle(b)))usleep(10);
     
     if(VIP_IDLE != status) return FALSE;
     
@@ -1461,7 +1461,7 @@ static Bool RADEONVIP_write(GENERIC_BUS_Ptr b, CARD32 address, CARD32 count, CAR
              OUTREG(VIPH_REG_DATA, *(CARD32 *)buffer);
              break;
         }
-    while(VIP_BUSY == (status = RADEONVIP_idle(b)));
+    while(VIP_BUSY == (status = RADEONVIP_idle(b)))usleep(10);
     if(VIP_IDLE != status) return FALSE;
     return TRUE;
 }
