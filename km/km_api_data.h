@@ -45,4 +45,8 @@ void cleanup_km_data_units(void);
 int km_allocate_data_virtual_block(KM_DATA_VIRTUAL_BLOCK *, mode_t mode);
 void km_deallocate_data(int data_unit);
 
+KDU_FILE_PRIVATE_DATA* km_data_create_kdufpd(KM_DATA_UNIT *kdu);
+void km_data_destroy_kdufpd(KDU_FILE_PRIVATE_DATA *kdufpd);
+
+
 #endif
