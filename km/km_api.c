@@ -61,8 +61,8 @@ r=0;
 for(i=0;(i<length)&& s[i] && (s[i]!=' ') && (s[i]!='\n') && (s[i]!='=');i++){
 	r=(r*KM_MULTIPLE+s[i]) % KM_MODULUS;
 	}
-if(i>=length){
-	printk("%s %s: length limit reached for string %s\n",__FILE__, __FUNCTION__, s);
+if((i>=length)&& s[i]){
+	printk("%s function %s: length limit reached for string %s\n",__FILE__, __FUNCTION__, s);
 	}
 return r;
 }
@@ -329,6 +329,7 @@ unsigned hash;
 char *value;
 KM_FIELD *kf;
 KM_FIELD_DATA *kfd;
+u32 int_value;
 
 spin_lock(&(kmd->lock));
 hash=km_command_hash(command, count);
@@ -354,7 +355,7 @@ if((hash==kmd->report_hash)&& (count>8) && !strncmp("REPORT ", command, 7)){
 		}
 	} else {
 	i=kmd->command_hash[hash];
-	while((i>=0) && strncmp(kmd->fields[i].name, command, count))i=kmd->fields[i].next_command;
+	while((i>=0) && (count>=kmd->fields[i].length) && strncmp(kmd->fields[i].name, command, kmd->fields[i].length))i=kmd->fields[i].next_command;
 	if(i<0)goto exit; /* nothing matched */
 	
 	kf=&(kmd->fields[i]);
@@ -369,12 +370,15 @@ if((hash==kmd->report_hash)&& (count>8) && !strncmp("REPORT ", command, 7)){
 			break;
 			}
 		}
+
+	int_value=simple_strtol(value,NULL,j);
+	printk("Processing \"%s\"=\"%s\" int_value=%d\n", kf->name, value, int_value);
 	switch(kf->type){
 		case KM_FIELD_TYPE_PROGRAMMABLE:
 			printk("Performing KM_FIELD_PROGRAMMABLE action \"%s\" is not implemented [yet]\n", kmd->fields[i].name);
 			break;
 		case KM_FIELD_TYPE_LEVEL_TRIGGER:
-			if(!j || (*value=='0')){
+			if(!j || (int_value==0)){
 				/* trigger lowered */
 				if(!kfd->t.requested){ goto exit; /* redundant */ }
 				kfd->t.requested=0;
@@ -385,7 +389,7 @@ if((hash==kmd->report_hash)&& (count>8) && !strncmp("REPORT ", command, 7)){
 				if(kfd->t.requested){ goto exit; /* redundant */ }
 				kfd->t.requested=1;
 				kf->data.t.count++;
-				if(!kf->data.t.count)kf->data.t.zero2one(kf);
+				if(kf->data.t.count)kf->data.t.zero2one(kf);
 				}
 			break;
 		}

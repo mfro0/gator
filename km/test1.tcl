@@ -1,4 +1,4 @@
-#!/usr/local/bin/wish
+#!/usr/bin/env tclsh
 
 set file [open "/proc/km/control0" w+]
 
