@@ -60,10 +60,6 @@ typedef struct {
 	wait_queue_head_t wait;
 	struct proc_dir_entry *control;
 	struct proc_dir_entry *data;	
-	char *buffer_read;
-	long br_size;
-	long br_free;
-	long br_read;
 	KM_FIELD *fields;
 	long num_fields;
 	void *priv;

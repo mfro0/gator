@@ -20,5 +20,13 @@ Each line is a separate command to be executed and must be terminated with '\n'.
 So far the following commands are supported:
 
              STATUS            -  print the current value of all fields.
+	     REPORT=FIELD_NAME -  turn on out-of-sequence updates if
+	                          field value changes.
 	     
-	      
+
+***** NOTES ******
+
+For now, the write calls to controlX files should be done with one complete command 
+per call.
+	 
+For example see test1.tcl
