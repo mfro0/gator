@@ -179,7 +179,6 @@ status=readl(kms->reg_aperture+RAGE128_CAP_INT_STATUS);
 mask=readl(kms->reg_aperture+RAGE128_CAP_INT_CNTL);
 if(!(status & mask))return 0;
 writel(status & mask, kms->reg_aperture+RAGE128_CAP_INT_STATUS);
-printk("CAP_INT_STATUS=0x%08x\n", status);
 if(status & 1)rage128_start_frame_transfer_buf0(kms);
 if(status & 2)rage128_start_frame_transfer_buf0_even(kms); 
 return 1;
@@ -198,7 +197,7 @@ kms->interrupt_count++;
 count=10000;
 
 while(1){
-	printk("beep %ld\n", kms->interrupt_count);
+/*	printk("beep %ld\n", kms->interrupt_count); */
 	if(!rage128_is_capture_irq_active(kms)){
 		status=readl(kms->reg_aperture+RAGE128_GEN_INT_STATUS);
 		mask=readl(kms->reg_aperture+RAGE128_GEN_INT_CNTL);

@@ -185,7 +185,7 @@ count=10000;
 while(1){
 	/* a little imprecise.. should work for now */
 	mach64_wait_for_idle(kms);
-	printk("beep %ld\n", kms->interrupt_count);
+/*	printk("beep %ld\n", kms->interrupt_count); */
 	count--;
 	if(count<0){
 		printk(KERN_ERR "Kmultimedia: IRQ %d locked up, disabling interrupts in the hardware\n", irq);
@@ -193,7 +193,7 @@ while(1){
 		}
 	if(!mach64_is_capture_irq_active(kms)){
 		status=readl(kms->reg_aperture+MACH64_CRTC_INT_CNTL);
-		printk("mach64: status=0x%08x\n", status);
+/*		printk("mach64: status=0x%08x\n", status); */
 		if((status & MACH64_BUSMASTER_INT_ACK))acknowledge_dma(kms);
 /*		writel((status|MACH64_BUSMASTER_INT_ACK) & ~(MACH64_ACKS_MASK & ~MACH64_BUSMASTER_INT_ACK), kms->reg_aperture+MACH64_CRTC_INT_CNTL); */
 		/* hack admittedly.. but so what ? */

@@ -148,7 +148,7 @@ kms->interrupt_count++;
 count=10000;
 
 while(1){
-	printk("beep %ld\n", kms->interrupt_count);
+/*	printk("beep %ld\n", kms->interrupt_count); */
 	if(!radeon_is_capture_irq_active(kms)){
 		status=readl(kms->reg_aperture+RADEON_GEN_INT_STATUS);
 		mask=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
