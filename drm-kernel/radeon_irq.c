@@ -227,7 +227,9 @@ void DRM(driver_irq_preinstall)( drm_device_t *dev ) {
 		(drm_radeon_private_t *)dev->dev_private;
 
  	/* Disable *all* interrupts */
-      	RADEON_WRITE( RADEON_GEN_INT_CNTL, 0 );
+      	RADEON_WRITE( RADEON_GEN_INT_CNTL, RADEON_READ(RADEON_GEN_INT_CNTL)& ~
+		(RADEON_CRTC_VBLANK_MASK |	
+		      RADEON_SW_INT_ENABLE) );
 
 	/* Clear bits if they're already high */
 	radeon_acknowledge_irqs( dev_priv );
@@ -241,7 +243,7 @@ void DRM(driver_irq_postinstall)( drm_device_t *dev ) {
 	DRM_INIT_WAITQUEUE( &dev_priv->swi_queue );
 
 	/* Turn on SW and VBL ints */
-   	RADEON_WRITE( RADEON_GEN_INT_CNTL,
+   	RADEON_WRITE( RADEON_GEN_INT_CNTL, RADEON_READ(RADEON_GEN_INT_CNTL) |
 		      RADEON_CRTC_VBLANK_MASK |	
 		      RADEON_SW_INT_ENABLE );
 }
@@ -251,6 +253,8 @@ void DRM(driver_irq_uninstall)( drm_device_t *dev ) {
 		(drm_radeon_private_t *)dev->dev_private;
 	if ( dev_priv ) {
 		/* Disable *all* interrupts */
-		RADEON_WRITE( RADEON_GEN_INT_CNTL, 0 );
+		RADEON_WRITE( RADEON_GEN_INT_CNTL, RADEON_READ(RADEON_GEN_INT_CNTL)& ~
+		(RADEON_CRTC_VBLANK_MASK |	
+		      RADEON_SW_INT_ENABLE) );
 	}
 }
