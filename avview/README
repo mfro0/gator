@@ -36,8 +36,8 @@
 	 xmodmap /usr/local/share/AVview/avview.modmap
 
          You might need to replace /usr/local/ with whatever location 
-	 you installed AVview in.
-	 
+	 you installed AVview in.       	 
+
 
 *** KEYBOARD BINDINGS ***
 
