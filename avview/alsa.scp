@@ -259,7 +259,7 @@ grid rowconfig $cw [get_value $c_info "-row"] -weight 1
 
 canvas $cw.f1.c -yscrollcommand "$cw.f1.vscroll set" -relief flat -bd 0 -borderwidth 0\
 	-highlightthickness 0 -confine "yes"
-scrollbar $cw.f1.vscroll -command "$cw.f1.c yview" -orient vertical
+scrollbar $cw.f1.vscroll -command "$cw.f1.c yview" -orient vertical 
 grid $cw.f1.c - $cw.f1.vscroll -sticky news
 grid rowconfig $cw.f1 0 -weight 1
 grid columnconfig $cw.f1 0 -weight 1
