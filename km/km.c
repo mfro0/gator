@@ -197,14 +197,12 @@ int km_add_transfer_request(KM_TRANSFER_QUEUE *kmtq,
 	int (*start_transfer)(KM_TRANSFER_REQUEST *kmtr), void *user_data)
 {
 int last;
-spin_lock(&(kmtq->lock));
 last=kmtq->last;
 last++;
 if(last>=kmtq->size)last=0;
 if(kmtq->request[last].flag!=KM_TRANSFER_NOP){
 	printk("km: GUI_DMA queue is full first=%d last=%d flag=0x%08x\n", kmtq->first, kmtq->last,
 		kmtq->request[last].flag);
-	spin_unlock(&(kmtq->lock));
 	return -1;
 	}
 
@@ -216,11 +214,9 @@ kmtq->request[last].user_data=user_data;
 kmtq->last=last;
 /* check if any transfer has been scheduled */
 if(km_fire_transfer_request(kmtq)){
-	spin_unlock(&(kmtq->lock));
 	kmtq->request[kmtq->first].start_transfer(&(kmtq->request[kmtq->first]));
 	return 0;
 	}
-spin_unlock(&(kmtq->lock));
 return 0;
 }
 
@@ -229,12 +225,11 @@ return 0;
 void km_signal_transfer_completion(KM_TRANSFER_QUEUE *kmtq)
 {
 KM_TRANSFER_REQUEST *request;
-spin_lock(&(kmtq->lock));
 request=&(kmtq->request[kmtq->first]);
 if(request->stream->dvb.kmsbi!=NULL)
 	request->stream->dvb.kmsbi[request->buffer].flag&=~KM_STREAM_BUF_BUSY;
 wake_up_interruptible(request->stream->dvb.dataq);
-/* this operation is atomic as the value written in 32 bits */
+/* this operation is atomic as the value written is 32 bits */
 request->flag=KM_TRANSFER_NOP;
 wmb();
 if(km_fire_transfer_request(kmtq)){
@@ -243,7 +238,6 @@ if(km_fire_transfer_request(kmtq)){
 	request->start_transfer(request);
 	return;
 	}
-spin_unlock(&(kmtq->lock));
 }
 
 void km_purge_queue(KM_TRANSFER_QUEUE *kmtq)

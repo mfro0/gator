@@ -185,8 +185,13 @@ rage128_wait_for_idle(kms);
 writel(status & mask, kms->reg_aperture+RAGE128_CAP_INT_STATUS);
 /* do not start dma transfer if capture is not active anymore */
 if(!rage128_is_capture_active(kms))return 1;
-if(status & 1)rage128_schedule_request(kms, find_free_buffer(&(kms->capture)), 0);
-if(status & 2)rage128_schedule_request(kms, find_free_buffer(&(kms->capture)), 1); 
+if(spin_trylock(&(kms->gui_dma_queue.lock))){
+	if(status & 1)rage128_schedule_request(kms, find_free_buffer(&(kms->capture)), 0);
+	if(status & 2)rage128_schedule_request(kms, find_free_buffer(&(kms->capture)), 1); 
+	spin_unlock(&(kms->gui_dma_queue.lock));
+	} else {
+	printk("km: GUI_DMA_QUEUE busy\n");
+	}
 return 1;
 }
 

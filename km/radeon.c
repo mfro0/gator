@@ -304,7 +304,10 @@ static void radeon_schedule_request(KM_STRUCT *kms, KM_STREAM *stream, u32 offse
 {
 int buffer;
 /* do not start dma transfer if stream is not being used anymore */
-spin_lock(&(stream->lock));
+if(!spin_trylock(&(stream->lock))){
+	printk("km: Stream is locked\n");
+	return;
+	}
 if(stream->num_buffers<=0){
 	spin_unlock(&(stream->lock));
 	return;
@@ -402,12 +405,17 @@ while(1){
 		/*radeon_wait_for_idle(kms); */
 		wmb();
 
-		if(status_cap & CAP_INT_BIT_BUF0)radeon_schedule_request(kms, &(kms->capture), kms->buf0_odd_offset, KM_FI_ODD);
-		if(status_cap & CAP_INT_BIT_BUF0_EVEN)radeon_schedule_request(kms, &(kms->capture), kms->buf0_even_offset, 0);
-		if(status_cap & CAP_INT_BIT_BUF1)radeon_schedule_request(kms, &(kms->capture), kms->buf1_odd_offset, KM_FI_ODD);
-		if(status_cap & CAP_INT_BIT_BUF1_EVEN)radeon_schedule_request(kms, &(kms->capture), kms->buf1_even_offset, 0);
-		if(status_cap & CAP_INT_BIT_VBI0)radeon_schedule_request(kms, &(kms->vbi),  kms->vbi0_offset, KM_FI_ODD);
-		if(status_cap & CAP_INT_BIT_VBI1)radeon_schedule_request(kms, &(kms->vbi),  kms->vbi1_offset, 0);		
+		if(spin_trylock(&(kms->gui_dma_queue.lock))){
+			if(status_cap & CAP_INT_BIT_BUF0)radeon_schedule_request(kms, &(kms->capture), kms->buf0_odd_offset, KM_FI_ODD);
+			if(status_cap & CAP_INT_BIT_BUF0_EVEN)radeon_schedule_request(kms, &(kms->capture), kms->buf0_even_offset, 0);
+			if(status_cap & CAP_INT_BIT_BUF1)radeon_schedule_request(kms, &(kms->capture), kms->buf1_odd_offset, KM_FI_ODD);
+			if(status_cap & CAP_INT_BIT_BUF1_EVEN)radeon_schedule_request(kms, &(kms->capture), kms->buf1_even_offset, 0);
+			if(status_cap & CAP_INT_BIT_VBI0)radeon_schedule_request(kms, &(kms->vbi),  kms->vbi0_offset, KM_FI_ODD);
+			if(status_cap & CAP_INT_BIT_VBI1)radeon_schedule_request(kms, &(kms->vbi),  kms->vbi1_offset, 0);		
+			spin_unlock(&(kms->gui_dma_queue.lock));
+			} else {
+			printk("GUI_DMA_QUEUE is locked");
+			}
 		}
 	count--;
 	if(count<0){

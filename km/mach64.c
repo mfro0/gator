@@ -192,10 +192,11 @@ while(1){
 		MACH64_BUSMASTER_INT_ACK)), kms->reg_aperture+MACH64_CRTC_INT_CNTL);
 	if((status & (MACH64_CAPBUF0_INT_ACK|MACH64_CAPBUF1_INT_ACK))){
 		/* do not start dma transfer if capture is not active anymore */
-		if(mach64_is_capture_active(kms)){
+		if(mach64_is_capture_active(kms)&& spin_trylock(&(kms->gui_dma_queue.lock))){
 			mach64_wait_for_idle(kms);
 			if(status & MACH64_CAPBUF0_INT_ACK)mach64_schedule_request(kms, find_free_buffer(&(kms->capture)), 0);
 			if(status & MACH64_CAPBUF1_INT_ACK)mach64_schedule_request(kms, find_free_buffer(&(kms->capture)), 1); 
+			spin_unlock(&(kms->gui_dma_queue.lock));
 			}
 		}
 	
