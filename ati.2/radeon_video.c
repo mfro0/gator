@@ -1055,7 +1055,7 @@ const struct
 	{"Philips FI1236 (or compatible)"		, TUNER_TYPE_FI1236},
 	{"TEMIC-FN5AL"		, TUNER_TYPE_TEMIC_FN5AL},
 	{"FQ1216ME/P"		, TUNER_TYPE_FI1216},
-	{"UNKNOWN-15"		, -1},
+	{"FI1236W"		, TUNER_TYPE_FI1236},
 	{"Alps TSBH5"		, -1},
 	{"Alps TSCxx"		, -1},
 	{"Alps TSCH5 FM"	, -1},
