@@ -494,6 +494,10 @@ sdata->video_codec_context.me_method=4;
 sdata->video_codec_context.qblur=0.5;
 sdata->video_codec_context.qcompress=0.5;
 sdata->video_codec_context.b_quant_factor=2.0;
+if((arg_video_codec!=NULL)&&(
+  !strcmp(arg_video_codec, "MPEG-4") ||
+  !strcmp(arg_video_codec, "MSMPEG-4")))
+  	sdata->video_codec_context.gop_size=250;
 if(sdata->video_codec->priv_data_size==0){
 	fprintf(stderr,"BUG: sdata->video_codec->priv_data_size==0, fixing it\n");
 	sdata->video_codec->priv_data_size=64*1024; /* 64K should be enough */
