@@ -18,7 +18,6 @@ typedef struct {
 	
 typedef struct {
 	u32 *field;
-	u32 old_value;
 	} KM_FIELD_DYNAMIC_INT;
 
 typedef struct {

@@ -38,6 +38,15 @@ EXPORT_SYMBOL(kmd_signal_state_change);
 
 #define FIELD_UPDATE_REQUESTED  1
 
+typedef union {
+	struct {
+		u32 old_value;
+		} i;
+	struct {
+		char *old_string; /* pointer only, no access to data */
+		} s;
+	} KM_FIELD_DATA;
+
 typedef struct {
 	KM_DEVICE *kmd;
 	int request_flags;
@@ -46,6 +55,7 @@ typedef struct {
 	long br_size;
 	long br_free;
 	long br_read;
+	KM_FIELD_DATA *kfd;
 	} KM_FILE_PRIVATE_DATA;
 
 static void expand_buffer(KM_FILE_PRIVATE_DATA *kmfpd, long increment)
@@ -76,10 +86,16 @@ for(i=0;kmd->fields[i].type!=KM_FIELD_TYPE_EOL;i++){
 			kmfpd->br_free+=sprintf(kmfpd->buffer_read+kmfpd->br_free, "%s=%s\n", f->name, f->data.c.string);
 			break;
 		case KM_FIELD_TYPE_DYNAMIC_INT:
-			f->data.i.old_value=*(f->data.i.field);
+			kmfpd->kfd[i].i.old_value=*(f->data.i.field);
 			field_length=strlen(f->name)+20;
 			if(kmfpd->br_free+field_length>=kmfpd->br_size)expand_buffer(kmfpd, field_length);
-			kmfpd->br_free+=sprintf(kmfpd->buffer_read+kmfpd->br_free, "%s=%d\n", f->name, (f->data.i.old_value));
+			kmfpd->br_free+=sprintf(kmfpd->buffer_read+kmfpd->br_free, "%s=%d\n", f->name, kmfpd->kfd[i].i.old_value);
+			break;
+		case KM_FIELD_TYPE_DYNAMIC_STRING:
+			kmfpd->kfd[i].s.old_string=*(f->data.s.string);
+			field_length=strlen(f->name)+strlen(*(f->data.s.string))+4;
+			if(kmfpd->br_free+field_length>=kmfpd->br_size)expand_buffer(kmfpd, field_length);
+			kmfpd->br_free+=sprintf(kmfpd->buffer_read+kmfpd->br_free, "%s=%s\n", f->name, kmfpd->kfd[i].s.old_string);
 			break;
 		}
 	}
@@ -94,6 +110,7 @@ static void dump_changed_fields(KM_DEVICE *kmd, KM_FILE_PRIVATE_DATA *kmfpd)
 int i;
 long field_length;
 u32 a;
+char *b;
 KM_FIELD *f;
 for(i=0;kmd->fields[i].type!=KM_FIELD_TYPE_EOL;i++){
 	if(!(kmfpd->field_flags[i] & FIELD_UPDATE_REQUESTED))continue;
@@ -102,13 +119,23 @@ for(i=0;kmd->fields[i].type!=KM_FIELD_TYPE_EOL;i++){
 	switch(f->type){
 		case KM_FIELD_TYPE_DYNAMIC_INT:
 			a=*(f->data.i.field);
-			if(a==f->data.i.old_value)continue;
-			f->data.i.old_value=a;
+			if(a==kmfpd->kfd[i].i.old_value)continue;
+			kmfpd->kfd[i].i.old_value=a;
 			field_length=strlen(f->name)+22;
-			if(kmfpd->br_free+field_length>=kmfpd->br_size)expand_buffer(kmd, field_length);
+			if(kmfpd->br_free+field_length>=kmfpd->br_size)expand_buffer(kmfpd, field_length);
 			kmfpd->buffer_read[kmfpd->br_free]=':';
 			kmfpd->br_free++;
-			kmfpd->br_free+=sprintf(kmfpd->buffer_read+kmfpd->br_free, "%s=%d\n", f->name, (f->data.i.old_value));
+			kmfpd->br_free+=sprintf(kmfpd->buffer_read+kmfpd->br_free, "%s=%d\n", f->name, a);
+			break;
+		case KM_FIELD_TYPE_DYNAMIC_STRING:
+			b=*(f->data.s.string);
+			if(b==kmfpd->kfd[i].s.old_string)continue;
+			kmfpd->kfd[i].s.old_string=b;
+			field_length=strlen(f->name)+6+strlen(b);
+			if(kmfpd->br_free+field_length>=kmfpd->br_size)expand_buffer(kmfpd, field_length);
+			kmfpd->buffer_read[kmfpd->br_free]=':';
+			kmfpd->br_free++;
+			kmfpd->br_free+=sprintf(kmfpd->buffer_read+kmfpd->br_free, "%s=%s\n", f->name, b);
 			break;
 		}
 	}
@@ -142,6 +169,9 @@ kmfpd->kmd=kmd;
 kmfpd->field_flags=kmalloc(sizeof(*(kmfpd->field_flags))*kmd->num_fields, GFP_KERNEL);
 memset(kmfpd->field_flags, sizeof(*(kmfpd->field_flags))*kmd->num_fields, 0);
 
+kmfpd->kfd=kmalloc(sizeof(*(kmfpd->kfd))*kmd->num_fields, GFP_KERNEL);
+memset(kmfpd->kfd, sizeof(*(kmfpd->kfd))*kmd->num_fields, 0);
+
 file->private_data=kmfpd;
 kmd->use_count++;
 spin_unlock(&(kmd->lock));
@@ -154,6 +184,7 @@ static int km_fo_control_release(struct inode * inode, struct file * file)
 KM_FILE_PRIVATE_DATA *kmfpd=file->private_data;
 KM_DEVICE *kmd=kmfpd->kmd;
 kfree(kmfpd->field_flags);
+kfree(kmfpd->kfd);
 kfree(kmfpd->buffer_read);
 kfree(kmfpd);
 file->private_data=NULL;
@@ -219,7 +250,7 @@ int field_length;
 if(count<7)return count; /* ignore bogus */
 if(!strncmp("STATUS\n", buffer, 7)){
 	kmfpd->request_flags|=STATUS_REQUESTED;
-	kmd_signal_state_change(kmd);
+	kmd_signal_state_change(kmd->number);
 	} else
 if(!strncmp("REPORT=", buffer, 7)){
 	field_length=count-8; /* exclude trailing \n */
@@ -228,7 +259,7 @@ if(!strncmp("REPORT=", buffer, 7)){
 		if(!strncmp(buffer+7, kmd->fields[i].name, field_length)&&
 			!kmd->fields[i].name[field_length]){
 			kmfpd->field_flags[i]|=FIELD_UPDATE_REQUESTED;
-			kmd_signal_state_change(kmd);
+			kmd_signal_state_change(kmd->number);
 			break;
 			}
 		}
@@ -281,10 +312,10 @@ kmd->priv=priv;
 spin_lock_init(&(kmd->lock));
 init_waitqueue_head(&(kmd->wait));
 
-sprintf(temp, "control%d", num);
+sprintf(temp, "control%ld", num);
 /*kmd->control=create_proc_entry(temp, S_IFREG | S_IRUGO | S_IWUSR, km_root); */
 kmd->control=create_proc_entry(temp, S_IFREG | S_IRUGO | S_IWUGO, km_root);
-sprintf(temp, "data%d", num);
+sprintf(temp, "data%ld", num);
 kmd->data=create_proc_entry(temp, S_IFREG | S_IRUGO | S_IWUSR, km_root);
 
 kmd->control->data=kmd;
