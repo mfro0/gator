@@ -82,12 +82,13 @@ MOD_DEC_USE_COUNT;
 kfree(kdufpd);
 }
 
-long km_data_generic_stream_read(KDU_FILE_PRIVATE_DATA *kdufpd, KM_STREAM_BUFFER_INFO *kmsbi, KM_DATA_VIRTUAL_BLOCK *dvb,
+long km_data_generic_stream_read(KDU_FILE_PRIVATE_DATA *kdufpd, KM_DATA_VIRTUAL_BLOCK *dvb,
 	 char *buf, unsigned long count, int nonblock,
 	 int user_flag, int user_flag_mask)
 {
 int q,todo;
 KM_DATA_UNIT *kdu=kdufpd->kdu;
+KM_STREAM_BUFFER_INFO *kmsbi=dvb->kmsbi;
 DECLARE_WAITQUEUE(wait, current);
 spin_lock(&(kdu->lock));
 if(kdufpd->buffer<0){
@@ -155,10 +156,11 @@ while(todo>0){
 return (count-todo);
 }
 
-unsigned int km_data_generic_stream_poll(KDU_FILE_PRIVATE_DATA *kdufpd, KM_STREAM_BUFFER_INFO *kmsbi, KM_DATA_VIRTUAL_BLOCK *dvb,
+unsigned int km_data_generic_stream_poll(KDU_FILE_PRIVATE_DATA *kdufpd, KM_DATA_VIRTUAL_BLOCK *dvb,
 	 struct file *file, poll_table *wait)
 {
 KM_DATA_UNIT *kdu=kdufpd->kdu;
+KM_STREAM_BUFFER_INFO *kmsbi=dvb->kmsbi;
 unsigned int mask=0;
 
 spin_lock(&(kdu->lock));
@@ -222,6 +224,15 @@ if(kdu->mmap==NULL)return -ENOTSUPP;
 return kdu->mmap(file, vma);
 }
 
+static int km_fo_data_read(struct file *file, char *buf, size_t count, loff_t *ppos)
+{
+KDU_FILE_PRIVATE_DATA *kdufpd=file->private_data;
+KM_DATA_UNIT *kdu=kdufpd->kdu;
+KM_CHECKPOINT
+if(kdu->read==NULL)return -ENOTSUPP;
+return kdu->read(file, buf, count, ppos);
+}
+
 static int km_dvb_mmap(struct file * file, struct vm_area_struct * vma)
 {
 KDU_FILE_PRIVATE_DATA *kdufpd=file->private_data;
@@ -255,6 +266,17 @@ KM_CHECKPOINT
 return 0;
 }
 
+static int km_dvb_read(struct file *file, char *buf, size_t count, loff_t *ppos)
+{
+int nonblock=0;
+KDU_FILE_PRIVATE_DATA *kdufpd=file->private_data;
+KM_DATA_UNIT *kdu=kdufpd->kdu;
+KM_DATA_VIRTUAL_BLOCK *dvb=kdu->data_private;
+return km_data_generic_stream_read(kdufpd, dvb, 
+	buf, count, nonblock,
+	0, 0);
+}
+
 void km_free_private_data_virtual_block(KM_DATA_UNIT *kdu)
 {
 int i;
@@ -275,9 +297,9 @@ struct file_operations km_data_file_operations={
 	owner: 		THIS_MODULE,
 	open:		km_fo_data_open,
 	release: 	km_fo_data_release,
-	mmap:		km_fo_data_mmap
-/*	read: 		km_fo_data_read,
-	write: 		km_fo_data_write,
+	mmap:		km_fo_data_mmap,
+	read: 		km_fo_data_read,
+/*	write: 		km_fo_data_write,
 	poll: 		km_fo_data_poll */
 	} ;
 
@@ -348,6 +370,8 @@ kdu->type=KDU_TYPE_VIRTUAL_BLOCK;
 kdu->data_private=dvb;
 kdu->free_private=km_free_private_data_virtual_block;
 kdu->mmap=km_dvb_mmap;
+if(dvb->kmsbi!=NULL)kdu->read=km_dvb_read;
+	else kdu->read=NULL;
 chunk_size=((dvb->size+PAGE_SIZE-1)&~(PAGE_SIZE-1));
 if(kdu->data!=NULL){
 	kdu->data->size=chunk_size*dvb->n;

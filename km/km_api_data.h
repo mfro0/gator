@@ -11,32 +11,6 @@
 
 #include <linux/spinlock.h>
 
-/* this is a simple chunk of data accessible only through kernel virtual space */
-
-#define KDU_TYPE_VIRTUAL_BLOCK	1
-
-typedef struct {
-	long size;   /* size of each subunit */
-	long n;      /* total number of subunits */
-	long *free;  /* amount of data (starting from 0) that is valid in a subunit*/
-	void **ptr;  /* pointer to the data of the subunit */
-	wait_queue_head_t *dataq;  /* waitqueue that can be woken up to signal that more data is available */
-	} KM_DATA_VIRTUAL_BLOCK;
-
-#define KDU_TYPE_GENERIC		100
-
-typedef struct S_KM_DATA_UNIT{
-	int number;
-	spinlock_t lock;
-	wait_queue_head_t dataq;
-	mode_t mode;
-	long use_count;
-	int type;
-	struct proc_dir_entry *data;	
-	void *data_private;
-	void (*free_private)(struct S_KM_DATA_UNIT *);
-	int (*mmap)(struct file *file, struct vm_area_struct *vma);
-	} KM_DATA_UNIT;
 
 /* this describes an age of the buffer..
    since any number is capable of rollover
@@ -47,6 +21,7 @@ typedef struct S_KM_DATA_UNIT{
       to mark unused buffers.   
    
    */
+
 typedef int KM_BUFFER_AGE;
 
 /* the following struct provides meta information needed
@@ -65,6 +40,35 @@ typedef struct {
 	int user_flag;   /* for whatever the user has a need for */
 	} KM_STREAM_BUFFER_INFO;
 
+/* this is a sequence of data chunks */
+
+#define KDU_TYPE_VIRTUAL_BLOCK	1
+
+typedef struct {
+	long size;   /* size of each subunit */
+	long n;      /* total number of subunits */
+	long *free;  /* amount of data (starting from 0) that is valid in a subunit*/
+	void **ptr;  /* pointer to the data of the subunit */
+	wait_queue_head_t *dataq;  /* waitqueue that can be woken up to signal that more data is available */
+	KM_STREAM_BUFFER_INFO *kmsbi;
+	} KM_DATA_VIRTUAL_BLOCK;
+
+#define KDU_TYPE_GENERIC		100
+
+typedef struct S_KM_DATA_UNIT{
+	int number;
+	spinlock_t lock;
+	wait_queue_head_t dataq;
+	mode_t mode;
+	long use_count;
+	int type;
+	struct proc_dir_entry *data;	
+	void *data_private;
+	void (*free_private)(struct S_KM_DATA_UNIT *);
+	int (*mmap)(struct file *file, struct vm_area_struct *vma);
+	int (*read)(struct file *file, char *buf, size_t count, loff_t *ppos);
+	} KM_DATA_UNIT;
+
 typedef struct {
 	KM_DATA_UNIT *kdu;
 	int buffer;  /* buffer that we are reading now */
@@ -79,10 +83,10 @@ void km_deallocate_data(int data_unit);
 
 KDU_FILE_PRIVATE_DATA* km_data_create_kdufpd(int data_unit);
 void km_data_destroy_kdufpd(KDU_FILE_PRIVATE_DATA *kdufpd);
-long km_data_generic_stream_read(KDU_FILE_PRIVATE_DATA *kdufpd, KM_STREAM_BUFFER_INFO *kmsbi, KM_DATA_VIRTUAL_BLOCK *dvb,
+long km_data_generic_stream_read(KDU_FILE_PRIVATE_DATA *kdufpd, KM_DATA_VIRTUAL_BLOCK *dvb,
 	 char *buf, unsigned long count, int nonblock, 
 	 int user_flag, int user_flag_mask);
-unsigned int km_data_generic_stream_poll(KDU_FILE_PRIVATE_DATA *kdufpd, KM_STREAM_BUFFER_INFO *kmsbi, KM_DATA_VIRTUAL_BLOCK *dvb,
+unsigned int km_data_generic_stream_poll(KDU_FILE_PRIVATE_DATA *kdufpd, KM_DATA_VIRTUAL_BLOCK *dvb,
 	 struct file *file, poll_table *wait);
 
 

@@ -54,9 +54,10 @@ int km_buffers=5;
 int find_free_buffer(KM_STREAM *stream)
 {
 int next;
+KM_STREAM_BUFFER_INFO *kmsbi=stream->dvb.kmsbi;
 next=stream->next_buf;
-while(stream->kmsbi[next].flag & KM_STREAM_BUF_PINNED)next=stream->kmsbi[next].next;
-stream->next_buf=stream->kmsbi[next].next;
+while(kmsbi[next].flag & KM_STREAM_BUF_PINNED)next=kmsbi[next].next;
+stream->next_buf=kmsbi[next].next;
 return next;
 }
 
@@ -68,6 +69,16 @@ if(size>(4096*4096/sizeof(bm_list_descriptor))){
 	printk("Too large buffer allocation requested: %ld bytes\n", size);
 	return -1;
 	}
+/* allocate data unit to hold stream meta info */
+stream->dvb_info.size=num_buffers*(sizeof(FIELD_INFO)+sizeof(KM_STREAM_BUFFER_INFO));
+stream->dvb_info.n=1;
+stream->dvb_info.free=&(stream->info_free);
+stream->info_free=num_buffers*(sizeof(FIELD_INFO)+sizeof(KM_STREAM_BUFFER_INFO));
+stream->dvb_info.ptr=&(stream->dvb.kmsbi);
+stream->dvb_info.kmsbi=NULL; /* no meta-metainfo */
+stream->info_du=km_allocate_data_virtual_block(&(stream->dvb_info), S_IFREG | S_IRUGO);
+if(stream->info_du<0)return -1;
+KM_CHECKPOINT
 /* allocate data unit to hold video data */
 stream->num_buffers=num_buffers;
 stream->dvb.size=((size+PAGE_SIZE-1)/PAGE_SIZE)*PAGE_SIZE;
@@ -75,24 +86,15 @@ stream->dvb.n=num_buffers;
 stream->dvb.free=stream->free;
 stream->dvb.ptr=stream->buffer;
 stream->du=km_allocate_data_virtual_block(&(stream->dvb), S_IFREG | S_IRUGO);
-if(stream->du<0)return -1;
-KM_CHECKPOINT
-/* allocate data unit to hold field info */
-stream->dvb_info.size=num_buffers*(sizeof(FIELD_INFO)+sizeof(KM_STREAM_BUFFER_INFO));
-stream->dvb_info.n=1;
-stream->dvb_info.free=&(stream->info_free);
-stream->info_free=num_buffers*(sizeof(FIELD_INFO)+sizeof(KM_STREAM_BUFFER_INFO));
-stream->dvb_info.ptr=&(stream->kmsbi);
-stream->info_du=km_allocate_data_virtual_block(&(stream->dvb_info), S_IFREG | S_IRUGO);
-if(stream->info_du<0){
-	km_deallocate_data(stream->du);
-	stream->du=-1;
+if(stream->du<0){
+	km_deallocate_data(stream->info_du);
+	stream->info_du=-1;
 	stream->num_buffers=-1;
 	return -1;
 	}
-memset(stream->kmsbi, 0 , stream->dvb_info.size);
+memset(stream->dvb.kmsbi, 0 , stream->dvb_info.size);
 /* Position field info after generic stream buffer information */
-stream->fi=((unsigned char *)stream->kmsbi)+num_buffers*sizeof(KM_STREAM_BUFFER_INFO);
+stream->fi=((unsigned char *)stream->dvb.kmsbi)+num_buffers*sizeof(KM_STREAM_BUFFER_INFO);
 /*
   dma_table allocation and initialization is the only hardware dependent part of this function
 
@@ -105,11 +107,11 @@ stream->fi=((unsigned char *)stream->kmsbi)+num_buffers*sizeof(KM_STREAM_BUFFER_
 stream->dma_table=kmalloc(sizeof(*(stream->dma_table))*num_buffers, GFP_KERNEL);
 for(k=0;k<num_buffers;k++){
 	stream->dvb.free[k]=size;
-	stream->kmsbi[k].flag=0;
-	stream->kmsbi[k].user_flag=0;
-	stream->kmsbi[k].next=k+1;
-	stream->kmsbi[k].prev=k-1;
-	stream->kmsbi[k].age=-1;
+	stream->dvb.kmsbi[k].flag=0;
+	stream->dvb.kmsbi[k].user_flag=0;
+	stream->dvb.kmsbi[k].next=k+1;
+	stream->dvb.kmsbi[k].prev=k-1;
+	stream->dvb.kmsbi[k].age=-1;
 	stream->dma_table[k]=rvmalloc(4096);
 	stream->free[k]=size;
 	memset(stream->dma_table[k], 0, 4096);
@@ -121,8 +123,8 @@ for(k=0;k<num_buffers;k++){
 			}
 		}
 	}
-stream->kmsbi[0].prev=num_buffers-1;
-stream->kmsbi[num_buffers-1].next=0;
+stream->dvb.kmsbi[0].prev=num_buffers-1;
+stream->dvb.kmsbi[num_buffers-1].next=0;
 stream->next_buf=0;
 KM_CHECKPOINT
 return 0;
@@ -137,10 +139,10 @@ for(k=0;k<stream->num_buffers;k++){
 	}
 kfree(stream->dma_table);
 stream->dma_table=NULL;
-km_deallocate_data(stream->info_du);
-stream->info_du=-1;
 km_deallocate_data(stream->du);
 stream->du=-1;
+km_deallocate_data(stream->info_du);
+stream->info_du=-1;
 stream->num_buffers=-1;
 return 0;
 }
@@ -178,7 +180,7 @@ return kmtq;
 }
 
 int km_add_transfer_request(KM_TRANSFER_QUEUE *kmtq, 
-	KM_STREAM_BUFFER_INFO *kmsbi, KM_DATA_VIRTUAL_BLOCK *dvb, int buffer, int flag,
+	KM_DATA_VIRTUAL_BLOCK *dvb, int buffer, int flag,
 	int (*start_transfer)(KM_TRANSFER_REQUEST *kmtr), void *user_data)
 {
 int last;
@@ -189,7 +191,6 @@ if(kmtq->request[last].flag!=KM_TRANSFER_NOP){
 	return -1;
 	}
 
-kmtq->request[last].kmsbi=kmsbi;
 kmtq->request[last].dvb=dvb;
 kmtq->request[last].buffer=buffer;
 kmtq->request[last].flag=flag;
@@ -281,6 +282,7 @@ if(kms->allocate_dvb!=NULL){
 		}
 	kmd_signal_state_change(kms->kmd);
 	} else {
+	result=-ENOTSUPP;
 	goto fail;
 	}
 spin_unlock(&(kms->kms_lock));
@@ -399,6 +401,8 @@ switch(pci_id->driver_data){
 	case HARDWARE_RAGE128:
 		tag="km_ati (Rage128)";
 		break;
+	default:
+		tag="km_ati (unknown)";
 	}
 		
 kms=&(km_devices[num_devices]);

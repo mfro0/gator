@@ -142,20 +142,20 @@ if(buffer<0){
 	}
 if(field){
 	offset=kms->buf0_even_offset;
-	kms->capture.kmsbi[buffer].user_flag&=~KM_FI_ODD;
+	kms->capture.dvb.kmsbi[buffer].user_flag&=~KM_FI_ODD;
 	} else {
 	offset=kms->buf0_odd_offset;
-	kms->capture.kmsbi[buffer].user_flag|=KM_FI_ODD;
+	kms->capture.dvb.kmsbi[buffer].user_flag|=KM_FI_ODD;
 	}
 KM_DEBUG("buf=%d field=%d\n", buffer, field);
 kms->capture.fi[buffer].timestamp_start=jiffies;
 mach64_setup_dma_table(kms, (kms->capture.dma_table[buffer]), offset, kms->capture.free[buffer]);
 /* start transfer */
 kms->total_frames++;
-kms->capture.kmsbi[buffer].age=kms->total_frames;
+kms->capture.dvb.kmsbi[buffer].age=kms->total_frames;
 wmb();
 km_add_transfer_request(&(kms->gui_dma_queue),
-	kms->capture.kmsbi, &(kms->capture.dvb), buffer, KM_TRANSFER_TO_SYSTEM_RAM, mach64_start_request_transfer, kms);
+	&(kms->capture.dvb), buffer, KM_TRANSFER_TO_SYSTEM_RAM, mach64_start_request_transfer, kms);
 }
 
 static int mach64_is_capture_irq_active(KM_STRUCT *kms)

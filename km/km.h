@@ -32,8 +32,7 @@ typedef struct {
 
 /* DMA request struct */
 typedef struct S_KM_TRANSFER_REQUEST {
-	KM_STREAM_BUFFER_INFO *kmsbi;   /* stream meta info */
-	KM_DATA_VIRTUAL_BLOCK *dvb;     /* buffers and waitqueue */
+	KM_DATA_VIRTUAL_BLOCK *dvb;     /* buffers, meta info and waitqueue */
 	int buffer;			/* subunit of dvb that this transfer uses */
 	unsigned int flag;              /* see below: */
 	#define KM_TRANSFER_NOP			0
@@ -74,7 +73,6 @@ typedef struct {
 	/* meta information */
 	int info_du;
 	KM_DATA_VIRTUAL_BLOCK dvb_info;
-	KM_STREAM_BUFFER_INFO *kmsbi;
 	long info_free;
 
 	FIELD_INFO *fi;
@@ -97,7 +95,7 @@ typedef struct S_KM_STRUCT {
 	int v4l_buf_parity;
 
 	
-	KM_FILE_PRIVATE_DATA *v4l_kdufpd;
+	KDU_FILE_PRIVATE_DATA *v4l_kdufpd;
 	
 	
 	KM_STREAM capture;
@@ -130,7 +128,7 @@ int find_free_buffer(KM_STREAM *stream);
 int start_video_capture(KM_STRUCT *kms);
 void stop_video_capture(KM_STRUCT *kms);
 int km_add_transfer_request(KM_TRANSFER_QUEUE *kmtq, 
-	KM_STREAM_BUFFER_INFO *kmsbi, KM_DATA_VIRTUAL_BLOCK *dvb, int buffer, int flag,
+	KM_DATA_VIRTUAL_BLOCK *dvb, int buffer, int flag,
 	int (*start_transfer)(KM_TRANSFER_REQUEST *kmtr), void *user_data);
 
 #define HARDWARE_MACH64		0

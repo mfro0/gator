@@ -208,19 +208,19 @@ if(buffer<0){
 switch(field){
 	case 0:
 		offset=kms->buf0_odd_offset;
-		kms->capture.kmsbi[buffer].user_flag|=KM_FI_ODD;
+		kms->capture.dvb.kmsbi[buffer].user_flag|=KM_FI_ODD;
 		break;
 	case 1:
 		offset=kms->buf0_even_offset;
-		kms->capture.kmsbi[buffer].user_flag&=~KM_FI_ODD;
+		kms->capture.dvb.kmsbi[buffer].user_flag&=~KM_FI_ODD;
 		break;
 	case 2:
 		offset=kms->buf1_odd_offset;
-		kms->capture.kmsbi[buffer].user_flag|=KM_FI_ODD;
+		kms->capture.dvb.kmsbi[buffer].user_flag|=KM_FI_ODD;
 		break;
 	case 3:
 		offset=kms->buf1_even_offset;
-		kms->capture.kmsbi[buffer].user_flag&=~KM_FI_ODD;
+		kms->capture.dvb.kmsbi[buffer].user_flag&=~KM_FI_ODD;
 		break;
 	default:
 		printk("Internal error %s %s %d\n", __FILE__, __FUNCTION__, __LINE__);
@@ -231,10 +231,10 @@ kms->capture.fi[buffer].timestamp_start=jiffies;
 radeon_setup_dma_table(kms, (kms->capture.dma_table[buffer]), offset, kms->capture.free[buffer]);
 /* start transfer */
 kms->total_frames++;
-kms->capture.kmsbi[buffer].age=kms->total_frames;
+kms->capture.dvb.kmsbi[buffer].age=kms->total_frames;
 wmb();
 km_add_transfer_request(&(kms->gui_dma_queue),
-	kms->capture.kmsbi, &(kms->capture.dvb), buffer, KM_TRANSFER_TO_SYSTEM_RAM, radeon_start_request_transfer, kms);
+	&(kms->capture.dvb), buffer, KM_TRANSFER_TO_SYSTEM_RAM, radeon_start_request_transfer, kms);
 }
 
 static int radeon_is_capture_irq_active(KM_STRUCT *kms)

@@ -64,7 +64,7 @@ KM_STRUCT *kms=(KM_STRUCT *)v;
 int done;
 KDU_FILE_PRIVATE_DATA *kdufpd=kms->v4l_kdufpd;
 
-done=km_data_generic_stream_read(kdufpd, kms->capture.kmsbi, &(kms->capture.dvb), 
+done=km_data_generic_stream_read(kdufpd, &(kms->capture.dvb), 
 	buf, count, nonblock,
 	kms->v4l_buf_parity, 1);
 	
@@ -190,7 +190,7 @@ static unsigned int km_v4l_poll(struct video_device *dev, struct file *file,
 {
 KM_STRUCT *kms=(KM_STRUCT *)dev;
 
-return km_data_generic_stream_poll(kms->v4l_kdufpd, kms->capture.kmsbi, &(kms->capture.dvb), file, wait);
+return km_data_generic_stream_poll(kms->v4l_kdufpd, &(kms->capture.dvb), file, wait);
 }
 
 #ifndef VID_HARDWARE_KM
