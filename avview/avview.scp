@@ -39,6 +39,8 @@ foreach {variable value} {
 	current_table "none"
 	current_table_name "none"
 	current_channel "none"
+	use_physical_screen_size true
+	aspect_ratio {4 3}
 	} {
 	global $variable
 	set $variable $value
@@ -68,24 +70,27 @@ destroy .video
 
 . configure -width 320 -height 240 -background black
 
-global aspect_ratio
-set aspect_ratio [list 4 3]
-
 #frame .video -background #102030
 eval frame .video [get_settings .video AVview]
 .video configure -borderwidth 0
 place .video -relx 0.0 -rely 0.0 -relwidth 1.0 -relheight 1.0 -anchor nw
 
 bind . <Configure> place_video_window
+
 proc place_video_window {} {
+global aspect_ratio use_physical_screen_size
 set h [winfo height .]
 set w [winfo width .]
-global aspect_ratio
-set a_x [lindex $aspect_ratio 0]
-set a_y [lindex $aspect_ratio 1]
 set rw 1.0
 set rh 1.0
-catch {
+#catch {
+	if { $use_physical_screen_size } {
+		set a_x [expr ([lindex $aspect_ratio 0]*[winfo screenwidth .]*1.0)/[winfo screenmmwidth .]]
+		set a_y [expr ([lindex $aspect_ratio 1]*[winfo screenheight .]*1.0)/[winfo screenmmheight .]]
+		} {
+		set a_x [lindex $aspect_ratio 0]
+		set a_y [lindex $aspect_ratio 1]
+		}
 	if { $a_x*$h>=$a_y*$w } {
 		set rh [expr (1.0*$a_y*$w)/($a_x*$h)]
 		set rw 1.0
@@ -93,7 +98,7 @@ catch {
 		set rw [expr (1.0*$a_x*$h)/($a_y*$w)]
 		set rh 1.0
 		}
-	}
+#	}
 place configure .video -relx [expr (1.0-$rw)/2.0] -rely [expr (1.0-$rh)/2.0] \
 	-relw $rw -relh $rh -anchor nw
 }
@@ -728,6 +733,7 @@ trace variable current_v4l_mode w {update_v4l_window_info .controlwin.capture ; 
 global v4l_capture_on
 trace variable v4l_capture_on w "on_v4l_capture_set .controlwin.capture"
 trace variable aspect_ratio w "place_video_window ; skip_args3"
+trace variable use_physical_screen_size w "place_video_window ; skip_args3"
 
 if {[alsa_present] == "yes" } {
 	trace variable alsa_window w "generate_alsa_window .controlwin.alsamixer ; skip_args3"
@@ -791,13 +797,15 @@ if { [alsa_present] } {
 		"Display control window" checkbutton show_control_window \
 		"Display attributes subsection" checkbutton attributes_window \
 		"Display capture(V4L) subsection" checkbutton capture_window \
-		"Display mixer(ALSA) subsection" checkbutton alsa_window 
+		"Display mixer(ALSA) subsection" checkbutton alsa_window \
+		"Use physical screen size for aspect ratio" checkbutton use_physical_screen_size
 	} {
 	add_parameter_pane "/User interface settings" "User interface settings" \
 		"Display setup window on startup" checkbutton display_setup_window_on_startup \
 		"Display control window" checkbutton show_control_window \
 		"Display attributes subsection" checkbutton attributes_window \
 		"Display capture(V4L) subsection" checkbutton capture_window \
+		"Use physical screen size for aspect ratio" checkbutton use_physical_screen_size
 	}
 
 add_parameter_pane "/User interface settings/Fullscreen behaviour" "Fullscreen behaviour" \
