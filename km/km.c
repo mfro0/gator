@@ -720,6 +720,10 @@ release_mem_region(pci_resource_start(pci_dev,2),
 #define PCI_DEVICE_ID_ATI_RADEON_QG      0x5147
 #endif
 
+#ifndef PCI_DEVICE_ID_ATI_RADEON_QL	 
+#define PCI_DEVICE_ID_ATI_RADEON_QL      0x514b
+#endif
+
 #ifndef PCI_DEVICE_ID_ATI_RADEON_QN	 
 #define PCI_DEVICE_ID_ATI_RADEON_QN      0x514d
 #endif
@@ -867,6 +871,8 @@ static struct pci_device_id km_pci_tbl[] __devinitdata = {
         {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_RADEON_QF,
          PCI_ANY_ID, PCI_ANY_ID, 0, 0, HARDWARE_RADEON},
         {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_RADEON_QG,
+         PCI_ANY_ID, PCI_ANY_ID, 0, 0, HARDWARE_RADEON},
+        {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_RADEON_QL,
          PCI_ANY_ID, PCI_ANY_ID, 0, 0, HARDWARE_RADEON},
         {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_RADEON_QN,
          PCI_ANY_ID, PCI_ANY_ID, 0, 0, HARDWARE_RADEON},
