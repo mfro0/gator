@@ -84,11 +84,31 @@ typedef struct {
 	long num_fields;
 	void *priv;
 	int *command_hash;
+	unsigned status_hash, report_hash;
 	} KM_DEVICE;
 
+typedef union {
+	struct {
+		u32 old_value;
+		} i;
+	struct {
+		char *old_string; /* pointer only, no access to data */
+		} s;
+	} KM_FIELD_DATA;
+
+#define KM_STATUS_REQUESTED	1
+#define KM_FIELD_UPDATE_REQUESTED  1
+
 typedef struct {
-	long num_fields;
-	} KM_REQUEST;
+	KM_DEVICE *kmd;
+	int request_flags;
+	int *field_flags;
+	char *buffer_read;
+	long br_size;
+	long br_free;
+	long br_read;
+	KM_FIELD_DATA *kfd;
+	} KM_FILE_PRIVATE_DATA;
 
 int add_km_device(KM_FIELD *kmfl, void *priv);
 int remove_km_device(int num);

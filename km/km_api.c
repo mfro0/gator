@@ -34,29 +34,6 @@ EXPORT_SYMBOL(add_km_device);
 EXPORT_SYMBOL(remove_km_device);
 EXPORT_SYMBOL(kmd_signal_state_change);
 
-#define STATUS_REQUESTED	1
-
-#define FIELD_UPDATE_REQUESTED  1
-
-typedef union {
-	struct {
-		u32 old_value;
-		} i;
-	struct {
-		char *old_string; /* pointer only, no access to data */
-		} s;
-	} KM_FIELD_DATA;
-
-typedef struct {
-	KM_DEVICE *kmd;
-	int request_flags;
-	int *field_flags;
-	char *buffer_read;
-	long br_size;
-	long br_free;
-	long br_read;
-	KM_FIELD_DATA *kfd;
-	} KM_FILE_PRIVATE_DATA;
 
 #define KM_MODULUS	255
 #define KM_MULTIPLE	23
@@ -116,7 +93,7 @@ for(i=0;kmd->fields[i].type!=KM_FIELD_TYPE_EOL;i++){
 	}
 if(kmfpd->br_free+10>=kmfpd->br_size)expand_buffer(kmfpd, 14);
 kmfpd->br_free+=sprintf(kmfpd->buffer_read+kmfpd->br_free, "+END_STATUS\n");
-kmfpd->request_flags &= ~STATUS_REQUESTED; 
+kmfpd->request_flags &= ~KM_STATUS_REQUESTED; 
 kmd_signal_state_change(kmd->number);
 }
 
@@ -128,7 +105,7 @@ u32 a;
 char *b;
 KM_FIELD *f;
 for(i=0;kmd->fields[i].type!=KM_FIELD_TYPE_EOL;i++){
-	if(!(kmfpd->field_flags[i] & FIELD_UPDATE_REQUESTED))continue;
+	if(!(kmfpd->field_flags[i] & KM_FIELD_UPDATE_REQUESTED))continue;
 	f=&(kmd->fields[i]);
 /*	if(!(f->changed))continue; */
 	switch(f->type){
@@ -236,7 +213,7 @@ while(kmfpd->br_free==0){
 		break;
 		}
 	schedule();
-	if(kmfpd->request_flags & STATUS_REQUESTED)perform_status_cmd(kmd, kmfpd);
+	if(kmfpd->request_flags & KM_STATUS_REQUESTED)perform_status_cmd(kmd, kmfpd);
 	dump_changed_fields(kmd, kmfpd);
 	}
 current->state=TASK_RUNNING;
@@ -268,21 +245,30 @@ KM_FILE_PRIVATE_DATA *kmfpd=file->private_data;
 KM_DEVICE *kmd=kmfpd->kmd;
 int i;
 int field_length;
-if(count<7)return count; /* ignore bogus */
-if(!strncmp("STATUS\n", buffer, 7)){
-	kmfpd->request_flags|=STATUS_REQUESTED;
+unsigned hash;
+hash=km_command_hash(buffer, count);
+if((hash==kmd->status_hash) && !strncmp("STATUS\n", buffer, count)){
+	kmfpd->request_flags|=KM_STATUS_REQUESTED;
 	kmd_signal_state_change(kmd->number);
 	} else
-if(!strncmp("REPORT ", buffer, 7)){
+if((hash==kmd->report_hash)&&!strncmp("REPORT ", buffer, count)){
 	field_length=count-8; /* exclude trailing \n */
 	if(field_length<=0)return count; /* bogus command */
 	for(i=0;i<kmd->num_fields;i++){
 		if(!strncmp(buffer+7, kmd->fields[i].name, field_length)&&
 			!kmd->fields[i].name[field_length]){
-			kmfpd->field_flags[i]|=FIELD_UPDATE_REQUESTED;
+			kmfpd->field_flags[i]|=KM_FIELD_UPDATE_REQUESTED;
 			kmd_signal_state_change(kmd->number);
 			break;
 			}
+		}
+	} else {
+	i=kmd->command_hash[hash];
+	while((i>=0) && strncmp(kmd->fields[i].name, buffer, count))i=kmd->fields[i].next_command;
+	if(i<0)return count; /* nothing matched, gobble up rest of input */
+	switch(kmd->fields[i].type){
+		case KM_FIELD_TYPE_PROGRAMMABLE:
+			break;
 		}
 	}
 return count;
@@ -299,13 +285,12 @@ devices=d;
 }
 
 struct file_operations km_control_file_operations={
-	owner: 	THIS_MODULE,
-	open:	km_fo_control_open,
-	read: 	km_fo_control_read,
-	release: km_fo_control_release,
-	write: km_fo_control_write,
-	poll: km_fo_control_poll
-
+	owner: 		THIS_MODULE,
+	open:		km_fo_control_open,
+	read: 		km_fo_control_read,
+	release: 	km_fo_control_release,
+	write: 		km_fo_control_write,
+	poll: 		km_fo_control_poll
 	} ;
 
 int add_km_device(KM_FIELD *kmfl, void *priv)
@@ -330,10 +315,13 @@ memset(kmd, sizeof(KM_DEVICE), 0);
 kmd->number=num;
 kmd->fields=kmfl;
 kmd->num_fields=0;
+kmd->status_hash=km_command_hash("STATUS", 6);
+kmd->report_hash=km_command_hash("REPORT", 6);
 kmd->command_hash=kmalloc(sizeof(*(kmd->command_hash))*KM_MODULUS, GFP_KERNEL);
 for(i=0;i<KM_MODULUS;i++)kmd->command_hash[i]=-1;
 while((kf=&(kmd->fields[kmd->num_fields]))->type!=KM_FIELD_TYPE_EOL){
 	kmd->num_fields++;
+	kmd->fields[i].next_command=-1;
 	if(kf->type==KM_FIELD_TYPE_PROGRAMMABLE){
 		h=km_command_hash(kf->name, 10000); /*names longer than that are bogus, really ! */
 		i=kmd->command_hash[h];
