@@ -2893,7 +2893,6 @@ RADEONPutImage(
 ){
    RADEONInfoPtr info = RADEONPTR(pScrn);
    RADEONPortPrivPtr pPriv = (RADEONPortPrivPtr)data;
-   unsigned char *RADEONMMIO = info->MMIO;
    INT32 xa, xb, ya, yb;
    unsigned char *dst_start;
    int pitch, new_size, offset, s2offset, s3offset;

@@ -2244,7 +2244,6 @@ R128PutImage(
 ){
    R128InfoPtr info = R128PTR(pScrn);
    R128PortPrivPtr pPriv = (R128PortPrivPtr)data;
-   unsigned char *R128MMIO = info->MMIO;
    INT32 xa, xb, ya, yb;
    int pitch, new_size, offset, s1offset, s2offset, s3offset;
    int srcPitch, srcPitch2, dstPitch;
@@ -2252,6 +2251,7 @@ R128PutImage(
    int top, left, npixels, nlines, bpp;
    BoxRec dstBox;
    CARD32 tmp;
+   int retcode;
 #if X_BYTE_ORDER == X_BIG_ENDIAN
    unsigned char *R128MMIO = info->MMIO;
    CARD32 config_cntl = INREG(R128_CONFIG_CNTL);
@@ -2305,7 +2305,10 @@ R128PutImage(
    dstBox.y2 = drw_y + drw_h;
 
    if(!R128ClipVideo(&dstBox, &xa, &xb, &ya, &yb, clipBoxes, width, height))
-	return Success;
+   {
+	retcode = Success;
+        goto done;
+   }
 
    dstBox.x1 -= pScrn->frameX0;
    dstBox.x2 -= pScrn->frameX0;
@@ -2348,7 +2351,8 @@ R128PutImage(
    if(!(pPriv->linear = R128AllocateMemory(pScrn, pPriv->linear,
 		pPriv->doubleBuffer ? (new_size << 1) : new_size)))
    {
-	return BadAlloc;
+	retcode = BadAlloc;
+        goto done;
    }
 
    pPriv->currentBuffer ^= 1;
@@ -2442,14 +2446,16 @@ R128PutImage(
     pPriv->videoStatus = CLIENT_VIDEO_ON;
 
     info->VideoTimerCallback = R128VideoTimerCallback;
+    retcode = Success;
 
-    return Success;
-}
-
+done:
 #if X_BYTE_ORDER == X_BIG_ENDIAN
     /* restore byte swapping */
     OUTREG(R128_CONFIG_CNTL, config_cntl);
 #endif
+
+    return retcode;
+}
 
 static int
 R128QueryImageAttributes(
