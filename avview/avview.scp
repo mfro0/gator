@@ -741,7 +741,7 @@ menu .video_menu.interface_menu.theme_menu -type normal -tearoff false
 menu .video_menu.cc_menu -type normal -tearoff false
 
 .video_menu add command -label "Toggle mute" -command toggle_mute 
-.video_menu add command -label "Toggle mute and fullscreen" -command "toggle_mute ; toggle_fullscreen"
+.video_menu add command -label "Toggle fullscreen" -command toggle_fullscreen
 .video_menu add cascade -menu .video_menu.channel_menu -label "Channel"
 .video_menu add cascade -menu .video_menu.connector_menu -label "Connector"
 .video_menu add cascade -menu .video_menu.cc_menu -label "Closed caption"
