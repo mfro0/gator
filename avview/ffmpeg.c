@@ -874,6 +874,18 @@ fprintf(stderr, "Switching recording to file \"%s\" [NOT IMPLEMENTED]\n", argv[1
 return TCL_OK;
 }
 
+void finish_recording()
+{
+pthread_mutex_lock(&(sdata->format_context_mutex));
+if(sdata->format_context.oformat!=NULL)
+  av_write_trailer(&(sdata->format_context));
+pthread_mutex_unlock(&(sdata->format_context_mutex));
+close(sdata->fd_out);
+free(sdata);
+sdata=NULL;
+fprintf(stderr,"Recording finished\n");
+}
+
 int ffmpeg_stop_encoding(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
 {
 
@@ -895,6 +907,17 @@ if(sdata->audio_s!=NULL){
 if(sdata->audio_s!=NULL)pthread_mutex_unlock(&(sdata->audio_s->ctr_mutex));
 if(sdata->video_s!=NULL)pthread_mutex_unlock(&(sdata->video_s->ctr_mutex));
 if(sdata->video_s!=NULL)v4l_detach_output_stream(sdata->v4l_device, sdata->video_s);
+if(sdata->video_s!=NULL){
+	pthread_join(sdata->video_s->consumer_thread_id, NULL);
+	free(sdata->video_s);
+	sdata->video_s=NULL;
+	}
+if(sdata->audio_s!=NULL){
+	pthread_join(sdata->audio_s->consumer_thread_id, NULL);
+	free(sdata->audio_s);
+	sdata->audio_s=NULL;
+	}
+finish_recording();
 return 0;
 }
 
@@ -949,15 +972,7 @@ if(sdata->audio_s!=NULL){
 
 Tcl_SetObjResult(interp, Tcl_NewIntObj(total));
 if((sdata!=NULL)&&(sdata->audio_s==NULL)&&(sdata->video_s==NULL)){
-	pthread_mutex_lock(&(sdata->format_context_mutex));
-	if(sdata->format_context.oformat!=NULL)
-		av_write_trailer(&(sdata->format_context));
-	pthread_mutex_unlock(&(sdata->format_context_mutex));
-	close(sdata->fd_out);
-	free(sdata);
-	sdata=NULL;
-	fprintf(stderr,"Recording finished\n");
-	return TCL_OK; 
+	finish_recording();
 	}
 if(sdata->video_s!=NULL){
 	pthread_mutex_unlock(&(sdata->video_s->ctr_mutex));
@@ -1069,17 +1084,8 @@ sdata->audio_sample_top_left=0;
 sdata->audio_sample_top_right=0;
 for(i=0;i<32;i++)sdata->luma_hist[i]=0;
 
-
 if((sdata!=NULL)&&(sdata->audio_s==NULL)&&(sdata->video_s==NULL)){
-	pthread_mutex_lock(&(sdata->format_context_mutex));
-	if(sdata->format_context.oformat!=NULL)
-		av_write_trailer(&(sdata->format_context));
-	close(sdata->fd_out);
-	pthread_mutex_unlock(&(sdata->format_context_mutex));
-	free(sdata);
-	sdata=NULL;
-	fprintf(stderr,"Recording finished\n");
-	return TCL_OK; 
+	finish_recording();
 	}
 if(sdata->video_s!=NULL){
 	pthread_mutex_unlock(&(sdata->video_s->ctr_mutex));
