@@ -4,7 +4,7 @@ AC_PREREQ(2.57)
 # Note to self: always bump version number when there are changes
 # in setup window or avview_shell
 #
-AC_INIT([AVview], [0.11.12], [gatos-devel@lists.sf.net])
+AC_INIT([AVview], [0.12.5], [gatos-devel@lists.sf.net])
 #
 # For now I'll be happier without NEWS and Changelog files.
 #
@@ -84,9 +84,24 @@ AC_CHECK_HEADER(linux/videodev.h, ,echo "Avview requires video4linux support. Yo
 
 AC_CHECK_HEADER(libzvbi.h, , echo "Avview requires libzvbi 0.2.3 or later" ; exit )
 
+use_xinerama=0
+AC_CHECK_HEADER(X11/extensions/Xinerama.h, 
+	AC_DEFINE(USE_XINERAMA, 1, [Is Xinerama present])
+	use_xinerama=1 ,
+	AC_DEFINE(USE_XINERAMA, 0, [Is Xinerama present])
+	,[
+	#include <X11/X.h>
+	#include <X11/Xlib.h>
+	])
+
+AC_SUBST(USE_XINERAMA)
+
 AC_CHECK_LIB([X11], [XCreateSimpleWindow],,,[$X_LIBS])
 AC_CHECK_LIB([Xext], [XInitExtension],,,[$X_LIBS])
 AC_CHECK_LIB([Xv], [XvPutVideo],,,[$X_LIBS -lX11 -lXext])
+AC_CHECK_LIB([Xinerama], [XineramaIsActive],,,[$X_LIBS -lX11 -lXext])
+
+
 
 A_CFLAGS="$CFLAGS"
 

@@ -587,6 +587,11 @@ if { $fullscreen_mode } {
 			}
 		set screen_width   [winfo screenwidth $VIDEO_WINDOW]
 		set screen_height  [winfo screenheight $VIDEO_WINDOW]
+		
+		if { [xmisc_xinerama_active $VIDEO_WINDOW] } {
+			puts stderr "Xinerama is active"
+			puts stderr "Xinerama info: [xmisc_xinerama_query_screens $VIDEO_WINDOW]"
+			}
 
 		wm geometry . =${screen_width}x${screen_height}+0+0
 		place $VIDEO_WINDOW.onscreen_display -relx 0.05 -rely 0.05 -anchor nw

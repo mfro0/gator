@@ -23,6 +23,11 @@
 #include <X11/extensions/XShm.h>
 #include <X11/extensions/dpms.h>
 #include <X11/Xutil.h>
+
+#if USE_XINERAMA
+#include <X11/extensions/Xinerama.h>
+#endif
+
 #include <tcl.h>
 #include <tk.h>
 
@@ -453,6 +458,79 @@ Tcl_SetObjResult(interp, ans);
 return TCL_OK;
 }
 
+#if USE_XINERAMA
+int xmisc_xinerama_active(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
+{
+Tk_Window tkwin;
+
+Tcl_ResetResult(interp);
+
+if(argc<2){
+	Tcl_AppendResult(interp,"ERROR: xmisc_xinerama_active requires at least one argument", NULL);
+	return TCL_ERROR;
+	}
+tkwin=Tk_NameToWindow(interp,argv[1], Tk_MainWindow(interp));
+
+if(tkwin==NULL){
+	Tcl_AppendResult(interp,"ERROR: xmisc_xinerama_active: first argument must be an existing toplevel or frame window", NULL);
+	return TCL_ERROR;
+	}
+
+Tcl_SetObjResult(interp, Tcl_NewIntObj(XineramaIsActive(Tk_Display(tkwin))));
+return TCL_OK;
+}
+
+int xmisc_xinerama_query_screens(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
+{
+Tk_Window tkwin;
+Tcl_Obj *ans, *l;
+XineramaScreenInfo *xsi;
+int i,num;
+
+Tcl_ResetResult(interp);
+
+if(argc<2){
+	Tcl_AppendResult(interp,"ERROR: xmisc_xinerama_query_screens requires at least one argument", NULL);
+	return TCL_ERROR;
+	}
+tkwin=Tk_NameToWindow(interp,argv[1], Tk_MainWindow(interp));
+
+if(tkwin==NULL){
+	Tcl_AppendResult(interp,"ERROR: xmisc_xinerama_query_screens: first argument must be an existing toplevel or frame window", NULL);
+	return TCL_ERROR;
+	}
+xsi=XineramaQueryScreens(Tk_Display(tkwin), &num);
+if(xsi==NULL){
+	Tcl_AppendResult(interp,"ERROR: xmisc_xinerama_query_screens: could not obtain screen info", NULL);
+	return TCL_ERROR;	
+	}
+ans=Tcl_NewListObj(interp, NULL);
+for(i=0;i<num;i++){
+	Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("screen",-1));
+	Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj(xsi[i].screen_number));
+	Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("coords",-1));
+	l=Tcl_NewListObj(interp, NULL);
+	Tcl_ListObjAppendElement(interp, l, Tcl_NewIntObj(xsi[i].x_org));
+	Tcl_ListObjAppendElement(interp, l, Tcl_NewIntObj(xsi[i].y_org));
+	Tcl_ListObjAppendElement(interp, l, Tcl_NewIntObj(xsi[i].width));
+	Tcl_ListObjAppendElement(interp, l, Tcl_NewIntObj(xsi[i].height));
+	Tcl_ListObjAppendElement(interp, ans, l);
+	}
+Tcl_SetObjResult(interp, ans);
+XFree(xsi);
+return TCL_OK;
+}
+#else
+int xmisc_xinerama_active(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
+{
+Tk_Window tkwin;
+
+Tcl_ResetResult(interp);
+Tcl_SetObjResult(interp, Tcl_NewIntObj(0));
+return TCL_OK;
+}
+#endif
+
 struct {
 	char *name;
 	Tcl_CmdProc *command;
@@ -464,6 +542,10 @@ struct {
 	{"xmisc_seticon", xmisc_seticon},
 	{"xmisc_settextproperty", xmisc_settextproperty},
 	{"xmisc_querytree", xmisc_querytree},
+	{"xmisc_xinerama_active", xmisc_xinerama_active},
+	#if USE_XINERAMA
+	{"xmisc_xinerama_query_screens", xmisc_xinerama_query_screens},
+	#endif
 	{NULL, NULL}
 	};
 
