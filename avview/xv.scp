@@ -71,7 +71,7 @@ global $attr_var
 
 global attr_count
 
-puts "$name $range $type"
+#puts "$name $range $type"
 switch  $type {
 	"none" {
 		return

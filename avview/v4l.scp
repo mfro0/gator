@@ -60,7 +60,6 @@ grid $cw.devicel $cw.device_optionmenu $cw.rescan_button -sticky news
 grid configure $cw.devicel -sticky nws
 
 set methods [get_deinterlacing_methods]
-puts "methods=$methods"
 eval label $cw.model -text "\"Recording mode: \"" [get_settings $cw.model Capture V4L]
 set menu [tk_optionMenu $cw.mode_optionmenu current_v4l_mode None]
 $menu delete 0 end
