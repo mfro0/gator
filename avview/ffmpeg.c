@@ -527,15 +527,28 @@ switch(data->mode){
 		sdata->video_codec_context.height=data->vwin.height;
 		break;
 	}
+
+#ifdef FRAME_RATE_BASE
+	/* ffmpeg 0.4.6 */
+	#define FFMPEG_FRAME_RATE_BASE  FRAME_RATE_BASE
+#else
+#ifdef DEFAULT_FRAME_RATE_BASE
+	/* ffmpeg from current CVS */
+	#define FFMPEG_FRAME_RATE_BASE  DEFAULT_FRAME_RATE_BASE
+#else
+	#error "FRAME_RATE_BASE is not defined"
+#endif
+#endif
+
 sdata->video_codec_context.frame_rate=0;
-if(arg_v4l_rate!=NULL)sdata->video_codec_context.frame_rate=rint(atof(arg_v4l_rate)*FRAME_RATE_BASE);
-if(sdata->video_codec_context.frame_rate<=0)sdata->video_codec_context.frame_rate=60*FRAME_RATE_BASE;
+if(arg_v4l_rate!=NULL)sdata->video_codec_context.frame_rate=rint(atof(arg_v4l_rate)*FFMPEG_FRAME_RATE_BASE);
+if(sdata->video_codec_context.frame_rate<=0)sdata->video_codec_context.frame_rate=60*FFMPEG_FRAME_RATE_BASE;
 if(data->step_frames>0)sdata->video_codec_context.frame_rate=sdata->video_codec_context.frame_rate/data->step_frames;
 a=(((800000.0*data->vwin.width)*data->vwin.height)*sdata->video_codec_context.frame_rate);
-b=(352.0*288.0*25.0*FRAME_RATE_BASE);
+b=(352.0*288.0*25.0*FFMPEG_FRAME_RATE_BASE);
 sdata->video_codec_context.bit_rate=0;
 if(arg_video_bitrate!=NULL)sdata->video_codec_context.bit_rate=atol(arg_video_bitrate);
-if(sdata->video_codec_context.bit_rate< (sdata->video_codec_context.frame_rate/FRAME_RATE_BASE+1))
+if(sdata->video_codec_context.bit_rate< (sdata->video_codec_context.frame_rate/FFMPEG_FRAME_RATE_BASE+1))
 	sdata->video_codec_context.bit_rate=rint(a/b);
 fprintf(stderr,"video: using bitrate=%d, frame_rate=%d\n", sdata->video_codec_context.bit_rate, sdata->video_codec_context.frame_rate);
 sdata->video_codec_context.pix_fmt=PIX_FMT_YUV420P;
@@ -550,7 +563,7 @@ if(sdata->quality>sdata->video_codec_context.qmax)sdata->quality=sdata->video_co
 
 sdata->video_codec_context.max_qdiff=3;
 sdata->video_codec_context.aspect_ratio=FF_ASPECT_4_3_625;
-sdata->video_codec_context.me_method=4;
+sdata->video_codec_context.me_method=ME_FULL;
 sdata->video_codec_context.qblur=0.5;
 sdata->video_codec_context.qcompress=0.5;
 sdata->video_codec_context.b_quant_factor=1.25;
