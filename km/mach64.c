@@ -123,7 +123,7 @@ for(i=0;i<(kms->dvb.size/PAGE_SIZE);i++){
 return 0;
 }
 
-static void mach64_start_frame_transfer(KM_STRUCT *kms, int buffer, int field)
+static void mach64_start_frame_transfer2(KM_STRUCT *kms, int buffer, int field)
 {
 long offset, status;
 if(buffer<0){
@@ -159,6 +159,41 @@ writel(kvirt_to_pa(kms->dma_table[buffer])|MACH64_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM
 KM_DEBUG("start_frame_transfer_buf0\n");
 }
 
+static void mach64_start_request_transfer(KM_TRANSFER_REQUEST *kmtr)
+{
+long status;
+KM_STRUCT *kms=kmtr->user_data;
+mach64_wait_for_idle(kms);
+wmb();
+writel(kvirt_to_pa(kms->dma_table[kmtr->buffer])|MACH64_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM, 
+	kms->reg_aperture+MACH64_BM_SYSTEM_TABLE);
+}
+
+static void mach64_schedule_request(KM_STRUCT *kms, int buffer, int field)
+{
+long offset;
+if(buffer<0){
+	KM_DEBUG("mach64_schedule_request buffer=%d field=%d\n",buffer, field);
+	return;
+	}
+if(field){
+	offset=kms->buf0_even_offset;
+	kms->kmsbi[buffer].user_flag&=~KM_FI_ODD;
+	} else {
+	offset=kms->buf0_odd_offset;
+	kms->kmsbi[buffer].user_flag|=KM_FI_ODD;
+	}
+KM_DEBUG("buf=%d field=%d\n", buffer, field);
+kms->fi[buffer].timestamp_start=jiffies;
+mach64_setup_dma_table(kms, (kms->dma_table[buffer]), offset, kms->v4l_free[buffer]);
+/* start transfer */
+kms->total_frames++;
+kms->kmsbi[buffer].user_flag|=KM_FI_DMA_ACTIVE;
+kms->kmsbi[buffer].age=kms->total_frames;
+wmb();
+km_add_transfer_request(&(kms->gui_dma_queue),
+	kms->kmsbi, &(kms->dvb), buffer, KM_TRANSFER_TO_SYSTEM_RAM, mach64_start_request_transfer, kms);
+}
 
 static int mach64_is_capture_irq_active(KM_STRUCT *kms)
 {
@@ -170,8 +205,8 @@ writel(ACK_INTERRUPT(status, MACH64_CAPBUF0_INT_ACK|MACH64_CAPBUF1_INT_ACK), kms
 KM_DEBUG("CRTC_INT_CNTL=0x%08x\n", status);
 /* do not start dma transfer if capture is not active anymore */
 if(!mach64_is_capture_active(kms))return 1;
-if(status & MACH64_CAPBUF0_INT_ACK)mach64_start_frame_transfer(kms, find_free_buffer(kms), 0);
-if(status & MACH64_CAPBUF1_INT_ACK)mach64_start_frame_transfer(kms, find_free_buffer(kms), 1); 
+if(status & MACH64_CAPBUF0_INT_ACK)mach64_schedule_request(kms, find_free_buffer(kms), 0);
+if(status & MACH64_CAPBUF1_INT_ACK)mach64_schedule_request(kms, find_free_buffer(kms), 1); 
 return 1;
 }
 

@@ -134,7 +134,7 @@ for(i=0;i<(kms->dvb.size/PAGE_SIZE);i++){
 return 0;
 }
 
-static void rage128_start_frame_transfer(KM_STRUCT *kms, int buffer, int field)
+static void rage128_start_frame_transfer2(KM_STRUCT *kms, int buffer, int field)
 {
 long offset, status;
 u32 a;
@@ -171,6 +171,42 @@ writel(kvirt_to_pa(kms->dma_table[buffer])|RAGE128_SYSTEM_TRIGGER_VIDEO_TO_SYSTE
 KM_DEBUG("start_frame_transfer_buf0\n");
 }
 
+static void rage128_start_request_transfer(KM_TRANSFER_REQUEST *kmtr)
+{
+long status;
+KM_STRUCT *kms=kmtr->user_data;
+mach128_wait_for_idle(kms);
+wmb();
+writel(kvirt_to_pa(kms->dma_table[kmtr->buffer])|RAGE128_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM, 
+	kms->reg_aperture+RAGE128_BM_VIDCAP_BUF0);
+}
+
+static void rage128_schedule_request(KM_STRUCT *kms, int buffer, int field)
+{
+long offset;
+if(buffer<0){
+	KM_DEBUG("mach64_schedule_request buffer=%d field=%d\n",buffer, field);
+	return;
+	}
+if(field){
+	offset=kms->buf0_even_offset;
+	kms->kmsbi[buffer].user_flag&=~KM_FI_ODD;
+	} else {
+	offset=kms->buf0_odd_offset;
+	kms->kmsbi[buffer].user_flag|=KM_FI_ODD;
+	}
+KM_DEBUG("buf=%d field=%d\n", buffer, field);
+kms->fi[buffer].timestamp_start=jiffies;
+rage128_setup_dma_table(kms, (kms->dma_table[buffer]), offset, kms->v4l_free[buffer]);
+/* start transfer */
+kms->total_frames++;
+kms->kmsbi[buffer].user_flag|=KM_FI_DMA_ACTIVE;
+kms->kmsbi[buffer].age=kms->total_frames;
+wmb();
+km_add_transfer_request(&(kms->gui_dma_queue),
+	kms->kmsbi, &(kms->dvb), buffer, KM_TRANSFER_TO_SYSTEM_RAM, rage128_start_request_transfer, kms);
+}
+
 static int rage128_is_capture_irq_active(KM_STRUCT *kms)
 {
 long status, mask;
@@ -183,8 +219,8 @@ rage128_wait_for_idle(kms);
 writel(status & mask, kms->reg_aperture+RAGE128_CAP_INT_STATUS);
 /* do not start dma transfer if capture is not active anymore */
 if(!rage128_is_capture_active(kms))return 1;
-if(status & 1)rage128_start_frame_transfer(kms, find_free_buffer(kms), 0);
-if(status & 2)rage128_start_frame_transfer(kms, find_free_buffer(kms), 1); 
+if(status & 1)rage128_schedule_request(kms, find_free_buffer(kms), 0);
+if(status & 2)rage128_schedule_request(kms, find_free_buffer(kms), 1); 
 return 1;
 }
 
