@@ -95,6 +95,7 @@ typedef struct S_KM_STRUCT {
 	atomic_t recursion_count;
 
 	
+	KM_FILE_PRIVATE_DATA *kmfpd;
 	KDU_FILE_PRIVATE_DATA *v4l_kdufpd;
 	KDU_FILE_PRIVATE_DATA *vbi_kdufpd;
 	

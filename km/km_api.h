@@ -68,8 +68,13 @@ typedef struct {
 
 typedef struct {
 	u32 count;
-	void (*zero2one)(struct S_KM_FIELD *kmf);
-	void (*one2zero)(struct S_KM_FIELD *kmf);
+	/* this function returns zero value if operation was 
+	   successful */
+	int (*zero2one)(void *priv);
+	/* this function is supposed to always succeed, as it 
+	   can be called when the device is closed */
+	void (*one2zero)(void *priv);
+	void *priv;
 	} KM_FIELD_LEVEL_TRIGGER;
 
 typedef struct S_KM_FIELD {

@@ -249,7 +249,7 @@ for(i=0;i<kmd->num_fields;i++){
 		case KM_FIELD_TYPE_LEVEL_TRIGGER:
 			if(kmfpd->kfd[i].t.requested){
 				kmd->fields[i].data.t.count--;
-				if(!kmd->fields[i].data.t.count)kmd->fields[i].data.t.one2zero(&(kmd->fields[i]));				
+				if(!kmd->fields[i].data.t.count)kmd->fields[i].data.t.one2zero(kmd->fields[i].data.t.priv);				
 				}
 			break;
 		}
@@ -405,13 +405,20 @@ if((hash==kmd->report_hash)&& (count>8) && !strncmp("REPORT ", command, 7)){
 				if(!kfd->t.requested){ goto exit; /* redundant */ }
 				kfd->t.requested=0;
 				kf->data.t.count--;
-				if(!kf->data.t.count)kf->data.t.one2zero(kf);
+				if(!kf->data.t.count)kf->data.t.one2zero(kf->data.t.priv);
 				} else {
 				/* trigger raised */
 				if(kfd->t.requested){ goto exit; /* redundant */ }
-				kfd->t.requested=1;
-				kf->data.t.count++;
-				if(kf->data.t.count)kf->data.t.zero2one(kf);
+				/* the zero2one transition checks for success before
+				   increasing count first */
+				if(!kf->data.t.count && !kf->data.t.zero2one(kf->data.t.priv)){
+					kfd->t.requested=1;
+					kf->data.t.count++;
+					} else 
+				if(kf->data.t.count){
+					kfd->t.requested=1;
+					kf->data.t.count++;
+					}
 				}
 			break;
 		}

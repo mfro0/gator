@@ -32,6 +32,9 @@ static int km_v4l_open(struct video_device *dev, int flags)
 KM_STRUCT *kms=(KM_STRUCT *)dev->priv;
 int result;
 
+kms->kmfpd=open_km_device(kms->kmd);
+if(kms->kmfpd==NULL)return -EINVAL;
+
 if((result=start_video_capture(kms))<0)return result;
 
 kms->v4l_buf_parity=0;
@@ -51,6 +54,9 @@ KM_STRUCT *kms=(KM_STRUCT *)dev->priv;
 km_data_destroy_kdufpd(kms->v4l_kdufpd);
 kms->v4l_kdufpd=NULL;
 stop_video_capture(kms);
+
+close_km_device(kms->kmfpd);
+kms->kmfpd=NULL;
 }
 
 static long km_v4l_write(struct video_device *v, const char *buf, unsigned long count, int nonblock)
