@@ -266,7 +266,7 @@ trace vdelete current_alsa_device1 w "set_alsa_device .controlwin.alsamixer ; sk
 set alsa_device_menu [tk_optionMenu $cw.device_optionmenu current_alsa_device1 none]
 eval $cw.device_optionmenu configure [get_settings $cw.device_optionmenu ALSA]
 eval $alsa_device_menu configure [get_settings $alsa_device_menu ALSA menu]
-button $cw.rescan_button -text "Rescan" -command rescan_alsa_devices
+button $cw.rescan_button -text "Rescan" -command "rescan_alsa_devices $alsa_device_menu current_alsa_device1"
 eval $cw.rescan_button configure [get_settings $cw.rescan_button ALSA]
 grid $cw.devicel $cw.device_optionmenu $cw.rescan_button -sticky news
 grid configure $cw.devicel -sticky nws
@@ -276,7 +276,7 @@ trace variable current_alsa_device1 w "set_alsa_device .controlwin.alsamixer ; s
 grid $cw.f - - -sticky news
 
 set save_alsa_device "$current_alsa_device"
-after idle rescan_alsa_devices
+after idle "global current_alsa_device ; set current_alsa_device none ; rescan_alsa_devices $alsa_device_menu current_alsa_device1"
 global current_alsa_device1
 set current_alsa_device1 "$save_alsa_device"
 
@@ -317,20 +317,17 @@ if { "$current_alsa_device" != "none" } {
 
 }
 	
-proc rescan_alsa_devices {} {
-global alsa_device_menu
-global current_alsa_device
-global current_alsa_device1
-set current_alsa_device1 none
-set current_alsa_device none
+proc rescan_alsa_devices { alsa_device_menu variable} {
+global $variable
+set $variable none
 $alsa_device_menu delete 0 end
 $alsa_device_menu add radiobutton -label "none"\
-				-value "none" -variable current_alsa_device1
+				-value "none" -variable $variable
 for {set i [alsa_card_next -1]} {$i >= 0 } { set i [alsa_card_next $i] } {
 	set alsa_handle  "hw:CARD=$i"
 	alsa_card_load $alsa_handle
 	$alsa_device_menu add radiobutton -label "hw:CARD=$i [alsa_card_get_name $alsa_handle]"\
-				-value $alsa_handle -variable current_alsa_device1
+				-value $alsa_handle -variable $variable
 	}
 }
 
@@ -339,13 +336,13 @@ global current_alsa_device
 global current_alsa_device1
 global current_alsa_info
 global alsa_window
-if { "$current_alsa_device" != "none" } {
-	alsa_hctl_close "$current_alsa_device"
+if { $current_alsa_device != "none" } {
+	alsa_hctl_close $current_alsa_device
 	}
-set current_alsa_device "$current_alsa_device1"
-if { "$current_alsa_device" != "none" } {
-	alsa_hctl_open "$current_alsa_device" he
-	set current_alsa_info [alsa_hctl_get_elements_info "$current_alsa_device"]
+set current_alsa_device $current_alsa_device1
+if { $current_alsa_device != "none" } {
+	alsa_hctl_open $current_alsa_device
+	set current_alsa_info [alsa_hctl_get_elements_info $current_alsa_device]
 	}	
 if { $alsa_window } {
 	generate_mixer_window $cw.f1.c $cw.f1.c.f

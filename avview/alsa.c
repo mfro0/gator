@@ -138,8 +138,8 @@ int mode;
 ALSA_DATA *ad;
 
 Tcl_ResetResult(interp);
-if(argc<3){
-	Tcl_AppendResult(interp,"ERROR: alsa_hctl_open requires two arguments", NULL);
+if(argc<2){
+	Tcl_AppendResult(interp,"ERROR: alsa_hctl_open requires one argument", NULL);
 	return TCL_ERROR;
 	}
 i=add_string(alsa_sc, (char*)argv[1]);
