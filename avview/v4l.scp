@@ -8,6 +8,11 @@ global current_video_rate
 set current_video_rate 60
 global current_video_bitrate 
 set current_video_bitrate 300000
+global current_audio_rate 
+set current_audio_rate 48000
+global current_audio_bitrate 
+set current_audio_bitrate 64000
+
 
 
 #

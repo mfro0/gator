@@ -16,6 +16,8 @@ source v4l.scp
 source xv.scp
 
 global control_screen
+global show_control_window
+set show_control_window 1
 
 set control_screen1 ""
 regexp "control=\[^ \]+" "$argv" control_screen1
@@ -116,16 +118,22 @@ eval checkbutton $c.fullscreen_checkbutton -text "Fullscreen"  \
 	-indicatoron false -variable fullscreen_mode [get_settings $c.fullscreen_checkbutton]
 eval button $c.half_size_button -text \"Half size\" -command "make_half_size" [get_settings $c.half_size_button]
 
-eval menubutton $c.inteface_menubutton -text "Interface" -relief raised -menu $c.inteface_menubutton.menu [get_settings $c.inteface_menubutton]
-eval menu $c.inteface_menubutton.menu [get_settings $c.interface_menubutton.menu AVview]
-$c.inteface_menubutton.menu add checkbutton -label "Attributes" -variable attributes_window
-$c.inteface_menubutton.menu add checkbutton -label "Capture (V4L)" -variable capture_window
-$c.inteface_menubutton.menu add checkbutton -label "Audio mixer (ALSA)" -variable alsa_window
-$c.inteface_menubutton.menu add separator
-eval menu $c.inteface_menubutton.menu.theme [get_settings $c.inteface_menubutton.menu.theme AVview]
-$c.inteface_menubutton.menu add cascade -menu $c.inteface_menubutton.menu.theme -label "Theme"
+eval menubutton $c.interface_menubutton -text "Interface" -relief raised -menu $c.interface_menubutton.menu [get_settings $c.interface_menubutton]
+eval menu $c.interface_menubutton.menu [get_settings $c.interface_menubutton.menu AVview]
+$c.interface_menubutton.menu add checkbutton -label "Show main control window" -variable show_control_window
+$c.interface_menubutton.menu add checkbutton -label "Attributes" -variable attributes_window
+$c.interface_menubutton.menu add checkbutton -label "Capture (V4L)" -variable capture_window
+$c.interface_menubutton.menu add checkbutton -label "Audio mixer (ALSA)" -variable alsa_window
+$c.interface_menubutton.menu add separator
+eval menu $c.interface_menubutton.menu.theme [get_settings $c.interface_menubutton.menu.theme AVview]
+$c.interface_menubutton.menu add cascade -menu $c.interface_menubutton.menu.theme -label "Theme"
+$c.interface_menubutton.menu add separator
+$c.interface_menubutton.menu add command -label "Exit" -command {
+	save_settings
+	exit
+	}
 
-grid $c.fullscreen_checkbutton $c.half_size_button $c.inteface_menubutton -padx 5 -pady 5 -sticky ns
+grid $c.fullscreen_checkbutton $c.half_size_button $c.interface_menubutton -padx 5 -pady 5 -sticky ns
 
 # pack $c -expand yes -fill both
 # pack .controlwin.allattributes -expand yes -fill both -pady 5 
@@ -141,6 +149,27 @@ grid columnconfigure .controlwin 2 -weight 0
 grid rowconfigure .controlwin 2 -weight 1
 #grid rowconfigure .controlwin 0 -weight 1
 grid .controlwin.alsamixer -column 2 -row 1 -rowspan 2 -sticky news -pady 2 
+
+trace variable show_control_window w "show_control_window_proc ; skip_args3"
+
+proc show_control_window_proc {} {
+global show_control_window
+if { $show_control_window } {
+	wm deiconify .controlwin
+	} {
+	if { "[winfo screen .controlwin]" != "[winfo screen . ]" } {
+		set ans [tk_dialog .controlwin.withdraw_question "Hide main control window ?" \
+			"The main control window is displayed on the monitor different from main viewer window. If you hide it you will only be able to restore it from the main viewer window. Perhaps you would prefer to iconify control window?" "" 0 "Iconify" "Hide" "Never mind" ]
+		update
+		switch "$ans" \
+			"0"  { wm iconify .controlwin ; set show_control_window 1} \
+			"1"  { wm withdraw .controlwin } \
+			"2"  { set show_control_window 1 }
+		} {
+		wm withdraw .controlwin
+		}
+	}
+} 
 
 update
 update idletasks
@@ -289,6 +318,7 @@ global capture_window
 global alsa_window
 global current_alsa_device
 global file_save_path
+global show_control_window
 catch {
 	set fileid [open "~/.avview_state" w]
 	}
@@ -300,6 +330,7 @@ puts $fileid "global attributes_window"
 puts $fileid "global capture_window"
 puts $fileid "global alsa_window"
 puts $fileid "global current_alsa_device1"
+puts $fileid "global show_control_window"
 if { $current_port != "none" } {
 	puts $fileid "set current_port \"$current_port\""
 	if { $current_encoding_name != "none" } {
@@ -316,6 +347,7 @@ puts $fileid "set attributes_window $attributes_window"
 puts $fileid "set capture_window $capture_window"
 puts $fileid "set alsa_window $alsa_window"
 puts $fileid "set current_alsa_device1 \"$current_alsa_device\""
+puts $fileid "set show_control_window \"$show_control_window\""
 
 save_theme $fileid
 puts $fileid ""
@@ -480,7 +512,7 @@ menu .video_menu.channel_menu -type normal -tearoff false
 .video_menu add cascade -menu .video_menu.channel_menu -label Channel
 .video_menu add checkbutton -variable fullscreen_mode -label "Fullscreen"
 .video_menu add separator
-.video_menu add command -label "Settings" -command "raise .controlwin"
+.video_menu add checkbutton -label "Show control window" -variable show_control_window
 .video_menu add separator
 .video_menu add command -label "Dismiss this menu"
 
@@ -544,9 +576,9 @@ wm title .controlwin "AV Control"
 #
 # Generate theme menu
 #
-$c.inteface_menubutton.menu.theme delete 0 end
+$c.interface_menubutton.menu.theme delete 0 end
 foreach theme [lsort -ascii [array names theme_list]] {
-	$c.inteface_menubutton.menu.theme add radiobutton -label "$theme" \
+	$c.interface_menubutton.menu.theme add radiobutton -label "$theme" \
 		-value "$theme" -variable theme_name \
 		-command {global theme_name ; reset_theme $theme_name}
 	}
