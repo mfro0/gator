@@ -1627,6 +1627,8 @@ RADEONSetupImageVideo(ScreenPtr pScreen)
     RADEONPortPrivPtr pPriv;
     XF86VideoAdaptorPtr adapt;
 
+    info->accel->Sync(pScrn);
+
     if(info->adaptor != NULL){
     	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Reinitializing Xvideo subsystems\n");
     	RADEONResetVideo(pScrn);
@@ -1845,6 +1847,7 @@ RADEONStopVideo(ScrnInfoPtr pScrn, pointer data, Bool cleanup)
   unsigned char *RADEONMMIO = info->MMIO;
   RADEONPortPrivPtr pPriv = (RADEONPortPrivPtr)data;
 
+  info->accel->Sync(pScrn);
   REGION_EMPTY(pScrn->pScreen, &pPriv->clip);
 
   if(cleanup) {
@@ -1881,7 +1884,11 @@ RADEONSetPortAttribute(
   INT32 value,
   pointer data
 ){
+  RADEONInfoPtr info = RADEONPTR(pScrn);
   RADEONPortPrivPtr pPriv = (RADEONPortPrivPtr)data;
+
+  info->accel->Sync(pScrn);
+
 
 #define RTFSaturation(a)   (1.0 + ((a)*1.0)/1000.0)
 #define RTFBrightness(a)   (((a)*1.0)/2000.0)
@@ -2048,7 +2055,10 @@ RADEONGetPortAttribute(
   INT32 *value,
   pointer data
 ){
+  RADEONInfoPtr info = RADEONPTR(pScrn);
   RADEONPortPrivPtr pPriv = (RADEONPortPrivPtr)data;
+
+  info->accel->Sync(pScrn);
 
   if(attribute == xv_autopaint_colorkey) {
   	*value = pPriv->autopaint_colorkey;
@@ -2456,6 +2466,8 @@ RADEONPutImage(
    int top, left, npixels, nlines, bpp;
    BoxRec dstBox;
    CARD32 tmp;
+
+   info->accel->Sync(pScrn);
 
    /* if capture was active shutdown it first */
    if(pPriv->video_stream_active)
@@ -2936,6 +2948,7 @@ RADEONPutVideo(
    int width, height;
 
    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "PutVideo\n");
+   info->accel->Sync(pScrn);
    /*
     * s2offset, s3offset - byte offsets into U and V plane of the
     *                      source where copying starts.  Y plane is
@@ -3128,6 +3141,7 @@ RADEONVideoTimerCallback(ScrnInfoPtr pScrn, Time now)
     RADEONInfoPtr info = RADEONPTR(pScrn);
     RADEONPortPrivPtr pPriv = info->adaptor->pPortPrivates[0].ptr;
 
+    info->accel->Sync(pScrn);
     if(pPriv->videoStatus & TIMER_MASK) {
 	if(pPriv->videoStatus & OFF_TIMER) {
 	    if(pPriv->offTime < now) {
