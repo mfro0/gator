@@ -129,7 +129,7 @@ long status;
 KM_STRUCT *kms=kmtr->user_data;
 mach64_wait_for_idle(kms);
 wmb();
-writel(kvirt_to_pa(kms->capture.dma_table[kmtr->buffer])|MACH64_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM, 
+writel(kvirt_to_bus(kms->capture.dma_table[kmtr->buffer])|MACH64_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM, 
 	kms->reg_aperture+MACH64_BM_SYSTEM_TABLE);
 }
 

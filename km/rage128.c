@@ -140,7 +140,7 @@ long status;
 KM_STRUCT *kms=kmtr->user_data;
 rage128_wait_for_idle(kms);
 wmb();
-writel(kvirt_to_pa(kms->capture.dma_table[kmtr->buffer])|RAGE128_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM, 
+writel(kvirt_to_bus(kms->capture.dma_table[kmtr->buffer])|RAGE128_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM, 
 	kms->reg_aperture+RAGE128_BM_VIDCAP_BUF0);
 }
 
