@@ -408,7 +408,8 @@ if { $fullscreen_mode } {
 	set saved_vw_height [$VIDEO_WINDOW cget -height]
 	
 	wm geometry . =[winfo screenwidth $VIDEO_WINDOW]x[winfo screenheight $VIDEO_WINDOW]+0+0
-	
+	update
+	update idletasks
 
 	place $VIDEO_WINDOW.onscreen_display -relx 0.05 -rely 0.05 -anchor nw
 	
@@ -425,7 +426,6 @@ if { $fullscreen_mode } {
 		0 0 0 0 off
 #	after idle "raise ."
 	} {
-	wm geometry . =$saved_main_window_geometry
 	$VIDEO_WINDOW configure -width $saved_vw_width -height $saved_vw_height
 	place $VIDEO_WINDOW.onscreen_display -relx 0.05 -rely 0.05 -anchor nw
 	xmisc_setscreensaver $VIDEO_WINDOW [lindex $saved_screensaver_mode 0]\
@@ -442,6 +442,9 @@ if { $fullscreen_mode } {
 	wm overrideredirect . false
 	wm withdraw .
 	wm deiconify .
+	update 
+	update idletasks
+	wm geometry . =$saved_main_window_geometry
 	}
 }
 
