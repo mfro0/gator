@@ -212,6 +212,17 @@ if((i<0)||((ad=(ALSA_DATA *)alsa_sc->data[i])==NULL)){
 	Tcl_AppendResult(interp,"ERROR: alsa_ctl_get_elements_info: no such control open", NULL);
 	return TCL_ERROR;
 	}
+if(ad->elem_count>0){
+	for(k=0;k<ad->elem_count;k++){
+		snd_ctl_elem_info_free(ad->einfo[j]);
+		}
+	free(ad->einfo);
+	free(ad->elem);
+	free(ad->etype);
+	ad->elem_count=0;
+	ad->einfo=NULL;
+	ad->etype=NULL;
+	}
 count=snd_hctl_get_count(ad->hctl);
 ad->elem_count=count;
 ad->elem=do_alloc(count, sizeof(snd_hctl_elem_t *));

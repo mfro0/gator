@@ -209,7 +209,7 @@ set port_size [xv_port_encoding_size $VIDEO_WINDOW $current_port $current_encodi
 
 xv_setportattribute $VIDEO_WINDOW $current_port "XV_COLORKEY" [xv_getwindowbackgroundpixel $VIDEO_WINDOW]
 
-xv_putvideo $VIDEO_WINDOW $current_port 0 0 [lindex $port_size 0] [lindex $port_size 1]
+xv_putvideo $VIDEO_WINDOW $current_port 0 0 [expr [lindex $port_size 0]-1] [expr [lindex $port_size 1]-1]
 }
 
 proc find_attribute_widget {video_window port attribute} {
