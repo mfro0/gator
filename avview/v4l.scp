@@ -346,7 +346,7 @@ if { ("$ffmpeg_file_format" == "AVI") } {
 	tk_dialog .controlwin.capture.wrong_parameters "Warning" \
 		"AVI files are internally limited to 1Gb size\nBe sure to end the capture before this limit is reached" ""\
 		0 "OK"
-	return 0
+	return 1
 	}
 
 if { ("$ffmpeg_file_format" == "MPEG") &&
