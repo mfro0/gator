@@ -418,7 +418,7 @@ while(1){
 		INT_BIT_CAP0;
 	if(!status){
 		/* INT_BIT_CAP0 will tell us if any interrupt bits are high */
-		return IRQ_NONE;
+		return IRQ_HANDLED;
 		}
 	atomic_inc(&(kms->recursion_count));
 	/* bug ?? For some reason I think that changing recursion count in
