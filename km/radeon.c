@@ -390,7 +390,7 @@ km_add_transfer_request(&(kms->gui_dma_queue),
 	stream, buffer, KM_TRANSFER_TO_SYSTEM_RAM, radeon_start_request_transfer, kms);
 }
 
-void radeon_km_irq(int irq, void *dev_id, struct pt_regs *regs)
+irqreturn_t radeon_km_irq(int irq, void *dev_id, struct pt_regs *regs)
 {
 KM_STRUCT *kms;
 u32 status, status_cap, mask;
@@ -418,7 +418,7 @@ while(1){
 		INT_BIT_CAP0;
 	if(!status){
 		/* INT_BIT_CAP0 will tell us if any interrupt bits are high */
-		return;
+		return IRQ_NONE;
 		}
 	atomic_inc(&(kms->recursion_count));
 	/* bug ?? For some reason I think that changing recursion count in
@@ -428,7 +428,7 @@ while(1){
 	if(atomic_read(&(kms->recursion_count))>1){
 		printk("km: irq handler double entry\n");
 		atomic_dec(&(kms->recursion_count));
-		return; /* another interrupt handler is active */
+		return IRQ_NONE; /* another interrupt handler is active */
 		}
 	status_cap=0;
 	if(status & INT_BIT_CAP0){
@@ -488,6 +488,7 @@ while(1){
 		}
 	atomic_dec(&(kms->recursion_count));
 	}
+ return  IRQ_HANDLED;
 }
 
 /* this is now done in ati.2 XFree86 driver */

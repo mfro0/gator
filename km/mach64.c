@@ -169,7 +169,7 @@ km_add_transfer_request(&(kms->gui_dma_queue),
 	stream, buffer, KM_TRANSFER_TO_SYSTEM_RAM, mach64_start_request_transfer, kms);
 }
 
-void mach64_km_irq(int irq, void *dev_id, struct pt_regs *regs)
+irqreturn_t mach64_km_irq(int irq, void *dev_id, struct pt_regs *regs)
 {
 KM_STRUCT *kms;
 long status, status_cap, mask;
@@ -213,4 +213,5 @@ while(1){
 		}
 	if(!(status & (MACH64_CAPBUF0_INT_ACK|MACH64_CAPBUF1_INT_ACK|MACH64_BUSMASTER_INT_ACK)))return;
 	}
+ return IRQ_HANDLED; 
 }

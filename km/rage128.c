@@ -201,7 +201,7 @@ if(spin_trylock(&(kms->gui_dma_queue.lock))){
 return 1;
 }
 
-void rage128_km_irq(int irq, void *dev_id, struct pt_regs *regs)
+irqreturn_t rage128_km_irq(int irq, void *dev_id, struct pt_regs *regs)
 {
 KM_STRUCT *kms;
 long status, mask;
@@ -218,7 +218,7 @@ while(1){
 	if(!rage128_is_capture_irq_active(kms)){
 		status=readl(kms->reg_aperture+RAGE128_GEN_INT_STATUS);
 		mask=readl(kms->reg_aperture+RAGE128_GEN_INT_CNTL);
-		if(!(status & mask))return;
+		if(!(status & mask))return IRQ_NONE;
 		rage128_wait_for_idle(kms);
 		if(status & (1<<16))acknowledge_dma(kms);
 		writel(status & mask, kms->reg_aperture+RAGE128_GEN_INT_STATUS);
@@ -229,4 +229,5 @@ while(1){
 			}
 		}
 	}
+ return IRQ_HANDLED;
 }
