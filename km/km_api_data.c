@@ -9,7 +9,11 @@
 #include <linux/autoconf.h>
 #if defined(MODULE) && defined(CONFIG_MODVERSIONS)
 #define MODVERSIONS
+#ifdef LINUX_2_6
+#include <config/modversions.h>
+#else
 #include <linux/modversions.h>
+#endif
 #endif
 
 #include <linux/proc_fs.h>
@@ -43,11 +47,15 @@ spin_lock(&data_units_lock);
 if(data_unit<0)return NULL;
 if(data_unit>=du_free)return NULL;
 kdu=&(data_units[data_unit]);
+#ifndef LINUX_2_6
 MOD_INC_USE_COUNT;
+#endif
 spin_lock(&(kdu->lock));
 spin_unlock(&data_units_lock);
 if(kdu->use_count<=0){
-	MOD_DEC_USE_COUNT;
+#ifndef LINUX_2_6
+  	MOD_DEC_USE_COUNT;
+#endif
 	spin_unlock(&(kdu->lock));
 	return NULL;
 	}
@@ -55,7 +63,9 @@ kdu->use_count++;
 kdufpd=kmalloc(sizeof(KDU_FILE_PRIVATE_DATA), GFP_KERNEL);
 if(kdufpd==NULL){
 	kdu->use_count--;
-	MOD_DEC_USE_COUNT;
+#ifndef LINUX_2_6
+		MOD_DEC_USE_COUNT;
+#endif
 	spin_unlock(&(kdu->lock));
 	return NULL;
 	}
@@ -78,7 +88,9 @@ if(kdu==NULL)printk(KERN_ERR "BUG in %s", __FUNCTION__);
 spin_lock(&(kdu->lock));
 kdu->use_count--;
 spin_unlock(&(kdu->lock));
+#ifndef LINUX_2_6
 MOD_DEC_USE_COUNT;
+#endif
 kfree(kdufpd);
 }
 
@@ -261,7 +273,11 @@ for(i=0;i<dvb->n;i++)
 		if(chunk_size*i+PAGE_SIZE*j>offset+size)return 0;
 		page=kvirt_to_pa(dvb->ptr[i]+j*PAGE_SIZE);
 		start=vma->vm_start+chunk_size*i+PAGE_SIZE*j-offset;
+#ifdef LINUX_2_6
+		if(remap_page_range(vma,start, page, PAGE_SIZE, PAGE_SHARED))
+#else
 		if(remap_page_range(start, page, PAGE_SIZE, PAGE_SHARED))
+#endif
 			return -EAGAIN;
 		}
 return 0;
@@ -329,7 +345,9 @@ if(k<0){
 		}
 	du_free++;
 	}
+#ifndef LINUX_2_6
 MOD_INC_USE_COUNT;
+#endif
 kdu=&(data_units[k]);
 spin_lock_init(&(kdu->lock));
 spin_lock(&(kdu->lock));
@@ -345,7 +363,9 @@ if(mode!=0){
 	if(kdu->data==NULL){
 		printk(KERN_ERR "Could not create proc entry %s\n", temp);
 		spin_unlock(&(kdu->lock));
-		MOD_DEC_USE_COUNT;
+#ifndef LINUX_2_6
+				MOD_DEC_USE_COUNT;
+#endif
 		return -1;
 		}
 	kdu->data->data=kdu;
@@ -398,7 +418,9 @@ spin_lock(&(kdu->lock));
 spin_unlock(&data_units_lock);
 kdu->use_count--;
 if(kdu->use_count>0){
-	MOD_DEC_USE_COUNT;
+#ifndef LINUX_2_6
+  	MOD_DEC_USE_COUNT;
+#endif
 	spin_unlock(&(kdu->lock));
 	return; /* something is still using it */
 	}
@@ -410,7 +432,9 @@ if(kdu->data!=NULL){
 	}
 if(kdu->free_private!=NULL)kdu->free_private(kdu);
 spin_unlock(&(kdu->lock));
+#ifndef LINUX_2_6
 MOD_DEC_USE_COUNT;
+#endif
 }
 
 int __init init_km_data_units(void)

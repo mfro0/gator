@@ -11,7 +11,11 @@
 #include <linux/autoconf.h>
 #if defined(MODULE) && defined(CONFIG_MODVERSIONS)
 #define MODVERSIONS
+#ifdef LINUX_2_6
+#include <config/modversions.h>
+#else
 #include <linux/modversions.h>
+#endif
 #endif
 
 #include <linux/types.h>
@@ -24,7 +28,9 @@
 #include <linux/init.h>
 #include <linux/pci.h>
 #include <linux/interrupt.h>
+#ifndef LINUX_2_6
 #include <linux/wrapper.h>
+#endif
 #include <linux/videodev.h>
 
 
@@ -680,8 +686,17 @@ memcpy(kms->kmfl, kmfl_template, sizeof(kmfl_template));
 
 #define FIELD(name)   kms->kmfl[find_kmfl(kms->kmfl, name)]
 
+#ifdef LINUX_2_6
+#ifdef CONFIG_PCI_NAMES
+FIELD("DEVICE_ID").data.c.string=kmalloc(strlen(dev->pretty_name)+1, GFP_KERNEL);
+memcpy(FIELD("DEVICE_ID").data.c.string, dev->pretty_name, strlen(dev->pretty_name)+1);
+#else
+FIELD("DEVICE_ID").data.c.string=0;
+#endif
+#else
 FIELD("DEVICE_ID").data.c.string=kmalloc(strlen(dev->name)+1, GFP_KERNEL);
 memcpy(FIELD("DEVICE_ID").data.c.string, dev->name, strlen(dev->name)+1);
+#endif
 
 FIELD("LOCATION_ID").data.c.string=kmalloc(strlen(dev->slot_name)+10, GFP_KERNEL);
 sprintf(FIELD("LOCATION_ID").data.c.string, "PCI:%s", dev->slot_name);
@@ -716,8 +731,18 @@ FIELD("VBI_STREAM_ACTIVE").data.t.one2zero=stop_video_capture;
 FIELD("VBI_STREAM_ACTIVE").data.t.priv=kms;
 
 kms->kmd=add_km_device(kms->kmfl, kms);
+#ifdef LINUX_2_6
+#ifdef CONFIG_PCI_NAMES
+printk("Device %s %s (0x%04x:0x%04x) corresponds to /dev/video%d\n",
+	dev->pretty_name, dev->slot_name, dev->vendor, dev->device, kms->vd.minor);
+#else
+printk("Device %s (0x%04x:0x%04x) corresponds to /dev/video%d\n",
+	dev->slot_name, dev->vendor, dev->device, kms->vd.minor);
+#endif
+#else
 printk("Device %s %s (0x%04x:0x%04x) corresponds to /dev/video%d\n",
 	dev->name, dev->slot_name, dev->vendor, dev->device, kms->vd.minor);
+#endif
 pci_set_master(dev);
 printk("kms variables: reg_aperture=0x%08x\n",
 	kms->reg_aperture);
@@ -977,7 +1002,7 @@ static struct pci_driver radeon_km_pci_driver = {
 static int __init init_module(void)
 {
 int result;
-struct pci_dev *pdev;
+struct pci_dev *pdev=0;
 const struct pci_device_id *pdid;
 
 /* this does not do anything useful at the moment */
@@ -988,7 +1013,11 @@ printk("Kmultimedia module version %s loaded\n", KM_VERSION);
 printk("Page size is %ld sizeof(bm_list_descriptor)=%d sizeof(KM_STRUCT)=%d\n", PAGE_SIZE, sizeof(bm_list_descriptor), sizeof(KM_STRUCT));
 num_devices=0;
 result=-1;
+#ifdef LINUX_2_6
+ while( (pdev = pci_get_device(PCI_VENDOR_ID_ATI, PCI_ANY_ID, pdev))!=NULL ){
+#else
 pci_for_each_dev(pdev){
+#endif
 	if((pdid=pci_match_device(km_pci_tbl, pdev))!=NULL){
 		if(km_probe(pdev, pdid)>=0)result=0;
 		}

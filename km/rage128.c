@@ -9,7 +9,11 @@
 #include <linux/autoconf.h>
 #if defined(MODULE) && defined(CONFIG_MODVERSIONS)
 #define MODVERSIONS
+#ifdef LINUX_2_6
+#include <config/modversions.h>
+#else
 #include <linux/modversions.h>
+#endif
 #endif
 
 #include <linux/types.h>
@@ -21,7 +25,9 @@
 #include <linux/init.h>
 #include <linux/pci.h>
 #include <linux/interrupt.h>
+#ifndef LINUX_2_6
 #include <linux/wrapper.h>
+#endif
 #include <linux/videodev.h>
 #include <linux/delay.h>
 

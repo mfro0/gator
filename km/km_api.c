@@ -9,7 +9,11 @@
 #include <linux/autoconf.h>
 #if defined(MODULE) && defined(CONFIG_MODVERSIONS)
 #define MODVERSIONS
+#ifdef LINUX_2_6
+#include <config/modversions.h>
+#else
 #include <linux/modversions.h>
+#endif
 #endif
 
 #include <linux/proc_fs.h>
@@ -186,7 +190,9 @@ if(number>=devices_free)return NULL;
 kmd=(devices[number]);
 if((kmd==NULL)||(kmd->fields==NULL))return NULL;
 
+#ifndef LINUX_2_6
 MOD_INC_USE_COUNT;
+#endif
 
 spin_lock(&(kmd->lock));
 kmfpd=kmalloc(sizeof(KM_FILE_PRIVATE_DATA), GFP_KERNEL);
@@ -273,7 +279,9 @@ if(kmd->use_count<=0){
 	}
 spin_unlock(&(kmd->lock));
 
+#ifndef LINUX_2_6
 MOD_DEC_USE_COUNT;
+#endif
 }
 
 static int km_fo_control_release(struct inode * inode, struct file * file)
@@ -464,14 +472,18 @@ char temp[32];
 KM_DEVICE * kmd=NULL;
 KM_FIELD *kf=NULL;
 num=-1;
+#ifndef LINUX_2_6
 MOD_INC_USE_COUNT;
+#endif
 for(i=0;(num<0)&&(i<devices_free);i++){
 	if(devices[i]==NULL)num=i;
 	}
 if(num<0){
 	if(devices_free>=devices_size)expand_devices();
 	if(devices_free>=devices_size){
-		MOD_DEC_USE_COUNT;
+#ifndef LINUX_2_6
+	        MOD_DEC_USE_COUNT;
+#endif
 		return -ENOMEM;
 		}
 	num=devices_free;
@@ -479,7 +491,9 @@ if(num<0){
 	}
 kmd=kmalloc(sizeof(KM_DEVICE), GFP_KERNEL);
 if(kmd==NULL){
-	MOD_DEC_USE_COUNT;
+#ifndef LINUX_2_6
+        MOD_DEC_USE_COUNT;
+#endif
 	return -ENOMEM;
 	}
 devices[num]=kmd;
@@ -555,7 +569,9 @@ if(kmd->use_count<=0){
 	kfree(kmd);
 	}
 spin_unlock(&(kmd->lock));
+#ifndef LINUX_2_6
 MOD_DEC_USE_COUNT;
+#endif
 return 0;
 }
 

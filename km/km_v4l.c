@@ -9,7 +9,11 @@
 #include <linux/autoconf.h>
 #if defined(MODULE) && defined(CONFIG_MODVERSIONS)
 #define MODVERSIONS
+#ifdef LINUX_2_6
+#include <config/modversions.h>
+#else
 #include <linux/modversions.h>
+#endif
 #endif
 
 #include <linux/types.h>
@@ -21,14 +25,23 @@
 #include <linux/init.h>
 #include <linux/pci.h>
 #include <linux/interrupt.h>
+#ifndef LINUX_2_6
 #include <linux/wrapper.h>
+#endif
 #include <linux/videodev.h>
 
 #include "km.h"
 #include "km_memory.h"
 
+#ifdef LINUX_2_6
+static int km_v4l_open(struct inode *inode, struct file *file)
+{
+  struct video_device *dev = video_devdata(file);
+#else
 static int km_v4l_open(struct video_device *dev, int flags)
 {
+#endif
+
 KM_STRUCT *kms=(KM_STRUCT *)dev->priv;
 int result;
 
@@ -52,8 +65,14 @@ return 0;
 }
 
 
+#ifdef LINUX_2_6
+static int km_v4l_close(struct inode *inode, struct file *file)
+{
+  struct video_device *dev = video_devdata(file);
+#else
 static void km_v4l_close(struct video_device *dev)
 {
+#endif
 KM_STRUCT *kms=(KM_STRUCT *)dev->priv;
 
 km_data_destroy_kdufpd(kms->v4l_kdufpd);
@@ -61,17 +80,30 @@ kms->v4l_kdufpd=NULL;
 
 close_km_device(kms->kmfpd);
 kms->kmfpd=NULL;
+ return 0;
 }
 
+#ifdef LINUX_2_6
+static ssize_t km_v4l_write(struct file *file, const char __user *buf, size_t count, loff_t *ppos)
+{
+#else
 static long km_v4l_write(struct video_device *v, const char *buf, unsigned long count, int nonblock)
 {
+#endif
 return -EINVAL;
 }
 
+#ifdef LINUX_2_6
+static ssize_t km_v4l_read(struct file *file, char *buf, size_t count, loff_t *ppos)
+{
+  struct video_device *v = video_devdata(file);
+int done, nonblock = O_NONBLOCK&(file->f_flags);
+#else
 static long km_v4l_read(struct video_device *v, char *buf, unsigned long count, int nonblock)
 {
-KM_STRUCT *kms=(KM_STRUCT *)v->priv;
 int done;
+#endif
+KM_STRUCT *kms=(KM_STRUCT *)v->priv;
 KDU_FILE_PRIVATE_DATA *kdufpd=kms->v4l_kdufpd;
 
 done=km_data_generic_stream_read(kdufpd, &(kms->capture.dvb), 
@@ -85,8 +117,15 @@ if((done > 0) && (kdufpd->bytes_read>=kms->capture.dvb.free[kdufpd->buffer])){
 return done;
 }
 
+#ifdef LINUX_2_6
+static int km_v4l_ioctl(struct inode *inode, struct file *file, unsigned int cmd, unsigned long ul_arg)
+{
+  void *arg = (void *)ul_arg;
+  struct video_device *dev = video_devdata(file);
+#else
 static int km_v4l_ioctl(struct video_device *dev, unsigned int cmd, void *arg)
 {
+#endif
 KM_STRUCT *kms=(KM_STRUCT *)dev->priv;
 spin_lock(&(kms->kms_lock));
 switch(cmd){
@@ -163,10 +202,16 @@ return -EINVAL;
 }
 
 /* ignore this - it is bogus */
+#ifdef LINUX_2_6
+static int km_v4l_mmap(struct file *file, struct vm_area_struct *vma)
+{
+  struct video_device *dev = video_devdata(file);
+#else
 static int km_v4l_mmap(struct video_device *dev, const char *adr, unsigned long size)
 {
-KM_STRUCT *kms=(KM_STRUCT *)dev->priv;
 unsigned long start=(unsigned long) adr;
+#endif
+KM_STRUCT *kms=(KM_STRUCT *)dev->priv;
 unsigned long page,pos;
 KDU_FILE_PRIVATE_DATA *kdufpd=kms->v4l_kdufpd;
 return -ENOMEM;
@@ -195,16 +240,28 @@ while(size>0){
 return 0;
 }
 
+#ifdef LINUX_2_6
+static unsigned int km_v4l_poll(struct file *file, poll_table *wait)
+{
+  struct video_device *dev = video_devdata(file);
+#else
 static unsigned int km_v4l_poll(struct video_device *dev, struct file *file,
 	poll_table *wait)
 {
+#endif
 KM_STRUCT *kms=(KM_STRUCT *)dev->priv;
 
 return km_data_generic_stream_poll(kms->v4l_kdufpd, &(kms->capture.dvb), file, wait);
 }
 
+#ifdef LINUX_2_6
+static int km_vbi_open(struct inode *inode, struct file *file)
+{
+  struct video_device *dev = video_devdata(file);
+#else
 static int km_vbi_open(struct video_device *dev, int flags)
 {
+#endif
 KM_STRUCT *kms=(KM_STRUCT *)dev->priv;
 int result;
 
@@ -220,8 +277,14 @@ return 0;
 }
 
 
+#ifdef LINUX_2_6
+static int km_vbi_close(struct inode *inode, struct file *file)
+{
+  struct video_device *dev = video_devdata(file);
+#else
 static void km_vbi_close(struct video_device *dev)
 {
+#endif
 KM_STRUCT *kms=(KM_STRUCT *)dev->priv;
 
 km_data_destroy_kdufpd(kms->vbi_kdufpd);
@@ -229,15 +292,26 @@ kms->vbi_kdufpd=NULL;
 stop_vbi_capture(kms);
 }
 
+#ifdef LINUX_2_6
+static ssize_t km_vbi_write(struct file *file, const char __user *buf, size_t count, loff_t *ppos)
+#else
 static long km_vbi_write(struct video_device *v, const char *buf, unsigned long count, int nonblock)
+#endif
 {
 return -EINVAL;
 }
 
+#ifdef LINUX_2_6
+static ssize_t km_vbi_read(struct file *file, char *buf, size_t count, loff_t *ppos)
+{
+  struct video_device *v = video_devdata(file);
+  int done,r, nonblock = O_NONBLOCK&(file->f_flags);
+#else
 static long km_vbi_read(struct video_device *v, char *buf, unsigned long count, int nonblock)
 {
-KM_STRUCT *kms=(KM_STRUCT *)v->priv;
 int done,r;
+#endif
+KM_STRUCT *kms=(KM_STRUCT *)v->priv;
 KDU_FILE_PRIVATE_DATA *kdufpd=kms->vbi_kdufpd;
 
 /* V4L reading apps *expect* to receive *two* full fields of data.. wacky ! 
@@ -263,8 +337,15 @@ return done;
 #define BTTV_VBISIZE            _IOR('v' , BASE_VIDIOCPRIVATE+8, int)
 #endif
 
+#ifdef LINUX_2_6
+static int km_vbi_ioctl(struct inode *inode, struct file *file, unsigned int cmd, unsigned long ul_arg)
+{
+  void *arg = (void *)ul_arg;
+  struct video_device *dev = video_devdata(file);
+#else
 static int km_vbi_ioctl(struct video_device *dev, unsigned int cmd, void *arg)
 {
+#endif
 KM_STRUCT *kms=(KM_STRUCT *)dev->priv;
 long size;
 
@@ -311,9 +392,15 @@ switch(cmd){
 	}
 }
 
+#ifdef LINUX_2_6
+static unsigned int km_vbi_poll(struct file *file, poll_table *wait)
+{
+  struct video_device *dev = video_devdata(file);
+#else
 static unsigned int km_vbi_poll(struct video_device *dev, struct file *file,
 	poll_table *wait)
 {
+#endif
 KM_STRUCT *kms=(KM_STRUCT *)dev->priv;
 
 if(kms->vbi_kdufpd==NULL)return -EINVAL;
@@ -324,12 +411,29 @@ return km_data_generic_stream_poll(kms->vbi_kdufpd, &(kms->vbi.dvb), file, wait)
 #define VID_HARDWARE_KM 100
 #endif
 
+#ifdef LINUX_2_6
+static struct file_operations km_v4l_fops = {
+	.owner		= THIS_MODULE,
+	.open		= km_v4l_open,
+	.release	= km_v4l_close,
+	.read		= km_v4l_read,
+	.write		= km_v4l_write,
+	.mmap		= km_v4l_mmap,
+	.ioctl		= km_v4l_ioctl,
+	.poll		= km_v4l_poll,
+	.llseek		= no_llseek
+};
+#endif
+
 static struct video_device km_v4l_template=
 {
 	owner:		THIS_MODULE,
 	name:		"Km",
 	type:		VID_TYPE_CAPTURE|VID_TYPE_TELETEXT,
 	hardware:	VID_HARDWARE_KM,
+#ifdef LINUX_2_6
+	fops:		&km_v4l_fops,
+#else
 	open:		km_v4l_open,
 	close:		km_v4l_close,
 	read:		km_v4l_read,
@@ -337,8 +441,22 @@ static struct video_device km_v4l_template=
 	ioctl:		km_v4l_ioctl,
 	poll:		km_v4l_poll,
 	mmap:		km_v4l_mmap,
+#endif
 	minor:		-1,
 };
+
+#ifdef LINUX_2_6
+static struct file_operations km_vbi_fops = {
+	.owner		= THIS_MODULE,
+	.open		= km_vbi_open,
+	.release	= km_vbi_close,
+	.read		= km_vbi_read,
+	.write		= km_vbi_write,
+	.ioctl		= km_vbi_ioctl,
+	.poll		= km_vbi_poll,
+	.llseek		= no_llseek
+};
+#endif
 
 static struct video_device km_v4l_vbi_template=
 {
@@ -346,11 +464,15 @@ static struct video_device km_v4l_vbi_template=
 	name:		"Km",
 	type:		VID_TYPE_CAPTURE|VID_TYPE_TELETEXT,
 	hardware:	VID_HARDWARE_KM,
+#ifdef LINUX_2_6
+	fops:		&km_vbi_fops,
+#else
 	open:		km_vbi_open,
 	close:		km_vbi_close,
 	read:		km_vbi_read,
 	ioctl:		km_vbi_ioctl,
 	poll:		km_vbi_poll,
+#endif
 	minor:		-1,
 };
 

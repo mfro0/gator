@@ -7,7 +7,11 @@
 #include <linux/autoconf.h>
 #if defined(MODULE) && defined(CONFIG_MODVERSIONS)
 #define MODVERSIONS
+#ifdef LINUX_2_6
+#include <config/modversions.h>
+#else
 #include <linux/modversions.h>
+#endif
 #endif
 
 #include <linux/types.h>
@@ -19,8 +23,13 @@
 #include <linux/init.h>
 #include <linux/pci.h>
 #include <linux/interrupt.h>
+#ifndef LINUX_2_6
 #include <linux/wrapper.h>
+#endif
 #include <linux/mm.h>
+#ifdef LINUX_2_6
+#include <linux/page-flags.h>
+#endif
 
 #include "km_memory.h"
 
@@ -40,7 +49,11 @@ void * rvmalloc(signed long size)
 		while (size > 0) 
                 {
 			page = vmalloc_to_page((void *)adr);
+#ifdef LINUX_2_6
+			SetPageReserved(page);
+#else
 			mem_map_reserve(page);
+#endif
 			adr+=PAGE_SIZE;
 			size-=PAGE_SIZE;
 		}
@@ -59,7 +72,11 @@ void rvfree(void * mem, signed long size)
 		while (size > 0) 
                 {
 	                page =vmalloc_to_page((void *)adr);
+#ifdef LINUX_2_6
+			ClearPageReserved(page);
+#else
 			mem_map_unreserve(page);
+#endif
 			adr+=PAGE_SIZE;
 			size-=PAGE_SIZE;
 		}
