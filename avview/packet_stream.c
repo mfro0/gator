@@ -29,7 +29,8 @@ p->next=NULL;
 p->prev=NULL;
 p->size=size;
 p->free=0;
-p->buf=do_alloc(size, 1);
+if(size>0)p->buf=do_alloc(size, 1);
+	else p->buf=NULL;
 p->discard=0;
 p->free_func=free_generic_packet;
 p->type="GENERIC";
@@ -41,7 +42,7 @@ void free_generic_packet(PACKET *p)
 {
 p->size=0;
 p->free=0;
-free(p->buf);
+if(p->buf!=NULL)free(p->buf);
 free(p);
 }
 
