@@ -68,9 +68,36 @@ for(i=0;i<(frame->buf_size/PAGE_SIZE);i++){
 	}
 }
 
+int radeon_check_mc_settings(KM_STRUCT *kms)
+{
+u32 aperture, aperture_size;
+u32 mc_fb_location;
+u32 mc_agp_location;
+u32 new_mc_fb_location;
+u32 new_mc_agp_location;
+
+aperture=pci_resource_start(kms->dev,0);
+radeon_wait_for_idle(kms);
+aperture_size=readl(kms->reg_aperture+RADEON_CONFIG_APER_SIZE);
+mc_fb_location=readl(kms->reg_aperture+RADEON_MC_FB_LOCATION);
+mc_agp_location=readl(kms->reg_aperture+RADEON_MC_AGP_LOCATION);
+
+
+new_mc_fb_location=(aperture>>16)|
+        ((aperture+aperture_size-1)&0xffff0000);
+
+if((new_mc_fb_location!=mc_fb_location) ||
+   ((mc_agp_location & 0xffff)!=(((aperture+aperture_size-1)>>16)&0xffff))){
+        printk("WARNING !   Radeon memory controller is misconfigured, disabling capture\n");
+        printk("WARNING !   upgrade your Xserver and DRM driver\n");
+	return 0;
+	}
+return 1;
+}
+
 int radeon_is_capture_active(KM_STRUCT *kms)
 {
-return (readl(kms->reg_aperture+RADEON_CAP0_CONFIG) & 0x1);
+return (radeon_check_mc_settings(kms) && (readl(kms->reg_aperture+RADEON_CAP0_CONFIG) & 0x1));
 }
 
 void radeon_get_window_parameters(KM_STRUCT *kms, struct video_window *vwin)
@@ -334,7 +361,7 @@ for(i=0;i<(frame->buf_size/PAGE_SIZE);i++){
 		}
 	}
 /* Reset MC_FB_LOCATION */
-radeon_update_base_addr(kms);
+/* radeon_update_base_addr(kms); */
 return 0;
 }
 
