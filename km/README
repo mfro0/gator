@@ -1,0 +1,20 @@
+
+    USE AT YOUR OWN RISK !
+    
+    
+    
+hints:
+
+    * edit Makefile 
+    * compile
+    * become root and issue "make test"
+    * start X
+    * start xawtv
+    * get xv_stream, compile it
+    * run xv_stream --device=/dev/video0 --width=640 --height=240
+    * enjoy
+    * tweak
+    
+    
+    
+                   Vladimir Dergachev
