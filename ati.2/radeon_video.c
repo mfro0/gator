@@ -173,6 +173,7 @@ void RADEONInitVideo(ScreenPtr pScreen)
 {
     ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
     RADEONInfoPtr info  = RADEONPTR(pScrn);
+    unsigned char   *RADEONMMIO = info->MMIO;
     XF86VideoAdaptorPtr *adaptors, *newAdaptors = NULL;
     XF86VideoAdaptorPtr newAdaptor = NULL;
     int num_adaptors;

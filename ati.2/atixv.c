@@ -1106,6 +1106,7 @@ void ATIReadMM_TABLE(ScrnInfoPtr pScrn, ATIPortPrivPtr pPriv)
      {
      	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Cannot access BIOS: info->VBIOS==NULL.\n");
 	mm_table=0;
+	bios_header=0;
      	} else {
         xf86DrvMsg(pScrn->scrnIndex, X_INFO, "0x%02x 0x%02x\n", pATI->VBIOS[0],
                    pATI->VBIOS[1]);	
