@@ -162,25 +162,10 @@ km_add_transfer_request(&(kms->gui_dma_queue),
 	&(stream->dvb), buffer, KM_TRANSFER_TO_SYSTEM_RAM, mach64_start_request_transfer, kms);
 }
 
-static int mach64_is_capture_irq_active(KM_STRUCT *kms)
-{
-long status;
-status=readl(kms->reg_aperture+MACH64_CRTC_INT_CNTL);
-if(!(status & (MACH64_CAPBUF0_INT_ACK|MACH64_CAPBUF1_INT_ACK)))return 0;
-mach64_wait_for_idle(kms);
-writel(ACK_INTERRUPT(status, MACH64_CAPBUF0_INT_ACK|MACH64_CAPBUF1_INT_ACK), kms->reg_aperture+MACH64_CRTC_INT_CNTL);
-KM_DEBUG("CRTC_INT_CNTL=0x%08x\n", status);
-/* do not start dma transfer if capture is not active anymore */
-if(!mach64_is_capture_active(kms))return 1;
-if(status & MACH64_CAPBUF0_INT_ACK)mach64_schedule_request(kms, find_free_buffer(&(kms->capture)), 0);
-if(status & MACH64_CAPBUF1_INT_ACK)mach64_schedule_request(kms, find_free_buffer(&(kms->capture)), 1); 
-return 1;
-}
-
 void mach64_km_irq(int irq, void *dev_id, struct pt_regs *regs)
 {
 KM_STRUCT *kms;
-long status, mask;
+long status, status_cap, mask;
 int count;
 
 kms=dev_id;
@@ -199,15 +184,24 @@ while(1){
 		mach64_wait_for_idle(kms);
 		writel(0, kms->reg_aperture+MACH64_CRTC_INT_CNTL);
 		}
-	if(!mach64_is_capture_irq_active(kms)){
-		status=readl(kms->reg_aperture+MACH64_CRTC_INT_CNTL);
-/*		KM_DEBUG("mach64: status=0x%08x\n", status); */
-		mach64_wait_for_idle(kms);
-		if((status & MACH64_BUSMASTER_INT_ACK))acknowledge_dma(kms);
-/*		writel((status|MACH64_BUSMASTER_INT_ACK) & ~(MACH64_ACKS_MASK & ~MACH64_BUSMASTER_INT_ACK), kms->reg_aperture+MACH64_CRTC_INT_CNTL); */
-		/* hack admittedly.. but so what ? */
-		writel(status, kms->reg_aperture+MACH64_CRTC_INT_CNTL);
-		return;
+
+	status=readl(kms->reg_aperture+MACH64_CRTC_INT_CNTL);
+	KM_DEBUG("CRTC_INT_CNTL=0x%08x\n", status);
+	if((status & (MACH64_CAPBUF0_INT_ACK|MACH64_CAPBUF1_INT_ACK))){
+		writel(ACK_INTERRUPT(status, status & (MACH64_CAPBUF0_INT_ACK|MACH64_CAPBUF1_INT_ACK)), kms->reg_aperture+MACH64_CRTC_INT_CNTL);
+		/* do not start dma transfer if capture is not active anymore */
+		if(mach64_is_capture_active(kms)){
+			mach64_wait_for_idle(kms);
+			if(status & MACH64_CAPBUF0_INT_ACK)mach64_schedule_request(kms, find_free_buffer(&(kms->capture)), 0);
+			if(status & MACH64_CAPBUF1_INT_ACK)mach64_schedule_request(kms, find_free_buffer(&(kms->capture)), 1); 
+			}
 		}
+	
+	if((status & MACH64_BUSMASTER_INT_ACK)){
+		writel(ACK_INTERRUPT(status, MACH64_BUSMASTER_INT_ACK), kms->reg_aperture+MACH64_CRTC_INT_CNTL);
+		mach64_wait_for_idle(kms);
+		acknowledge_dma(kms);
+		}
+	if(!(status & (MACH64_CAPBUF0_INT_ACK|MACH64_CAPBUF1_INT_ACK|MACH64_BUSMASTER_INT_ACK)))return;
 	}
 }
