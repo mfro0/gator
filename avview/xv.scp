@@ -13,6 +13,14 @@ if {$name == "XV_TUNER_STATUS" } {
 	set tuner_status_present_$port true
 	return "none" 
 	}
+if {$name == "XV_MUTE" } { 
+	global audio_mute_present_$port
+	set audio_mute_present_$port true
+	}
+if {$name == "XV_FREQ" } { 
+	global tuner_freq_present_$port
+	set tuner_freq_present_$port true
+	}
 if { [lsearch $type1 "gettable"] < 0 } { return "unreadable" }
 if { [lsearch $type1 "settable"] < 0 } { return "label" }
 if { "$range" == "0 1" } { return "toggle" }
@@ -225,6 +233,12 @@ if { [find_port_adaptor $current_port] < 0 } {
 	set current_port "none"
 	return 	
 	}
+global tuner_status_present_$current_port
+global audio_mute_present_$current_port
+global tuner_freq_present_$current_port
+set tuner_status_present_$current_port false
+set audio_mute_present_$current_port false
+set tuner_freq_present_$current_port false
 
 set NUM_ENCODINGS [xv_num_port_encodings $VIDEO_WINDOW $current_port]
 
