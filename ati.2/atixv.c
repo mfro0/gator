@@ -1964,8 +1964,8 @@ ATIPutImage(
 	   CARD32 mem_cntl;
 
 	   /* We need to disable byte swapping, or the data gets mangled */
-	   mem_cntl = inr(R128_MEM_CNTL);
-	   outr(R128_CONFIG_CNTL, mem_cntl &
+	   mem_cntl = inr(MEM_CNTL);
+	   outr(MEM_CNTL, mem_cntl &
 		 ~(CTL_MEM_LOWER_APER_ENDIAN|CTL_MEM_UPPER_APER_ENDIAN));
 #endif
 	ATICopyMungedData(buf + (top * srcPitch) + left, buf + s2offset,
@@ -1973,7 +1973,7 @@ ATIPutImage(
 			   dstPitch, nlines, npixels);
 #if X_BYTE_ORDER == X_BIG_ENDIAN
 	   /* restore byte swapping */
-	   outr(R128_CONFIG_CNTL, mem_cntl);
+	   outr(MEM_CNTL, mem_cntl);
 	   }
 #endif
 	break;
