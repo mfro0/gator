@@ -105,33 +105,6 @@ AC_SUBST([TK_LIB_SPEC])
 AC_SUBST([TK_INC_DIR])
 AC_SUBST([TK_XLIBSW])
 
-dnl [echo ""
-dnl 			echo " Could not find Tcl/Tk headers. Please install Tcl/Tk 8.3"
-dnl 			echo ""
-dnl 			exit
-dnl 			],)
-dnl 		],)
-dnl 	],)
-
-# Another way of checking for tcl/tk.. unfinished at the moment
-## we are not using tclsh as 8.3 and 8.4 are the only
-## versions we support
-#AC_CHECK_PROG(TCL_SHELL8_4, tclsh8.4, present, absent)
-#AC_CHECK_PROG(TCL_SHELL8_3, tclsh8.3, present, absent)
-#
-#if test $TCL_SHELL8_4 = present ; then
-#TCL_SHELL=tclsh8.4
-#elif test $TCL_SHELL8_3 = present ; then 
-#TCL_SHELL=tclsh8.3
-#else
-#echo "Could not find Tcl/Tk 8.3 or 8.4, please install and run configure again"
-#exit
-#fi
-
-#echo "quering $TCL_SHELL:"
-#TCL_LIB=`echo 'puts "$tcl_library"' | $TCL_SHELL`
-#echo "TCL_LIB=$TCL_LIB"
-
 AC_SUBST(X_CFLAGS)
 AC_SUBST(X_LIBS)
 AC_SUBST(X_EXTRA_LIBS)
