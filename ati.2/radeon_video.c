@@ -1970,6 +1970,7 @@ RADEONSetPortAttribute(
 ){
   RADEONInfoPtr info = RADEONPTR(pScrn);
   RADEONPortPrivPtr pPriv = (RADEONPortPrivPtr)data;
+  unsigned char *RADEONMMIO = info->MMIO;
 
   info->accel->Sync(pScrn);
 
@@ -2139,6 +2140,16 @@ RADEONSetPortAttribute(
   	if(value<0)value = 0;
 	if(value>1)value = 1;
         pPriv->overlay_deinterlacing_method = value;	
+	switch(pPriv->overlay_deinterlacing_method){
+   		case METHOD_BOB:
+		   	OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0xAAAAA);
+	   		break;
+		case METHOD_WEAVE:
+	   		OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0x0);
+	   		break;
+		default:
+	   		OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0xAAAAA);
+		}			
   } else 
      return BadMatch;
 
@@ -2443,7 +2454,7 @@ RADEONDisplayVideo(
     v_inc = (1 << (20
 		+ ((pScrn->currentMode->Flags & V_INTERLACE)?1:0)
 		- ((pScrn->currentMode->Flags & V_DBLSCAN)?1:0)
-		+((pPriv->overlay_deinterlacing_method==METHOD_WEAVE)?1:0)));
+		+((pPriv->overlay_deinterlacing_method==METHOD_WEAVE)?0:0)));
 
     v_inc_d = src_h * pScrn->currentMode->VDisplay;
     if(info->DisplayType==MT_LCD)
@@ -3278,24 +3289,29 @@ RADEONPutVideo(
    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "PutVideo Checkpoint 6\n");
 
    RADEONDisplayVideo(pScrn, pPriv, id, offset1+top*srcPitch, offset2+top*srcPitch, offset3+top*srcPitch, offset4+top*srcPitch, width, height, dstPitch*mult/2,
-		     xa, xb, ya, &dstBox, src_w, src_h*mult/2, drw_w, drw_h*mult/2);
+		     xa, xb, ya, &dstBox, src_w, src_h*mult/2, drw_w, drw_h);
 
    RADEONWaitForFifo(pScrn, 1);
    OUTREG(RADEON_OV0_REG_LOAD_CNTL,  RADEON_REG_LD_CTL_LOCK);
    RADEONWaitForIdle(pScrn);
    while(!(INREG(RADEON_OV0_REG_LOAD_CNTL) & RADEON_REG_LD_CTL_LOCK_READBACK));
 
-   OUTREG(RADEON_OV0_AUTO_FLIP_CNTL, RADEON_OV0_AUTO_FLIP_CNTL_SOFT_BUF_ODD);
 
    switch(pPriv->overlay_deinterlacing_method){
    	case METHOD_BOB:
 	   OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0xAAAAA);
+	   OUTREG(RADEON_OV0_AUTO_FLIP_CNTL, RADEON_OV0_AUTO_FLIP_CNTL_SOFT_BUF_ODD
+	   	|RADEON_OV0_AUTO_FLIP_CNTL_SHIFT_ODD_DOWN);
 	   break;
 	case METHOD_WEAVE:
 	   OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0x0);
+	   OUTREG(RADEON_OV0_AUTO_FLIP_CNTL, RADEON_OV0_AUTO_FLIP_CNTL_SOFT_BUF_ODD
+		|RADEON_OV0_AUTO_FLIP_CNTL_FIELD_POL_SOURCE);
 	   break;
 	default:
 	   OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0xAAAAA);
+	   OUTREG(RADEON_OV0_AUTO_FLIP_CNTL, RADEON_OV0_AUTO_FLIP_CNTL_SOFT_BUF_ODD
+	   	|RADEON_OV0_AUTO_FLIP_CNTL_SHIFT_ODD_DOWN);
 	}
 		
    
