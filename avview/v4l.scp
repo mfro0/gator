@@ -104,7 +104,7 @@ if {[ffmpeg_present] == "yes"} {
 	grid configure $cw.acodec_optionmenu -sticky news
 
 	eval label $cw.aratel -text "\"Audio rate (samples/sec):\"" [get_settings $cw.aratel Capture V4L]
-	set menu [tk_optionMenu $cw.arate_optionmenu current_audio_rate "48000" "41000" "32000" "24000" "20500" "16000"]
+	set menu [tk_optionMenu $cw.arate_optionmenu current_audio_rate "48000" "44100" "32000" "24000" "22050" "16000"]
 	eval $cw.arate_optionmenu configure [get_settings $cw.arate_optionmenu Capture V4L]
 	eval $menu configure [get_settings $menu Capture V4L menu]
 	grid $cw.aratel $cw.arate_optionmenu
