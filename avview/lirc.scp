@@ -1,0 +1,38 @@
+#!avview_shell
+
+global lirc_bindings
+set lirc_bindings {
+    "toggle_fullscreen" "fullscreen"
+    "next_fav_channel" "next_channel"
+    "toggle_mute" "mute"
+    "exit_avview" "exit"
+    "switch_to_control XV_VOLUME; change_control" "volume"
+    "next_control" "next_control"
+    "change_control" "change_control"
+    "next_encoding 1" "next_encoding"
+    "remote_power_off" "remote_power_off"
+    "switch_to_channel" "channel"
+}
+
+proc handle_lirc_command { lircstring } {
+    global lirc_bindings
+
+    # There can be multiple lines in one lircstring. Split the string
+    # and handle every line separately.
+    foreach line [split $lircstring \n] {
+	# Extract space-separated tokens from line. The first token is
+ 	# commandname and will be compared against commandnames in
+ 	# lirc_bindings list. Remaining tokens will be passed as
+ 	# parameters to corresponding tcl-procedure.
+ 	set tokens [split $line]
+ 	foreach {action commandstring} $lirc_bindings {
+ 	    if {[lindex $tokens 0] == $commandstring} {
+ 		set err [catch {eval $action [lrange $tokens 1 end]} errmsg]
+ 		if {$err!=0} {
+ 		    puts stderr "Error in LIRC command: $errmsg"
+ 		}
+ 		break
+ 	    }
+ 	}
+    }
+}
