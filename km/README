@@ -49,5 +49,7 @@ Additional notes:
        
        If you have got ffmpeg 0.4.5 get the patch from www.linuxvideo.org/gatos
        this version has a bug and will not work otherwise
+
+    4) you cannot use this module simultaneously with Linux framebuffer devices.
        
                                    Vladimir Dergachev
