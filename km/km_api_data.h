@@ -11,7 +11,7 @@
 
 /* this is a simple chunk of data accessible only through kernel virtual space */
 
-#define TYPE_VIRTUAL_BLOCK	1
+#define KDU_TYPE_VIRTUAL_BLOCK	1
 
 typedef struct {
 	long size;
@@ -19,18 +19,22 @@ typedef struct {
 	void *ptr;
 	} KM_DATA_VIRTUAL_BLOCK;
 
-typedef struct {
+#define KDU_TYPE_GENERIC		100
+
+typedef struct S_KM_DATA_UNIT{
 	int number;
+	spinlock_t lock;
 	mode_t mode;
 	long use_count;
 	int type;
 	struct proc_dir_entry *data;	
 	void *data_private;
+	void (*free_private)(struct S_KM_DATA_UNIT *);
 	} KM_DATA_UNIT;
 
 int init_km_data_units(void);
 void cleanup_km_data_units(void);
 int km_allocate_data_virtual_block(KM_DATA_VIRTUAL_BLOCK *, mode_t mode);
-void km_deallocate_data(int data_unit);
+void km_deallocate_data(long data_unit);
 
 #endif
