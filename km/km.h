@@ -45,4 +45,8 @@ typedef struct S_KM_STRUCT{
 
 int acknowledge_dma(KM_STRUCT *kms);
 
+#define HARDWARE_MACH64		0
+#define HARDWARE_RAGE128	1
+#define HARDWARE_RADEON		2
+
 #endif
