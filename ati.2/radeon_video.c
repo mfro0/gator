@@ -64,7 +64,8 @@ static Atom xvContrast, xvHue, xvColor, xvAutopaintColorkey, xvSetDefaults,
 	    xvEncoding, xvFrequency, xvVolume, xvMute,
 	     xvDecBrightness, xvDecContrast, xvDecHue, xvDecColor, xvDecSaturation,
 	     xvTunerStatus, xvSAP, xvOverlayDeinterlacingMethod,
-	     xvLocationID, xvDeviceID, xvInstanceID, xvDumpStatus;
+	     xvLocationID, xvDeviceID, xvInstanceID, xvDumpStatus,
+	     xvAdjustment;
 
 typedef struct
 {
@@ -127,6 +128,7 @@ typedef struct {
    Bool          mute;
    int           sap_channel;
    int           v;
+   CARD32        adjustment; /* general purpose variable */
 
 #define METHOD_BOB      0
 #define METHOD_SINGLE   1
@@ -242,7 +244,7 @@ static XF86VideoFormatRec Formats[NUM_FORMATS] =
    {15, DirectColor}, {16, DirectColor}, {24, DirectColor}
 };
 
-#define NUM_DEC_ATTRIBUTES 19+4+4
+#define NUM_DEC_ATTRIBUTES 20+4+4
 #define NUM_ATTRIBUTES 9+4+4
 
 static XF86AttributeRec Attributes[NUM_DEC_ATTRIBUTES+1] =
@@ -274,6 +276,7 @@ static XF86AttributeRec Attributes[NUM_DEC_ATTRIBUTES+1] =
    {XvSettable | XvGettable, -1000, 1000, "XV_VOLUME"},
    {XvSettable | XvGettable, 0, 1, "XV_MUTE"},
    {XvSettable | XvGettable, 0, 1, "XV_SAP"},
+   {XvSettable | XvGettable, 0, 0x1F, "XV_ADJUSTMENT"},   
    { 0, 0, 0, NULL}  /* just a place holder so I don't have to be fancy with commas */
 };
 
@@ -679,6 +682,7 @@ RADEONResetVideo(ScrnInfoPtr pScrn)
     unsigned char *RADEONMMIO = info->MMIO;
     RADEONPortPrivPtr pPriv = info->adaptor->pPortPrivates[0].ptr;
     char tmp[200];
+    int i;
 
     if (info->accelOn) info->accel->Sync(pScrn);
 
@@ -707,6 +711,8 @@ RADEONResetVideo(ScrnInfoPtr pScrn)
     xvDecColor        = MAKE_ATOM("XV_DEC_COLOR");
     xvDecContrast     = MAKE_ATOM("XV_DEC_CONTRAST");
     xvDecHue          = MAKE_ATOM("XV_DEC_HUE");
+    
+    xvAdjustment      = MAKE_ATOM("XV_ADJUSTMENT");
 
     xvOverlayDeinterlacingMethod = MAKE_ATOM("XV_OVERLAY_DEINTERLACING_METHOD");
     
@@ -746,8 +752,18 @@ RADEONResetVideo(ScrnInfoPtr pScrn)
 	OUTREG(RADEON_OV0_LIN_TRANS_D, 0xf2fe0442);
 	OUTREG(RADEON_OV0_LIN_TRANS_E, 0x12a22046);
 	OUTREG(RADEON_OV0_LIN_TRANS_F, 0x175f);
+	/*
+	 * Set default Gamma ramp:
+	 *
+	 * Of 18 segments for gamma curve, all segments in R200 (and
+	 * newer) are programmable, while only lower 4 and upper 2
+	 * segments are programmable in the older Radeons.
+	 */
+	for (i = 0; i < 18; i++) {
+	    OUTREG(def_gamma[i].gammaReg,
+		   (def_gamma[i].gammaSlope<<16) | def_gamma[i].gammaOffset);
+	}
     } else {
-	int i;
 
 	OUTREG(RADEON_OV0_LIN_TRANS_A, 0x12a00000);
 	OUTREG(RADEON_OV0_LIN_TRANS_B, 0x1990190e);
@@ -764,6 +780,7 @@ RADEONResetVideo(ScrnInfoPtr pScrn)
 	 * segments are programmable in the older Radeons.
 	 */
 	for (i = 0; i < 18; i++) {
+	    if ((i>=4)&&(i<16)) continue;
 	    OUTREG(def_gamma[i].gammaReg,
 		   (def_gamma[i].gammaSlope<<16) | def_gamma[i].gammaOffset);
 	}
@@ -1252,6 +1269,10 @@ static void RADEONInitI2C(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
     if(pPriv->tda9885 == NULL)
     {
         pPriv->tda9885 = xf86_Detect_tda9885(pPriv->i2c, TDA9885_ADDR_2);
+    }
+    if(pPriv->tda9885 != NULL)
+    {
+        RADEON_TDA9885_Init(pPriv);
     }
     }
     }
@@ -2222,6 +2243,14 @@ RADEONSetPortAttribute(ScrnInfoPtr  pScrn,
 	if(pPriv->fi1236!=NULL){
 		fi1236_dump_status(pPriv->fi1236);
 		}
+  } else
+  if(attribute == xvAdjustment) {
+  	pPriv->adjustment=value;
+        xf86DrvMsg(pScrn->scrnIndex,X_ERROR,"Setting pPriv->adjustment to %d\n", pPriv->adjustment);
+  	if(pPriv->tda9885!=0){
+		pPriv->tda9885->top_adjustment=value;
+		RADEON_TDA9885_SetEncoding(pPriv);
+		}
   }
     else 
 	return BadMatch;
@@ -2321,6 +2350,9 @@ RADEONGetPortAttribute(ScrnInfoPtr  pScrn,
   if(attribute == xvInstanceID) {
         *value = pPriv->instance_id;
   } else 
+  if(attribute == xvAdjustment) {
+  	*value = pPriv->adjustment;
+  } else
 	return BadMatch;
 
     return Success;
@@ -3235,11 +3267,11 @@ xf86_InitMSP3430(pPriv->msp3430);
 xf86_MSP3430SetVolume(pPriv->msp3430, pPriv->mute ? MSP3430_FAST_MUTE : MSP3430_VOLUME(pPriv->volume));
 }
 
-void RADEON_TDA9885_SetEncoding(RADEONPortPrivPtr pPriv)
+void RADEON_TDA9885_Init(RADEONPortPrivPtr pPriv)
 {
 TDA9885Ptr t=pPriv->tda9885;
 t->sound_trap=0;
-t->auto_mute_fm=0; /* ? */
+t->auto_mute_fm=1; /* ? */
 t->carrier_mode=0; /* ??? */
 t->modulation=2; /* negative FM */
 t->forced_mute_audio=0;
@@ -3251,8 +3283,12 @@ t->audio_gain=0;
 t->minimum_gain=0;
 t->gating=0; 
 t->vif_agc=1; /* set to 1 ? - depends on design */
-t->gating=1; 
-t->top_adjustment=0x10;
+t->gating=0; 
+}
+
+void RADEON_TDA9885_SetEncoding(RADEONPortPrivPtr pPriv)
+{
+TDA9885Ptr t=pPriv->tda9885;
 
 switch(pPriv->encoding){
                 /* PAL */
@@ -3261,6 +3297,7 @@ switch(pPriv->encoding){
         case 3:
                 t->standard_video_if=0;
                 t->standard_sound_carrier=3;
+		t->modulation=0;
                 break;
                 /* NTSC */
         case 4:
@@ -3268,6 +3305,7 @@ switch(pPriv->encoding){
         case 6:
                 t->standard_video_if=1;
                 t->standard_sound_carrier=0;
+		t->modulation=2;
                 break;
                 /* SECAM */
         case 7:
@@ -3296,7 +3334,7 @@ switch(pPriv->encoding){
         case 1:
         case 2:
         case 3:
-		pPriv->fi1236->video_if=58.75;
+		pPriv->fi1236->video_if=58.7812;
                 break;
                 /* NTSC */
         case 4:
@@ -3311,7 +3349,7 @@ switch(pPriv->encoding){
         case 10:
         case 11:
         case 12:
-		pPriv->fi1236->video_if=58.75;
+		pPriv->fi1236->video_if=58.7812;
                 break;
         default:
                 return;
