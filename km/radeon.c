@@ -142,12 +142,21 @@ writel(a|(1<<30), kms->reg_aperture+RADEON_GEN_INT_CNTL);
 void radeon_stop_transfer(KM_STRUCT *kms)
 {
 u32 a;
-
+/* stop interrupts */
 a=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
 writel(a & ~3, kms->reg_aperture+RADEON_CAP_INT_CNTL);
 a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
 writel(a & ~(1<<30), kms->reg_aperture+RADEON_GEN_INT_CNTL);
 wmb();
+/* stop outstanding DMA transfers */
+a=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
+if(a & RADEON_DMA_GUI_STATUS__ACTIVE){
+	writel(a | RADEON_DMA_GUI_STATUS__ABORT, kms->reg_aperture+RADEON_DMA_GUI_STATUS);
+	wmb();
+	while((a=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS))&RADEON_DMA_GUI_STATUS__ACTIVE);
+	wmb();
+	writel(a & ~ RADEON_DMA_GUI_STATUS__ABORT, kms->reg_aperture+RADEON_DMA_GUI_STATUS);
+	}
 kms->capture_active=0;
 }
 

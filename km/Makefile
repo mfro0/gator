@@ -52,6 +52,9 @@ test: km_drv.o km_api_drv.o
 	insmod ./km_api_drv.o
 	insmod ./km_drv.o km_debug=0 km_buffers=5
 
+test2: test2.c
+	$(CC) $(CFLAGS) test2.c -o test2
+
 install:
 	mkdir -p /lib/modules/`uname -r`/misc/
 	install km_api_drv.o /lib/modules/`uname -r`/misc/

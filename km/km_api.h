@@ -122,4 +122,10 @@ int add_km_device(KM_FIELD *kmfl, void *priv);
 int remove_km_device(int num);
 void kmd_signal_state_change(int num);
 
+#if 1
+#define KM_CHECKPOINT printk("**CKPT %s %s %d\n", __FILE__, __FUNCTION__, __LINE__);
+#else
+#define KM_CHECKPOINT
+#endif
+
 #endif

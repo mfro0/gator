@@ -26,12 +26,139 @@
 
 #include "km_api_data.h"
 #include "km_memory.h"
+#include "km_api.h"
 
 extern struct proc_dir_entry *km_root;
 
+spinlock_t data_units_lock;
 KM_DATA_UNIT *data_units=NULL;
 long du_size=0;
 long du_free=0;
+
+
+static int km_fo_data_open(struct inode * inode, struct file * file)
+{
+char *filename;
+KM_DATA_UNIT *kdu;
+KDU_FILE_PRIVATE_DATA *kdufpd=NULL;
+int i;
+filename=file->f_dentry->d_iname;
+if(strncmp(filename, "data", 4)){
+	return -EINVAL;
+	}
+i=simple_strtol(filename+4, NULL, 10);
+if(i<0)return -EINVAL;
+if(i>=du_free)return -EINVAL;
+
+MOD_INC_USE_COUNT;
+spin_lock(&data_units_lock);
+kdu=&(data_units[i]);
+spin_unlock(&data_units_lock);
+
+spin_lock(&(kdu->lock));
+if(kdu->use_count<=0){
+	MOD_DEC_USE_COUNT;
+	spin_unlock(&(kdu->lock));
+	return -EINVAL;
+	}
+kdu->use_count++;
+kdufpd=kmalloc(sizeof(KDU_FILE_PRIVATE_DATA), GFP_KERNEL);
+if(kdufpd==NULL){
+	kdu->use_count--;
+	MOD_DEC_USE_COUNT;
+	spin_unlock(&(kdu->lock));
+	return -ENOMEM;
+	}
+memset(kdufpd, 0, sizeof(KDU_FILE_PRIVATE_DATA));
+
+kdufpd->kdu=kdu;
+
+file->private_data=kdufpd;
+spin_unlock(&(kdu->lock));
+
+return 0;
+}
+
+static int km_fo_data_release(struct inode * inode, struct file * file)
+{
+KDU_FILE_PRIVATE_DATA *kdufpd=file->private_data;
+KM_DATA_UNIT *kdu=kdufpd->kdu;
+
+KM_CHECKPOINT
+file->private_data=NULL;
+kfree(kdufpd);
+km_deallocate_data(kdu->number);
+return 0;
+}
+
+static int km_fo_data_mmap(struct file * file, struct vm_area_struct * vma)
+{
+KDU_FILE_PRIVATE_DATA *kdufpd=file->private_data;
+KM_DATA_UNIT *kdu=kdufpd->kdu;
+KM_CHECKPOINT
+if(kdu->mmap==NULL)return -ENOTSUPP;
+return kdu->mmap(file, vma);
+}
+
+static int km_dvb_mmap(struct file * file, struct vm_area_struct * vma)
+{
+KDU_FILE_PRIVATE_DATA *kdufpd=file->private_data;
+KM_DATA_UNIT *kdu=kdufpd->kdu;
+KM_DATA_VIRTUAL_BLOCK *dvb=(KM_DATA_VIRTUAL_BLOCK *)kdu->data_private;
+unsigned long offset = vma->vm_pgoff << PAGE_SHIFT;
+unsigned long size = vma->vm_end-vma->vm_start;
+unsigned long chunk_size;
+unsigned long page, start;
+int i,j;
+
+KM_CHECKPOINT
+if(kdu->type!=KDU_TYPE_VIRTUAL_BLOCK){
+	printk(KERN_ERR "km: internal error %s %s %d\n", __FILE__, __FUNCTION__, __LINE__);
+	return -ENOTSUPP;
+	}
+KM_CHECKPOINT
+chunk_size=((dvb->size+PAGE_SIZE-1)&~(PAGE_SIZE-1));
+if(offset+size>chunk_size*dvb->n)return -EINVAL;
+KM_CHECKPOINT
+for(i=0;i<dvb->n;i++)
+	for(j=0;j<dvb->size;j+=PAGE_SIZE){
+		if(chunk_size*i+PAGE_SIZE*j<offset)continue;
+		if(chunk_size*i+PAGE_SIZE*j>offset+size)return 0;
+		page=kvirt_to_pa(dvb->ptr[i]+j*PAGE_SIZE);
+		start=vma->vm_start+chunk_size*i+PAGE_SIZE*j-offset;
+		if(remap_page_range(start, page, PAGE_SIZE, PAGE_SHARED))
+			return -EAGAIN;
+		}
+KM_CHECKPOINT
+return 0;
+}
+
+void km_free_private_data_virtual_block(KM_DATA_UNIT *kdu)
+{
+int i;
+unsigned long chunk_size;
+KM_DATA_VIRTUAL_BLOCK *dvb;
+if(kdu->type!=KDU_TYPE_VIRTUAL_BLOCK){
+	printk(KERN_ERR "km_api_data.km_free_private_data_virtual_block: attempt to free non virtual_block kdu\n");
+	}
+dvb=(KM_DATA_VIRTUAL_BLOCK *)kdu->data_private;
+kdu->data_private=NULL;
+kdu->free_private=NULL;
+kdu->type=KDU_TYPE_GENERIC;
+chunk_size=((dvb->size+PAGE_SIZE-1)&~(PAGE_SIZE-1));
+for(i=0;i<dvb->n;i++)rvfree(dvb->ptr[i],chunk_size);
+}
+
+struct file_operations km_data_file_operations={
+	owner: 		THIS_MODULE,
+	open:		km_fo_data_open,
+	release: 	km_fo_data_release,
+	mmap:		km_fo_data_mmap
+/*	read: 		km_fo_data_read,
+	write: 		km_fo_data_write,
+	poll: 		km_fo_data_poll */
+	} ;
+
 
 int km_allocate_data_unit(mode_t mode)
 {
@@ -76,6 +203,7 @@ if(mode!=0){
 		return -1;
 		}
 	kdu->data->data=kdu;
+	kdu->data->proc_fops=&km_data_file_operations;
 	}
 kdu->data_private=NULL;
 kdu->free_private=NULL;
@@ -83,91 +211,10 @@ spin_unlock(&(kdu->lock));
 return k;
 }
 
-static int km_fo_data_open(struct inode * inode, struct file * file)
-{
-char *filename;
-KM_DATA_UNIT *kdu;
-KDU_FILE_PRIVATE_DATA *kdufpd=NULL;
-int i;
-filename=file->f_dentry->d_iname;
-if(strncmp(filename, "data", 4)){
-	return -EINVAL;
-	}
-i=simple_strtol(filename+4, NULL, 10);
-if(i<0)return -EINVAL;
-if(i>=du_free)return -EINVAL;
-
-MOD_INC_USE_COUNT;
-
-kdu=&(data_units[i]);
-spin_lock(&(kdu->lock));
-if(kdu->use_count<=0){
-	MOD_DEC_USE_COUNT;
-	spin_unlock(&(kdu->lock));
-	return -EINVAL;
-	}
-kdu->use_count++;
-kdufpd=kmalloc(sizeof(KDU_FILE_PRIVATE_DATA), GFP_KERNEL);
-if(kdufpd==NULL){
-	kdu->use_count--;
-	MOD_DEC_USE_COUNT;
-	spin_unlock(&(kdu->lock));
-	return -ENOMEM;
-	}
-memset(kdufpd, 0, sizeof(KDU_FILE_PRIVATE_DATA));
-
-kdufpd->kdu=kdu;
-
-file->private_data=kdufpd;
-kdu->use_count++;
-spin_unlock(&(kdu->lock));
-
-return 0;
-}
-
-static int km_fo_data_release(struct inode * inode, struct file * file)
-{
-KDU_FILE_PRIVATE_DATA *kdufpd=file->private_data;
-KM_DATA_UNIT *kdu=kdufpd->kdu;
-
-file->private_data=NULL;
-spin_lock(&(kdu->lock));
-kdu->use_count--;
-spin_unlock(&(kdu->lock));
-
-MOD_DEC_USE_COUNT;
-
-return 0;
-}
-
-
-struct file_operations km_data_file_operations={
-	owner: 		THIS_MODULE,
-	open:		km_fo_data_open,
-	release: 	km_fo_data_release
-/*	read: 		km_fo_data_read,
-	write: 		km_fo_data_write,
-	poll: 		km_fo_data_poll */
-	} ;
-
-
-void km_free_private_data_virtual_block(KM_DATA_UNIT *kdu)
-{
-int i;
-KM_DATA_VIRTUAL_BLOCK *dvb;
-if(kdu->type!=KDU_TYPE_VIRTUAL_BLOCK){
-	printk(KERN_ERR "km_api_data.km_free_private_data_virtual_block: attempt to free non virtual_block kdu\n");
-	}
-dvb=(KM_DATA_VIRTUAL_BLOCK *)kdu->data_private;
-for(i=0;i<dvb->n;i++)rvfree(dvb->ptr[i],dvb->size);
-kdu->type=KDU_TYPE_GENERIC;
-kdu->data_private=NULL;
-kdu->free_private=NULL;
-}
-
 int km_allocate_data_virtual_block(KM_DATA_VIRTUAL_BLOCK *dvb, mode_t mode)
 {
 long i,k;
+unsigned long chunk_size;
 KM_DATA_UNIT *kdu;
 k=km_allocate_data_unit(mode);
 if(k<0){
@@ -177,11 +224,14 @@ kdu=&(data_units[k]);
 kdu->type=KDU_TYPE_VIRTUAL_BLOCK;
 kdu->data_private=dvb;
 kdu->free_private=km_free_private_data_virtual_block;
+kdu->mmap=km_dvb_mmap;
+chunk_size=((dvb->size+PAGE_SIZE-1)&~(PAGE_SIZE-1));
 if(kdu->data!=NULL){
-	kdu->data->size=dvb->size*dvb->n;
+	kdu->data->size=chunk_size*dvb->n;
 	}
 for(i=0;i<dvb->n;i++){
-	dvb->ptr[i]=rvmalloc(dvb->size);
+	dvb->ptr[i]=rvmalloc(chunk_size);
+	memset(dvb->ptr[i], 0 , chunk_size);
 	}
 return k;
 }
@@ -196,11 +246,13 @@ if(data_unit>=du_free)return;
 kdu=&(data_units[data_unit]);
 spin_lock(&(kdu->lock));
 kdu->use_count--;
+KM_CHECKPOINT
 if(kdu->use_count>0){
 	MOD_DEC_USE_COUNT;
 	spin_unlock(&(kdu->lock));
 	return; /* something is still using it */
 	}
+KM_CHECKPOINT
 /* free the data */
 sprintf(temp, "data%d", data_unit);
 if(kdu->data!=NULL){
@@ -218,6 +270,7 @@ int __init init_km_data_units(void)
 du_size=10;
 du_free=0;
 data_units=kmalloc(du_size*sizeof(KM_DATA_UNIT), GFP_KERNEL);
+spin_lock_init(&(data_units_lock));
 if(data_units==NULL){
 	printk(KERN_ERR "Could not allocate memory for data units array\n");
 	return -ENOMEM;

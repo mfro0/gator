@@ -33,6 +33,7 @@ typedef struct S_KM_DATA_UNIT{
 	struct proc_dir_entry *data;	
 	void *data_private;
 	void (*free_private)(struct S_KM_DATA_UNIT *);
+	int (*mmap)(struct file *file, struct vm_area_struct *vma);
 	} KM_DATA_UNIT;
 
 typedef struct {
