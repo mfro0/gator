@@ -20,7 +20,10 @@ global SETUP_MAIN
 if { [winfo exists $SETUP_MAIN] } {
 	wm deiconify $SETUP_MAIN
 	update
-	update idletasks
+	update idletasks	
+	raise $SETUP_MAIN .
+	update
+	update idletasks	
 	raise $SETUP_MAIN
 	avview_set_icon $SETUP_MAIN "avview-control-16x16.ppm"
 	after idle {

@@ -20,7 +20,7 @@ set avview_bindings {
 	"toggle_mute" "<Key-XF86AudioMute>"
 	"save_settings ; exit" "<Control-Key-q>"
 	"save_settings ; exit" "<Key-Escape>"
-	"save_settings ; exit" "<Key-XF86PowerOff>"
+	"remote_power_off" "<Key-XF86PowerOff>"
 	"next_encoding 1" "<Control-Key-i>"
 	"switch_to_control XV_VOLUME; change_control 1" "<Key-XF86AudioRaiseVolume>"
 	"switch_to_control XV_VOLUME; change_control -1" "<Key-XF86AudioLowerVolume>"
@@ -53,7 +53,8 @@ foreach $avview_bindings_layout $avview_bindings {
 	
 	
 proc toggle_fullscreen {} {
-global fullscreen_mode
+global fullscreen_mode disable_fullscreen_switching
+if { $disable_fullscreen_switching } { bell ; return }
 if { $fullscreen_mode } {
 	set fullscreen_mode false
 	} {
@@ -327,29 +328,44 @@ elseif { $valid == 1 } {
 }
 
 proc toggle_screensaver {} {
-set ss [xmisc_getscreensaver .]
-if { [lindex $ss 7] == 0 } {
+global screen_off ts_old_state
+if { $screen_off } {
+	display_video
+	xmisc_setscreensaver . [lindex $ts_old_state 0] \
+		[lindex $ts_old_state 1] \
+		[lindex $ts_old_state 2] \
+		[lindex $ts_old_state 3] \
+		[lindex $ts_old_state 4] \
+		[lindex $ts_old_state 5] \
+		[lindex $ts_old_state 6] \
+		0 \
+		off
+	set screen_off false
+	} {
+	set ss [xmisc_getscreensaver .]
+	set ts_old_state $ss
+	after 100
 	xmisc_setscreensaver . [lindex $ss 0] \
 		[lindex $ss 1] \
 		[lindex $ss 2] \
 		[lindex $ss 3] \
-		[lindex $ss 4] \
-		[lindex $ss 5] \
-		[lindex $ss 6] \
+		1 \
+		1 \
+		1 \
 		3 \
 		on
 	stop_video
+	set screen_off true
+	}
+}
+
+proc remote_power_off {} {
+global fullscreen_mode dpms_off_on_fullscreen_power_off
+if { $fullscreen_mode && $dpms_off_on_fullscreen_power_off } {
+	toggle_screensaver
 	} {
-	xmisc_setscreensaver . [lindex $ss 0] \
-		[lindex $ss 1] \
-		[lindex $ss 2] \
-		[lindex $ss 3] \
-		[lindex $ss 4] \
-		[lindex $ss 5] \
-		[lindex $ss 6] \
-		0 \
-		off
-	display_video
+	save_settings
+	exit
 	}
 }
 

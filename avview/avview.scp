@@ -42,6 +42,9 @@ foreach {variable value} {
 	use_physical_screen_size true
 	aspect_ratio {4 3}
 	port_grabbed false
+	screen_off false
+	dpms_off_on_fullscreen_power_off false
+	disable_fullscreen_switching false
 	} {
 	global $variable
 	set $variable $value
@@ -397,7 +400,8 @@ puts $fileid "\n# General settings"
 foreach variable {current_port current_encoding_name current_table_name
 	current_channel attributes_window capture_window alsa_window
 	 show_control_window always_start_fullscreen remember_fullscreen_state
-	display_setup_window_on_startup file_save_path} {
+	display_setup_window_on_startup file_save_path dpms_off_on_fullscreen_power_off
+	disable_fullscreen_switching } {
 	global $variable
 	puts $fileid "\nglobal $variable"
 	puts $fileid "set $variable \"[set $variable]\""
@@ -828,7 +832,9 @@ if { [alsa_present] } {
 
 add_parameter_pane "/User interface settings/Fullscreen behaviour" "Fullscreen behaviour" \
 		"Remember fullscreen state for new sessions" checkbutton remember_fullscreen_state \
-		"Always start fullscreen" checkbutton always_start_fullscreen
+		"Always start fullscreen" checkbutton always_start_fullscreen \
+		"Disable fullscreen switching" checkbutton disable_fullscreen_switching \
+		"Remote power off button turns off monitor in fullscreen mode" checkbutton dpms_off_on_fullscreen_power_off
 
 Tree:open .setup.tree "/User interface settings"
 
