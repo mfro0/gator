@@ -123,7 +123,9 @@ eval menu $c.interface_menubutton.menu [get_settings $c.interface_menubutton.men
 $c.interface_menubutton.menu add checkbutton -label "Show main control window" -variable show_control_window
 $c.interface_menubutton.menu add checkbutton -label "Attributes" -variable attributes_window
 $c.interface_menubutton.menu add checkbutton -label "Capture (V4L)" -variable capture_window
-$c.interface_menubutton.menu add checkbutton -label "Audio mixer (ALSA)" -variable alsa_window
+if { [alsa_present] == "yes" } {
+	$c.interface_menubutton.menu add checkbutton -label "Audio mixer (ALSA)" -variable alsa_window
+	} 
 $c.interface_menubutton.menu add separator
 eval menu $c.interface_menubutton.menu.theme [get_settings $c.interface_menubutton.menu.theme AVview]
 $c.interface_menubutton.menu add cascade -menu $c.interface_menubutton.menu.theme -label "Theme"
@@ -559,8 +561,11 @@ set current_v4l_rrate "as is"
 global current_v4l_device
 set current_v4l_device "none"
 global alsa_window
-trace variable alsa_window w "generate_alsa_window .controlwin.alsamixer ; skip_args3"
-trace variable current_alsa_device1 w "set_alsa_device .controlwin.alsamixer ; skip_args3"
+
+if {[alsa_present] == "yes" } {
+	trace variable alsa_window w "generate_alsa_window .controlwin.alsamixer ; skip_args3"
+	trace variable current_alsa_device1 w "set_alsa_device .controlwin.alsamixer ; skip_args3"
+	}
 
 bind $VIDEO_WINDOW <Configure> {
 	global $VIDEO_WINDOW

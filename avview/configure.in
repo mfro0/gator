@@ -1,7 +1,7 @@
 # Process this file with autoconf to produce a configure script.
 AC_PREREQ(2.52)
 
-AC_INIT([AV viewer], [0.3.0], [livid-ati@linuxvideo.org])
+AC_INIT([AV viewer], [0.10.0], [gatos-devel@lists.sf.net])
 AC_CONFIG_SRCDIR([frequencies.c])
 AC_CONFIG_HEADER([config.h])
 
@@ -11,6 +11,7 @@ AC_PROG_CC
 AC_PATH_XTRA
 
 AC_ARG_WITH(ffmpeg, [  --with-ffmpeg=path      Path to compiled ffmpeg source tree])
+AC_ARG_ENABLE(alsa, [  --disable-alsa          Do not use ALSA sound library])
 
 AC_CHECK_LIB([dl], [dlopen])
 AC_CHECK_LIB([m], [sin])
@@ -18,18 +19,28 @@ AC_CHECK_LIB([pthread], [pthread_create])
 AC_CHECK_LIB([asound], [snd_card_get_name])
 
 ALSA_PRESENT=no
-if test "$ac_cv_lib_asound_snd_card_get_name" = "yes" ; then
-AC_TRY_LINK([#include <alsa/asoundlib.h> 
+if ! test "$enable_alsa" = "no" ; then
+
+  if test "$ac_cv_lib_asound_snd_card_get_name" = "yes" ; then
+  AC_TRY_LINK([#include <alsa/asoundlib.h> 
 	     #if (SND_LIB_MAJOR != 0) || (SND_LIB_MINOR < 9)  
 	     #error "Avview requires ALSA version 0.9.x" 
 	     #endif], ,AC_DEFINE(USE_ALSA) ALSA_PRESENT=yes,)
-fi
+  fi
 
-if test "$ALSA_PRESENT" = "no" ; then
-echo "** Avview requires ALSA version 0.9.x"
+  if test "$ALSA_PRESENT" = "no" ; then
+  echo "** Avview requires ALSA version 0.9.x"
+  fi
+
+else
+
+ALSA_PRESENT=disabled
+
 fi
 
 AC_CHECK_HEADER(linux/videodev.h, ,echo "Avview requires video4linux support. You may want to upgrade to Linux 2.4.x."; exit)
+AC_CHECK_HEADER(/usr/include/tcl8.3/tcl.h, TCL_HEADERS=-I/usr/include/tcl8.3)
+AC_CHECK_HEADER(/usr/include/tcl8.3/tk.h, TCL_HEADERS=[$TCL_HEADERS -I/usr/include/tk8.3])
 
 AC_CHECK_LIB([X11], [XCreateSimpleWindow],,,[$X_LIBS])
 AC_CHECK_LIB([Xext], [XInitExtension],,,[$X_LIBS])
@@ -56,6 +67,7 @@ fi
 
 AC_SUBST(FFMPEG_LIBS)
 AC_SUBST(FFMPEG_CFLAGS)
+AC_SUBST(TCL_HEADERS)
 
 AC_HEADER_STDC
 AC_CHECK_HEADERS([errno.h fcntl.h stdlib.h string.h sys/ioctl.h unistd.h])
@@ -88,3 +100,19 @@ echo "  Movie recording                  enabled"
 echo "  Path to compiled ffmeg source    $with_ffmpeg"
 fi
 echo ""
+
+if test "$with_ffmpeg" = "yes" || test "$with_ffmpeg" = "no"; then
+echo ""
+echo "   **** POSSIBLE MISCONFIGURATION DETECTED ****"
+echo ""
+echo "The proper way to specify path to ffmpeg tree is by using"
+echo "              --with-ffmpeg=/path/to/ffmpeg/tree"
+echo ""
+echo "while what you used is likely: --with-ffmpeg /path/to/ffmpeg/tree"
+echo ""
+echo "Unless this tree is really in directory named \"yes\" or \"no\" please"
+echo "restart ./configure with the correct parameter syntax"
+echo ""
+fi
+
+
