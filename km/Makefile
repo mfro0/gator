@@ -42,14 +42,14 @@ mach64.o:	mach64.c
 rage128.o:	rage128.c
 	$(CC) $(CFLAGS) -DMODULE -D__KERNEL__ -DLINUX -I$(LINUXINCLUDES) -c rage128.c
 
-test: km_drv.o km_api.o
+test: km_drv.o km_api_drv.o
 	sync
 	insmod ./km_api_drv.o
 	insmod ./km_drv.o km_debug=0 
 
 install:
 	mkdir -p /lib/modules/`uname -r`/misc/
-	install km_api.o /lib/modules/`uname -r`/misc/
+	install km_api_drv.o /lib/modules/`uname -r`/misc/
 	install km_drv.o /lib/modules/`uname -r`/misc/
 
 tarball:
