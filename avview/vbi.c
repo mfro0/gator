@@ -103,16 +103,16 @@ switch(d.type){
 	}
 }
 
-void vbi_loop(VBI_DATA *data)
+void *vbi_loop(void *vbidata)
 {
+VBI_DATA *data=vbidata;
 int h,w;
 unsigned char *buf; 
 vbi_sliced *buf_sliced;
 double timestamp;
 struct timeval tv;
 int r;
-int lines,i;
-DATAGRAM d;
+int lines;
 
 pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
@@ -126,12 +126,12 @@ while(1){
 	r=vbi_capture_read(data->cap, buf, buf_sliced, &lines, &timestamp, &tv);
 	if(r<0){
 		fprintf(stderr, "Exiting VBI loop\n");
-		return;
+		return NULL;
 		}
 	pthread_mutex_lock(&(data->mutex));
 	if(data->dec==NULL){
 		pthread_mutex_unlock(&(data->mutex));
-		return; /* close thread */
+		return NULL; /* close thread */
 		}
 	vbi_decode(data->dec, buf_sliced, lines, timestamp);
 	pthread_mutex_unlock(&(data->mutex));

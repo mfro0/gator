@@ -518,7 +518,7 @@ snd_pcm_hw_params_t *hwparams;
 snd_pcm_sw_params_t *swparams;
 const char *arg_audio_device;
 const char *arg_audio_rate;
-long rate;
+unsigned int rate;
 unsigned int buffer_time;
 int dir;
 snd_pcm_uframes_t uframes;
@@ -532,7 +532,7 @@ if(arg_audio_device==NULL)return -1;
 
 arg_audio_rate=get_value(argc, argv, "-audio_rate");
 rate=24000; /* should be ok.. */
-if(arg_audio_rate!=NULL)rate=atol(arg_audio_rate);
+if(arg_audio_rate!=NULL)rate=(unsigned int)atol(arg_audio_rate);
 
 i=lookup_string(alsa_sc, arg_audio_device);
 if((i<0)||((ad=(ALSA_DATA *)alsa_sc->data[i])==NULL)){
@@ -583,10 +583,10 @@ if(a<0){
 dir=0;
 a=snd_pcm_hw_params_set_rate_near(ad->recording_handle, hwparams, &rate, &dir);
 if(a<0){
-        fprintf(stderr,"Rate %ldHz not available for recording: %s\n", rate, snd_strerror(a));
+        fprintf(stderr,"Rate %dHz not available for recording: %s\n", rate, snd_strerror(a));
         return -1;
         }
-param->sample_rate=rate;
+param->sample_rate=(long)rate;
 param->channels=2;
 ad->param=param;
 fprintf(stderr,"Using sample rate %ld Hz frame_size=%ld\n", param->sample_rate, ad->frame_size);

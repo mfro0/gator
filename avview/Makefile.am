@@ -48,8 +48,7 @@ start_avview.desktop: start_avview.desktop.in configure.in Makefile.am
 	echo 'Icon=$(datadir)/AVview/avview-48x48.png' >> start_avview.desktop
 
 install-data-hook: reminders
-	$(INSTALL_DATA) start_avview.desktop $(KDEDIR)/share/applnk/Multimedia/ || \
-	$(INSTALL_DATA) start_avview.desktop $(KDEDIR)/share/apps/kappfinder/apps/Multimedia/ || \
+	$(INSTALL_DATA) start_avview.desktop /usr/share/applications/ || \
 	true	
 	@echo ""
 	@echo " ************************************************"
