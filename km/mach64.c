@@ -9,7 +9,7 @@
 #include <linux/interrupt.h>
 #include <linux/wrapper.h>
 #include <linux/videodev.h>
-
+#include <linux/delay.h>
 
 #include "km.h"
 #include "km_memory.h"
@@ -21,7 +21,7 @@ long count;
 u32 a;
 count=1000;
 while(((a=readl(kms->reg_aperture+MACH64_FIFO_STAT))&0xFFFF)>((u32)(0x8000>>entries))){
-	usleep(1);
+	udelay(1);
 	count--;
 	if(count<0){
 		printk(KERN_ERR "km: mach64 FIFO locked up\n");
@@ -37,7 +37,7 @@ long count;
 mach64_wait_for_fifo(kms,16);
 count=1000;
 while(((a=readl(kms->reg_aperture+MACH64_GUI_STAT)) & 0x1)!=0){
-	usleep(1);
+	udelay(1);
 	count--;
 	if(count<0){
 		printk(KERN_ERR "km: mach64 engine lock up\n");
