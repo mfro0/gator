@@ -6,8 +6,12 @@ add_parameter_pane "/Diagnostics" "Diagnostics" \
 	"Tcl version"  entry "tcl_version" \
 	"Tk version" entry "tk_version" \
 	"Additional diagnostics" heading "" \
-	"Show XVideo information" command {switch_to_pane "/Diagnostics/xvinfo"} \
-	"Show kernel debug messages" command {switch_to_pane "/Diagnostics/dmesg"}
+	"Show XVideo information" command {switch_to_pane "/Diagnostics/xvinfo"
+		set xvinfo_pane [get_pane_frame "/Diagnostics/xvinfo"]
+		$xvinfo_pane.f.refresh invoke} \
+	"Show kernel debug messages" command {switch_to_pane "/Diagnostics/dmesg"
+		set dmesg_pane [get_pane_frame "/Diagnostics/dmesg"]
+		$dmesg_pane.f.refresh invoke} 
 	
 
 add_pane "/Diagnostics/xvinfo" "XVideo extension information" 
