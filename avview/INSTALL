@@ -12,6 +12,9 @@ To compile:
 	./configure --with-ffmpeg=/path/to/compiled/ffmpeg/tree
 	make
 	
+Note: I mean *** compiled *** ffmpeg tree, i.e. the where you compiled ffmpeg, 
+not where you installed. it. AVview does not rely on installed ffmpeg binaries.
+
 If you are using code from CVS you need to run these commands first:
 
 	autoconf
