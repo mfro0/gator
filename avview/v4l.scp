@@ -91,6 +91,7 @@ if {[ffmpeg_present] == "yes"} {
 	entry $cw.video_bitrate_entry -textvariable current_video_bitrate 
 	button $cw.video_bitrate_button -command recompute_video_bitrate -text "Default"
 	eval $cw.video_bitrate_entry configure [get_settings $cw.video_bitrate_entry Capture V4L]
+	eval $cw.video_bitrate_button configure [get_settings $cw.video_bitrate_button Capture V4L]
 	grid $cw.video_bitratel $cw.video_bitrate_entry $cw.video_bitrate_button -sticky news
 	grid configure $cw.video_bitratel -sticky nws
 #	grid configure $cw.video_bitrate_entry -sticky news
