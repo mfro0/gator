@@ -660,6 +660,7 @@ incr flash_counter -1
 if { $flash_counter<1} {
 	destroy $VIDEO_WINDOW.onscreen_display.message 
 	$VIDEO_WINDOW.onscreen_display configure -width 0 -height 0
+	place forget $VIDEO_WINDOW.onscreen_display
 	display_video
 	incr flash_counter -1
 	} {
@@ -703,6 +704,7 @@ grid $m.l
 global flash_counter message_visible_secs
 if { $flash_counter < 0 } { after 1000 fm_countdown }
 set flash_counter $message_visible_secs
+place $VIDEO_WINDOW.onscreen_display -relx 0.05 -rely 0.05 -anchor nw
 }
 
 menu .video_menu -type normal -tearoff false
