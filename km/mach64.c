@@ -123,42 +123,6 @@ for(i=0;i<(kms->dvb.size/PAGE_SIZE);i++){
 return 0;
 }
 
-static void mach64_start_frame_transfer2(KM_STRUCT *kms, int buffer, int field)
-{
-long offset, status;
-if(buffer<0){
-	KM_DEBUG("start_frame_transfer buffer=%d field=%d\n",buffer, field);
-	return;
-	}
-if(field){
-	offset=kms->buf0_even_offset;
-	kms->kmsbi[buffer].user_flag&=~KM_FI_ODD;
-	} else {
-	offset=kms->buf0_odd_offset;
-	kms->kmsbi[buffer].user_flag|=KM_FI_ODD;
-	}
-KM_DEBUG("buf=%d field=%d\n", buffer, field);
-kms->fi[buffer].timestamp_start=jiffies;
-mach64_wait_for_idle(kms);
-mach64_setup_dma_table(kms, (kms->dma_table[buffer]), offset, kms->v4l_free[buffer]);
-#if 0 
-/* no analog for mach64.. yet ? */
-/* wait for at least one available queue */
-do {
-	status=readl(kms->reg_aperture+MACH64_DMA_GUI_STATUS);
-	KM_DEBUG("status=0x%08x\n", status);
-	} while (!(status & 0x1f));
-#endif
-/* start transfer */
-kms->total_frames++;
-kms->kmsbi[buffer].user_flag|=KM_FI_DMA_ACTIVE;
-kms->kmsbi[buffer].age=kms->total_frames;
-wmb();
-writel(kvirt_to_pa(kms->dma_table[buffer])|MACH64_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM, 
-	kms->reg_aperture+MACH64_BM_SYSTEM_TABLE);
-KM_DEBUG("start_frame_transfer_buf0\n");
-}
-
 static void mach64_start_request_transfer(KM_TRANSFER_REQUEST *kmtr)
 {
 long status;

@@ -184,53 +184,6 @@ for(i=0;i<(kms->dvb.size/PAGE_SIZE);i++){
 return 0;
 }
 
-static void radeon_start_frame_transfer2(KM_STRUCT *kms, int buffer, int field)
-{
-long status;
-long offset;
-if(buffer<0){
-	KM_DEBUG("start_frame_transfer buffer=%d field=%d\n",buffer, field);
-	return;
-	}
-switch(field){
-	case 0:
-		offset=kms->buf0_odd_offset;
-		kms->kmsbi[buffer].user_flag|=KM_FI_ODD;
-		break;
-	case 1:
-		offset=kms->buf0_even_offset;
-		kms->kmsbi[buffer].user_flag&=~KM_FI_ODD;
-		break;
-	case 2:
-		offset=kms->buf1_odd_offset;
-		kms->kmsbi[buffer].user_flag|=KM_FI_ODD;
-		break;
-	case 3:
-		offset=kms->buf1_even_offset;
-		kms->kmsbi[buffer].user_flag&=~KM_FI_ODD;
-		break;
-	default:
-		printk("Internal error %s %s %d\n", __FILE__, __FUNCTION__, __LINE__);
-		return;
-	}
-KM_DEBUG("buf=%d field=%d\n", buffer, field);
-kms->fi[buffer].timestamp_start=jiffies;
-radeon_setup_dma_table(kms, (kms->dma_table[buffer]), offset, kms->v4l_free[buffer]);
-wmb();
-/* wait for at least one available queue */
-do {
-	status=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
-	KM_DEBUG("status=0x%08lx\n", status);
-	} while (!(status & 0x1f));
-/* start transfer */
-kms->total_frames++;
-kms->kmsbi[buffer].user_flag|=KM_FI_DMA_ACTIVE;
-kms->kmsbi[buffer].age=kms->total_frames;
-wmb();
-writel(kvirt_to_pa(kms->dma_table[buffer]), (u32)(kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR)| (0));
-KM_DEBUG("start_frame_transfer_buf0\n");
-}
-
 static void radeon_start_request_transfer(KM_TRANSFER_REQUEST *kmtr)
 {
 long status;

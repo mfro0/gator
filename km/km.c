@@ -143,30 +143,6 @@ kms->capture_du=-1;
 return 0;
 }
 
-int acknowledge_dma2(KM_STRUCT *kms)
-{
-int i;
-for(i=0;i<kms->num_buffers;i++)
-if(kms->kmsbi[i].user_flag & KM_FI_DMA_ACTIVE){
-	kms->kmsbi[i].user_flag&=~KM_FI_DMA_ACTIVE;
-	kms->fi[i].timestamp_end=jiffies;
-	wake_up_interruptible(kms->dvb.dataq);
-	}
-#if 0
-if(kms->frame_info[FRAME_EVEN].dma_active){
-	kms->frame_info[FRAME_EVEN].dma_active=0;
-	if(kms->frame_info[FRAME_EVEN].buf_ptr==kms->frame_info[FRAME_EVEN].buf_free){
-		kms->frame_info[FRAME_EVEN].buf_ptr=0;
-		if(kms->buf_read_from==1)wake_up_interruptible(kms->dvb.dataq);
-		} else 
-	if(km_debug_overruns)printk("overrun buf_ptr=%d buf_free=%d total=%d\n", 
-			kms->frame_info[FRAME_ODD].buf_ptr,
-			kms->frame_info[FRAME_ODD].buf_free, kms->total_frames);
-	}
-#endif
-return 0;
-}
-
 static int km_fire_transfer_request(KM_TRANSFER_QUEUE *kmtq)
 {
 if(kmtq->request[kmtq->first].flag & KM_TRANSFER_IN_PROGRESS){
