@@ -103,7 +103,7 @@ static int km_v4l_ioctl(struct inode *inode, struct file *file, unsigned int cmd
 	case VIDIOCGCAP:{
 		struct video_capability b;
 		struct video_window vwin;
-		strcpy(b.name,kms->vd.name);
+		strcpy(b.name,kms->vd->name);
 		b.type = VID_TYPE_CAPTURE;
 		if(kms->get_window_parameters==NULL)return -EINVAL;
 		kms->get_window_parameters(kms, &(vwin));
@@ -162,7 +162,7 @@ static int km_v4l_ioctl(struct inode *inode, struct file *file, unsigned int cmd
 			return -EFAULT;
 		if((vwin.width!=vwin1.width)||(vwin.height!=vwin1.height)){
 			printk("km: /dev/video%d uses frame format %dx%d\n",
-			       kms->vd.minor, vwin1.width, vwin1.height);
+			       kms->vd->minor, vwin1.width, vwin1.height);
 			return -EINVAL;
 		}
 		return 0;
@@ -243,6 +243,7 @@ static int km_vbi_close(struct inode *inode, struct file *file)
 	km_data_destroy_kdufpd(kms->vbi_kdufpd);
 	kms->vbi_kdufpd=NULL;
 	stop_vbi_capture(kms);
+	return 0;
 }
 
 static ssize_t km_vbi_write(struct file *file, const char __user *buf, size_t count, loff_t *ppos)
@@ -295,7 +296,7 @@ static int km_vbi_ioctl(struct inode *inode, struct file *file, unsigned int cmd
 		struct video_capability b;
 		
 		memset(&b, 0, sizeof(b));
-		strcpy(b.name,kms->vd.name);
+		strcpy(b.name,kms->vd->name);
 		b.type = VID_TYPE_CAPTURE | VID_TYPE_TELETEXT;
 
 		if(copy_to_user(arg,&b,sizeof(b)))
@@ -389,23 +390,34 @@ static struct video_device km_v4l_vbi_template=
 	minor:		-1,
 };
 
-void init_km_v4l(KM_STRUCT *kms)
+int init_km_v4l(KM_STRUCT *kms)
 {
-	memcpy(&(kms->vd), &km_v4l_template, sizeof(km_v4l_template));
-	kms->vd.priv=kms;
-	memcpy(&(kms->vbi_vd), &km_v4l_vbi_template, sizeof(km_v4l_vbi_template));
-	kms->vbi_vd.priv=kms;
+	kms->vd = rvmalloc(sizeof(km_v4l_template));
+	if (NULL == kms->vd) return -1;
+	memcpy(kms->vd, &km_v4l_template, sizeof(km_v4l_template));
+	kms->vd->priv=kms;
+
+	kms->vbi_vd = rvmalloc(sizeof(km_v4l_vbi_template));
+	if (NULL == kms->vbi_vd) {
+		rvfree(kms->vd, sizeof(km_v4l_template));
+		return -1;
+	}
+	memcpy(kms->vbi_vd, &km_v4l_vbi_template, sizeof(km_v4l_vbi_template));
+	kms->vbi_vd->priv=kms;
 
 	if(kms->is_capture_active!=NULL)
-		video_register_device(&(kms->vd), VFL_TYPE_GRABBER, -1);
+		video_register_device(kms->vd, VFL_TYPE_GRABBER, -1);
 	if(kms->is_vbi_active!=NULL)
-		video_register_device(&(kms->vbi_vd), VFL_TYPE_VBI, -1);
+		video_register_device(kms->vbi_vd, VFL_TYPE_VBI, -1);
+	return 0;
 }
 
 void cleanup_km_v4l(KM_STRUCT *kms)
 {
 	if(kms->is_capture_active!=NULL)
-		video_unregister_device(&(kms->vd));
+		video_unregister_device(kms->vd);
 	if(kms->is_vbi_active!=NULL)
-		video_unregister_device(&(kms->vbi_vd));
+		video_unregister_device(kms->vbi_vd);
+	rvfree(kms->vbi_vd, sizeof(km_v4l_vbi_template));
+	rvfree(kms->vd, sizeof(km_v4l_template));
 }
