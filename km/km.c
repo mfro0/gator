@@ -19,6 +19,10 @@
 int allocate_single_frame_buffer(KM_STRUCT *kms, SINGLE_FRAME *frame, long size)
 {
 int i;
+if(size>(4096*4096/sizeof(bm_list_descriptor))){
+	printk("Too large buffer allocation requested: %d bytes\n", size);
+	return -1;
+	}
 frame->buf_free=size;
 frame->buf_size=((size+PAGE_SIZE-1)/PAGE_SIZE)*PAGE_SIZE;
 frame->buf_ptr=frame->buf_free; /* no data is available */
