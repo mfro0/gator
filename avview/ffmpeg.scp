@@ -102,14 +102,11 @@ add_parameter_pane "/Configuration/Encoding settings" "Encoding settings" \
 		"" ro_entry ffmpeg_encoding_theme_detail \
 		"Set parameters" command set_encoding_theme 
 
-catch {
 add_parameter_pane "/Configuration/Encoding settings/Capture parameters" "Capture parameters" \
 		"V4L parameters" heading "" \
 		"Deinterlacing method" choice [concat current_v4l_mode [get_deinterlacing_methods]] \
 		"V4L recording rate" choice {current_v4l_rrate "as is" "one half" "one quarter"} \
 		"Video frame rate" entry current_video_rate
-} err
-puts "err2=$err"
 
 if { [ffmpeg_present] } {
 	add_parameter_pane "/Configuration/Encoding settings/Compression parameters" "Compression parameters" \
@@ -145,7 +142,6 @@ global ffmpeg_encoding_theme ffmpeg_encoding_theme_detail \
 	 encoding_themes_table encoding_theme_template encoding_themes
 set theme [lrange $encoding_themes [expr $encoding_themes_table($ffmpeg_encoding_theme)*[llength $encoding_theme_template]] end]
 set theme [lrange $theme 0 [expr [llength $encoding_theme_template]-1] ]
-puts "theme=$theme"
 foreach $encoding_theme_template $theme {
 	foreach {var field} {
 		ffmpeg_video_bitrate_control q_control
