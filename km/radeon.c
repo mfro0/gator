@@ -250,6 +250,7 @@ u32 cap0_config;
 u32 trig_cntl;
 u32 fcp_cntl;
 u32 scale_cntl;
+u32 display_base;
 
 aperture=pci_resource_start(kms->dev,0);
 aperture_size=pci_resource_len(kms->dev,0);
@@ -260,6 +261,7 @@ cap0_config=readl(kms->reg_aperture+RADEON_CAP0_CONFIG);
 trig_cntl=readl(kms->reg_aperture+RADEON_TRIG_CNTL);
 fcp_cntl=readl(kms->reg_aperture+RADEON_FCP_CNTL);
 scale_cntl=readl(kms->reg_aperture+RADEON_SCALE_CNTL);
+display_base=readl(kms->reg_aperture+RADEON_DISPLAY_BASE_ADDR);
 
 new_mc_fb_location=(aperture>>16)|
 	((aperture+aperture_size-1)&0xffff0000);
@@ -280,6 +282,12 @@ if(new_mc_fb_location!=mc_fb_location){
 	writel(aperture, kms->reg_aperture+RADEON_DISPLAY_BASE_ADDR);
 	writel(aperture, kms->reg_aperture+RADEON_OVERLAY_BASE_ADDR);
 	writel(new_default_offset, kms->reg_aperture+RADEON_DEFAULT_OFFSET);
+	radeon_wait_for_idle(kms);
+	/* update capture buffers */
+	writel(readl(kms->reg_aperture+RADEON_CAP0_BUF0_OFFSET)+aperture-display_base,kms->reg_aperture+ RADEON_CAP0_BUF0_OFFSET);
+	writel(readl(kms->reg_aperture+RADEON_CAP0_BUF1_OFFSET)+aperture-display_base,kms->reg_aperture+ RADEON_CAP0_BUF1_OFFSET);
+	writel(readl(kms->reg_aperture+RADEON_CAP0_BUF0_EVEN_OFFSET)+aperture-display_base,kms->reg_aperture+ RADEON_CAP0_BUF0_EVEN_OFFSET);
+	writel(readl(kms->reg_aperture+RADEON_CAP0_BUF1_EVEN_OFFSET)+aperture-display_base,kms->reg_aperture+ RADEON_CAP0_BUF1_EVEN_OFFSET);
 	/* restore capture state */
 	radeon_wait_for_idle(kms);
 	writel(fcp_cntl, kms->reg_aperture+RADEON_FCP_CNTL);
