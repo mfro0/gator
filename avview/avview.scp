@@ -428,30 +428,41 @@ if { $fullscreen_mode } {
 	set saved_vw_width [$VIDEO_WINDOW cget -width]
 	set saved_vw_height [$VIDEO_WINDOW cget -height]
 
-	set screen_width   [winfo screenwidth $VIDEO_WINDOW]
-	set screen_height  [winfo screenheight $VIDEO_WINDOW]
-	wm geometry . =${screen_width}x${screen_height}+0+0
-	update
-	update idletasks
-
-	place $VIDEO_WINDOW.onscreen_display -relx 0.05 -rely 0.05 -anchor nw
 	
 	wm withdraw .
 	wm overrideredirect . true
-	wm deiconify .
-	update
-	update idletasks
-	xmisc_setfullscreen .
-#	wm geometry . =${screen_width}x${screen_height}+0+0
+	after idle {
+		while { [wm state .] != "normal" } {
+			wm deiconify .
+			update
+			update idletasks
+			}
+		set screen_width   [winfo screenwidth $VIDEO_WINDOW]
+		set screen_height  [winfo screenheight $VIDEO_WINDOW]
 
-#	. configure -width $screen_width \
-#		-height $screen_height  -background red
-	$VIDEO_WINDOW configure -width ${screen_width} \
-		-height ${screen_height}
-	xmisc_setscreensaver $VIDEO_WINDOW 0 0 DontPreferBlanking AllowExposures \
-		0 0 0 0 off
-	display_video
-	after idle "raise ."
+		wm geometry . =${screen_width}x${screen_height}+0+0
+		place $VIDEO_WINDOW.onscreen_display -relx 0.05 -rely 0.05 -anchor nw
+		
+		update
+		update idletasks
+		xmisc_setfullscreen .
+	#	wm geometry . =${screen_width}x${screen_height}+0+0
+
+	#	. configure -width $screen_width \
+	#		-height $screen_height  -background red
+		$VIDEO_WINDOW configure -width ${screen_width} \
+			-height ${screen_height}
+		xmisc_setscreensaver $VIDEO_WINDOW 0 0 DontPreferBlanking AllowExposures \
+			0 0 0 0 off
+		display_video
+#		after idle "raise ."
+		puts "state=[wm state .]"
+		while { [wm state .] != "normal" } {
+			wm deiconify .
+			update
+			update idletasks
+			}
+		}
 	} {
 	$VIDEO_WINDOW configure -width $saved_vw_width -height $saved_vw_height
 	place $VIDEO_WINDOW.onscreen_display -relx 0.05 -rely 0.05 -anchor nw
