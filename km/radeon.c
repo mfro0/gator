@@ -276,47 +276,22 @@ wmb();
 writel(kvirt_to_pa(kmtr->stream->dma_table[kmtr->buffer]), (u32)(kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR)| (0));
 }
 
-static void radeon_schedule_request(KM_STRUCT *kms, KM_STREAM *stream, int field)
+static void radeon_schedule_request(KM_STRUCT *kms, KM_STREAM *stream, u32 offset, int odd)
 {
-long offset;
 int buffer;
 /* do not start dma transfer if stream is not being used anymore */
 if(stream->num_buffers<=0)return;
 buffer=find_free_buffer(stream);
 if(buffer<0){
-	KM_DEBUG("radeon_schedule_request buffer=%d field=%d\n",buffer, field);
+	KM_DEBUG("radeon_schedule_request buffer=%d offset=0x%08x odd=%d\n",buffer, offset, stream->free[buffer]);
 	return;
 	}
-switch(field){
-	case 0:
-		offset=kms->buf0_odd_offset;
-		stream->dvb.kmsbi[buffer].user_flag|=KM_FI_ODD;
-		break;
-	case 1:
-		offset=kms->buf0_even_offset;
-		stream->dvb.kmsbi[buffer].user_flag&=~KM_FI_ODD;
-		break;
-	case 2:
-		offset=kms->buf1_odd_offset;
-		stream->dvb.kmsbi[buffer].user_flag|=KM_FI_ODD;
-		break;
-	case 3:
-		offset=kms->buf1_even_offset;
-		stream->dvb.kmsbi[buffer].user_flag&=~KM_FI_ODD;
-		break;
-	case 4: 
-		offset=kms->vbi0_offset;
-		stream->dvb.kmsbi[buffer].user_flag|=KM_FI_ODD;
-		break;
-	case 5:
-		offset=kms->vbi1_offset;
-		stream->dvb.kmsbi[buffer].user_flag&=~KM_FI_ODD;
-		break;
-	default:
-		printk("Internal error %s %s %d\n", __FILE__, __FUNCTION__, __LINE__);
-		return;
-	}
-KM_DEBUG("buf=%d field=%d\n", buffer, field);
+if(odd)
+	stream->dvb.kmsbi[buffer].user_flag|=KM_FI_ODD;
+	else
+	stream->dvb.kmsbi[buffer].user_flag&=~KM_FI_ODD;
+	
+KM_DEBUG("buf=%d offset=0x%08x odd=%d\n", buffer, offset, odd);
 stream->dvb.kmsbi[buffer].timestamp=jiffies;
 radeon_setup_dma_table(kms, (stream->dma_table[buffer]), offset, stream->free[buffer]);
 /* start transfer */
@@ -328,35 +303,10 @@ km_add_transfer_request(&(kms->gui_dma_queue),
 	stream, buffer, KM_TRANSFER_TO_SYSTEM_RAM, radeon_start_request_transfer, kms);
 }
 
-static int radeon_is_capture_irq_active(KM_STRUCT *kms)
-{
-u32 status, mask;
-#if 0
-status=readl(kms->reg_aperture+RADEON_GEN_INT_STATUS);
-if(!(status & (1<<8)))return 0;
-#endif
-status=readl(kms->reg_aperture+RADEON_CAP_INT_STATUS);
-mask=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
-KM_DEBUG("CAP_INT_STATUS=0x%08x mask=0x%08x\n", status, mask);
-status&=0x3f & mask; /* be nice to other users */
-if(!status)return 0;
-/*radeon_wait_for_idle(kms); */
-wmb();
-writel(status, kms->reg_aperture+RADEON_CAP_INT_STATUS);
-
-if(status & 1)radeon_schedule_request(kms, &(kms->capture), 0);
-if(status & 2)radeon_schedule_request(kms, &(kms->capture), 1);
-if(status & 4)radeon_schedule_request(kms, &(kms->capture), 2);
-if(status & 8)radeon_schedule_request(kms, &(kms->capture), 3);
-if(status & 0x10)radeon_schedule_request(kms, &(kms->vbi),  4);
-if(status & 0x20)radeon_schedule_request(kms, &(kms->vbi),  5);
-return 1;
-}
-
 void radeon_km_irq(int irq, void *dev_id, struct pt_regs *regs)
 {
 KM_STRUCT *kms;
-long status, mask;
+u32 status, mask;
 int count;
 
 kms=dev_id;
@@ -367,26 +317,41 @@ count=10000;
 
 while(1){
 /*	KM_DEBUG("beep %ld\n", kms->interrupt_count); */
-	if(!radeon_is_capture_irq_active(kms)){
-		status=readl(kms->reg_aperture+RADEON_GEN_INT_STATUS);
-		mask=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL) & ((1<<30)|7);
-		if(!(status & mask)){
-			return;
-			}
-		if(status & (1<<30)){
-			wmb();
-			acknowledge_dma(kms);
-			}
-		if(status & (1<<0))kms->vblank_count++;
-		if(status & (1<<1))kms->vline_count++;
-		if(status & (1<<2))kms->vsync_count++;
-		if(status & 7)kmd_signal_state_change(kms->kmd);
-		writel(status & mask, kms->reg_aperture+RADEON_GEN_INT_STATUS);
-		count--;
-		if(count<0){
-			KM_DEBUG(KERN_ERR "Kmultimedia: IRQ %d locked up, disabling interrupts in the hardware\n", irq);
-			writel(0, kms->reg_aperture+RADEON_GEN_INT_STATUS);
-			}
+	status=readl(kms->reg_aperture+RADEON_CAP_INT_STATUS);
+	mask=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
+	KM_DEBUG("CAP_INT_STATUS=0x%08x mask=0x%08x\n", status, mask);
+	status&=0x3f & mask; /* be nice to other users */
+	if(status){
+		/*radeon_wait_for_idle(kms); */
+		wmb();
+		writel(status, kms->reg_aperture+RADEON_CAP_INT_STATUS);
+
+		if(status & 1)radeon_schedule_request(kms, &(kms->capture), kms->buf0_odd_offset, KM_FI_ODD);
+		if(status & 2)radeon_schedule_request(kms, &(kms->capture), kms->buf0_even_offset, 0);
+		if(status & 4)radeon_schedule_request(kms, &(kms->capture), kms->buf1_odd_offset, KM_FI_ODD);
+		if(status & 8)radeon_schedule_request(kms, &(kms->capture), kms->buf1_even_offset, 0);
+		if(status & 0x10)radeon_schedule_request(kms, &(kms->vbi),  kms->vbi0_offset, KM_FI_ODD);
+		if(status & 0x20)radeon_schedule_request(kms, &(kms->vbi),  kms->vbi1_offset, 0);		
+		}
+
+	status=readl(kms->reg_aperture+RADEON_GEN_INT_STATUS);
+	mask=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL) & ((1<<30)|7);
+	if(!(status & mask)){
+		return;
+		}
+	if(status & (1<<30)){
+		wmb();
+		acknowledge_dma(kms);
+		}
+	if(status & (1<<0))kms->vblank_count++;
+	if(status & (1<<1))kms->vline_count++;
+	if(status & (1<<2))kms->vsync_count++;
+	if(status & 7)kmd_signal_state_change(kms->kmd);
+	writel(status & mask, kms->reg_aperture+RADEON_GEN_INT_STATUS);
+	count--;
+	if(count<0){
+		KM_DEBUG(KERN_ERR "Kmultimedia: IRQ %d locked up, disabling interrupts in the hardware\n", irq);
+		writel(0, kms->reg_aperture+RADEON_GEN_INT_STATUS);
 		}
 	}
 }
