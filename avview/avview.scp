@@ -46,6 +46,7 @@ foreach {variable value} {
 	screen_off "false"
 	dpms_off_on_fullscreen_power_off "false"
 	disable_fullscreen_switching "false"
+	message_visible_secs	14
 	} {
 	global $variable
 	set $variable $value
@@ -694,9 +695,9 @@ label $m.l -text "$message" -font message_font -background black -foreground "#F
 grid $m.l
 
 
-global flash_counter
+global flash_counter message_visible_secs
 if { $flash_counter < 0 } { after 1000 fm_countdown }
-set flash_counter 14
+set flash_counter $message_visible_secs
 }
 
 menu .video_menu -type normal -tearoff false
