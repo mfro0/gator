@@ -1,6 +1,6 @@
 #!./avview_shell
 
-add_parameter_pane "/Video device parameters" "Video device parameters" \
+add_parameter_pane "/Configuration/Video device parameters" "Video device parameters" \
 	"Xv port used for on-screen display" choice {current_port } \
 	"Xv port encoding" choice {current_encoding } \
 	"Channel table" choice [linsert $TABLE_LIST 0 current_table_name] \
@@ -9,7 +9,7 @@ add_parameter_pane "/Video device parameters" "Video device parameters" \
 
 proc regenerate_port_menu {} {
 global VIDEO_WINDOW
-set vd_param [get_pane_frame "/Video device parameters"]
+set vd_param [get_pane_frame "/Configuration/Video device parameters"]
 set menu [$vd_param.f.canvas.f.optionmenu0 cget -menu]
 set NUM_ADAPTORS [xv_numadaptors $VIDEO_WINDOW]
 puts "NUM_ADAPTORS=$NUM_ADAPTORS"

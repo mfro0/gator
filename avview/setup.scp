@@ -91,6 +91,7 @@ global SETUP_PANES
 global diag_pane_count
 set PANE_FRAME $SETUP_MAIN.f.pane$diag_pane_count
 frame $PANE_FRAME 
+puts stderr "Adding pane $PANE_FRAME $key $title"
 make_title $PANE_FRAME.title "$title"
 grid $PANE_FRAME.title -sticky news -pady 2
 frame $PANE_FRAME.f
@@ -118,17 +119,8 @@ checkbutton $PANE_FRAME.done -indicatoron false -text "Done" -variable "VAR_$key
 Tree:newitem $SETUP_MAIN.tree $key -tags "KEY_$key"
 
 
-set SETUP_PANES($key:pane_frame) "$PANE_FRAME"
+set SETUP_PANES($key:pane_frame) $PANE_FRAME
 incr diag_pane_count
-}
-
-proc get_pane_frame { key } {
-global SETUP_PANES
-set frame ""
-catch {
-	set frame [set SETUP_PANES($key:pane_frame)]
-	}
-return $frame
 }
 
 proc set_next_key { key next_key } {
@@ -322,3 +314,5 @@ after idle {
 wm protocol .setup WM_DELETE_WINDOW {
 	wm withdraw .setup
 	}
+
+add_parameter_pane "/Configuration" "Configuration"

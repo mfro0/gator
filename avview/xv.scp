@@ -276,7 +276,7 @@ if { [find_port_adaptor $current_port] < 0 } {
 
 set NUM_ENCODINGS [xv_num_port_encodings $VIDEO_WINDOW $current_port]
 
-set vd_param [get_pane_frame "/Video device parameters"]
+set vd_param [get_pane_frame "/Configuration/Video device parameters"]
 set vdp_encoding_menu [$vd_param.f.canvas.f.optionmenu1 cget -menu]
 
 $current_encoding_menu delete 0 end

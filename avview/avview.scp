@@ -899,7 +899,7 @@ foreach theme [lsort -ascii [array names theme_list]] {
 	}
 
 if { [alsa_present] } {
-	add_parameter_pane "/User interface settings" "User interface settings" \
+	add_parameter_pane "/Configuration/User interface settings" "User interface settings" \
 		"Display setup window on startup" checkbutton display_setup_window_on_startup \
 		"Display control window" checkbutton show_control_window \
 		"Display attributes subsection" checkbutton attributes_window \
@@ -909,7 +909,7 @@ if { [alsa_present] } {
 		"On screen message stays visible for as long as (secs)" choice { message_visible_secs 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 } \
 		"Warn about missing km" checkbutton warn_about_missing_km
 	} {
-	add_parameter_pane "/User interface settings" "User interface settings" \
+	add_parameter_pane "/Configuration/User interface settings" "User interface settings" \
 		"Display setup window on startup" checkbutton display_setup_window_on_startup \
 		"Display control window" checkbutton show_control_window \
 		"Display attributes subsection" checkbutton attributes_window \
@@ -919,15 +919,16 @@ if { [alsa_present] } {
 		"Warn about missing km" checkbutton warn_about_missing_km
 	}
 
-add_parameter_pane "/User interface settings/Fullscreen behaviour" "Fullscreen behaviour" \
+add_parameter_pane "/Configuration/User interface settings/Fullscreen behaviour" "Fullscreen behaviour" \
 		"Remember fullscreen state for new sessions" checkbutton remember_fullscreen_state \
 		"Always start fullscreen" checkbutton always_start_fullscreen \
 		"Disable fullscreen switching" checkbutton disable_fullscreen_switching \
 		"Remote power off button turns off monitor in fullscreen mode" checkbutton dpms_off_on_fullscreen_power_off
 
-Tree:open .setup.tree "/User interface settings"
+Tree:open .setup.tree "/Configuration"
+Tree:open .setup.tree "/Configuration/User interface settings"
 
-replace_parameter_choices "/Video device parameters" 0 a
+replace_parameter_choices "/Configuration/Video device parameters" 0 a
 regenerate_port_menu
 
 after idle {

@@ -1,7 +1,7 @@
 #!./avview_shell
 
 if { [ffmpeg_present] } {
-	add_parameter_pane "/Compression parameters" "Compression parameters" \
+	add_parameter_pane "/Configuration/Compression parameters" "Compression parameters" \
 		"Video codec parameters" heading "" \
 		"Bitrate control" choice { ffmpeg_video_bitrate_control "Fix bitrate" "Fix quality" } \
 		"Bitrate" entry ffmpeg_video_bitrate \
@@ -17,5 +17,5 @@ if { [ffmpeg_present] } {
 #		"Record in chunks of (MB)" entry ffmpeg_recording_chunk_size 
 		
 	} {
-	add_description_pane "/Compression parameters" "Compression parameters" "AVview has not been compiled to include compression library"
+	add_description_pane "/Configuration/Compression parameters" "Compression parameters" "AVview has not been compiled to include compression library"
 	}
