@@ -1712,14 +1712,13 @@ RADEONSetupImageVideo(ScreenPtr pScreen)
     xf86LoaderReqSymbols(TheatreSymbolsList, NULL);
     pPriv->i2c=NULL;
     pPriv->theatre=NULL;
-    /* do not try to access i2c bus on radeon mobility */
+    /* do not try to access i2c bus or Rage Theatre on radeon mobility */
     switch(info->Chipset){
     	case PCI_CHIP_RADEON_LY:
 	case PCI_CHIP_RADEON_LZ:
 	        xf86DrvMsg(pScrn->scrnIndex,X_INFO,"Detected Radeon Mobility M6, disabling i2c and Rage Theatre\n");
 		break;
 	case PCI_CHIP_RADEON_LW:
-  	    	pPriv->theatre=xf86_DetectTheatre(pPriv->VIP);
 	        xf86DrvMsg(pScrn->scrnIndex,X_INFO,"Detected Radeon Mobility M7, disabling i2c and Rage Theatre\n");
 		break;
 	default:
