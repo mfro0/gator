@@ -278,17 +278,22 @@ static void RADEONLoadCursorImage(ScrnInfoPtr pScrn, unsigned char *image)
 	*d++ = 0x00000000;
     }
 
+    write_mem_barrier();
     
     if (!info->IsSecondary) {
 	save1 = INREG(RADEON_CRTC_GEN_CNTL) & ~(CARD32) (3 << 20);
+	#if 0
 	OUTREG(RADEON_CRTC_GEN_CNTL, save1 & (CARD32)~RADEON_CRTC_CUR_EN);
+	#endif
         OUTREG(RADEON_CUR_OFFSET, INREG(RADEON_CUR_OFFSET)+(info->cursor_buffer-(info->cursor_end-info->cursor_start)));
 	OUTREG(RADEON_CRTC_GEN_CNTL, save1);
     }
 
     if (info->IsSecondary || info->Clone) {
 	save2 = INREG(RADEON_CRTC2_GEN_CNTL) & ~(CARD32) (3 << 20);
+	#if 0
 	OUTREG(RADEON_CRTC2_GEN_CNTL, save2 & (CARD32)~RADEON_CRTC2_CUR_EN);
+	#endif
         OUTREG(RADEON_CUR2_OFFSET, INREG(RADEON_CUR_OFFSET)+(info->cursor_buffer-(info->cursor_end-info->cursor_start)));
 	OUTREG(RADEON_CRTC2_GEN_CNTL, save2);
     }
@@ -392,11 +397,14 @@ static void RADEONLoadCursorARGB (ScrnInfoPtr pScrn, CursorPtr pCurs)
 	for (x = 0; x < 64; x++)
 	    *d++ = 0;
     
+    write_mem_barrier();
 
     if (!info->IsSecondary) {
 	save1 = INREG(RADEON_CRTC_GEN_CNTL) & ~(CARD32) (3 << 20);
 	save1 |= (CARD32) 2 << 20;
+	#if 0
 	OUTREG(RADEON_CRTC_GEN_CNTL, save1 & (CARD32)~RADEON_CRTC_CUR_EN);
+	#endif
         OUTREG(RADEON_CUR_OFFSET, INREG(RADEON_CUR_OFFSET)+(info->cursor_buffer-(info->cursor_end-info->cursor_start)));
 	OUTREG(RADEON_CRTC_GEN_CNTL, save1);
     }
@@ -404,7 +412,9 @@ static void RADEONLoadCursorARGB (ScrnInfoPtr pScrn, CursorPtr pCurs)
     if (info->IsSecondary || info->Clone) {
 	save2 = INREG(RADEON_CRTC2_GEN_CNTL) & ~(CARD32) (3 << 20);
 	save2 |= (CARD32) 2 << 20;
+	#if 0
 	OUTREG(RADEON_CRTC2_GEN_CNTL, save2 & (CARD32)~RADEON_CRTC2_CUR_EN);
+	#endif
         OUTREG(RADEON_CUR2_OFFSET, INREG(RADEON_CUR_OFFSET)+(info->cursor_buffer-(info->cursor_end-info->cursor_start)));
 	OUTREG(RADEON_CRTC2_GEN_CNTL, save2);
     }

@@ -3787,7 +3787,7 @@ Bool RADEONScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
                                  * buffer.
 				 */
 	info->depthOffset = ((info->textureOffset - bufferSize +
-			      RADEON_BUFFER_ALIGN+info->membase) &
+			      RADEON_BUFFER_ALIGN) &
 			     ~(CARD32)RADEON_BUFFER_ALIGN);
 	info->depthPitch = pScrn->displayWidth;
 
@@ -5649,7 +5649,7 @@ void RADEONDoAdjustFrame(ScrnInfoPtr pScrn, int x, int y, int clone)
     	pSAREAPriv = DRIGetSAREAPrivate(pScrn->pScreen);
 
 	if (pSAREAPriv->pfCurrentPage == 1) {
-	    Base += info->backOffset;
+	    Base += info->backOffset-info->membase;
 	}
 
 	if (clone || info->IsSecondary) {
