@@ -2481,6 +2481,7 @@ switch(pPriv->encoding){
 	default:
 		return;
 	}	
+xf86DrvMsg(0, X_INFO, "test--\n");
 xf86_InitMSP3430(pPriv->msp3430);
 xf86_MSP3430SetVolume(pPriv->msp3430, pPriv->mute ? MSP3430_FAST_MUTE : pPriv->volume);
 }

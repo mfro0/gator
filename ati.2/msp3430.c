@@ -16,7 +16,7 @@ void CheckModeMSP34x5D(MSP3430Ptr m);
 char *MSP_getProductName (CARD16 product_id);
 void mpause(int milliseconds);
 
-#define __MSPDEBUG__	2
+#define __MSPDEBUG__	0
 
 #if __MSPDEBUG__ > 3
 
@@ -94,6 +94,10 @@ xf86DrvMsg(m->d.pI2CBus->scrnIndex, X_INFO, "MSP34xx: standard result=0x%02x%02x
 /* wrapper */
 void InitMSP3430(MSP3430Ptr m)
 {
+  #if __MSPDEBUG__ > 1
+  xf86DrvMsg(m->d.pI2CBus->scrnIndex,X_INFO,"InitMSP3430(m->connector=%d, m->standard=%d, m->chip_family=%d)\n",
+  		m->connector, m->standard, m->chip_family);
+  #endif
 	switch (m->chip_family) {
 		case MSPFAMILY_34x0G:
 			InitMSP34xxG(m);
@@ -211,6 +215,7 @@ MSP3430Ptr DetectMSP3430(I2CBusPtr b, I2CSlaveAddr addr)
 		default:
 		  	m->chip_family=MSPFAMILY_UNKNOWN;
 		}
+		break;
    default:
 	  	m->chip_family=MSPFAMILY_UNKNOWN;
    }
@@ -252,6 +257,7 @@ void MSP3430SetVolume (MSP3430Ptr m, CARD8 value)
 
     MSP3430DumpStatus(m); 
 #if __MSPDEBUG__ > 2
+    __MSPBEEP
     GetMSP3430Data(m, RD_DSP, 0x00, 0x00, &old_volume, &result);
     xf86DrvMsg(m->d.pI2CBus->scrnIndex, X_INFO, "MSP3430 volume 0x%02x\n",value);
 #endif
@@ -312,6 +318,11 @@ void mpause(int milliseconds) {
 
 void InitMSP34xxG(MSP3430Ptr m)
 {
+
+  #if __MSPDEBUG__ > 1
+  xf86DrvMsg(m->d.pI2CBus->scrnIndex,X_INFO,"InitMSP34xxG(m->connector=%d, m->standard=%d, m->chip_family=%d)\n",
+  		m->connector, m->standard, m->chip_family);
+  #endif
    /* Reset MSP3430 */
    SetMSP3430Control(m, 0x00, 0x80, 0x00);
    /* Set it back to normal operation */
