@@ -47,7 +47,7 @@ all::
 # $Xorg: lnxLib.rules,v 1.3 2000/08/17 19:41:47 cpqbld Exp $
 # $XFree86: xc/config/cf/lnxLib.rules,v 3.41 2001/06/05 23:03:19 dawes Exp $
 
-# $XFree86: xc/config/cf/xfree86.cf,v 3.385 2001/12/19 21:33:58 dawes Exp $
+# $XFree86: xc/config/cf/xfree86.cf,v 3.388 2002/01/03 22:51:54 alanh Exp $
 
 # $Xorg: xfree86.cf,v 1.4 2000/08/17 19:41:49 cpqbld Exp $
 
@@ -311,13 +311,13 @@ MODLDCOMBINEFLAGS = -r
 #
 #
 #
-# $XFree86: xc/config/cf/X11.tmpl,v 1.138 2001/12/27 01:15:56 keithp Exp $
+# $XFree86: xc/config/cf/X11.tmpl,v 1.139 2002/01/07 22:15:28 tsi Exp $
 
 XORGRELSTRING = Release 6.6
 XORGMANNAME = X Version 11
 
 VENDORMANNAME = XFree86
-VENDORMANVERSION = Version `echo 4 1 99 4 | sed 's/ /./g'`
+VENDORMANVERSION = Version `echo 4 1 99 5 | sed 's/ /./g'`
 
 STICKY_DEFINES = -DHAS_STICKY_DIR_BIT
 
