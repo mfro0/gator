@@ -2,7 +2,7 @@
 
     avview preliminary version 
     
-    (C) Vladimir Dergachev 2001-2002
+    (C) Vladimir Dergachev 2001-2003
     
     
 */

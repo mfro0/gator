@@ -1,6 +1,8 @@
-/*     avview preliminary version
+/*
 
-       (C) Vladimir Dergachev 2001-2002
+       AVview preliminary version
+
+       (C) Vladimir Dergachev 2001-2003
        
        GNU Public License
        
