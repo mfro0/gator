@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/r128_driver.c,v 1.57 2002/01/04 21:22:26 tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/r128_driver.c,v 1.71 2002/11/29 15:33:19 eich Exp $ */
 /*
  * Copyright 1999, 2000 ATI Technologies Inc., Markham, Ontario,
  *                      Precision Insight, Inc., Cedar Park, Texas, and
@@ -93,6 +93,7 @@
 #include "xf86_OSproc.h"
 #include "xf86PciInfo.h"
 #include "xf86RAC.h"
+#include "xf86Resources.h"
 #include "xf86cmap.h"
 #include "xf86xv.h"
 #include "vbe.h"
@@ -116,6 +117,8 @@ static void R128Restore(ScrnInfoPtr pScrn);
 static Bool R128ModeInit(ScrnInfoPtr pScrn, DisplayModePtr mode);
 static void R128DisplayPowerManagementSet(ScrnInfoPtr pScrn,
 					  int PowerManagementMode, int flags);
+static void R128DisplayPowerManagementSetLCD(ScrnInfoPtr pScrn,
+					  int PowerManagementMode, int flags);
 
 typedef enum {
   OPTION_NOACCEL,
@@ -123,6 +126,7 @@ typedef enum {
   OPTION_DAC_6BIT,
   OPTION_DAC_8BIT,
 #ifdef XF86DRI
+  OPTION_XV_DMA,
   OPTION_IS_PCI,
   OPTION_CCE_PIO,
   OPTION_NO_SECURITY,
@@ -159,6 +163,7 @@ const OptionInfoRec R128Options[] = {
   { OPTION_DAC_6BIT,     "Dac6Bit",          OPTV_BOOLEAN, {0}, FALSE },
   { OPTION_DAC_8BIT,     "Dac8Bit",          OPTV_BOOLEAN, {0}, TRUE  },
 #ifdef XF86DRI
+  { OPTION_XV_DMA,       "DMAForXv",         OPTV_BOOLEAN, {0}, FALSE },
   { OPTION_IS_PCI,       "ForcePCIMode",     OPTV_BOOLEAN, {0}, FALSE },
   { OPTION_CCE_PIO,      "CCEPIOMode",       OPTV_BOOLEAN, {0}, FALSE },
   { OPTION_NO_SECURITY,  "CCENoSecurity",    OPTV_BOOLEAN, {0}, FALSE },
@@ -212,6 +217,8 @@ static const char *fbdevHWSymbols[] = {
     "fbdevHWUseBuildinMode",
     "fbdevHWGetLineLength",
     "fbdevHWGetVidmem",
+
+    "fbdevHWDPMSSet",
 
     /* colormap */
     "fbdevHWLoadPalette",
@@ -293,18 +300,16 @@ static const char *drmSymbols[] = {
     "drmAgpUnbind",
     "drmAgpVendorId",
     "drmAvailable",
+    "drmCommandNone",
+    "drmCommandRead",
+    "drmCommandWrite",
+    "drmCommandWriteRead",
     "drmFreeVersion",
+    "drmGetLibVersion",
     "drmGetVersion",
     "drmMap",
     "drmMapBufs",
     "drmDMA",
-    "drmR128CleanupCCE",
-    "drmR128InitCCE",
-    "drmR128ResetCCE",
-    "drmR128StartCCE",
-    "drmR128StopCCE",
-    "drmR128WaitForIdleCCE",
-    "drmR128FlushIndirectBuffer",
     "drmScatterGatherAlloc",
     "drmScatterGatherFree",
     "drmUnmap",
@@ -341,6 +346,32 @@ static const char *int10Symbols[] = {
     NULL
 };
 
+void R128LoaderRefSymLists(void)
+{
+    /*
+     * Tell the loader about symbols from other modules that this module might
+     * refer to.
+     */
+    xf86LoaderRefSymLists(vgahwSymbols,
+#ifdef USE_FB
+		      fbSymbols,
+#else
+		      cfbSymbols,
+#endif
+		      xaaSymbols,
+		      ramdacSymbols,
+#ifdef XF86DRI
+		      drmSymbols,
+		      driSymbols,
+#endif
+		      fbdevHWSymbols,
+		      int10Symbols,
+		      vbeSymbols,
+		      /* ddcsymbols, */
+		      i2cSymbols,
+		      /* shadowSymbols, */
+		      NULL);
+}
 
 /* Allocate our private R128InfoRec. */
 static Bool R128GetRec(ScrnInfoPtr pScrn)
@@ -551,7 +582,7 @@ static Bool R128GetBIOSParameters(ScrnInfoPtr pScrn, xf86Int10InfoPtr pInt10)
 	    xf86DrvMsg(pScrn->scrnIndex, X_WARNING,
 		       "Attempting to read Video BIOS from legacy ISA space!\n");
 	    info->BIOSAddr = 0x000c0000;
-	    xf86ReadBIOS(info->BIOSAddr, 0, info->VBIOS, R128_VBIOS_SIZE);
+	    xf86ReadDomainMemory(info->PciTag, info->BIOSAddr, R128_VBIOS_SIZE, info->VBIOS);
 	}
     }
     if (info->VBIOS[0] != 0x55 || info->VBIOS[1] != 0xaa) {
@@ -1023,7 +1054,6 @@ static Bool R128PreInitConfig(ScrnInfoPtr pScrn)
 	       "VideoRAM: %d kByte (%s)\n", pScrn->videoRam, info->ram->name);
 
 				/* Flat panel (part 2) */
-    if (info->HasPanelRegs) {
 	switch (info->BIOSDisplay) {
 	case R128_BIOS_DISPLAY_FP:
 	    xf86DrvMsg(pScrn->scrnIndex, X_CONFIG,
@@ -1040,6 +1070,7 @@ static Bool R128PreInitConfig(ScrnInfoPtr pScrn)
 	    break;
 	}
 
+    if (info->HasPanelRegs) {
 				/* Panel width/height overrides */
 	info->PanelXRes = 0;
 	info->PanelYRes = 0;
@@ -1056,6 +1087,13 @@ static Bool R128PreInitConfig(ScrnInfoPtr pScrn)
     }
 
 #ifdef XF86DRI
+				/* DMA for Xv */
+    info->DMAForXv = xf86ReturnOptValBool(info->Options, OPTION_XV_DMA, FALSE);
+    if (info->DMAForXv) {
+	xf86DrvMsg(pScrn->scrnIndex, X_CONFIG,
+		   "Will try to use DMA for Xv image transfers\n");
+    }
+
 				/* AGP/PCI */
     if (xf86ReturnOptValBool(info->Options, OPTION_IS_PCI, FALSE)) {
 	info->IsPCI = TRUE;
@@ -1487,9 +1525,11 @@ static Bool R128PreInitModes(ScrnInfoPtr pScrn)
 
     if(info->isDFP) {
         R128MapMem(pScrn);
+        info->BIOSDisplay = R128_BIOS_DISPLAY_FP;
         /* validate if DFP really connected. */
         if(!R128GetDFPInfo(pScrn)) {
             info->isDFP = FALSE;
+            info->BIOSDisplay = R128_BIOS_DISPLAY_CRT;
         } else if(!info->isPro2) {
             /* RageProII doesn't support rmx, we can't use native-mode 
                stretching for other non-native modes. It will rely on
@@ -1503,7 +1543,6 @@ static Bool R128PreInitModes(ScrnInfoPtr pScrn)
                 
             }
         }
-        info->BIOSDisplay = R128_BIOS_DISPLAY_FP;
         R128UnmapMem(pScrn);
     }
 
@@ -1765,29 +1804,6 @@ Bool R128PreInit(ScrnInfoPtr pScrn, int flags)
 
     R128TRACE(("R128PreInit\n"));
 
-    /*
-     * Tell the loader about symbols from other modules that this module might
-     * refer to.
-     */
-    xf86LoaderRefSymLists(vgahwSymbols,
-#ifdef USE_FB
-		      fbSymbols,
-#else
-		      cfbSymbols,
-#endif
-		      xaaSymbols,
-		      ramdacSymbols,
-#ifdef XF86DRI
-		      drmSymbols,
-		      driSymbols,
-#endif
-		      fbdevHWSymbols,
-		      vbeSymbols,
-		      /* ddcsymbols, */
-		      i2cSymbols,
-		      /* shadowSymbols, */
-		      NULL);
-
     if (pScrn->numEntities != 1) return FALSE;
 
     if (!R128GetRec(pScrn)) return FALSE;
@@ -1821,8 +1837,9 @@ Bool R128PreInit(ScrnInfoPtr pScrn, int flags)
 	       info->PciInfo->func);
 
     if (xf86RegisterResources(info->pEnt->index, 0, ResNone)) goto fail;
+    if (xf86SetOperatingState(resVga, info->pEnt->index, ResUnusedOpr)) goto fail;
 
-    pScrn->racMemFlags = RAC_FB | RAC_COLORMAP | RAC_CURSOR;
+    pScrn->racMemFlags = RAC_FB | RAC_COLORMAP | RAC_VIEWPORT | RAC_CURSOR;
     pScrn->monitor     = pScrn->confScreen->monitor;
 
     if (!R128PreInitVisual(pScrn))    goto fail;
@@ -2413,12 +2430,6 @@ Bool R128ScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	    }
 	}
     }
-				/* Backing store setup */
-    miInitializeBackingStore(pScreen);
-    xf86SetBackingStore(pScreen);
-
-				/* Set Silken Mouse */
-    xf86SetSilkenMouse(pScreen);
 
 				/* Acceleration setup */
     if (!xf86ReturnOptValBool(info->Options, OPTION_NOACCEL, FALSE)) {
@@ -2438,6 +2449,13 @@ Bool R128ScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 
 				/* DGA setup */
     R128DGAInit(pScreen);
+
+				/* Backing store setup */
+    miInitializeBackingStore(pScreen);
+    xf86SetBackingStore(pScreen);
+
+				/* Set Silken Mouse */
+    xf86SetSilkenMouse(pScreen);
 
 				/* Cursor setup */
     miDCInitialize(pScreen, xf86GetPointerScreenFuncs());
@@ -2477,11 +2495,17 @@ Bool R128ScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 #endif
 			     )) return FALSE;
 
-				/* DPMS setup - FIXME: also for mirror mode? - Michel */
-    if (!info->HasPanelRegs || info->BIOSDisplay == R128_BIOS_DISPLAY_CRT)
-	xf86DPMSInit(pScreen, R128DisplayPowerManagementSet, 0);
+    /* DPMS setup - FIXME: also for mirror mode in non-fbdev case? - Michel */
+    if (info->FBDev)
+	xf86DPMSInit(pScreen, fbdevHWDPMSSet, 0);
+    else {
+	if (!info->HasPanelRegs || info->BIOSDisplay == R128_BIOS_DISPLAY_CRT)
+	    xf86DPMSInit(pScreen, R128DisplayPowerManagementSet, 0);
+	else if (info->HasPanelRegs || info->BIOSDisplay == R128_BIOS_DISPLAY_FP)
+	    xf86DPMSInit(pScreen, R128DisplayPowerManagementSetLCD, 0);
+    }
 
-	R128InitVideo(pScreen);
+    R128InitVideo(pScreen);
 
 				/* Provide SaveScreen */
     pScreen->SaveScreen  = R128SaveScreen;
@@ -3298,6 +3322,7 @@ static Bool R128Init(ScrnInfoPtr pScrn, DisplayModePtr mode, R128SavePtr save)
 	   pScrn->depth,
 	   pScrn->bitsPerPixel);
     if (mode->Flags & V_DBLSCAN)   ErrorF(" D");
+    if (mode->Flags & V_CSYNC)     ErrorF(" C");
     if (mode->Flags & V_INTERLACE) ErrorF(" I");
     if (mode->Flags & V_PHSYNC)    ErrorF(" +H");
     if (mode->Flags & V_NHSYNC)    ErrorF(" -H");
@@ -3320,6 +3345,7 @@ static Bool R128Init(ScrnInfoPtr pScrn, DisplayModePtr mode, R128SavePtr save)
 	   pScrn->depth,
 	   pScrn->bitsPerPixel);
     if (mode->Flags & V_DBLSCAN)   ErrorF(" D");
+    if (mode->Flags & V_CSYNC)     ErrorF(" C");
     if (mode->Flags & V_INTERLACE) ErrorF(" I");
     if (mode->Flags & V_PHSYNC)    ErrorF(" +H");
     if (mode->Flags & V_NHSYNC)    ErrorF(" -H");
@@ -3524,7 +3550,7 @@ void R128LeaveVT(int scrnIndex, int flags)
 #endif
 
 #ifdef XF86DRI
-    if (R128PTR(pScrn)->directRenderingEnabled) {
+    if (info->directRenderingEnabled) {
 	DRILock(pScrn->pScreen, 0);
 	R128CCE_STOP(pScrn, info);
     }
@@ -3630,3 +3656,73 @@ static void R128DisplayPowerManagementSet(ScrnInfoPtr pScrn,
 	break;
     }
 }
+
+static int r128_set_backlight_enable(ScrnInfoPtr pScrn, int on);
+
+static void R128DisplayPowerManagementSetLCD(ScrnInfoPtr pScrn,
+					  int PowerManagementMode, int flags)
+{
+    R128InfoPtr   info      = R128PTR(pScrn);
+    unsigned char *R128MMIO = info->MMIO;
+    int           mask      = R128_LVDS_DISPLAY_DIS;
+
+    switch (PowerManagementMode) {
+    case DPMSModeOn:
+	/* Screen: On; HSync: On, VSync: On */
+	OUTREGP(R128_LVDS_GEN_CNTL, 0, ~mask);
+        r128_set_backlight_enable(pScrn, 1);
+	break;
+    case DPMSModeStandby:
+	/* Fall through */
+    case DPMSModeSuspend:
+	/* Fall through */
+	break;
+    case DPMSModeOff:
+	/* Screen: Off; HSync: Off, VSync: Off */
+	OUTREGP(R128_LVDS_GEN_CNTL, mask, ~mask);
+        r128_set_backlight_enable(pScrn, 0);
+	break;
+    }
+}
+
+static int r128_set_backlight_enable(ScrnInfoPtr pScrn, int on)
+{
+        R128InfoPtr info        = R128PTR(pScrn);
+        unsigned char *R128MMIO = info->MMIO;
+	unsigned int lvds_gen_cntl = INREG(R128_LVDS_GEN_CNTL);
+
+	lvds_gen_cntl |= (/*R128_LVDS_BL_MOD_EN |*/ R128_LVDS_BLON);
+	if (on) {
+		lvds_gen_cntl |= R128_LVDS_DIGON;
+		if (!lvds_gen_cntl & R128_LVDS_ON) {
+			lvds_gen_cntl &= ~R128_LVDS_BLON;
+			OUTREG(R128_LVDS_GEN_CNTL, lvds_gen_cntl);
+			(void)INREG(R128_LVDS_GEN_CNTL);
+			usleep(10000);
+			lvds_gen_cntl |= R128_LVDS_BLON;
+			OUTREG(R128_LVDS_GEN_CNTL, lvds_gen_cntl);
+		}
+#if 0
+		lvds_gen_cntl &= ~R128_LVDS_BL_MOD_LEVEL_MASK;
+		lvds_gen_cntl |= (0xFF /* backlight_conv[level] */ <<
+				  R128_LVDS_BL_MOD_LEVEL_SHIFT);
+#endif
+		lvds_gen_cntl |= (R128_LVDS_ON | R128_LVDS_EN);
+		lvds_gen_cntl &= ~R128_LVDS_DISPLAY_DIS;
+	} else {
+#if 0
+		lvds_gen_cntl &= ~R128_LVDS_BL_MOD_LEVEL_MASK;
+		lvds_gen_cntl |= (0xFF /* backlight_conv[0] */ <<
+				  R128_LVDS_BL_MOD_LEVEL_SHIFT);
+#endif
+		lvds_gen_cntl |= R128_LVDS_DISPLAY_DIS;
+		OUTREG(R128_LVDS_GEN_CNTL, lvds_gen_cntl);
+		usleep(10);
+		lvds_gen_cntl &= ~(R128_LVDS_ON | R128_LVDS_EN | R128_LVDS_BLON 
+				   | R128_LVDS_DIGON);
+	}
+
+	OUTREG(R128_LVDS_GEN_CNTL, lvds_gen_cntl);
+
+	return 0;
+ }

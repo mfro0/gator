@@ -1,6 +1,6 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atichip.c,v 1.23 2001/12/28 17:31:43 dawes Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atichip.c,v 1.27 2002/10/12 01:38:06 martin Exp $ */
 /*
- * Copyright 1997 through 2001 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
+ * Copyright 1997 through 2002 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
  * documentation for any purpose is hereby granted without fee, provided that
@@ -90,6 +90,9 @@ const char *ATIChipNames[] =
     "ATI Radeon Mobility M7",
     "ATI Radeon 8500",
     "ATI Radeon 7500",
+    "ATI Radeon 9000",
+    "ATI Radeon Mobility M9",
+    "ATI Radeon 9700",
     "ATI Rage HDTV"
 };
 
@@ -439,7 +442,7 @@ ATIChipID
         case OldChipID('X', 'X'):  case NewChipID('X', 'X'):
             return ATI_CHIP_68800_6;
 
-        case OldChipID('L', 'X'):  case NewChipID('L', 'X'):
+        case OldChipID('L', 'X'):
             return ATI_CHIP_68800LX;
 
         case OldChipID('A', 'X'):  case NewChipID('A', 'X'):
@@ -532,89 +535,112 @@ ATIChipID
         case OldChipID('L', 'S'):  case NewChipID('L', 'S'):
             return ATI_CHIP_MOBILITY;
 
-        case OldChipID('R', 'E'):  case NewChipID('R', 'E'):
-        case OldChipID('R', 'F'):  case NewChipID('R', 'F'):
-        case OldChipID('S', 'K'):  case NewChipID('S', 'K'):
-        case OldChipID('S', 'L'):  case NewChipID('S', 'L'):
-        case OldChipID('S', 'M'):  case NewChipID('S', 'M'):
-        case OldChipID('S', 'N'):  case NewChipID('S', 'N'):
+        case NewChipID('R', 'E'):
+        case NewChipID('R', 'F'):
+        case NewChipID('S', 'K'):
+        case NewChipID('S', 'L'):
+        case NewChipID('S', 'M'):
+        case NewChipID('S', 'N'):
             return ATI_CHIP_RAGE128GL;
 
-        case OldChipID('R', 'K'):  case NewChipID('R', 'K'):
-        case OldChipID('R', 'L'):  case NewChipID('R', 'L'):
-        case OldChipID('S', 'E'):  case NewChipID('S', 'E'):
-        case OldChipID('S', 'F'):  case NewChipID('S', 'F'):
-        case OldChipID('S', 'G'):  case NewChipID('S', 'G'):
+        case NewChipID('R', 'K'):
+        case NewChipID('R', 'L'):
+        case NewChipID('S', 'E'):
+        case NewChipID('S', 'F'):
+        case NewChipID('S', 'G'):
             return ATI_CHIP_RAGE128VR;
 
-        case OldChipID('P', 'A'):  case NewChipID('P', 'A'):
-        case OldChipID('P', 'B'):  case NewChipID('P', 'B'):
-        case OldChipID('P', 'C'):  case NewChipID('P', 'C'):
-        case OldChipID('P', 'D'):  case NewChipID('P', 'D'):
-        case OldChipID('P', 'E'):  case NewChipID('P', 'E'):
-        case OldChipID('P', 'F'):  case NewChipID('P', 'F'):
+        case NewChipID('P', 'A'):
+        case NewChipID('P', 'B'):
+        case NewChipID('P', 'C'):
+        case NewChipID('P', 'D'):
+        case NewChipID('P', 'E'):
+        case NewChipID('P', 'F'):
             return ATI_CHIP_RAGE128PROGL;
 
-        case OldChipID('P', 'G'):  case NewChipID('P', 'G'):
-        case OldChipID('P', 'H'):  case NewChipID('P', 'H'):
-        case OldChipID('P', 'I'):  case NewChipID('P', 'I'):
-        case OldChipID('P', 'J'):  case NewChipID('P', 'J'):
-        case OldChipID('P', 'K'):  case NewChipID('P', 'K'):
-        case OldChipID('P', 'L'):  case NewChipID('P', 'L'):
-        case OldChipID('P', 'M'):  case NewChipID('P', 'M'):
-        case OldChipID('P', 'N'):  case NewChipID('P', 'N'):
-        case OldChipID('P', 'O'):  case NewChipID('P', 'O'):
-        case OldChipID('P', 'P'):  case NewChipID('P', 'P'):
-        case OldChipID('P', 'Q'):  case NewChipID('P', 'Q'):
-        case OldChipID('P', 'R'):  case NewChipID('P', 'R'):
-        case OldChipID('P', 'S'):  case NewChipID('P', 'S'):
-        case OldChipID('P', 'T'):  case NewChipID('P', 'T'):
-        case OldChipID('P', 'U'):  case NewChipID('P', 'U'):
-        case OldChipID('P', 'V'):  case NewChipID('P', 'V'):
-        case OldChipID('P', 'W'):  case NewChipID('P', 'W'):
-        case OldChipID('P', 'X'):  case NewChipID('P', 'X'):
+        case NewChipID('P', 'G'):
+        case NewChipID('P', 'H'):
+        case NewChipID('P', 'I'):
+        case NewChipID('P', 'J'):
+        case NewChipID('P', 'K'):
+        case NewChipID('P', 'L'):
+        case NewChipID('P', 'M'):
+        case NewChipID('P', 'N'):
+        case NewChipID('P', 'O'):
+        case NewChipID('P', 'P'):
+        case NewChipID('P', 'Q'):
+        case NewChipID('P', 'R'):
+        case NewChipID('P', 'S'):
+        case NewChipID('P', 'T'):
+        case NewChipID('P', 'U'):
+        case NewChipID('P', 'V'):
+        case NewChipID('P', 'W'):
+        case NewChipID('P', 'X'):
             return ATI_CHIP_RAGE128PROVR;
 
-        case OldChipID('T', 'F'):  case NewChipID('T', 'F'):
-        case OldChipID('T', 'L'):  case NewChipID('T', 'L'):
-        case OldChipID('T', 'R'):  case NewChipID('T', 'R'):
+        case NewChipID('T', 'F'):
+        case NewChipID('T', 'L'):
+        case NewChipID('T', 'R'):
             return ATI_CHIP_RAGE128PROULTRA;
 
-        case OldChipID('L', 'E'):  case NewChipID('L', 'E'):
-        case OldChipID('L', 'F'):  case NewChipID('L', 'F'):
-        case OldChipID('L', 'K'):  case NewChipID('L', 'K'):
-        case OldChipID('L', 'L'):  case NewChipID('L', 'L'):
+        case NewChipID('L', 'E'):
+        case NewChipID('L', 'F'):
+        case NewChipID('L', 'K'):
+        case NewChipID('L', 'L'):
             return ATI_CHIP_RAGE128MOBILITY3;
 
-        case OldChipID('M', 'F'):  case NewChipID('M', 'F'):
-        case OldChipID('M', 'L'):  case NewChipID('M', 'L'):
+        case NewChipID('M', 'F'):
+        case NewChipID('M', 'L'):
             return ATI_CHIP_RAGE128MOBILITY4;
 
-        case OldChipID('Q', 'D'):  case NewChipID('Q', 'D'):
-        case OldChipID('Q', 'E'):  case NewChipID('Q', 'E'):
-        case OldChipID('Q', 'F'):  case NewChipID('Q', 'F'):
-        case OldChipID('Q', 'G'):  case NewChipID('Q', 'G'):
+        case NewChipID('Q', 'D'):
+        case NewChipID('Q', 'E'):
+        case NewChipID('Q', 'F'):
+        case NewChipID('Q', 'G'):
             return ATI_CHIP_RADEON;
 
-        case OldChipID('Q', 'Y'):  case NewChipID('Q', 'Y'):
-        case OldChipID('Q', 'Z'):  case NewChipID('Q', 'Z'):
+        case NewChipID('Q', 'Y'):
+        case NewChipID('Q', 'Z'):
             return ATI_CHIP_RADEONVE;
 
-        case OldChipID('L', 'Y'):  case NewChipID('L', 'Y'):
-        case OldChipID('L', 'Z'):  case NewChipID('L', 'Z'):
-            return ATI_CHIP_RADEONMOBILITY6;	
+        case NewChipID('L', 'Y'):
+        case NewChipID('L', 'Z'):
+            return ATI_CHIP_RADEONMOBILITY6;
 
-        case OldChipID('L', 'W'):  case NewChipID('L', 'W'):
-            return ATI_CHIP_RADEONMOBILITY7;	
+        case NewChipID('L', 'W'):
+        case NewChipID('L', 'X'):
+            return ATI_CHIP_RADEONMOBILITY7;
 
-        case OldChipID('Q', 'L'):  case NewChipID('Q', 'L'):
-        case OldChipID('B', 'B'):  case NewChipID('B', 'B'):
+        case NewChipID('Q', 'L'):
+        case NewChipID('Q', 'N'):
+        case NewChipID('Q', 'O'):
+        case NewChipID('Q', 'l'):
+        case NewChipID('B', 'B'):
             return ATI_CHIP_R200;
-	
-        case OldChipID('Q', 'W'):  case NewChipID('Q', 'W'):
+
+        case NewChipID('Q', 'W'):
+        case NewChipID('Q', 'X'):
             return ATI_CHIP_RV200;
 
-        case OldChipID('H', 'D'):  case NewChipID('H', 'D'):
+        case NewChipID('I', 'd'):
+        case NewChipID('I', 'e'):
+        case NewChipID('I', 'f'):
+        case NewChipID('I', 'g'):
+            return ATI_CHIP_RV250;
+
+        case NewChipID('L', 'd'):
+        case NewChipID('L', 'e'):
+        case NewChipID('L', 'f'):
+        case NewChipID('L', 'g'):
+            return ATI_CHIP_RADEONMOBILITY9;
+
+        case NewChipID('N', 'D'):
+        case NewChipID('N', 'E'):
+        case NewChipID('N', 'F'):
+        case NewChipID('N', 'G'):
+            return ATI_CHIP_R300;
+
+        case NewChipID('H', 'D'):
             return ATI_CHIP_HDTV;
 
         default:

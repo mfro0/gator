@@ -6,6 +6,7 @@ typedef struct {
          GENERIC_BUS_Ptr VIP;
 	 
 	 int theatre_num;
+	 CARD32 theatre_id;
 	 
 	 CARD16 video_decoder_type;
 	 CARD32 wStandard;

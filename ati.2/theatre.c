@@ -45,10 +45,18 @@ TheatrePtr DetectTheatre(GENERIC_BUS_Ptr b)
    b->read(b, VIP_VIP_VENDOR_DEVICE_ID, 4, (CARD8 *)&val);
    for(i=0;i<4;i++)
    {
-	if(b->read(b, ((i & 0x03)<<14) | VIP_VIP_VENDOR_DEVICE_ID, 4, (CARD8 *)&val) && 
-	          (val==RT_ATI_ID))
+	if(b->read(b, ((i & 0x03)<<14) | VIP_VIP_VENDOR_DEVICE_ID, 4, (CARD8 *)&val))
         {
-           t->theatre_num=i;
+	  switch(val){
+	  	case RT100_ATI_ID:
+	           t->theatre_num=i;
+		   t->theatre_id=RT100_ATI_ID;
+		   break;
+		case RT200_ATI_ID:
+	           t->theatre_num=i;
+		   t->theatre_id=RT100_ATI_ID;
+		   break;
+                }
 	}
 	if(val)xf86DrvMsg(b->scrnIndex, X_INFO, "Device %d on VIP bus ids as 0x%08x\n",i,val);
    }

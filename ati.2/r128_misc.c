@@ -1,6 +1,6 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/r128_misc.c,v 1.2 2001/01/06 20:58:08 tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/r128_misc.c,v 1.4 2002/04/06 19:06:06 tsi Exp $ */
 /*
- * Copyright 2000 through 2001 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
+ * Copyright 2000 through 2002 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
  * documentation for any purpose is hereby granted without fee, provided that
@@ -25,6 +25,7 @@
 
 #include "ativersion.h"
 
+#include "r128_probe.h"
 #include "r128_version.h"
 
 #include "xf86.h"
@@ -66,6 +67,8 @@ R128Setup
         /* Ensure main driver module is loaded, but not as a submodule */
         if (!xf86ServerIsOnlyDetecting() && !LoaderSymbol(ATI_NAME))
             xf86LoadOneModule(ATI_DRIVER_NAME, Options);
+
+        R128LoaderRefSymLists();
 
         Inited = TRUE;
     }

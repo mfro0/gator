@@ -1,4 +1,4 @@
-.\" $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/r128.man,v 1.2 2001/01/27 18:20:46 dawes Exp $
+.\" $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/r128.man,v 1.4 2002/06/04 23:04:50 dawes Exp $
 .\" shorthand for double quote that works everywhere.
 .ds q \N'34'
 .TH R128 __drivermansuffix__ __vendorversion__
@@ -67,6 +67,63 @@ are used.  The default is
 This overrides the default pixel value for the YUV video overlay key.
 The default value is
 .B undefined.
+.TP
+.BI "Option \*qDisplay\*q \*q" string \*q
+Select display mode for devices which support flat panels. Supported modes are:
+
+.B \*qFP\*q
+- use flat panel;
+
+.B \*qCRT\*q
+- use cathode ray tube;
+
+.B \*qMirror\*q
+- use both FP and CRT;
+
+.B \*qBIOS\*q
+- use mode as configured in the BIOS.
+
+The default is
+.B FP.
+
+.PP
+The following
+.B Options
+are mostly important for non-x86 architectures:
+.TP
+.BI "Option \*qProgramFPRegs\*q \*q" boolean \*q
+Enable or disable programming of the flat panel registers.
+Beware that this may damage your panel, so use this
+.B at your own risk.
+The default depends on the device.
+.TP
+.BI "Option \*qPanelWidth\*q \*q" integer \*q
+.TP
+.BI "Option \*qPanelHeight\*q \*q" integer \*q
+Override the flat panel dimensions in pixels. They are used to program the flat panel
+registers and normally determined using the video card BIOS. If the wrong dimensions
+are used, the system may hang.
+.TP
+.BI "Option \*qUseFBDev\*q \*q" boolean \*q
+Enable or disable use of an OS-specific framebuffer device interface
+(which is not supported on all OSs).  See fbdevhw(__drivermansuffix__)
+for further information.
+Default: off.
+.TP
+.BI "Option \*qDMAForXv\*q \*q" boolean \*q
+Try or don't try to use DMA for Xv image transfers. This will reduce CPU
+usage when playing big videos like DVDs, but may cause instabilities.
+Default: off.
+
+.PP
+The following additional
+.B Options
+are supported:
+.TP
+.BI "Option \*qShowCache\*q \*q" boolean \*q
+Enable or disable viewing offscreen cache memory.  A
+development debug option.  Default: off.
+
 .SH "SEE ALSO"
 XFree86(1), XF86Config(__filemansuffix__), xf86config(1), Xserver(1), X(__miscmansuffix__)
 .SH AUTHORS

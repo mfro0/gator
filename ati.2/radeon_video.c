@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/radeon_video.c,v 1.12 2001/07/19 02:22:50 tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/radeon_video.c,v 1.20 2002/11/01 06:08:36 keithp Exp $ */
 
 #include "radeon.h"
 #include "radeon_reg.h"
@@ -30,12 +30,41 @@
 
 #define TIMER_MASK      (OFF_TIMER | FREE_TIMER)
 
-
-
 #ifndef XvExtension
 void RADEONInitVideo(ScreenPtr pScreen) {}
 #else
 
+static void RADEONInitOffscreenImages(ScreenPtr);
+
+static XF86VideoAdaptorPtr RADEONSetupImageVideo(ScreenPtr);
+static int  RADEONSetPortAttribute(ScrnInfoPtr, Atom, INT32, pointer);
+static int  RADEONGetPortAttribute(ScrnInfoPtr, Atom ,INT32 *, pointer);
+static void RADEONStopVideo(ScrnInfoPtr, pointer, Bool);
+static void RADEONQueryBestSize(ScrnInfoPtr, Bool, short, short, short, short,
+			unsigned int *, unsigned int *, pointer);
+static int  RADEONPutImage(ScrnInfoPtr, short, short, short, short, short,
+			short, short, short, int, unsigned char*, short,
+			short, Bool, RegionPtr, pointer);
+static int  RADEONQueryImageAttributes(ScrnInfoPtr, int, unsigned short *,
+			unsigned short *,  int *, int *);
+
+
+static void RADEONResetVideo(ScrnInfoPtr);
+
+static void RADEONVideoTimerCallback(ScrnInfoPtr pScrn, Time now);
+static int RADEONPutVideo(ScrnInfoPtr pScrn, short src_x, short src_y, short drw_x, short drw_y,
+                        short src_w, short src_h, short drw_w, short drw_h, 
+			RegionPtr clipBoxes, pointer data);
+  
+#define MAKE_ATOM(a) MakeAtom(a, sizeof(a) - 1, TRUE)
+
+static Atom xvBrightness, xvColorKey, xvSaturation, xvDoubleBuffer;
+static Atom xvRedIntensity, xvGreenIntensity, xvBlueIntensity;
+static Atom xvContrast, xvHue, xvColor, xvAutopaintColorkey, xvSetDefaults,
+	    xvEncoding, xvFrequency, xvVolume, xvMute,
+	     xvDecBrightness, xvDecContrast, xvDecHue, xvDecColor, xvDecSaturation,
+	     xvTunerStatus, xvSAP, xvOverlayDeinterlacingMethod,
+	     xvLocationID, xvDeviceID, xvInstanceID;
 
 typedef struct
 {
@@ -52,7 +81,6 @@ typedef struct
 } _MM_TABLE;
 
 typedef struct {
-   ScrnInfoPtr	 pScrn;
    CARD32	 transform_index;
    int           brightness;
    int           saturation;
@@ -61,6 +89,7 @@ typedef struct {
    int           red_intensity;
    int           green_intensity;
    int           blue_intensity;
+   int		 ecp_div;   
 
    int           dec_brightness;
    int           dec_saturation;
@@ -69,19 +98,19 @@ typedef struct {
 
    Bool          doubleBuffer;
    unsigned char currentBuffer;
-   FBLinearPtr   linear;
    RegionRec     clip;
    CARD32        colorKey;
    CARD32        videoStatus;
    Time          offTime;
    Time          freeTime;
-   
-   I2CBusPtr	 i2c;
-   CARD32 	 radeon_i2c_timing;
+   Bool          autopaint_colorkey;
+
+   I2CBusPtr     i2c;
+   CARD32        radeon_i2c_timing;
    CARD32        radeon_M;
    CARD32        radeon_N;
-   CARD32	 i2c_status;
-   CARD32	 i2c_cntl;
+   CARD32        i2c_status;
+   CARD32        i2c_cntl;
    
    FI1236Ptr     fi1236;
    MSP3430Ptr    msp3430;
@@ -95,51 +124,32 @@ typedef struct {
    int           encoding;
    CARD32        frequency;
    int           volume;
-   Bool 	 mute;
-   int		 sap_channel;
+   Bool          mute;
+   int           sap_channel;
    int           v;
-   int           ecp_div;
 
-#define METHOD_BOB	0
-#define METHOD_SINGLE	1
-#define METHOD_WEAVE	2
-#define METHOD_ADAPTIVE	3
+#define METHOD_BOB      0
+#define METHOD_SINGLE   1
+#define METHOD_WEAVE    2
+#define METHOD_ADAPTIVE 3
 
-   int		 overlay_deinterlacing_method;
+   int           overlay_deinterlacing_method;
    
-   int		 capture_vbi_data;
+   int           capture_vbi_data;
 
    Bool          MM_TABLE_valid;
    _MM_TABLE     MM_TABLE;
 
-   Bool		 EEPROM_present;
-   int		 EEPROM_addr;
+   Bool          EEPROM_present;
+   int           EEPROM_addr;
 
    Bool          addon_board;
    CARD8         board_info;
    int           board_control;
-
-   Bool          autopaint_colorkey;
-   
-   Atom		 device_id, location_id, instance_id;
+   Atom          device_id, location_id, instance_id;
 } RADEONPortPrivRec, *RADEONPortPrivPtr;
 
-static XF86VideoAdaptorPtr RADEONSetupImageVideo(ScreenPtr);
-static int  RADEONSetPortAttribute(ScrnInfoPtr, Atom, INT32, pointer);
-static int  RADEONGetPortAttribute(ScrnInfoPtr, Atom ,INT32 *, pointer);
-static void RADEONStopVideo(ScrnInfoPtr, pointer, Bool);
-static void RADEONQueryBestSize(ScrnInfoPtr, Bool, short, short, short, short,
-			unsigned int *, unsigned int *, pointer);
-static int  RADEONPutImage(ScrnInfoPtr, short, short, short, short, short,
-			short, short, short, int, unsigned char*, short,
-			short, Bool, RegionPtr, pointer);
-static int RADEONPutVideo(ScrnInfoPtr pScrn, short src_x, short src_y, short drw_x, short drw_y,
-                        short src_w, short src_h, short drw_w, short drw_h, 
-			RegionPtr clipBoxes, pointer data);
-static int  RADEONQueryImageAttributes(ScrnInfoPtr, int, unsigned short *,
-			unsigned short *,  int *, int *);
-
-void RADEON_RT_SetEncoding(RADEONPortPrivPtr);
+void RADEON_RT_SetEncoding(RADEONPortPrivPtr pPriv);
 void RADEON_board_setmisc(RADEONPortPrivPtr pPriv);
 void RADEON_MSP_SetEncoding(RADEONPortPrivPtr pPriv);
 void RADEONSetColorKey(ScrnInfoPtr pScrn, CARD32 pixel);
@@ -148,20 +158,9 @@ void RADEONShutdownVideo(ScrnInfoPtr pScrn);
 void RADEONVIP_reset(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv);
 
 
-static void RADEONVideoTimerCallback(ScrnInfoPtr pScrn, Time now);
 
-
-#define MAKE_ATOM(a) MakeAtom(a, sizeof(a) - 1, TRUE)
-
-static Atom xvBrightness, xvColorKey, xvSaturation, xvDoubleBuffer, 
-	     xvRedIntensity,xvGreenIntensity,xvBlueIntensity,
-             xvEncoding, xvVolume, xvMute, xvFrequency, xvContrast, xvHue, xvColor,
-	     xv_autopaint_colorkey, xv_set_defaults,
-	     xvDecBrightness, xvDecContrast, xvDecHue, xvDecColor, xvDecSaturation,
-	     xvTunerStatus, xvSAP, xvOverlayDeinterlacingMethod,
-	     xvLocationID, xvDeviceID, xvInstanceID;
-
-
+#define GET_PORT_PRIVATE(pScrn) \
+   (RADEONPortPrivPtr)((RADEONPTR(pScrn))->adaptor->pPortPrivates[0].ptr)
 
 void RADEONInitVideo(ScreenPtr pScreen)
 {
@@ -171,9 +170,11 @@ void RADEONInitVideo(ScreenPtr pScreen)
     XF86VideoAdaptorPtr newAdaptor = NULL;
     int num_adaptors;
 
-    if(info->accel && info->accel->FillSolidRects)
+    if(info->accel && info->accel->FillSolidRects) 
+    {
 	newAdaptor = RADEONSetupImageVideo(pScreen);
-
+	RADEONInitOffscreenImages(pScreen);
+    }
     num_adaptors = xf86XVListGenericAdaptors(pScrn, &adaptors);
 
     if(newAdaptor) {
@@ -240,7 +241,6 @@ static XF86VideoFormatRec Formats[NUM_FORMATS] =
    {15, DirectColor}, {16, DirectColor}, {24, DirectColor}
 };
 
-
 #define NUM_DEC_ATTRIBUTES 19+4+3
 #define NUM_ATTRIBUTES 9+4+3
 
@@ -283,99 +283,99 @@ static XF86AttributeRec Attributes[NUM_DEC_ATTRIBUTES+1] =
 
 /* Note: GUIDs are bogus... - but nothing uses them anyway */
 
-#define FOURCC_RGBA32	0x41424752
+#define FOURCC_RGBA32   0x41424752
 
 #define XVIMAGE_RGBA32(byte_order)   \
-	{ \
-		FOURCC_RGBA32, \
-		XvRGB, \
-		byte_order, \
-		{ 'R', 'G', 'B', 'A', \
-		  0x00,0x00,0x00,0x10,0x80,0x00,0x00,0xAA,0x00,0x38,0x9B,0x71}, \
-		32, \
-		XvPacked, \
-		1, \
-		32, 0x00FF0000, 0x0000FF00, 0x000000FF, \
-		0, 0, 0, 0, 0, 0, 0, 0, 0, \
-		{'A', 'R', 'G', 'B', \
-		  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, \
-		XvTopToBottom \
-	}		
+        { \
+                FOURCC_RGBA32, \
+                XvRGB, \
+                byte_order, \
+                { 'R', 'G', 'B', 'A', \
+                  0x00,0x00,0x00,0x10,0x80,0x00,0x00,0xAA,0x00,0x38,0x9B,0x71}, \
+                32, \
+                XvPacked, \
+                1, \
+                32, 0x00FF0000, 0x0000FF00, 0x000000FF, \
+                0, 0, 0, 0, 0, 0, 0, 0, 0, \
+                {'A', 'R', 'G', 'B', \
+                  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, \
+                XvTopToBottom \
+        }               
 
-#define FOURCC_RGB24	0x00000000
+#define FOURCC_RGB24    0x00000000
 
 #define XVIMAGE_RGB24(byte_order)   \
-	{ \
-		FOURCC_RGB24, \
-		XvRGB, \
-		byte_order, \
-		{ 'R', 'G', 'B', 0, \
-		  0x00,0x00,0x00,0x10,0x80,0x00,0x00,0xAA,0x00,0x38,0x9B,0x71}, \
-		24, \
-		XvPacked, \
-		1, \
-		24, 0x00FF0000, 0x0000FF00, 0x000000FF, \
-		0, 0, 0, 0, 0, 0, 0, 0, 0, \
-		{ 'R', 'G', 'B', \
-		  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, \
-		XvTopToBottom \
-	}
+        { \
+                FOURCC_RGB24, \
+                XvRGB, \
+                byte_order, \
+                { 'R', 'G', 'B', 0, \
+                  0x00,0x00,0x00,0x10,0x80,0x00,0x00,0xAA,0x00,0x38,0x9B,0x71}, \
+                24, \
+                XvPacked, \
+                1, \
+                24, 0x00FF0000, 0x0000FF00, 0x000000FF, \
+                0, 0, 0, 0, 0, 0, 0, 0, 0, \
+                { 'R', 'G', 'B', \
+                  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, \
+                XvTopToBottom \
+        }
 
-#define FOURCC_RGBT16	0x54424752
+#define FOURCC_RGBT16   0x54424752
 
 #define XVIMAGE_RGBT16(byte_order)   \
-	{ \
-		FOURCC_RGBT16, \
-		XvRGB, \
-		byte_order, \
-		{ 'R', 'G', 'B', 'T', \
-		  0x00,0x00,0x00,0x10,0x80,0x00,0x00,0xAA,0x00,0x38,0x9B,0x71}, \
-		16, \
-		XvPacked, \
-		1, \
-		16, 0x00007C00, 0x000003E0, 0x0000001F, \
-		0, 0, 0, 0, 0, 0, 0, 0, 0, \
-		{'A', 'R', 'G', 'B', \
-		  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, \
-		XvTopToBottom \
-	}		
+        { \
+                FOURCC_RGBT16, \
+                XvRGB, \
+                byte_order, \
+                { 'R', 'G', 'B', 'T', \
+                  0x00,0x00,0x00,0x10,0x80,0x00,0x00,0xAA,0x00,0x38,0x9B,0x71}, \
+                16, \
+                XvPacked, \
+                1, \
+                16, 0x00007C00, 0x000003E0, 0x0000001F, \
+                0, 0, 0, 0, 0, 0, 0, 0, 0, \
+                {'A', 'R', 'G', 'B', \
+                  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, \
+                XvTopToBottom \
+        }               
 
-#define FOURCC_RGB16	0x32424752
+#define FOURCC_RGB16    0x32424752
 
 #define XVIMAGE_RGB16(byte_order)   \
-	{ \
-		FOURCC_RGB16, \
-		XvRGB, \
-		byte_order, \
-		{ 'R', 'G', 'B', 0x00, \
-		  0x00,0x00,0x00,0x10,0x80,0x00,0x00,0xAA,0x00,0x38,0x9B,0x71}, \
-		16, \
-		XvPacked, \
-		1, \
-		16, 0x0000F800, 0x000007E0, 0x0000001F, \
-		0, 0, 0, 0, 0, 0, 0, 0, 0, \
-		{'R', 'G', 'B', \
-		  0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, \
-		XvTopToBottom \
-	}		
+        { \
+                FOURCC_RGB16, \
+                XvRGB, \
+                byte_order, \
+                { 'R', 'G', 'B', 0x00, \
+                  0x00,0x00,0x00,0x10,0x80,0x00,0x00,0xAA,0x00,0x38,0x9B,0x71}, \
+                16, \
+                XvPacked, \
+                1, \
+                16, 0x0000F800, 0x000007E0, 0x0000001F, \
+                0, 0, 0, 0, 0, 0, 0, 0, 0, \
+                {'R', 'G', 'B', \
+                  0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, \
+                XvTopToBottom \
+        }               
 
 static XF86ImageRec Images[NUM_IMAGES] =
 {
 #if X_BYTE_ORDER == X_BIG_ENDIAN
-	XVIMAGE_RGBA32(MSBFirst),
-	XVIMAGE_RGB24(MSBFirst),
-	XVIMAGE_RGBT16(MSBFirst),
-	XVIMAGE_RGB16(MSBFirst),
+        XVIMAGE_RGBA32(MSBFirst),
+        XVIMAGE_RGB24(MSBFirst),
+        XVIMAGE_RGBT16(MSBFirst),
+        XVIMAGE_RGB16(MSBFirst),
 #else
-	XVIMAGE_RGBA32(LSBFirst),
-	XVIMAGE_RGB24(LSBFirst),
-	XVIMAGE_RGBT16(LSBFirst),
-	XVIMAGE_RGB16(LSBFirst),
+        XVIMAGE_RGBA32(LSBFirst),
+        XVIMAGE_RGB24(LSBFirst),
+        XVIMAGE_RGBT16(LSBFirst),
+        XVIMAGE_RGB16(LSBFirst),
 #endif
-	XVIMAGE_YUY2,
-	XVIMAGE_UYVY,
-	XVIMAGE_YV12,
-	XVIMAGE_I420
+        XVIMAGE_YUY2,
+        XVIMAGE_UYVY,
+        XVIMAGE_YV12,
+        XVIMAGE_I420
 };
 
 #else
@@ -384,10 +384,10 @@ static XF86ImageRec Images[NUM_IMAGES] =
 
 static XF86ImageRec Images[NUM_IMAGES] =
 {
-	XVIMAGE_YUY2,
-	XVIMAGE_UYVY,
-	XVIMAGE_YV12,
-	XVIMAGE_I420
+        XVIMAGE_YUY2,
+        XVIMAGE_UYVY,
+        XVIMAGE_YV12,
+        XVIMAGE_I420
 };
 
 #endif
@@ -402,8 +402,8 @@ void RADEONLeaveVT_Video(ScrnInfoPtr pScrn)
     pPriv = info->adaptor->pPortPrivates[0].ptr;
     if(pPriv==NULL)return;
     if(pPriv->theatre!=NULL){
-    	xf86_ShutdownTheatre(pPriv->theatre);
-	}
+        xf86_ShutdownTheatre(pPriv->theatre);
+        }
     RADEONResetVideo(pScrn);
 }
 
@@ -419,55 +419,56 @@ void RADEONEnterVT_Video(ScrnInfoPtr pScrn)
     RADEONResetVideo(pScrn);
 }
 
+
 /* Reference color space transform data */
 typedef struct tagREF_TRANSFORM
 {
-	float RefLuma;
-	float RefRCb;
-	float RefRCr;
-	float RefGCb;
-	float RefGCr;
-	float RefBCb;
-	float RefBCr;
+    float   RefLuma;
+    float   RefRCb;
+    float   RefRCr;
+    float   RefGCb;
+    float   RefGCr;
+    float   RefBCb;
+    float   RefBCr;
 } REF_TRANSFORM;
 
 /* Parameters for ITU-R BT.601 and ITU-R BT.709 colour spaces */
 REF_TRANSFORM trans[2] =
 {
-	{1.1678, 0.0, 1.6007, -0.3929, -0.8154, 2.0232, 0.0}, /* BT.601 */
-	{1.1678, 0.0, 1.7980, -0.2139, -0.5345, 2.1186, 0.0}  /* BT.709 */
+    {1.1678, 0.0, 1.6007, -0.3929, -0.8154, 2.0232, 0.0}, /* BT.601 */
+    {1.1678, 0.0, 1.7980, -0.2139, -0.5345, 2.1186, 0.0}  /* BT.709 */
 };
 
 
 /* Gamma curve definition */
 typedef struct 
 {
-	unsigned int gammaReg;
-	unsigned int gammaSlope;
-	unsigned int gammaOffset;
-}GAMMA_SETTINGS;
+    unsigned int gammaReg;
+    unsigned int gammaSlope;
+    unsigned int gammaOffset;
+} GAMMA_SETTINGS;
 
 /* Recommended gamma curve parameters */
 GAMMA_SETTINGS def_gamma[18] = 
 {
-	{RADEON_OV0_GAMMA_0_F, 0x100, 0x0000},
-	{RADEON_OV0_GAMMA_10_1F, 0x100, 0x0020},
-	{RADEON_OV0_GAMMA_20_3F, 0x100, 0x0040},
-	{RADEON_OV0_GAMMA_40_7F, 0x100, 0x0080},
-	{RADEON_OV0_GAMMA_80_BF, 0x100, 0x0100},
-	{RADEON_OV0_GAMMA_C0_FF, 0x100, 0x0100},
-        {RADEON_OV0_GAMMA_100_13F, 0x100, 0x0200},
-	{RADEON_OV0_GAMMA_140_17F, 0x100, 0x0200},
-	{RADEON_OV0_GAMMA_180_1BF, 0x100, 0x0300},
-	{RADEON_OV0_GAMMA_1C0_1FF, 0x100, 0x0300},
-	{RADEON_OV0_GAMMA_200_23F, 0x100, 0x0400},
-	{RADEON_OV0_GAMMA_240_27F, 0x100, 0x0400},
-	{RADEON_OV0_GAMMA_280_2BF, 0x100, 0x0500},
-	{RADEON_OV0_GAMMA_2C0_2FF, 0x100, 0x0500},
-	{RADEON_OV0_GAMMA_300_33F, 0x100, 0x0600},
-	{RADEON_OV0_GAMMA_340_37F, 0x100, 0x0600},
-	{RADEON_OV0_GAMMA_380_3BF, 0x100, 0x0700},
-	{RADEON_OV0_GAMMA_3C0_3FF, 0x100, 0x0700}
+    {RADEON_OV0_GAMMA_000_00F, 0x100, 0x0000},
+    {RADEON_OV0_GAMMA_010_01F, 0x100, 0x0020},
+    {RADEON_OV0_GAMMA_020_03F, 0x100, 0x0040},
+    {RADEON_OV0_GAMMA_040_07F, 0x100, 0x0080},
+    {RADEON_OV0_GAMMA_080_0BF, 0x100, 0x0100},
+    {RADEON_OV0_GAMMA_0C0_0FF, 0x100, 0x0100},
+    {RADEON_OV0_GAMMA_100_13F, 0x100, 0x0200},
+    {RADEON_OV0_GAMMA_140_17F, 0x100, 0x0200},
+    {RADEON_OV0_GAMMA_180_1BF, 0x100, 0x0300},
+    {RADEON_OV0_GAMMA_1C0_1FF, 0x100, 0x0300},
+    {RADEON_OV0_GAMMA_200_23F, 0x100, 0x0400},
+    {RADEON_OV0_GAMMA_240_27F, 0x100, 0x0400},
+    {RADEON_OV0_GAMMA_280_2BF, 0x100, 0x0500},
+    {RADEON_OV0_GAMMA_2C0_2FF, 0x100, 0x0500},
+    {RADEON_OV0_GAMMA_300_33F, 0x100, 0x0600},
+    {RADEON_OV0_GAMMA_340_37F, 0x100, 0x0600},
+    {RADEON_OV0_GAMMA_380_3BF, 0x100, 0x0700},
+    {RADEON_OV0_GAMMA_3C0_3FF, 0x100, 0x0700}
 };
 
 /****************************************************************************
@@ -479,129 +480,162 @@ GAMMA_SETTINGS def_gamma[18] =
  *            cont - contrast                                               *
  *            sat - saturation                                              *
  *            hue - hue                                                     *
- *            red_intensity - intensity of red component                        *
- *            green_intensity - intensity of green component                    *
- *            blue_intensity - intensity of blue component                      *
+ *            red_intensity - intensity of red component                    *
+ *            green_intensity - intensity of green component                *
+ *            blue_intensity - intensity of blue component                  *
  *            ref - index to the table of refernce transforms               *
  *   Outputs: NONE                                                          *
  ****************************************************************************/
 
-static void RADEONSetTransform(  ScrnInfoPtr pScrn,
-				 float bright, float cont, float sat, 
-				 float hue,
-				 float red_intensity, float green_intensity, float blue_intensity,
-				 CARD32 ref)
+static void RADEONSetTransform (ScrnInfoPtr pScrn,
+				float	    bright,
+				float	    cont,
+				float	    sat, 
+				float	    hue,
+				float	    red_intensity, 
+				float	    green_intensity, 
+				float	    blue_intensity,
+				CARD32	    ref)
 {
-	RADEONInfoPtr info = RADEONPTR(pScrn);
-	unsigned char *RADEONMMIO = info->MMIO;
-	float OvHueSin, OvHueCos;
-	float CAdjLuma, CAdjOff;
-	float CAdjRCb, CAdjRCr;
-	float CAdjGCb, CAdjGCr;
-	float CAdjBCb, CAdjBCr;
-	float RedAdj,GreenAdj,BlueAdj;
-	float OvLuma, OvROff, OvGOff, OvBOff;
-	float OvRCb, OvRCr;
-	float OvGCb, OvGCr;
-	float OvBCb, OvBCr;
-	float Loff = 64.0;
-	float Coff = 512.0f;
+    RADEONInfoPtr    info = RADEONPTR(pScrn);
+    unsigned char   *RADEONMMIO = info->MMIO;
+    float	    OvHueSin, OvHueCos;
+    float	    CAdjLuma, CAdjOff;
+    float	    CAdjRCb, CAdjRCr;
+    float	    CAdjGCb, CAdjGCr;
+    float	    CAdjBCb, CAdjBCr;
+    float	    RedAdj,GreenAdj,BlueAdj;
+    float	    OvLuma, OvROff, OvGOff, OvBOff;
+    float	    OvRCb, OvRCr;
+    float	    OvGCb, OvGCr;
+    float	    OvBCb, OvBCr;
+    float	    Loff = 64.0;
+    float	    Coff = 512.0f;
 
-	CARD32 dwOvLuma, dwOvROff, dwOvGOff, dwOvBOff;
-	CARD32 dwOvRCb, dwOvRCr;
-	CARD32 dwOvGCb, dwOvGCr;
-	CARD32 dwOvBCb, dwOvBCr;
+    CARD32	    dwOvLuma, dwOvROff, dwOvGOff, dwOvBOff;
+    CARD32	    dwOvRCb, dwOvRCr;
+    CARD32	    dwOvGCb, dwOvGCr;
+    CARD32	    dwOvBCb, dwOvBCr;
 
-	if (ref >= 2) return;
+    if (ref >= 2) 
+	return;
 
-	OvHueSin = sin(hue);
-	OvHueCos = cos(hue);
+    OvHueSin = sin(hue);
+    OvHueCos = cos(hue);
 
-	CAdjLuma = cont * trans[ref].RefLuma;
-	CAdjOff = cont * trans[ref].RefLuma * bright * 1023.0;
-	RedAdj = cont * trans[ref].RefLuma * red_intensity * 1023.0;
-	GreenAdj = cont * trans[ref].RefLuma * green_intensity * 1023.0;
-	BlueAdj = cont * trans[ref].RefLuma * blue_intensity * 1023.0;
+    CAdjLuma = cont * trans[ref].RefLuma;
+    CAdjOff = cont * trans[ref].RefLuma * bright * 1023.0;
+    RedAdj = cont * trans[ref].RefLuma * red_intensity * 1023.0;
+    GreenAdj = cont * trans[ref].RefLuma * green_intensity * 1023.0;
+    BlueAdj = cont * trans[ref].RefLuma * blue_intensity * 1023.0;
 
-	CAdjRCb = sat * -OvHueSin * trans[ref].RefRCr;
-	CAdjRCr = sat * OvHueCos * trans[ref].RefRCr;
-	CAdjGCb = sat * (OvHueCos * trans[ref].RefGCb - OvHueSin * trans[ref].RefGCr);
-	CAdjGCr = sat * (OvHueSin * trans[ref].RefGCb + OvHueCos * trans[ref].RefGCr);
-	CAdjBCb = sat * OvHueCos * trans[ref].RefBCb;
-	CAdjBCr = sat * OvHueSin * trans[ref].RefBCb;
-    
-    #if 0 /* default constants */
-        CAdjLuma = 1.16455078125;
+    CAdjRCb = sat * -OvHueSin * trans[ref].RefRCr;
+    CAdjRCr = sat * OvHueCos * trans[ref].RefRCr;
+    CAdjGCb = sat * (OvHueCos * trans[ref].RefGCb - OvHueSin * trans[ref].RefGCr);
+    CAdjGCr = sat * (OvHueSin * trans[ref].RefGCb + OvHueCos * trans[ref].RefGCr);
+    CAdjBCb = sat * OvHueCos * trans[ref].RefBCb;
+    CAdjBCr = sat * OvHueSin * trans[ref].RefBCb;
 
-	CAdjRCb = 0.0;
-	CAdjRCr = 1.59619140625;
-	CAdjGCb = -0.39111328125;
-	CAdjGCr = -0.8125;
-	CAdjBCb = 2.01708984375;
-	CAdjBCr = 0;
-   #endif
-	OvLuma = CAdjLuma;
-	OvRCb = CAdjRCb;
-	OvRCr = CAdjRCr;
-	OvGCb = CAdjGCb;
-	OvGCr = CAdjGCr;
-	OvBCb = CAdjBCb;
-	OvBCr = CAdjBCr;
-	OvROff = RedAdj + CAdjOff -
-		OvLuma * Loff - (OvRCb + OvRCr) * Coff;
-	OvGOff = GreenAdj + CAdjOff - 
-		OvLuma * Loff - (OvGCb + OvGCr) * Coff;
-	OvBOff = BlueAdj + CAdjOff - 
-		OvLuma * Loff - (OvBCb + OvBCr) * Coff;
-   #if 0 /* default constants */
-	OvROff = -888.5;
-	OvGOff = 545;
-	OvBOff = -1104;
-   #endif 
-   
-	dwOvROff = ((INT32)(OvROff * 2.0)) & 0x1fff;
-	dwOvGOff = ((INT32)(OvGOff * 2.0)) & 0x1fff;
-	dwOvBOff = ((INT32)(OvBOff * 2.0)) & 0x1fff;
-	/* Whatever docs say about R200 having 3.8 format instead of 3.11
-	   as in Radeon is a lie 
-	   Or more precisely the location of bit fields is a lie */
-	if(1 || !info->IsR200)
-	{
-		dwOvLuma =(((INT32)(OvLuma * 2048.0))&0x7fff)<<17;
-		dwOvRCb = (((INT32)(OvRCb * 2048.0))&0x7fff)<<1;
-		dwOvRCr = (((INT32)(OvRCr * 2048.0))&0x7fff)<<17;
-		dwOvGCb = (((INT32)(OvGCb * 2048.0))&0x7fff)<<1;
-		dwOvGCr = (((INT32)(OvGCr * 2048.0))&0x7fff)<<17;
-		dwOvBCb = (((INT32)(OvBCb * 2048.0))&0x7fff)<<1;
-		dwOvBCr = (((INT32)(OvBCr * 2048.0))&0x7fff)<<17;
-	}
-	else
-	{
-		dwOvLuma = (((INT32)(OvLuma * 256.0))&0x7ff)<<20;
-		dwOvRCb = (((INT32)(OvRCb * 256.0))&0x7ff)<<4;
-		dwOvRCr = (((INT32)(OvRCr * 256.0))&0x7ff)<<20;
-		dwOvGCb = (((INT32)(OvGCb * 256.0))&0x7ff)<<4;
-		dwOvGCr = (((INT32)(OvGCr * 256.0))&0x7ff)<<20;
-		dwOvBCb = (((INT32)(OvBCb * 256.0))&0x7ff)<<4;
-		dwOvBCr = (((INT32)(OvBCr * 256.0))&0x7ff)<<20;
-	}
-#if 0
-        xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Red: Off=%g Y=%g Cb=%g Cr=%g\n",
-		OvROff, OvLuma, OvRCb, OvRCr);
-        xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Green: Off=%g Y=%g Cb=%g Cr=%g\n",
-		OvGOff, OvLuma, OvGCb, OvGCr);
-        xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Blue: Off=%g Y=%g Cb=%g Cr=%g\n",
-		OvBOff, OvLuma, OvBCb, OvBCr);
+#if 0 /* default constants */
+    CAdjLuma = 1.16455078125;
+
+    CAdjRCb = 0.0;
+    CAdjRCr = 1.59619140625;
+    CAdjGCb = -0.39111328125;
+    CAdjGCr = -0.8125;
+    CAdjBCb = 2.01708984375;
+    CAdjBCr = 0;
 #endif
-	OUTREG(RADEON_OV0_LIN_TRANS_A, dwOvRCb | dwOvLuma);
-	OUTREG(RADEON_OV0_LIN_TRANS_B, dwOvROff | dwOvRCr);
-	OUTREG(RADEON_OV0_LIN_TRANS_C, dwOvGCb | dwOvLuma);
-	OUTREG(RADEON_OV0_LIN_TRANS_D, dwOvGOff | dwOvGCr);
-	OUTREG(RADEON_OV0_LIN_TRANS_E, dwOvBCb | dwOvLuma);
-	OUTREG(RADEON_OV0_LIN_TRANS_F, dwOvBOff | dwOvBCr);
+    OvLuma = CAdjLuma;
+    OvRCb = CAdjRCb;
+    OvRCr = CAdjRCr;
+    OvGCb = CAdjGCb;
+    OvGCr = CAdjGCr;
+    OvBCb = CAdjBCb;
+    OvBCr = CAdjBCr;
+    OvROff = RedAdj + CAdjOff -
+    OvLuma * Loff - (OvRCb + OvRCr) * Coff;
+    OvGOff = GreenAdj + CAdjOff - 
+    OvLuma * Loff - (OvGCb + OvGCr) * Coff;
+    OvBOff = BlueAdj + CAdjOff - 
+    OvLuma * Loff - (OvBCb + OvBCr) * Coff;
+#if 0 /* default constants */
+    OvROff = -888.5;
+    OvGOff = 545;
+    OvBOff = -1104;
+#endif 
 
+    dwOvROff = ((INT32)(OvROff * 2.0)) & 0x1fff;
+    dwOvGOff = ((INT32)(OvGOff * 2.0)) & 0x1fff;
+    dwOvBOff = ((INT32)(OvBOff * 2.0)) & 0x1fff;
+    /*
+     * Whatever docs say about R200 having 3.8 format instead of 3.11
+     * as in Radeon is a lie 
+     * Or more precisely the location of bit fields is a lie 
+     */
+    if(1 || info->ChipFamily < CHIP_FAMILY_R200)
+    {
+	dwOvLuma =(((INT32)(OvLuma * 2048.0))&0x7fff)<<17;
+	dwOvRCb = (((INT32)(OvRCb * 2048.0))&0x7fff)<<1;
+	dwOvRCr = (((INT32)(OvRCr * 2048.0))&0x7fff)<<17;
+	dwOvGCb = (((INT32)(OvGCb * 2048.0))&0x7fff)<<1;
+	dwOvGCr = (((INT32)(OvGCr * 2048.0))&0x7fff)<<17;
+	dwOvBCb = (((INT32)(OvBCb * 2048.0))&0x7fff)<<1;
+	dwOvBCr = (((INT32)(OvBCr * 2048.0))&0x7fff)<<17;
+    }
+    else
+    {
+	dwOvLuma = (((INT32)(OvLuma * 256.0))&0x7ff)<<20;
+	dwOvRCb = (((INT32)(OvRCb * 256.0))&0x7ff)<<4;
+	dwOvRCr = (((INT32)(OvRCr * 256.0))&0x7ff)<<20;
+	dwOvGCb = (((INT32)(OvGCb * 256.0))&0x7ff)<<4;
+	dwOvGCr = (((INT32)(OvGCr * 256.0))&0x7ff)<<20;
+	dwOvBCb = (((INT32)(OvBCb * 256.0))&0x7ff)<<4;
+	dwOvBCr = (((INT32)(OvBCr * 256.0))&0x7ff)<<20;
+    }
+    OUTREG(RADEON_OV0_LIN_TRANS_A, dwOvRCb | dwOvLuma);
+    OUTREG(RADEON_OV0_LIN_TRANS_B, dwOvROff | dwOvRCr);
+    OUTREG(RADEON_OV0_LIN_TRANS_C, dwOvGCb | dwOvLuma);
+    OUTREG(RADEON_OV0_LIN_TRANS_D, dwOvGOff | dwOvGCr);
+    OUTREG(RADEON_OV0_LIN_TRANS_E, dwOvBCb | dwOvLuma);
+    OUTREG(RADEON_OV0_LIN_TRANS_F, dwOvBOff | dwOvBCr);
 }
 
+static void RADEONSetColorKey(ScrnInfoPtr pScrn, CARD32 colorKey)
+{
+    RADEONInfoPtr info = RADEONPTR(pScrn);
+    unsigned char *RADEONMMIO = info->MMIO;
+    CARD32 min, max;
+    CARD8 r, g, b;
+
+    if (info->CurrentLayout.depth > 8)
+    {
+	CARD32	rbits, gbits, bbits;
+
+	rbits = (colorKey & pScrn->mask.red) >> pScrn->offset.red;
+	gbits = (colorKey & pScrn->mask.green) >> pScrn->offset.green;
+	bbits = (colorKey & pScrn->mask.blue) >> pScrn->offset.blue;
+
+	r = rbits << (8 - pScrn->weight.red);
+	g = gbits << (8 - pScrn->weight.green);
+	b = bbits << (8 - pScrn->weight.blue);
+    }
+    else
+    {
+	CARD32	bits;
+
+	bits = colorKey & ((1 << info->CurrentLayout.depth) - 1);
+	r = bits;
+	g = bits;
+	b = bits;
+    }
+    min = (r << 16) | (g << 8) | (b);
+    max = (0xff << 24) | (r << 16) | (g << 8) | (b);
+
+    RADEONWaitForFifo(pScrn, 2);
+    OUTREG(RADEON_OV0_GRAPHICS_KEY_CLR_HIGH, max);
+    OUTREG(RADEON_OV0_GRAPHICS_KEY_CLR_LOW, min);
+}
 
 void RADEONShutdownVideo(ScrnInfoPtr pScrn)
 {
@@ -610,39 +644,41 @@ void RADEONShutdownVideo(ScrnInfoPtr pScrn)
 
     xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Shutting down Xvideo subsystems\n");
     if(pPriv->i2c!=NULL){
-	if(pPriv->msp3430!=NULL){
-		xfree(pPriv->msp3430);
-		pPriv->msp3430=NULL;
-		}
-	if(pPriv->tda9885!=NULL){
-		xfree(pPriv->tda9885);
-		pPriv->tda9885=NULL;
-		}
-	if(pPriv->fi1236!=NULL){
-		xfree(pPriv->fi1236);
-		pPriv->fi1236=NULL;
-		}
-	DestroyI2CBusRec(pPriv->i2c, TRUE, TRUE);
-	pPriv->i2c=NULL;
-	}
+        if(pPriv->msp3430!=NULL){
+                xfree(pPriv->msp3430);
+                pPriv->msp3430=NULL;
+                }
+        if(pPriv->tda9885!=NULL){
+                xfree(pPriv->tda9885);
+                pPriv->tda9885=NULL;
+                }
+        if(pPriv->fi1236!=NULL){
+                xfree(pPriv->fi1236);
+                pPriv->fi1236=NULL;
+                }
+        DestroyI2CBusRec(pPriv->i2c, TRUE, TRUE);
+        pPriv->i2c=NULL;
+        }
     if(pPriv->theatre!=NULL){
-	xf86_ShutdownTheatre(pPriv->theatre);
-	xfree(pPriv->theatre);
-	pPriv->theatre=NULL;
-	}
+        xf86_ShutdownTheatre(pPriv->theatre);
+        xfree(pPriv->theatre);
+        pPriv->theatre=NULL;
+        }
     if(pPriv->VIP!=NULL){
-	xfree(pPriv->VIP);
-	pPriv->VIP=NULL;
-	}
+        xfree(pPriv->VIP);
+        pPriv->VIP=NULL;
+        }
 }
 
-void RADEONResetVideo(ScrnInfoPtr pScrn)
+static void
+RADEONResetVideo(ScrnInfoPtr pScrn)
 {
     RADEONInfoPtr   info      = RADEONPTR(pScrn);
     unsigned char *RADEONMMIO = info->MMIO;
     RADEONPortPrivPtr pPriv = info->adaptor->pPortPrivates[0].ptr;
-    int i;
     char tmp[200];
+
+    if (info->accelOn) info->accel->Sync(pScrn);
 
     /* this is done here because each time the server is reset these
        could change.. Otherwise they remain constant */
@@ -672,8 +708,8 @@ void RADEONResetVideo(ScrnInfoPtr pScrn)
 
     xvOverlayDeinterlacingMethod = MAKE_ATOM("XV_OVERLAY_DEINTERLACING_METHOD");
     
-    xv_autopaint_colorkey = MAKE_ATOM("XV_AUTOPAINT_COLORKEY");
-    xv_set_defaults = MAKE_ATOM("XV_SET_DEFAULTS");
+    xvAutopaintColorkey = MAKE_ATOM("XV_AUTOPAINT_COLORKEY");
+    xvSetDefaults = MAKE_ATOM("XV_SET_DEFAULTS");
     
     xvInstanceID = MAKE_ATOM("XV_INSTANCE_ID");
     xvDeviceID = MAKE_ATOM("XV_DEVICE_ID");
@@ -686,79 +722,76 @@ void RADEONResetVideo(ScrnInfoPtr pScrn)
     sprintf(tmp, "INSTANCE:%d", pScrn->scrnIndex);
     pPriv->instance_id = MAKE_ATOM(tmp);
 
-    RADEONWaitForIdle(pScrn);
-/*    RADEONWaitForFifo(pScrn, 7); */
+    RADEONWaitForIdleMMIO(pScrn);
     OUTREG(RADEON_OV0_SCALE_CNTL, 0x80000000);
     OUTREG(RADEON_OV0_AUTO_FLIP_CNTL, 0);   /* maybe */
+    OUTREG(RADEON_OV0_EXCLUSIVE_HORZ, 0);
     OUTREG(RADEON_OV0_FILTER_CNTL, 0x0000000f);
-    OUTREG(RADEON_OV0_KEY_CNTL, RADEON_GRAPHIC_KEY_FN_EQ | 
-                                RADEON_VIDEO_KEY_FN_FALSE |
+    OUTREG(RADEON_OV0_KEY_CNTL, RADEON_GRAPHIC_KEY_FN_EQ |
+				RADEON_VIDEO_KEY_FN_FALSE |
 				RADEON_CMP_MIX_OR);
     OUTREG(RADEON_OV0_TEST, 0);
-    OUTREG(RADEON_FCP_CNTL, RADEON_FCP_CNTL__GND);
+    OUTREG(RADEON_FCP_CNTL, RADEON_FCP0_SRC_GND);
     OUTREG(RADEON_CAP0_TRIG_CNTL, 0);
     RADEONSetColorKey(pScrn, pPriv->colorKey);
     
-    if(!info->IsR200)
-	{
-		OUTREG(RADEON_OV0_LIN_TRANS_A, 0x12a20000);
-		OUTREG(RADEON_OV0_LIN_TRANS_B, 0x198a190e);
-		OUTREG(RADEON_OV0_LIN_TRANS_C, 0x12a2f9da);
-		OUTREG(RADEON_OV0_LIN_TRANS_D, 0xf2fe0442);
-		OUTREG(RADEON_OV0_LIN_TRANS_E, 0x12a22046);
-		OUTREG(RADEON_OV0_LIN_TRANS_F, 0x175f);
-	}
-	else 
-	{
-		OUTREG(RADEON_OV0_LIN_TRANS_A, 0x12a00000);
-		OUTREG(RADEON_OV0_LIN_TRANS_B, 0x1990190e);
-		OUTREG(RADEON_OV0_LIN_TRANS_C, 0x12a0f9c0);
-		OUTREG(RADEON_OV0_LIN_TRANS_D, 0xf3000442);
-		OUTREG(RADEON_OV0_LIN_TRANS_E, 0x12a02040);
-		OUTREG(RADEON_OV0_LIN_TRANS_F, 0x175f);
+    if (info->ChipFamily == CHIP_FAMILY_R200 ||
+	info->ChipFamily == CHIP_FAMILY_R300) {
+	OUTREG(RADEON_OV0_LIN_TRANS_A, 0x12a20000);
+	OUTREG(RADEON_OV0_LIN_TRANS_B, 0x198a190e);
+	OUTREG(RADEON_OV0_LIN_TRANS_C, 0x12a2f9da);
+	OUTREG(RADEON_OV0_LIN_TRANS_D, 0xf2fe0442);
+	OUTREG(RADEON_OV0_LIN_TRANS_E, 0x12a22046);
+	OUTREG(RADEON_OV0_LIN_TRANS_F, 0x175f);
+    } else {
+	int i;
 
-		/* Default Gamma, 
-		   Of 18 segments for gamma cure, all segments in R200 are programmable, 
-		   while only lower 4 and upper 2 segments are programmable in Radeon*/
-		if(info->IsR200)
-		{
-			for(i=0; i<18; i++)
-			{
-				OUTREG(def_gamma[i].gammaReg,
-					   (def_gamma[i].gammaSlope<<16) | def_gamma[i].gammaOffset);
-			}
-		}
-	}
+	OUTREG(RADEON_OV0_LIN_TRANS_A, 0x12a00000);
+	OUTREG(RADEON_OV0_LIN_TRANS_B, 0x1990190e);
+	OUTREG(RADEON_OV0_LIN_TRANS_C, 0x12a0f9c0);
+	OUTREG(RADEON_OV0_LIN_TRANS_D, 0xf3000442);
+	OUTREG(RADEON_OV0_LIN_TRANS_E, 0x12a02040);
+	OUTREG(RADEON_OV0_LIN_TRANS_F, 0x175f);
 
+	/*
+	 * Set default Gamma ramp:
+	 *
+	 * Of 18 segments for gamma curve, all segments in R200 (and
+	 * newer) are programmable, while only lower 4 and upper 2
+	 * segments are programmable in the older Radeons.
+	 */
+	for (i = 0; i < 18; i++) {
+	    OUTREG(def_gamma[i].gammaReg,
+		   (def_gamma[i].gammaSlope<<16) | def_gamma[i].gammaOffset);
+	}
+    }
     if(pPriv->VIP!=NULL){
-    	RADEONVIP_reset(pScrn,pPriv);
-	}
+        RADEONVIP_reset(pScrn,pPriv);
+        }
     
     if(pPriv->theatre != NULL) {
         xf86_InitTheatre(pPriv->theatre);
-/*	xf86_ResetTheatreRegsForNoTVout(pPriv->theatre); */
-	}
+/*      xf86_ResetTheatreRegsForNoTVout(pPriv->theatre); */
+        }
     
     if(pPriv->i2c != NULL){
-    	RADEONResetI2C(pScrn, pPriv);
-	}
+        RADEONResetI2C(pScrn, pPriv);
+        }
 }
 
-
-
-#define I2C_DONE	(1<<0)
-#define I2C_NACK	(1<<1)
-#define I2C_HALT	(1<<2)
-#define I2C_SOFT_RST	(1<<5)
-#define I2C_DRIVE_EN	(1<<6)
-#define I2C_DRIVE_SEL	(1<<7)
-#define I2C_START	(1<<8)
-#define I2C_STOP	(1<<9)
-#define I2C_RECEIVE	(1<<10)
-#define I2C_ABORT	(1<<11)
-#define I2C_GO		(1<<12)
-#define I2C_SEL		(1<<16)
-#define I2C_EN		(1<<17)
+#define I2C_DONE        (1<<0)
+#define I2C_NACK        (1<<1)
+#define I2C_HALT        (1<<2)
+#define I2C_SOFT_RST    (1<<5)
+#define I2C_DRIVE_EN    (1<<6)
+#define I2C_DRIVE_SEL   (1<<7)
+#define I2C_START       (1<<8)
+#define I2C_STOP        (1<<9)
+#define I2C_RECEIVE     (1<<10)
+#define I2C_ABORT       (1<<11)
+#define I2C_GO          (1<<12)
+#define I2C_SEL         (1<<16)
+#define I2C_EN          (1<<17)
 
 
 
@@ -782,7 +815,7 @@ static CARD8 RADEON_I2C_WaitForAck (ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
     usleep(1000);
     while(1)
     {
-        RADEONWaitForIdle(pScrn); 
+        RADEONWaitForIdleMMIO(pScrn); 
         retval = INREG8(RADEON_I2C_CNTL_0);
         if (retval & I2C_HALT)
         {
@@ -793,17 +826,17 @@ static CARD8 RADEON_I2C_WaitForAck (ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
             return (I2C_NACK);
         }
         if(retval & I2C_DONE)
-	{
-	    return I2C_DONE;
-	}	
-	usleep(10000);
-	counter++;
-	if(counter>100)
-	{
-	     xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Timeout condition on Radeon i2c bus\n");
-	     return I2C_HALT;
-	}
-	
+        {
+            return I2C_DONE;
+        }       
+        usleep(10000);
+        counter++;
+        if(counter>100)
+        {
+             xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Timeout condition on Radeon i2c bus\n");
+             return I2C_HALT;
+        }
+        
     }
 }
 
@@ -815,17 +848,17 @@ static void RADEON_I2C_Halt (ScrnInfoPtr pScrn)
     long counter = 0;
 
     /* reset status flags */
-    RADEONWaitForIdle(pScrn);
+    RADEONWaitForIdleMMIO(pScrn);
     reg = INREG8 (RADEON_I2C_CNTL_0 + 0) & 0xF8;
     OUTREG8 (RADEON_I2C_CNTL_0 + 0, reg);
 
     /* issue ABORT call */
-    RADEONWaitForIdle(pScrn);
+    RADEONWaitForIdleMMIO(pScrn);
     reg = INREG8 (RADEON_I2C_CNTL_0 + 1) & 0xE7;
     OUTREG8 (RADEON_I2C_CNTL_0 + 1, (reg | 0x18));
 
     /* wait for GO bit to go low */
-    RADEONWaitForIdle(pScrn);
+    RADEONWaitForIdleMMIO(pScrn);
     while (INREG8 (RADEON_I2C_CNTL_0 + 0) & I2C_GO)
     {
       usleep(1000);
@@ -847,7 +880,7 @@ static Bool RADEONI2CWriteRead(I2CDevPtr d, I2CByte *WriteBuffer, int nWrite,
 
     status=I2C_DONE;
 
-    RADEONWaitForIdle(pScrn);
+    RADEONWaitForIdleMMIO(pScrn);
     if(nWrite>0){
 /*       RADEONWaitForFifo(pScrn, 4+nWrite); */
 
@@ -864,11 +897,11 @@ static Bool RADEONI2CWriteRead(I2CDevPtr d, I2CByte *WriteBuffer, int nWrite,
        }
 
        i2c_cntl_1 = (pPriv->radeon_i2c_timing << 24) | I2C_EN | I2C_SEL |
-    			nWrite | 0x100;
+                        nWrite | 0x100;
        OUTREG(RADEON_I2C_CNTL_1, i2c_cntl_1);
     
        i2c_cntl_0 = (pPriv->radeon_N << 24) | (pPriv->radeon_M << 16) | 
-    			I2C_GO | I2C_START | ((nRead >0)?0:I2C_STOP) | I2C_DRIVE_EN;
+                        I2C_GO | I2C_START | ((nRead >0)?0:I2C_STOP) | I2C_DRIVE_EN;
        OUTREG(RADEON_I2C_CNTL_0, i2c_cntl_0);
     
        while(INREG8(RADEON_I2C_CNTL_0+1) & (I2C_GO >> 8));
@@ -876,9 +909,9 @@ static Bool RADEONI2CWriteRead(I2CDevPtr d, I2CByte *WriteBuffer, int nWrite,
        status=RADEON_I2C_WaitForAck(pScrn,pPriv);
 
        if(status!=I2C_DONE){
-       	  RADEON_I2C_Halt(pScrn);
-       	  return FALSE;
-	  }
+          RADEON_I2C_Halt(pScrn);
+          return FALSE;
+          }
     }
     
     
@@ -891,14 +924,14 @@ static Bool RADEONI2CWriteRead(I2CDevPtr d, I2CByte *WriteBuffer, int nWrite,
        OUTREG(RADEON_I2C_DATA, (CARD32) (d->SlaveAddr) | (1));
 
        i2c_cntl_1 = (pPriv->radeon_i2c_timing << 24) | I2C_EN | I2C_SEL | 
-    			nRead | 0x100;
+                        nRead | 0x100;
        OUTREG(RADEON_I2C_CNTL_1, i2c_cntl_1);
     
        i2c_cntl_0 = (pPriv->radeon_N << 24) | (pPriv->radeon_M << 16) | 
-    			I2C_GO | I2C_START | I2C_STOP | I2C_DRIVE_EN | I2C_RECEIVE;
+                        I2C_GO | I2C_START | I2C_STOP | I2C_DRIVE_EN | I2C_RECEIVE;
        OUTREG(RADEON_I2C_CNTL_0, i2c_cntl_0);
     
-       RADEONWaitForIdle(pScrn);
+       RADEONWaitForIdleMMIO(pScrn);
        while(INREG8(RADEON_I2C_CNTL_0+1) & (I2C_GO >> 8));
 
        status=RADEON_I2C_WaitForAck(pScrn,pPriv);
@@ -909,13 +942,13 @@ static Bool RADEONI2CWriteRead(I2CDevPtr d, I2CByte *WriteBuffer, int nWrite,
        for (loop = 0; loop < nRead; loop++)
        {
           RADEONWaitForFifo(pScrn, 1);
-	  if((status == I2C_HALT) || (status == I2C_NACK))
-	  {
-	  ReadBuffer[loop]=0xff;
-	  } else {
-          RADEONWaitForIdle(pScrn);
+          if((status == I2C_HALT) || (status == I2C_NACK))
+          {
+          ReadBuffer[loop]=0xff;
+          } else {
+          RADEONWaitForIdleMMIO(pScrn);
           ReadBuffer[loop]=INREG8(RADEON_I2C_DATA) & 0xff;
-	  }
+          }
        }
     }
     
@@ -938,7 +971,7 @@ static Bool R200_I2CWriteRead(I2CDevPtr d, I2CByte *WriteBuffer, int nWrite,
 
     status=I2C_DONE;
 
-    RADEONWaitForIdle(pScrn);
+    RADEONWaitForIdleMMIO(pScrn);
     if(nWrite>0){
 /*       RADEONWaitForFifo(pScrn, 4+nWrite); */
 
@@ -955,11 +988,11 @@ static Bool R200_I2CWriteRead(I2CDevPtr d, I2CByte *WriteBuffer, int nWrite,
        }
 
        i2c_cntl_1 = (pPriv->radeon_i2c_timing << 24) | I2C_EN | I2C_SEL |
-    			nWrite | 0x010;
+                        nWrite | 0x010;
        OUTREG(RADEON_I2C_CNTL_1, i2c_cntl_1);
     
        i2c_cntl_0 = (pPriv->radeon_N << 24) | (pPriv->radeon_M << 16) | 
-    			I2C_GO | I2C_START | ((nRead >0)?0:I2C_STOP) | I2C_DRIVE_EN;
+                        I2C_GO | I2C_START | ((nRead >0)?0:I2C_STOP) | I2C_DRIVE_EN;
        OUTREG(RADEON_I2C_CNTL_0, i2c_cntl_0);
     
        while(INREG8(RADEON_I2C_CNTL_0+1) & (I2C_GO >> 8));
@@ -967,9 +1000,9 @@ static Bool R200_I2CWriteRead(I2CDevPtr d, I2CByte *WriteBuffer, int nWrite,
        status=RADEON_I2C_WaitForAck(pScrn,pPriv);
 
        if(status!=I2C_DONE){
-       	  RADEON_I2C_Halt(pScrn);
-       	  return FALSE;
-	  }
+          RADEON_I2C_Halt(pScrn);
+          return FALSE;
+          }
     }
     
     
@@ -982,14 +1015,14 @@ static Bool R200_I2CWriteRead(I2CDevPtr d, I2CByte *WriteBuffer, int nWrite,
        OUTREG(RADEON_I2C_DATA, (CARD32) (d->SlaveAddr) | (1));
 
        i2c_cntl_1 = (pPriv->radeon_i2c_timing << 24) | I2C_EN | I2C_SEL | 
-    			nRead | 0x010;
+                        nRead | 0x010;
        OUTREG(RADEON_I2C_CNTL_1, i2c_cntl_1);
     
        i2c_cntl_0 = (pPriv->radeon_N << 24) | (pPriv->radeon_M << 16) | 
-    			I2C_GO | I2C_START | I2C_STOP | I2C_DRIVE_EN | I2C_RECEIVE;
+                        I2C_GO | I2C_START | I2C_STOP | I2C_DRIVE_EN | I2C_RECEIVE;
        OUTREG(RADEON_I2C_CNTL_0, i2c_cntl_0);
     
-       RADEONWaitForIdle(pScrn);
+       RADEONWaitForIdleMMIO(pScrn);
        while(INREG8(RADEON_I2C_CNTL_0+1) & (I2C_GO >> 8));
 
        status=RADEON_I2C_WaitForAck(pScrn,pPriv);
@@ -1000,13 +1033,13 @@ static Bool R200_I2CWriteRead(I2CDevPtr d, I2CByte *WriteBuffer, int nWrite,
        for (loop = 0; loop < nRead; loop++)
        {
           RADEONWaitForFifo(pScrn, 1);
-	  if((status == I2C_HALT) || (status == I2C_NACK))
-	  {
-	  ReadBuffer[loop]=0xff;
-	  } else {
-          RADEONWaitForIdle(pScrn);
+          if((status == I2C_HALT) || (status == I2C_NACK))
+          {
+          ReadBuffer[loop]=0xff;
+          } else {
+          RADEONWaitForIdleMMIO(pScrn);
           ReadBuffer[loop]=INREG8(RADEON_I2C_DATA) & 0xff;
-	  }
+          }
        }
     }
     
@@ -1039,39 +1072,39 @@ const struct
    int type;
 } RADEON_tuners[32] =
     {
-        /* name	,index to tuner_parms table */
-	{"NO TUNNER"		, -1},
-	{"Philips FI1236 (or compatible)"		, TUNER_TYPE_FI1236},
-	{"Philips FI1236 (or compatible)"		, TUNER_TYPE_FI1236},
-	{"Philips FI1216 (or compatible)"		, TUNER_TYPE_FI1216},
-	{"Philips FI1246 (or compatible)"		, TUNER_TYPE_FI1246},
-	{"Philips FI1216MF (or compatible)"		, TUNER_TYPE_FI1216},
-	{"Philips FI1236 (or compatible)"		, TUNER_TYPE_FI1236},
-	{"Philips FI1256 (or compatible)"		, TUNER_TYPE_FI1256},
-	{"Philips FI1236 (or compatible)"		, TUNER_TYPE_FI1236},
-	{"Philips FI1216 (or compatible)"		, TUNER_TYPE_FI1216},
-	{"Philips FI1246 (or compatible)"		, TUNER_TYPE_FI1246},
-	{"Philips FI1216MF (or compatible)"		, TUNER_TYPE_FI1216},
-	{"Philips FI1236 (or compatible)"		, TUNER_TYPE_FI1236},
-	{"TEMIC-FN5AL"		, TUNER_TYPE_TEMIC_FN5AL},
-	{"FQ1216ME/P"		, TUNER_TYPE_FI1216},
-	{"FI1236W"		, TUNER_TYPE_FI1236},
-	{"Alps TSBH5"		, -1},
-	{"Alps TSCxx"		, -1},
-	{"Alps TSCH5 FM"	, -1},
-	{"UNKNOWN-19"		, -1},
-	{"UNKNOWN-20"		, -1},
-	{"UNKNOWN-21"		, -1},
-	{"UNKNOWN-22"		, -1},
-	{"UNKNOWN-23"		, -1},
-        {"UNKNOWN-24"		, -1},
-	{"UNKNOWN-25"		, -1},
-	{"UNKNOWN-26"		, -1},
-	{"UNKNOWN-27"		, -1},
-	{"UNKNOWN-28"		, -1},
-	{"Microtuner MT2032"		, TUNER_TYPE_MT2032},
-        {"Microtuner MT2032"		, TUNER_TYPE_MT2032},
-	{"UNKNOWN-31"		, -1}
+        /* name ,index to tuner_parms table */
+        {"NO TUNNER"            , -1},
+        {"Philips FI1236 (or compatible)"               , TUNER_TYPE_FI1236},
+        {"Philips FI1236 (or compatible)"               , TUNER_TYPE_FI1236},
+        {"Philips FI1216 (or compatible)"               , TUNER_TYPE_FI1216},
+        {"Philips FI1246 (or compatible)"               , TUNER_TYPE_FI1246},
+        {"Philips FI1216MF (or compatible)"             , TUNER_TYPE_FI1216},
+        {"Philips FI1236 (or compatible)"               , TUNER_TYPE_FI1236},
+        {"Philips FI1256 (or compatible)"               , TUNER_TYPE_FI1256},
+        {"Philips FI1236 (or compatible)"               , TUNER_TYPE_FI1236},
+        {"Philips FI1216 (or compatible)"               , TUNER_TYPE_FI1216},
+        {"Philips FI1246 (or compatible)"               , TUNER_TYPE_FI1246},
+        {"Philips FI1216MF (or compatible)"             , TUNER_TYPE_FI1216},
+        {"Philips FI1236 (or compatible)"               , TUNER_TYPE_FI1236},
+        {"TEMIC-FN5AL"          , TUNER_TYPE_TEMIC_FN5AL},
+        {"FQ1216ME/P"           , TUNER_TYPE_FI1216},
+        {"FI1236W"              , TUNER_TYPE_FI1236},
+        {"Alps TSBH5"           , -1},
+        {"Alps TSCxx"           , -1},
+        {"Alps TSCH5 FM"        , -1},
+        {"UNKNOWN-19"           , -1},
+        {"UNKNOWN-20"           , -1},
+        {"UNKNOWN-21"           , -1},
+        {"UNKNOWN-22"           , -1},
+        {"UNKNOWN-23"           , -1},
+        {"UNKNOWN-24"           , -1},
+        {"UNKNOWN-25"           , -1},
+        {"UNKNOWN-26"           , -1},
+        {"UNKNOWN-27"           , -1},
+        {"UNKNOWN-28"           , -1},
+        {"Microtuner MT2032"            , TUNER_TYPE_MT2032},
+        {"Microtuner MT2032"            , TUNER_TYPE_MT2032},
+        {"UNKNOWN-31"           , -1}
     };
 
 
@@ -1101,47 +1134,56 @@ static void RADEONInitI2C(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
     if(pPriv->i2c!=NULL) return;
     if(!xf86LoadSubModule(pScrn,"i2c")) 
     {
-    	xf86DrvMsg(pScrn->scrnIndex,X_ERROR,"Unable to initialize i2c bus\n");
-	pPriv->i2c = NULL;
-	return;
+        xf86DrvMsg(pScrn->scrnIndex,X_ERROR,"Unable to initialize i2c bus\n");
+        pPriv->i2c = NULL;
+        return;
     } 
     xf86LoaderReqSymbols("xf86CreateI2CBusRec", 
-    			  "xf86I2CBusInit",
-			  "xf86DestroyI2CBus",
-			  "xf86CreateI2CDevRec",
-			  "xf86DestroyI2CDevRec",
-			  "xf86I2CDevInit",
-			  "xf86I2CWriteRead",
-			  NULL);
+                          "xf86I2CBusInit",
+                          "xf86DestroyI2CBus",
+                          "xf86CreateI2CDevRec",
+                          "xf86DestroyI2CDevRec",
+                          "xf86I2CDevInit",
+                          "xf86I2CWriteRead",
+                          NULL);
     pPriv->i2c=CreateI2CBusRec();
     pPriv->i2c->scrnIndex=pScrn->scrnIndex;
     pPriv->i2c->BusName="Radeon multimedia bus";
     pPriv->i2c->DriverPrivate.ptr=(pointer)pPriv;
-    if(info->IsR200 || info->IsRV200){
-	    pPriv->i2c->I2CWriteRead=R200_I2CWriteRead;
-      	    xf86DrvMsg(pScrn->scrnIndex,X_INFO,"Using R200 i2c bus access method\n");
-	    } else {
-	    pPriv->i2c->I2CWriteRead=RADEONI2CWriteRead;
-    	    xf86DrvMsg(pScrn->scrnIndex,X_INFO,"Using Radeon bus access method\n");
-	    }
+    switch(info->ChipFamily){
+    	case CHIP_FAMILY_R300:
+    	case CHIP_FAMILY_R200:
+	case CHIP_FAMILY_RV200:
+            	pPriv->i2c->I2CWriteRead=R200_I2CWriteRead;
+            	xf86DrvMsg(pScrn->scrnIndex,X_INFO,"Using R200 i2c bus access method\n");
+		break;
+	default:
+            	pPriv->i2c->I2CWriteRead=RADEONI2CWriteRead;
+            	xf86DrvMsg(pScrn->scrnIndex,X_INFO,"Using Radeon bus access method\n");
+        }
     if(!I2CBusInit(pPriv->i2c))
     {
-    	xf86DrvMsg(pScrn->scrnIndex,X_ERROR,"Failed to register i2c bus\n");
+        xf86DrvMsg(pScrn->scrnIndex,X_ERROR,"Failed to register i2c bus\n");
     }
 
     xf86DrvMsg(pScrn->scrnIndex, X_INFO, "*** %p versus %p\n", xf86CreateI2CBusRec, CreateI2CBusRec);
 
 #if 1
-    if(info->IsRV200){
-	    nm=(pll->reference_freq * 40000.0)/(1.0*I2C_CLOCK_FREQ);
-	    } else 
-    if(info->IsR200 && pPriv->MM_TABLE_valid && (RADEON_tuners[pPriv->MM_TABLE.tuner_type & 0x1f].type==TUNER_TYPE_MT2032)){
-	    nm=(pll->reference_freq * 40000.0)/(4.0*I2C_CLOCK_FREQ);
-	    } else {
-	    nm=(pll->reference_freq * 10000.0)/(4.0*I2C_CLOCK_FREQ);
-	    }
+    switch(info->ChipFamily){
+	case CHIP_FAMILY_RV200:
+            nm=(pll->reference_freq * 40000.0)/(1.0*I2C_CLOCK_FREQ);
+	    break;
+    	case CHIP_FAMILY_R300:
+    	case CHIP_FAMILY_R200:
+    	    if(pPriv->MM_TABLE_valid && (RADEON_tuners[pPriv->MM_TABLE.tuner_type & 0x1f].type==TUNER_TYPE_MT2032)){
+                nm=(pll->reference_freq * 40000.0)/(4.0*I2C_CLOCK_FREQ);
+	        break;
+                } 
+	default:
+            nm=(pll->reference_freq * 10000.0)/(4.0*I2C_CLOCK_FREQ);
+        }
 #else
-    nm=(pll->xclk * 40000.0)/(1.0*I2C_CLOCK_FREQ);	   
+    nm=(pll->xclk * 40000.0)/(1.0*I2C_CLOCK_FREQ);         
 #endif
     for(pPriv->radeon_N=1; pPriv->radeon_N<255; pPriv->radeon_N++)
           if((pPriv->radeon_N * (pPriv->radeon_N-1)) > nm)break;
@@ -1178,23 +1220,23 @@ static void RADEONInitI2C(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
     xf86LoaderReqSymbols(FI1236SymbolsList, NULL);
     if(pPriv->fi1236 == NULL)
     {
-    	pPriv->fi1236 = xf86_Detect_FI1236(pPriv->i2c, FI1236_ADDR_1);
+        pPriv->fi1236 = xf86_Detect_FI1236(pPriv->i2c, FI1236_ADDR_1);
     }
     if(pPriv->fi1236 == NULL)
     {
-    	pPriv->fi1236 = xf86_Detect_FI1236(pPriv->i2c, FI1236_ADDR_2);
+        pPriv->fi1236 = xf86_Detect_FI1236(pPriv->i2c, FI1236_ADDR_2);
     }
     }
     if(pPriv->fi1236 != NULL)
     {
          xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Detected %s device at 0x%02x\n", 
-	       RADEON_tuners[pPriv->MM_TABLE.tuner_type & 0x1f].name,
+               RADEON_tuners[pPriv->MM_TABLE.tuner_type & 0x1f].name,
                FI1236_ADDR(pPriv->fi1236));
          if(pPriv->MM_TABLE_valid)xf86_FI1236_set_tuner_type(pPriv->fi1236, RADEON_tuners[pPriv->MM_TABLE.tuner_type & 0x1f].type);
-	 	else {
-		   xf86DrvMsg(pScrn->scrnIndex, X_INFO, "MM_TABLE not found (standalone board ?), forcing tuner type to NTSC\n");
-		    xf86_FI1236_set_tuner_type(pPriv->fi1236, TUNER_TYPE_FI1236);
-		}
+                else {
+                   xf86DrvMsg(pScrn->scrnIndex, X_INFO, "MM_TABLE not found (standalone board ?), forcing tuner type to NTSC\n");
+                    xf86_FI1236_set_tuner_type(pPriv->fi1236, TUNER_TYPE_FI1236);
+                }
     }
     
     if(pPriv->MM_TABLE_valid && (RADEON_tuners[pPriv->MM_TABLE.tuner_type & 0x1f].type==TUNER_TYPE_MT2032)){
@@ -1207,11 +1249,11 @@ static void RADEONInitI2C(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
     xf86LoaderReqSymbols(TDA9885SymbolsList, NULL);
     if(pPriv->tda9885 == NULL)
     {
-    	pPriv->tda9885 = xf86_Detect_tda9885(pPriv->i2c, TDA9885_ADDR_1);
+        pPriv->tda9885 = xf86_Detect_tda9885(pPriv->i2c, TDA9885_ADDR_1);
     }
     if(pPriv->tda9885 == NULL)
     {
-    	pPriv->tda9885 = xf86_Detect_tda9885(pPriv->i2c, TDA9885_ADDR_2);
+        pPriv->tda9885 = xf86_Detect_tda9885(pPriv->i2c, TDA9885_ADDR_2);
     }
     }
     }
@@ -1276,8 +1318,8 @@ static void RADEONInitI2C(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
     #if 0
     xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Scanning I2C Bus\n");
     for(i=0;i<255;i+=2)
-    	if(RADEONProbeAddress(pPriv->i2c, i))
-		xf86DrvMsg(pScrn->scrnIndex, X_INFO, "     found device at address 0x%02x\n", i);
+        if(RADEONProbeAddress(pPriv->i2c, i))
+                xf86DrvMsg(pScrn->scrnIndex, X_INFO, "     found device at address 0x%02x\n", i);
     #endif
 }
 
@@ -1289,19 +1331,19 @@ static Bool RADEONVIP_ioctl(GENERIC_BUS_Ptr b, long ioctl, long arg1, char *arg2
     long count;
     switch(ioctl){
         case GB_IOCTL_GET_NAME:
-	          count=strlen(VIP_NAME)+1;
-		  if(count>arg1)return FALSE;
-		  memcpy(arg2,VIP_NAME,count);
-		  return TRUE;
-		  
+                  count=strlen(VIP_NAME)+1;
+                  if(count>arg1)return FALSE;
+                  memcpy(arg2,VIP_NAME,count);
+                  return TRUE;
+                  
         case GB_IOCTL_GET_TYPE:
-	          count=strlen(VIP_TYPE)+1;
-		  if(count>arg1)return FALSE;
-		  memcpy(arg2,VIP_TYPE,count);
-		  return TRUE;
-		  
+                  count=strlen(VIP_TYPE)+1;
+                  if(count>arg1)return FALSE;
+                  memcpy(arg2,VIP_TYPE,count);
+                  return TRUE;
+                  
         default: 
-	          return FALSE;
+                  return FALSE;
     }
 }
 
@@ -1313,16 +1355,16 @@ static CARD32 RADEONVIP_idle(GENERIC_BUS_Ptr b)
 
    CARD32 timeout;
    
-   RADEONWaitForIdle(pScrn);
+   RADEONWaitForIdleMMIO(pScrn);
    timeout = INREG(VIPH_TIMEOUT_STAT);
    if(timeout & VIPH_TIMEOUT_STAT__VIPH_REG_STAT) /* lockup ?? */
    {
        RADEONWaitForFifo(pScrn, 2);
        OUTREG(VIPH_TIMEOUT_STAT, (timeout & 0xffffff00) | VIPH_TIMEOUT_STAT__VIPH_REG_AK);
-       RADEONWaitForIdle(pScrn);
+       RADEONWaitForIdleMMIO(pScrn);
        return (INREG(VIPH_CONTROL) & 0x2000) ? VIP_BUSY : VIP_RESET;
    }
-   RADEONWaitForIdle(pScrn);
+   RADEONWaitForIdleMMIO(pScrn);
    return (INREG(VIPH_CONTROL) & 0x2000) ? VIP_BUSY : VIP_IDLE ;
 }
 
@@ -1353,14 +1395,14 @@ static Bool RADEONVIP_read(GENERIC_BUS_Ptr b, CARD32 address, CARD32 count, CARD
          The LSB of VIPH_TIMEOUT_STAT are set to 0
          because 1 would have acknowledged various VIP
          interrupts unexpectedly 
-*/	
-   RADEONWaitForIdle(pScrn);
+*/      
+   RADEONWaitForIdleMMIO(pScrn);
    OUTREG(VIPH_TIMEOUT_STAT, INREG(VIPH_TIMEOUT_STAT) & (0xffffff00 & ~VIPH_TIMEOUT_STAT__VIPH_REGR_DIS) );
 /*
          the value returned here is garbage.  The read merely initiates
          a register cycle
 */
-    RADEONWaitForIdle(pScrn);
+    RADEONWaitForIdleMMIO(pScrn);
     INREG(VIPH_REG_DATA);
     
     while(VIP_BUSY == (status = RADEONVIP_idle(b)));
@@ -1368,24 +1410,24 @@ static Bool RADEONVIP_read(GENERIC_BUS_Ptr b, CARD32 address, CARD32 count, CARD
 /*
         set VIPH_REGR_DIS so that the read won't take too long.
 */
-    RADEONWaitForIdle(pScrn);
+    RADEONWaitForIdleMMIO(pScrn);
     tmp=INREG(VIPH_TIMEOUT_STAT);
-    OUTREG(VIPH_TIMEOUT_STAT, (tmp & 0xffffff00) | VIPH_TIMEOUT_STAT__VIPH_REGR_DIS);	      
-    RADEONWaitForIdle(pScrn);
+    OUTREG(VIPH_TIMEOUT_STAT, (tmp & 0xffffff00) | VIPH_TIMEOUT_STAT__VIPH_REGR_DIS);         
+    RADEONWaitForIdleMMIO(pScrn);
     switch(count){
         case 1:
-	     *buffer=(CARD8)(INREG(VIPH_REG_DATA) & 0xff);
-	     break;
-	case 2:
-	     *(CARD16 *)buffer=(CARD16) (INREG(VIPH_REG_DATA) & 0xffff);
-	     break;
-	case 4:
-	     *(CARD32 *)buffer=(CARD32) ( INREG(VIPH_REG_DATA) & 0xffffffff);
-	     break;
-	}
+             *buffer=(CARD8)(INREG(VIPH_REG_DATA) & 0xff);
+             break;
+        case 2:
+             *(CARD16 *)buffer=(CARD16) (INREG(VIPH_REG_DATA) & 0xffff);
+             break;
+        case 4:
+             *(CARD32 *)buffer=(CARD32) ( INREG(VIPH_REG_DATA) & 0xffffffff);
+             break;
+        }
      while(VIP_BUSY == (status = RADEONVIP_idle(b)));
      if(VIP_IDLE != status) return FALSE;
- /*	
+ /*     
  so that reading VIPH_REG_DATA would not trigger unnecessary vip cycles.
 */
      OUTREG(VIPH_TIMEOUT_STAT, (INREG(VIPH_TIMEOUT_STAT) & 0xffffff00) | VIPH_TIMEOUT_STAT__VIPH_REGR_DIS);
@@ -1416,9 +1458,9 @@ static Bool RADEONVIP_write(GENERIC_BUS_Ptr b, CARD32 address, CARD32 count, CAR
     RADEONWaitForFifo(pScrn, 2);
     switch(count){
         case 4:
-	     OUTREG(VIPH_REG_DATA, *(CARD32 *)buffer);
-	     break;
-	}
+             OUTREG(VIPH_REG_DATA, *(CARD32 *)buffer);
+             break;
+        }
     while(VIP_BUSY == (status = RADEONVIP_idle(b)));
     if(VIP_IDLE != status) return FALSE;
     return TRUE;
@@ -1430,7 +1472,7 @@ void RADEONVIP_reset(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
     unsigned char *RADEONMMIO = info->MMIO;
 
 
-    RADEONWaitForIdle(pScrn);
+    RADEONWaitForIdleMMIO(pScrn);
     OUTREG(VIPH_CONTROL, 0x003F0004); /* slowest, timeout in 16 phases */
     OUTREG(VIPH_TIMEOUT_STAT, (INREG(VIPH_TIMEOUT_STAT) & 0xFFFFFF00) | VIPH_TIMEOUT_STAT__VIPH_REGR_DIS);
     OUTREG(VIPH_DV_LAT, 0x444400FF); /* set timeslice */
@@ -1477,12 +1519,12 @@ static void RADEON_read_eeprom(RADEONPortPrivPtr pPriv)
      if(!memcmp(data, "ATI", 3))
      {
         pPriv->EEPROM_present = TRUE;
-	pPriv->EEPROM_addr = RADEON_eeprom_addresses[i];
-	break;
+        pPriv->EEPROM_addr = RADEON_eeprom_addresses[i];
+        break;
      }
      xf86DrvMsg(pPriv->i2c->scrnIndex, X_INFO, "Device at eeprom addr 0x%02x found, returned 0x%02x-0x%02x-0x%02x-0x%02x-0x%02x\n",
          d.SlaveAddr,
-     	 data[0], data[1], data[2], data[3], data[4]);
+         data[0], data[1], data[2], data[3], data[4]);
    }
 
 
@@ -1503,22 +1545,22 @@ static void RADEONReadMM_TABLE(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
      CARD16 bios_header;
 
      if((info->VBIOS==NULL)||(info->VBIOS[0]!=0x55)||(info->VBIOS[1]!=0xaa)){
-     	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Cannot access BIOS or it is not valid.\n"
-		"\t\tYou will need to specify options RageTheatreCrystal, RageTheatreTunerPort, \n"
-		"\t\tRageTheatreSVideoPort and TunerType in /etc/XF86Config.\n"
-		);
-	pPriv->MM_TABLE_valid = FALSE;
-     	} else {
+        xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Cannot access BIOS or it is not valid.\n"
+                "\t\tYou will need to specify options RageTheatreCrystal, RageTheatreTunerPort, \n"
+                "\t\tRageTheatreSVideoPort and TunerType in /etc/XF86Config.\n"
+                );
+        pPriv->MM_TABLE_valid = FALSE;
+        } else {
 
      bios_header=info->VBIOS[0x48];
-     bios_header+=(((int)info->VBIOS[0x49]+0)<<8);	     
-	
+     bios_header+=(((int)info->VBIOS[0x49]+0)<<8);           
+        
      mm_table=info->VBIOS[bios_header+0x38];
      if(mm_table==0)
      {
          xf86DrvMsg(pScrn->scrnIndex,X_INFO,"No MM_TABLE found",bios_header,mm_table);
-	 pPriv->MM_TABLE_valid = FALSE;
-	 goto forced_settings;
+         pPriv->MM_TABLE_valid = FALSE;
+         goto forced_settings;
      }    
      mm_table+=(((int)info->VBIOS[bios_header+0x39]+0)<<8)-2;
 
@@ -1526,42 +1568,42 @@ static void RADEONReadMM_TABLE(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
 
      if(mm_table>0)
      {
-	 memcpy(&(pPriv->MM_TABLE), &(info->VBIOS[mm_table]), sizeof(_MM_TABLE));
+         memcpy(&(pPriv->MM_TABLE), &(info->VBIOS[mm_table]), sizeof(_MM_TABLE));
          xf86DrvMsg(pScrn->scrnIndex, X_INFO, "MM_TABLE: %02x-%02x-%02x-%02x-%02x-%02x-%02x-%02x-%02x-%02x-%02x-%02x-%02x-%02x\n",
-	     pPriv->MM_TABLE.table_revision,
-    	     pPriv->MM_TABLE.table_size,
-	     pPriv->MM_TABLE.tuner_type,
-    	     pPriv->MM_TABLE.audio_chip,
-	     pPriv->MM_TABLE.product_id,
-    	     pPriv->MM_TABLE.tuner_voltage_teletext_fm,
-	     pPriv->MM_TABLE.i2s_config,
-	     pPriv->MM_TABLE.video_decoder_type,
-    	     pPriv->MM_TABLE.video_decoder_host_config,
-	     pPriv->MM_TABLE.input[0],
-    	     pPriv->MM_TABLE.input[1],
-	     pPriv->MM_TABLE.input[2],
-    	     pPriv->MM_TABLE.input[3],
-	     pPriv->MM_TABLE.input[4]);
-	 pPriv->MM_TABLE_valid = TRUE;
-	 pPriv->board_info = pPriv->MM_TABLE.tuner_type;
+             pPriv->MM_TABLE.table_revision,
+             pPriv->MM_TABLE.table_size,
+             pPriv->MM_TABLE.tuner_type,
+             pPriv->MM_TABLE.audio_chip,
+             pPriv->MM_TABLE.product_id,
+             pPriv->MM_TABLE.tuner_voltage_teletext_fm,
+             pPriv->MM_TABLE.i2s_config,
+             pPriv->MM_TABLE.video_decoder_type,
+             pPriv->MM_TABLE.video_decoder_host_config,
+             pPriv->MM_TABLE.input[0],
+             pPriv->MM_TABLE.input[1],
+             pPriv->MM_TABLE.input[2],
+             pPriv->MM_TABLE.input[3],
+             pPriv->MM_TABLE.input[4]);
+         pPriv->MM_TABLE_valid = TRUE;
+         pPriv->board_info = pPriv->MM_TABLE.tuner_type;
      } else {
          xf86DrvMsg(pScrn->scrnIndex,X_INFO,"No MM_TABLE found\n",bios_header,mm_table);
-	 pPriv->MM_TABLE_valid = FALSE;
+         pPriv->MM_TABLE_valid = FALSE;
      }    
      }
 
      forced_settings:     
      if(info->tunerType>=0){
-     		pPriv->MM_TABLE.tuner_type=info->tunerType;
-		pPriv->board_info=info->tunerType;
-     		}
+                pPriv->MM_TABLE.tuner_type=info->tunerType;
+                pPriv->board_info=info->tunerType;
+                }
      /* enough information was provided in the options */
      
      if(!pPriv->MM_TABLE_valid && (info->tunerType>=0) && (info->RageTheatreCrystal>=0) &&
             (info->RageTheatreTunerPort>=0) && (info->RageTheatreCompositePort>=0) &&
-	    (info->RageTheatreSVideoPort>=0) ) {
-	    	pPriv->MM_TABLE_valid = TRUE;
-	    	}
+            (info->RageTheatreSVideoPort>=0) ) {
+                pPriv->MM_TABLE_valid = TRUE;
+                }
 }
 
 static Bool RADEONSetupTheatre(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv, TheatrePtr t)
@@ -1573,21 +1615,21 @@ static Bool RADEONSetupTheatre(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv, Theat
     CARD16 bios_header;
     CARD16 pll_info_block;
     int i;
-	
+        
      xf86DrvMsg(pScrn->scrnIndex, X_INFO, "0x%02x 0x%02x\n", info->VBIOS[0],
-               info->VBIOS[1]);	
+               info->VBIOS[1]); 
      bios_header=info->VBIOS[0x48];
-     bios_header+=(((int)info->VBIOS[0x49]+0)<<8);	     
-	
+     bios_header+=(((int)info->VBIOS[0x49]+0)<<8);           
+        
      pll_info_block=info->VBIOS[bios_header+0x30];
      pll_info_block+=(((int)info->VBIOS[bios_header+0x31]+0)<<8);
        
      t->video_decoder_type=info->VBIOS[pll_info_block+0x08];
      t->video_decoder_type+=(((int)info->VBIOS[pll_info_block+0x09]+0)<<8);
-	
+        
      xf86DrvMsg(t->VIP->scrnIndex,X_INFO,"video decoder type is 0x%04x versus 0x%04x\n",t->video_decoder_type,
-		pll->xclk);
-	
+                pll->xclk);
+        
      if(!pPriv->MM_TABLE_valid)
      {
        xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "no multimedia table present, not using Rage Theatre for input\n");
@@ -1596,61 +1638,61 @@ static Bool RADEONSetupTheatre(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv, Theat
        return FALSE;
      }
      for(i=0;i<5;i++){
-		a=pPriv->MM_TABLE.input[i];
-		
-		switch(a & 0x3){
-			case 1:
-				t->wTunerConnector=i;
-				xf86DrvMsg(t->VIP->scrnIndex,X_INFO,"Tuner is on port %d\n",i);
-				break;
-			case 2:  if(a & 0x4){
-				   t->wComp0Connector=RT_COMP2;
-				   } else {
-				   t->wComp0Connector=RT_COMP1;
-				   }
-				xf86DrvMsg(t->VIP->scrnIndex,X_INFO,"Composite connector is port %d\n",t->wComp0Connector);
-				  break;
-			case 3:  if(a & 0x4){
-				   t->wSVideo0Connector=RT_YCR_COMP4;
-				   } else {
-				   t->wSVideo0Connector=RT_YCF_COMP4;
-				   }
-				xf86DrvMsg(t->VIP->scrnIndex,X_INFO,"SVideo connector is port %d\n",t->wSVideo0Connector);
-				   break;
-			default:
-				break;
-			}
-		}
+                a=pPriv->MM_TABLE.input[i];
+                
+                switch(a & 0x3){
+                        case 1:
+                                t->wTunerConnector=i;
+                                xf86DrvMsg(t->VIP->scrnIndex,X_INFO,"Tuner is on port %d\n",i);
+                                break;
+                        case 2:  if(a & 0x4){
+                                   t->wComp0Connector=RT_COMP2;
+                                   } else {
+                                   t->wComp0Connector=RT_COMP1;
+                                   }
+                                xf86DrvMsg(t->VIP->scrnIndex,X_INFO,"Composite connector is port %d\n",t->wComp0Connector);
+                                  break;
+                        case 3:  if(a & 0x4){
+                                   t->wSVideo0Connector=RT_YCR_COMP4;
+                                   } else {
+                                   t->wSVideo0Connector=RT_YCF_COMP4;
+                                   }
+                                xf86DrvMsg(t->VIP->scrnIndex,X_INFO,"SVideo connector is port %d\n",t->wSVideo0Connector);
+                                   break;
+                        default:
+                                break;
+                        }
+                }
 
-	/* this is fiction, we should read MM table instead 
-	t->wTunerConnector=0;
-	t->wComp0Connector=5;
-	t->wSVideo0Connector=3;
-	 */
+        /* this is fiction, we should read MM table instead 
+        t->wTunerConnector=0;
+        t->wComp0Connector=5;
+        t->wSVideo0Connector=3;
+         */
 
-	xf86DrvMsg(t->VIP->scrnIndex,X_INFO,"Rage Theatre: Connectors (detected): tuner=%d, composite=%d, svideo=%d\n",t->wTunerConnector, t->wComp0Connector, t->wSVideo0Connector);
-	
-	if(info->RageTheatreTunerPort>=0)t->wTunerConnector=info->RageTheatreTunerPort;
-	if(info->RageTheatreCompositePort>=0)t->wComp0Connector=info->RageTheatreCompositePort;
-	if(info->RageTheatreSVideoPort>=0)t->wSVideo0Connector=info->RageTheatreSVideoPort;
-	
-	xf86DrvMsg(t->VIP->scrnIndex,X_INFO,"RageTheatre: Connectors (using): tuner=%d, composite=%d, svideo=%d\n",t->wTunerConnector, t->wComp0Connector, t->wSVideo0Connector);
+        xf86DrvMsg(t->VIP->scrnIndex,X_INFO,"Rage Theatre: Connectors (detected): tuner=%d, composite=%d, svideo=%d\n",t->wTunerConnector, t->wComp0Connector, t->wSVideo0Connector);
+        
+        if(info->RageTheatreTunerPort>=0)t->wTunerConnector=info->RageTheatreTunerPort;
+        if(info->RageTheatreCompositePort>=0)t->wComp0Connector=info->RageTheatreCompositePort;
+        if(info->RageTheatreSVideoPort>=0)t->wSVideo0Connector=info->RageTheatreSVideoPort;
+        
+        xf86DrvMsg(t->VIP->scrnIndex,X_INFO,"RageTheatre: Connectors (using): tuner=%d, composite=%d, svideo=%d\n",t->wTunerConnector, t->wComp0Connector, t->wSVideo0Connector);
 
-	switch((info->RageTheatreCrystal>=0)?info->RageTheatreCrystal:pll->reference_freq){
-		case 2700:
-			t->video_decoder_type=RT_FREF_2700;
-			break;
-		case 2950:
-			t->video_decoder_type=RT_FREF_2950;
-			break;
-		default:
-			xf86DrvMsg(t->VIP->scrnIndex,X_INFO,
-				"Unsupported reference clock frequency, Rage Theatre disabled\n");
-			t->theatre_num=-1;
-			return FALSE;
-		}
-	xf86DrvMsg(t->VIP->scrnIndex,X_INFO,"video decoder type used: 0x%04x\n",t->video_decoder_type);
-	return TRUE;
+        switch((info->RageTheatreCrystal>=0)?info->RageTheatreCrystal:pll->reference_freq){
+                case 2700:
+                        t->video_decoder_type=RT_FREF_2700;
+                        break;
+                case 2950:
+                        t->video_decoder_type=RT_FREF_2950;
+                        break;
+                default:
+                        xf86DrvMsg(t->VIP->scrnIndex,X_INFO,
+                                "Unsupported reference clock frequency, Rage Theatre disabled\n");
+                        t->theatre_num=-1;
+                        return FALSE;
+                }
+        xf86DrvMsg(t->VIP->scrnIndex,X_INFO,"video decoder type used: 0x%04x\n",t->video_decoder_type);
+        return TRUE;
 }
 
 
@@ -1677,42 +1719,35 @@ RADEONAllocAdaptor(ScrnInfoPtr pScrn)
     pPriv->colorKey = info->videoKey;
     pPriv->doubleBuffer = TRUE;
     pPriv->videoStatus = 0;
-    
-    pPriv->transform_index = 0;
     pPriv->brightness = 0;
+    pPriv->transform_index = 0;
     pPriv->saturation = 0;
     pPriv->contrast = 0;
     pPriv->red_intensity = 0;
     pPriv->green_intensity = 0;
     pPriv->blue_intensity = 0;
     pPriv->hue = 0;
-
-    pPriv->dec_brightness = 0;
-    pPriv->dec_saturation = 0;
-    pPriv->dec_contrast = 0;
-    pPriv->dec_hue = 0;
-
     pPriv->currentBuffer = 0;
-
-    pPriv->video_stream_active = FALSE;
-    pPriv->encoding = 4;
-    pPriv->frequency = 1000;
-    pPriv->volume = -1000;
-    pPriv->mute = TRUE;
-    pPriv->v=0;
-    
-    pPriv->overlay_deinterlacing_method = METHOD_BOB;
-    pPriv->capture_vbi_data = 1;
-
     pPriv->autopaint_colorkey = TRUE;
 
-    /* Unlike older Mach64 chips, RADEON has only two ECP settings: 0 for PIXCLK < 175Mhz, and 1 (divide by 2)
-       for higher clocks, sure makes life nicer */
-    if(info->ModeReg.dot_clock_freq < 17500) pPriv->ecp_div = 0;
-    	   else pPriv->ecp_div = 1;
+    /*
+     * Unlike older Mach64 chips, RADEON has only two ECP settings: 
+     * 0 for PIXCLK < 175Mhz, and 1 (divide by 2)
+     * for higher clocks, sure makes life nicer 
+     */
+    if(info->ModeReg.dot_clock_freq < 17500) 
+	pPriv->ecp_div = 0;
+    else
+	pPriv->ecp_div = 1;
+
+#if 0
     xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Dotclock is %g Mhz, setting ecp_div to %d\n", info->ModeReg.dot_clock_freq/100.0, pPriv->ecp_div);
+#endif
  
-    OUTPLL(RADEON_VCLK_ECP_CNTL, (INPLL(pScrn, RADEON_VCLK_ECP_CNTL) & 0xfffffCff) | (pPriv->ecp_div << 8));
+    OUTPLL(RADEON_VCLK_ECP_CNTL, (INPLL(pScrn, RADEON_VCLK_ECP_CNTL) & 
+				  0xfffffCff) | (pPriv->ecp_div << 8));
+
+    info->adaptor = adapt;
 
     return adapt;
 }
@@ -1721,9 +1756,9 @@ static XF86VideoAdaptorPtr
 RADEONSetupImageVideo(ScreenPtr pScreen)
 {
     ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
-    RADEONInfoPtr info = RADEONPTR(pScrn);
     RADEONPortPrivPtr pPriv;
     XF86VideoAdaptorPtr adapt;
+    RADEONInfoPtr info = RADEONPTR(pScrn);
 
     info->accel->Sync(pScrn);
 
@@ -1737,7 +1772,6 @@ RADEONSetupImageVideo(ScreenPtr pScreen)
 	return NULL;
 
     pPriv = (RADEONPortPrivPtr)(adapt->pPortPrivates[0].ptr);
-    pPriv->pScrn=pScrn;
     
     RADEONReadMM_TABLE(pScrn,pPriv);
     RADEONVIP_init(pScrn,pPriv);
@@ -1816,20 +1850,13 @@ RADEONSetupImageVideo(ScreenPtr pScreen)
     adapt->PutImage = RADEONPutImage;
     adapt->QueryImageAttributes = RADEONQueryImageAttributes;
 
-    info->adaptor = adapt;
-
+    pPriv = (RADEONPortPrivPtr)(adapt->pPortPrivates[0].ptr);
     REGION_INIT(pScreen, &(pPriv->clip), NullBox, 0);
-
+        
     RADEONResetVideo(pScrn);
-
-    if(info->VBIOS){
-    	xfree(info->VBIOS);
-	info->VBIOS=NULL;
-	}
 
     return adapt;
 }
-
 
 /* I really should stick this in miregion */
 static Bool
@@ -1959,26 +1986,17 @@ RADEONStopVideo(ScrnInfoPtr pScrn, pointer data, Bool cleanup)
   unsigned char *RADEONMMIO = info->MMIO;
   RADEONPortPrivPtr pPriv = (RADEONPortPrivPtr)data;
 
-  info->accel->Sync(pScrn);
   REGION_EMPTY(pScrn->pScreen, &pPriv->clip);
 
   if(cleanup) {
      if(pPriv->videoStatus & CLIENT_VIDEO_ON) {
-	RADEONWaitForFifo(pScrn, 2); 
-	OUTREG(RADEON_OV0_SCALE_CNTL, 0x80000000);
+	RADEONWaitForFifo(pScrn, 2);
+	OUTREG(RADEON_OV0_SCALE_CNTL, 0);
+	xf86ForceHWCursor (pScrn->pScreen, FALSE);
      }
-     if(pPriv->video_stream_active) {
-	RADEONWaitForFifo(pScrn, 2); 
-        OUTREG(RADEON_FCP_CNTL, RADEON_FCP_CNTL__GND);
-	OUTREG(RADEON_CAP0_TRIG_CNTL, 0);
-	RADEONResetVideo(pScrn);
-	pPriv->video_stream_active = FALSE;
-	if(pPriv->msp3430 != NULL) xf86_MSP3430SetVolume(pPriv->msp3430, MSP3430_FAST_MUTE);
-	if(pPriv->i2c != NULL) RADEON_board_setmisc(pPriv);
-     }
-     if(pPriv->linear) {
-	xf86FreeOffscreenLinear(pPriv->linear);
-	pPriv->linear = NULL;
+     if(info->videoLinear) {
+	xf86FreeOffscreenLinear(info->videoLinear);
+	info->videoLinear = NULL;
      }
      pPriv->videoStatus = 0;
   } else {
@@ -1990,38 +2008,39 @@ RADEONStopVideo(ScrnInfoPtr pScrn, pointer data, Bool cleanup)
 }
 
 static int
-RADEONSetPortAttribute(
-  ScrnInfoPtr pScrn,
-  Atom attribute,
-  INT32 value,
-  pointer data
-){
-  RADEONInfoPtr info = RADEONPTR(pScrn);
-  RADEONPortPrivPtr pPriv = (RADEONPortPrivPtr)data;
-  unsigned char *RADEONMMIO = info->MMIO;
+RADEONSetPortAttribute(ScrnInfoPtr  pScrn,
+		       Atom	    attribute,
+		       INT32	    value,
+		       pointer	    data)
+{
+    RADEONInfoPtr	info = RADEONPTR(pScrn);
+    RADEONPortPrivPtr	pPriv = (RADEONPortPrivPtr)data;
+    Bool		setTransform = FALSE;
+    unsigned char *RADEONMMIO = info->MMIO;
 
-  info->accel->Sync(pScrn);
-
+    info->accel->Sync(pScrn);
 
 #define RTFSaturation(a)   (1.0 + ((a)*1.0)/1000.0)
 #define RTFBrightness(a)   (((a)*1.0)/2000.0)
 #define RTFIntensity(a)   (((a)*1.0)/2000.0)
 #define RTFContrast(a)   (1.0 + ((a)*1.0)/1000.0)
 #define RTFHue(a)   (((a)*3.1416)/1000.0)
+#define ClipValue(v,min,max) ((v) < (min) ? (min) : (v) > (max) ? (max) : (v))
 
-  if(attribute == xv_autopaint_colorkey) {
-  	pPriv->autopaint_colorkey = value;
-  } else
-  if(attribute == xv_set_defaults) {
-        RADEONSetPortAttribute(pScrn, xv_autopaint_colorkey, TRUE, data);
-        RADEONSetPortAttribute(pScrn, xvBrightness, 0, data);
-        RADEONSetPortAttribute(pScrn, xvSaturation, 0, data);
-        RADEONSetPortAttribute(pScrn, xvContrast,   0, data);
-        RADEONSetPortAttribute(pScrn, xvHue,   0, data);
-        RADEONSetPortAttribute(pScrn, xvRedIntensity,  0, data);
-        RADEONSetPortAttribute(pScrn, xvGreenIntensity,0, data);
-        RADEONSetPortAttribute(pScrn, xvBlueIntensity, 0, data);
-
+    if(attribute == xvAutopaintColorkey) 
+    {
+	pPriv->autopaint_colorkey = ClipValue (value, 0, 1);
+    }
+    else if(attribute == xvSetDefaults) 
+    {
+	pPriv->autopaint_colorkey = TRUE;
+	pPriv->brightness = 0;
+	pPriv->saturation = 0;
+	pPriv->contrast = 0;
+	pPriv->hue = 0;
+	pPriv->red_intensity = 0;
+	pPriv->green_intensity = 0;
+	pPriv->blue_intensity = 0;
         RADEONSetPortAttribute(pScrn, xvDecBrightness, 0, data);
         RADEONSetPortAttribute(pScrn, xvDecSaturation, 0, data);
         RADEONSetPortAttribute(pScrn, xvDecContrast,   0, data);
@@ -2031,229 +2050,204 @@ RADEONSetPortAttribute(
         RADEONSetPortAttribute(pScrn, xvMute,   1, data);
         RADEONSetPortAttribute(pScrn, xvSAP,   0, data);
         RADEONSetPortAttribute(pScrn, xvDoubleBuffer,   1, data);
-  } else
-  if(attribute == xvBrightness) {
-	pPriv->brightness = value;
-	RADEONSetTransform(pScrn, RTFBrightness(pPriv->brightness), RTFContrast(pPriv->contrast), 
-		RTFSaturation(pPriv->saturation), RTFHue(pPriv->hue),
-		RTFIntensity(pPriv->red_intensity),
-		RTFIntensity(pPriv->green_intensity),
-		RTFIntensity(pPriv->blue_intensity),
-		pPriv->transform_index);
-  } else
-  if((attribute == xvSaturation) || (attribute == xvColor)) {
-  	if(value<-1000)value = -1000;
-	if(value>1000)value = 1000;
-	pPriv->saturation = value;
-	RADEONSetTransform(pScrn, RTFBrightness(pPriv->brightness), RTFContrast(pPriv->contrast), 
-		RTFSaturation(pPriv->saturation), RTFHue(pPriv->hue),
-		RTFIntensity(pPriv->red_intensity),
-		RTFIntensity(pPriv->green_intensity),
-		RTFIntensity(pPriv->blue_intensity),
-		pPriv->transform_index);
-  } else
-  if(attribute == xvContrast) {
-	pPriv->contrast = value;
-	RADEONSetTransform(pScrn, RTFBrightness(pPriv->brightness), RTFContrast(pPriv->contrast), 
-		RTFSaturation(pPriv->saturation), RTFHue(pPriv->hue),
-		RTFIntensity(pPriv->red_intensity),
-		RTFIntensity(pPriv->green_intensity),
-		RTFIntensity(pPriv->blue_intensity),
-		pPriv->transform_index);
-  } else
-  if(attribute == xvHue) {
-	pPriv->hue = value;
-	RADEONSetTransform(pScrn, RTFBrightness(pPriv->brightness), RTFContrast(pPriv->contrast), 
-		RTFSaturation(pPriv->saturation), RTFHue(pPriv->hue),
-		RTFIntensity(pPriv->red_intensity),
-		RTFIntensity(pPriv->green_intensity),
-		RTFIntensity(pPriv->blue_intensity),
-		pPriv->transform_index);
-  } else
-  if(attribute == xvRedIntensity) {
-	pPriv->red_intensity = value;
-	RADEONSetTransform(pScrn, RTFBrightness(pPriv->brightness), RTFContrast(pPriv->contrast), 
-		RTFSaturation(pPriv->saturation), RTFHue(pPriv->hue),
-		RTFIntensity(pPriv->red_intensity),
-		RTFIntensity(pPriv->green_intensity),
-		RTFIntensity(pPriv->blue_intensity),
-		pPriv->transform_index);
-  } else
-  if(attribute == xvGreenIntensity) {
-	pPriv->green_intensity = value;
-	RADEONSetTransform(pScrn, RTFBrightness(pPriv->brightness), RTFContrast(pPriv->contrast), 
-		RTFSaturation(pPriv->saturation), RTFHue(pPriv->hue),
-		RTFIntensity(pPriv->red_intensity),
-		RTFIntensity(pPriv->green_intensity),
-		RTFIntensity(pPriv->blue_intensity),
-		pPriv->transform_index);
-  } else
-  if(attribute == xvBlueIntensity) {
-	pPriv->blue_intensity = value;
-	RADEONSetTransform(pScrn, RTFBrightness(pPriv->brightness), RTFContrast(pPriv->contrast), 
-		RTFSaturation(pPriv->saturation), RTFHue(pPriv->hue),
-		RTFIntensity(pPriv->red_intensity),
-		RTFIntensity(pPriv->green_intensity),
-		RTFIntensity(pPriv->blue_intensity),
-		pPriv->transform_index);
-  } else
+	setTransform = TRUE;
+    } 
+    else if(attribute == xvBrightness) 
+    {
+	pPriv->brightness = ClipValue (value, -1000, 1000);
+	setTransform = TRUE;
+    } 
+    else if((attribute == xvSaturation) || (attribute == xvColor)) 
+    {
+	pPriv->saturation = ClipValue (value, -1000, 1000);
+	setTransform = TRUE;
+    } 
+    else if(attribute == xvContrast) 
+    {
+	pPriv->contrast = ClipValue (value, -1000, 1000);
+	setTransform = TRUE;
+    } 
+    else if(attribute == xvHue) 
+    {
+	pPriv->hue = ClipValue (value, -1000, 1000);
+	setTransform = TRUE;
+    } 
+    else if(attribute == xvRedIntensity) 
+    {
+	pPriv->red_intensity = ClipValue (value, -1000, 1000);
+	setTransform = TRUE;
+    } 
+    else if(attribute == xvGreenIntensity) 
+    {
+	pPriv->green_intensity = ClipValue (value, -1000, 1000);
+	setTransform = TRUE;
+    } 
+    else if(attribute == xvBlueIntensity) 
+    {
+	pPriv->blue_intensity = ClipValue (value, -1000, 1000);
+	setTransform = TRUE;
+    } 
+    else if(attribute == xvDoubleBuffer) 
+    {
+	pPriv->doubleBuffer = ClipValue (value, 0, 1);
+	pPriv->doubleBuffer = value;
+    } 
+    else if(attribute == xvColorKey) 
+    {
+	pPriv->colorKey = value;
+	RADEONSetColorKey (pScrn, pPriv->colorKey);
+	REGION_EMPTY(pScrn->pScreen, &pPriv->clip);
+    }  else
   if(attribute == xvDecBrightness) {
-	pPriv->dec_brightness = value;
-	if(pPriv->theatre!=NULL) xf86_RT_SetBrightness(pPriv->theatre, pPriv->dec_brightness);	
+        pPriv->dec_brightness = value;
+        if(pPriv->theatre!=NULL) xf86_RT_SetBrightness(pPriv->theatre, pPriv->dec_brightness);  
   } else
   if((attribute == xvDecSaturation) || (attribute == xvDecColor)) {
-  	if(value<-1000)value = -1000;
-	if(value>1000)value = 1000;
-	pPriv->dec_saturation = value;
-	if(pPriv->theatre != NULL)xf86_RT_SetSaturation(pPriv->theatre, value);
+        if(value<-1000)value = -1000;
+        if(value>1000)value = 1000;
+        pPriv->dec_saturation = value;
+        if(pPriv->theatre != NULL)xf86_RT_SetSaturation(pPriv->theatre, value);
   } else
   if(attribute == xvDecContrast) {
-	pPriv->dec_contrast = value;
-	if(pPriv->theatre != NULL)xf86_RT_SetContrast(pPriv->theatre, value);
+        pPriv->dec_contrast = value;
+        if(pPriv->theatre != NULL)xf86_RT_SetContrast(pPriv->theatre, value);
   } else
   if(attribute == xvDecHue) {
-	pPriv->dec_hue = value;
-	if(pPriv->theatre != NULL)xf86_RT_SetTint(pPriv->theatre, value);
-  } else
-  if(attribute == xvDoubleBuffer) {
-	if((value < 0) || (value > 1))
-	   return BadValue;
-	pPriv->doubleBuffer = value;
-  } else
-  if(attribute == xvColorKey) {
-	pPriv->colorKey = value;
-	RADEONSetColorKey(pScrn, pPriv->colorKey);
-
-	REGION_EMPTY(pScrn->pScreen, &pPriv->clip);
+        pPriv->dec_hue = value;
+        if(pPriv->theatre != NULL)xf86_RT_SetTint(pPriv->theatre, value);
   } else 
   if(attribute == xvEncoding) {
-	pPriv->encoding = value;
-	if(pPriv->video_stream_active)
-	{
-	   if(pPriv->theatre != NULL) RADEON_RT_SetEncoding(pPriv);
-	   if(pPriv->msp3430 != NULL) RADEON_MSP_SetEncoding(pPriv);
-	   if(pPriv->tda9885 != NULL) RADEON_TDA9885_SetEncoding(pPriv);
-	   if(pPriv->i2c != NULL) RADEON_board_setmisc(pPriv);
-	/* put more here to actually change it */
-	}
+        pPriv->encoding = value;
+        if(pPriv->video_stream_active)
+        {
+           if(pPriv->theatre != NULL) RADEON_RT_SetEncoding(pPriv);
+           if(pPriv->msp3430 != NULL) RADEON_MSP_SetEncoding(pPriv);
+           if(pPriv->tda9885 != NULL) RADEON_TDA9885_SetEncoding(pPriv);
+           if(pPriv->i2c != NULL) RADEON_board_setmisc(pPriv);
+        /* put more here to actually change it */
+        }
   } else 
   if(attribute == xvFrequency) {
         pPriv->frequency = value;
-	/* mute volume if it was not muted before */
-	if((pPriv->msp3430!=NULL)&& !pPriv->mute)xf86_MSP3430SetVolume(pPriv->msp3430, MSP3430_FAST_MUTE);
-  	if(pPriv->fi1236 != NULL) xf86_TUNER_set_frequency(pPriv->fi1236, value);
+        /* mute volume if it was not muted before */
+        if((pPriv->msp3430!=NULL)&& !pPriv->mute)xf86_MSP3430SetVolume(pPriv->msp3430, MSP3430_FAST_MUTE);
+        if(pPriv->fi1236 != NULL) xf86_TUNER_set_frequency(pPriv->fi1236, value);
 /*        if(pPriv->theatre != NULL) RADEON_RT_SetEncoding(pPriv);  */
-	if((pPriv->msp3430 != NULL) && (pPriv->msp3430->recheck))
-		xf86_InitMSP3430(pPriv->msp3430);
+        if((pPriv->msp3430 != NULL) && (pPriv->msp3430->recheck))
+                xf86_InitMSP3430(pPriv->msp3430);
         if((pPriv->msp3430 != NULL)&& !pPriv->mute) xf86_MSP3430SetVolume(pPriv->msp3430, MSP3430_VOLUME(pPriv->volume));
   } else 
   if(attribute == xvMute) {
         pPriv->mute = value;
         if(pPriv->msp3430 != NULL) xf86_MSP3430SetVolume(pPriv->msp3430, pPriv->mute ? MSP3430_FAST_MUTE : MSP3430_VOLUME(pPriv->volume));
-	if(pPriv->i2c != NULL) RADEON_board_setmisc(pPriv);
+        if(pPriv->i2c != NULL) RADEON_board_setmisc(pPriv);
   } else 
   if(attribute == xvSAP) {
         pPriv->sap_channel = value;
         if(pPriv->msp3430 != NULL) xf86_MSP3430SetSAP(pPriv->msp3430, pPriv->sap_channel?4:3);
   } else 
   if(attribute == xvVolume) {
-  	if(value<-1000)value = -1000;
-	if(value>1000)value = 1000;
-        pPriv->volume = value;	
-	pPriv->mute = FALSE;
+        if(value<-1000)value = -1000;
+        if(value>1000)value = 1000;
+        pPriv->volume = value;  
+        pPriv->mute = FALSE;
         if(pPriv->msp3430 != NULL) xf86_MSP3430SetVolume(pPriv->msp3430, MSP3430_VOLUME(value));
-	if(pPriv->i2c != NULL) RADEON_board_setmisc(pPriv);
+        if(pPriv->i2c != NULL) RADEON_board_setmisc(pPriv);
   } else 
   if(attribute == xvOverlayDeinterlacingMethod) {
-  	if(value<0)value = 0;
-	if(value>2)value = 2;
-        pPriv->overlay_deinterlacing_method = value;	
-	switch(pPriv->overlay_deinterlacing_method){
-   		case METHOD_BOB:
-		   	OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0xAAAAA);
-	   		break;
-   		case METHOD_SINGLE:
-		   	OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0xEEEEE | (9<<28));
-	   		break;
-		case METHOD_WEAVE:
-	   		OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0x0);
-	   		break;
-		default:
-	   		OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0xAAAAA);
-		}			
-  } else 
-     return BadMatch;
+        if(value<0)value = 0;
+        if(value>2)value = 2;
+        pPriv->overlay_deinterlacing_method = value;    
+        switch(pPriv->overlay_deinterlacing_method){
+                case METHOD_BOB:
+                        OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0xAAAAA);
+                        break;
+                case METHOD_SINGLE:
+                        OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0xEEEEE | (9<<28));
+                        break;
+                case METHOD_WEAVE:
+                        OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0x0);
+                        break;
+                default:
+                        OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0xAAAAA);
+                }                       
+  }
+    else 
+	return BadMatch;
 
-  return Success;
+    if (setTransform)
+    {
+	RADEONSetTransform(pScrn, 
+			   RTFBrightness(pPriv->brightness), 
+			   RTFContrast(pPriv->contrast), 
+			   RTFSaturation(pPriv->saturation), 
+			   RTFHue(pPriv->hue),
+			   RTFIntensity(pPriv->red_intensity),
+			   RTFIntensity(pPriv->green_intensity),
+			   RTFIntensity(pPriv->blue_intensity),
+			   pPriv->transform_index);
+    }
+	
+    return Success;
 }
 
 static int
-RADEONGetPortAttribute(
-  ScrnInfoPtr pScrn,
-  Atom attribute,
-  INT32 *value,
-  pointer data
-){
-  RADEONInfoPtr info = RADEONPTR(pScrn);
-  RADEONPortPrivPtr pPriv = (RADEONPortPrivPtr)data;
+RADEONGetPortAttribute(ScrnInfoPtr  pScrn,
+		       Atom	    attribute,
+		       INT32	    *value,
+		       pointer	    data)
+{
+    RADEONInfoPtr	info = RADEONPTR(pScrn);
+    RADEONPortPrivPtr	pPriv = (RADEONPortPrivPtr)data;
 
-  info->accel->Sync(pScrn);
+    if (info->accelOn) info->accel->Sync(pScrn);
 
-  if(attribute == xv_autopaint_colorkey) {
-  	*value = pPriv->autopaint_colorkey;
-  } else
-  if(attribute == xvBrightness) {
+    if(attribute == xvAutopaintColorkey)
+	*value = pPriv->autopaint_colorkey;
+    else if(attribute == xvBrightness)
 	*value = pPriv->brightness;
-  } else
-  if((attribute == xvSaturation) || (attribute == xvColor)) {
+    else if((attribute == xvSaturation) || (attribute == xvColor))
 	*value = pPriv->saturation;
-  } else
-  if(attribute == xvContrast) {
+    else if(attribute == xvContrast)
 	*value = pPriv->contrast;
-  } else
-  if(attribute == xvHue) {
+    else if(attribute == xvHue)
 	*value = pPriv->hue;
-  } else
-  if(attribute == xvRedIntensity) {
+    else if(attribute == xvRedIntensity)
 	*value = pPriv->red_intensity;
-  } else
-  if(attribute == xvGreenIntensity) {
+    else if(attribute == xvGreenIntensity)
 	*value = pPriv->green_intensity;
-  } else
-  if(attribute == xvBlueIntensity) {
+    else if(attribute == xvBlueIntensity)
 	*value = pPriv->blue_intensity;
-  } else
+    else if(attribute == xvDoubleBuffer)
+	*value = pPriv->doubleBuffer ? 1 : 0;
+    else if(attribute == xvColorKey)
+	*value = pPriv->colorKey;
+     else
   if(attribute == xvDecBrightness) {
-	*value = pPriv->dec_brightness;
+        *value = pPriv->dec_brightness;
   } else
   if((attribute == xvDecSaturation) || (attribute == xvDecColor)) {
-	*value = pPriv->dec_saturation;
+        *value = pPriv->dec_saturation;
   } else
   if(attribute == xvDecContrast) {
-	*value = pPriv->dec_contrast;
+        *value = pPriv->dec_contrast;
   } else
   if(attribute == xvDecHue) {
-	*value = pPriv->dec_hue;
-  } else
-  if(attribute == xvDoubleBuffer) {
-	*value = pPriv->doubleBuffer ? 1 : 0;
-  } else
-  if(attribute == xvColorKey) {
-	*value = pPriv->colorKey;
-  } else 
+        *value = pPriv->dec_hue;
+  }  else 
   if(attribute == xvEncoding) {
-	*value = pPriv->encoding;
+        *value = pPriv->encoding;
   } else 
   if(attribute == xvFrequency) {
         *value = pPriv->frequency;
   } else 
   if(attribute == xvTunerStatus) {
-  	if(pPriv->fi1236==NULL){
-		*value=TUNER_OFF;
-		} else
-		{
-	        *value = xf86_TUNER_get_afc_hint(pPriv->fi1236);
-		}
+        if(pPriv->fi1236==NULL){
+                *value=TUNER_OFF;
+                } else
+                {
+                *value = xf86_TUNER_get_afc_hint(pPriv->fi1236);
+                }
   } else 
   if(attribute == xvMute) {
         *value = pPriv->mute;
@@ -2276,11 +2270,10 @@ RADEONGetPortAttribute(
   if(attribute == xvInstanceID) {
         *value = pPriv->instance_id;
   } else 
-     return BadMatch;
+	return BadMatch;
 
-  return Success;
+    return Success;
 }
-
 
 static void
 RADEONQueryBestSize(
@@ -2295,11 +2288,10 @@ RADEONQueryBestSize(
 	drw_w = vid_w >> 4;
    if(vid_h > (drw_h << 4))
 	drw_h = vid_h >> 4;
-	
+
   *p_w = drw_w;
   *p_h = drw_h;
 }
-
 
 static void
 RADEONCopyData(
@@ -2431,36 +2423,6 @@ RADEONAllocateMemory(
    return new_linear;
 }
 
-void RADEONSetColorKey(ScrnInfoPtr pScrn, CARD32 pixel)
-{
-    RADEONInfoPtr info = RADEONPTR(pScrn);
-    unsigned char *RADEONMMIO = info->MMIO;
-    CARD8 R, G, B;
-    CARD32 upper, lower;
-
-    if(info->CurrentLayout.depth > 8)
-    {
-    R = (pixel & pScrn->mask.red) >> pScrn->offset.red;
-    G = (pixel & pScrn->mask.green) >> pScrn->offset.green;
-    B = (pixel & pScrn->mask.blue) >> pScrn->offset.blue;
-
-    R = R << (8 - pScrn->weight.red);
-    G = G << (8 - pScrn->weight.green);
-    B = B << (8 - pScrn->weight.blue);
-    } 
-    else 
-    {
-    G = B = R = pixel & ((1 << info->CurrentLayout.depth)-1);
-    }
-
-    lower = (R<<16) | (G << 8) | (B);
-    upper = (0xff<<24) | lower;
-
-    RADEONWaitForFifo(pScrn, 2);
-    OUTREG(RADEON_OV0_GRAPHICS_KEY_CLR_HIGH, upper);
-    OUTREG(RADEON_OV0_GRAPHICS_KEY_CLR_LOW, lower);
-}
-
 static void
 RADEONDisplayVideo(
     ScrnInfoPtr pScrn,
@@ -2482,34 +2444,42 @@ RADEONDisplayVideo(
     double v_inc_d;
     int p1_h_accum_init, p23_h_accum_init;
     int p1_v_accum_init;
+    int ecp_div;
+    int v_inc_shift;
+    int y_mult;
+    int x_off;
     int is_rgb;
+    CARD32 scaler_src;
     CARD32 scale_cntl;
-
+  
     is_rgb=0;
     switch(id){
-    	case FOURCC_RGBA32:
-	case FOURCC_RGB24:
-	case FOURCC_RGBT16:
-	case FOURCC_RGB16:
-	    is_rgb=1;
-	    break;
-	default:
-	}
+        case FOURCC_RGBA32:
+        case FOURCC_RGB24:
+        case FOURCC_RGBT16:
+        case FOURCC_RGB16:
+            is_rgb=1;
+            break;
+        default:
+        }
 
-    /* Unlike older Mach64 chips, RADEON has only two ECP settings: 0 for PIXCLK < 175Mhz, and 1 (divide by 2)
+   /* Unlike older Mach64 chips, RADEON has only two ECP settings: 0 for PIXCLK < 175Mhz, and 1 (divide by 2)
        for higher clocks, sure makes life nicer 
        
        Here we need to find ecp_div again, as the user may have switched resolutions */
-    if(info->ModeReg.dot_clock_freq < 17500) pPriv->ecp_div = 0;
-    	   else pPriv->ecp_div = 1;
+    if(info->ModeReg.dot_clock_freq < 17500) 
+	ecp_div = 0;
+    else
+	ecp_div = 1;
  
-    OUTPLL(RADEON_VCLK_ECP_CNTL, (INPLL(pScrn, RADEON_VCLK_ECP_CNTL) & 0xfffffCff) | (pPriv->ecp_div << 8));
+    OUTPLL(RADEON_VCLK_ECP_CNTL, (INPLL(pScrn, RADEON_VCLK_ECP_CNTL) & 0xfffffCff) | (ecp_div << 8));
 
-    v_inc = (1 << (20
-		+ ((pScrn->currentMode->Flags & V_INTERLACE)?1:0)
-		- ((pScrn->currentMode->Flags & V_DBLSCAN)?1:0)
-		+((deinterlacing_method==METHOD_WEAVE)?0:0)));
-
+    v_inc_shift = 20;
+    if (pScrn->currentMode->Flags & V_INTERLACE)
+	v_inc_shift++;
+    if (pScrn->currentMode->Flags & V_DBLSCAN)
+	v_inc_shift--;
+    v_inc = (src_h << v_inc_shift) / drw_h;
     v_inc_d = src_h * pScrn->currentMode->VDisplay;
     if(info->DisplayType==MT_LCD)
         v_inc_d = v_inc_d/(drw_h*info->PanelYRes);
@@ -2518,9 +2488,7 @@ RADEONDisplayVideo(
 
     v_inc = v_inc_d * v_inc;
 
-    h_inc = ((src_w << (12
-    		+ pPriv->ecp_div)) / drw_w);
-		
+    h_inc = ((src_w << (12 + ecp_div)) / drw_w);
     step_by_y = 1;
     step_by_uv = step_by_y;
 
@@ -2528,14 +2496,14 @@ RADEONDisplayVideo(
        bother when this concerns downscaling and the code is so much more
        hairy */
     while(h_inc >= (2 << 12)) {
-    	if(!is_rgb && ((h_inc+h_inc/2)<(2<<12))){
-		step_by_uv = step_by_y+1;
-		break;
-		}
-	step_by_y++;
-	step_by_uv = step_by_y;
-	h_inc >>= 1;
-  	}
+        if(!is_rgb && ((h_inc+h_inc/2)<(2<<12))){
+                step_by_uv = step_by_y+1;
+                break;
+                }
+        step_by_y++;
+        step_by_uv = step_by_y;
+        h_inc >>= 1;
+        }
     h_inc_uv = h_inc>>(step_by_uv-step_by_y);
 
     /* 1536 is magic number - maximum line length the overlay scaler can fit 
@@ -2545,10 +2513,10 @@ RADEONDisplayVideo(
     /* under special circumstances turn on 4 tap filtering */
     if(!is_rgb && (step_by_y==1) && (step_by_uv==1) && (h_inc < (1<<12)) && (deinterlacing_method!=METHOD_WEAVE) 
        && (drw_w*2 < 1536)){
-    	step_by_y=0;
-	step_by_uv=1;
-	h_inc_uv = h_inc;
-    	}
+        step_by_y=0;
+        step_by_uv=1;
+        h_inc_uv = h_inc;
+        }
 
     /* keep everything in 16.16 */
 
@@ -2556,12 +2524,12 @@ RADEONDisplayVideo(
     offset2 += ((left >> 16) & ~7) << 1;
     offset3 += ((left >> 16) & ~7) << 1;
     offset4 += ((left >> 16) & ~7) << 1;
-
+    
     tmp = (left & 0x0003ffff) + 0x00028000 + (h_inc << 3);
     p1_h_accum_init = ((tmp <<  4) & 0x000f8000) |
 		      ((tmp << 12) & 0xf0000000);
 
-    tmp = ((left >> 1) & 0x0001ffff) + 0x00028000 + (h_inc << 2);
+    tmp = ((left >> 1) & 0x0001ffff) + 0x00028000 + (h_inc_uv << 2);
     p23_h_accum_init = ((tmp <<  4) & 0x000f8000) |
 		       ((tmp << 12) & 0x70000000);
 
@@ -2570,40 +2538,77 @@ RADEONDisplayVideo(
 
     left = (left >> 16) & 7;
 
-
     RADEONWaitForFifo(pScrn, 2);
     OUTREG(RADEON_OV0_REG_LOAD_CNTL, 1);
-    RADEONWaitForIdle(pScrn);
+    if (info->accelOn) info->accel->Sync(pScrn);
     while(!(INREG(RADEON_OV0_REG_LOAD_CNTL) & (1 << 3)));
 
     RADEONWaitForFifo(pScrn, 1);
     is_rgb=0;
     switch(id){
-    	case FOURCC_RGBA32:
-	case FOURCC_RGB24:
-	    OUTREG(RADEON_OV0_H_INC, (h_inc>>0) | ((h_inc>>0)<<16));
-	    is_rgb=1;
-	    break;
-	case FOURCC_RGBT16:
-	case FOURCC_RGB16:
-	    OUTREG(RADEON_OV0_H_INC, h_inc | (h_inc << 16));
-	    is_rgb=1;
-	    break;
-	default:
-	    OUTREG(RADEON_OV0_H_INC, h_inc | ((h_inc_uv >> 1) << 16));
-	}
-
-
+        case FOURCC_RGBA32:
+        case FOURCC_RGB24:
+            OUTREG(RADEON_OV0_H_INC, (h_inc>>0) | ((h_inc>>0)<<16));
+            is_rgb=1;
+            break;
+        case FOURCC_RGBT16:
+        case FOURCC_RGB16:
+            OUTREG(RADEON_OV0_H_INC, h_inc | (h_inc << 16));
+            is_rgb=1;
+            break;
+        default:
+            OUTREG(RADEON_OV0_H_INC, h_inc | ((h_inc_uv >> 1) << 16));
+        }
     RADEONWaitForFifo(pScrn, 15);
     OUTREG(RADEON_OV0_STEP_BY, step_by_y | (step_by_uv << 8));
-    OUTREG(RADEON_OV0_Y_X_START, dstBox->x1 | ((dstBox->y1*((pScrn->currentMode->Flags & V_DBLSCAN)?2:1)) << 16));
-    OUTREG(RADEON_OV0_Y_X_END,   dstBox->x2 | ((dstBox->y2*((pScrn->currentMode->Flags & V_DBLSCAN)?2:1)) << 16));
+
+    y_mult = 1;
+    if (pScrn->currentMode->Flags & V_DBLSCAN)
+	y_mult = 2;
+    x_off = 8;
+    if (info->ChipFamily == CHIP_FAMILY_R200 ||
+	info->ChipFamily == CHIP_FAMILY_R300)
+	x_off = 0;
+
+    /* Put the hardware overlay on CRTC2:
+     * For now, the CRTC2 overlay is only implemented for clone mode.
+     * Xinerama 2nd head will be similar, but there are other issues.
+     *
+     * Since one hardware overlay can not be displayed on two heads 
+     * at the same time, we might need to consider using software
+     * rendering for the second head (do we really need it?).
+     */
+    if (info->Clone && info->OverlayOnCRTC2) {
+	x_off = 0;
+	OUTREG(RADEON_OV1_Y_X_START, ((dstBox->x1
+				       + x_off
+				       - info->CloneFrameX0
+				       + pScrn->frameX0) |
+				      ((dstBox->y1*y_mult -
+					info->CloneFrameY0
+					+ pScrn->frameY0) << 16)));
+	OUTREG(RADEON_OV1_Y_X_END,   ((dstBox->x2
+				       + x_off
+				       - info->CloneFrameX0
+				       + pScrn->frameX0) |
+				      ((dstBox->y2*y_mult
+					- info->CloneFrameY0
+					+ pScrn->frameY0) << 16)));
+	scaler_src = (1 << 14);
+    } else {
+	OUTREG(RADEON_OV0_Y_X_START, ((dstBox->x1 + x_off) |
+				      ((dstBox->y1*y_mult) << 16)));
+	OUTREG(RADEON_OV0_Y_X_END,   ((dstBox->x2 + x_off) |
+				      ((dstBox->y2*y_mult) << 16)));
+	scaler_src = 0;
+    }
+
     OUTREG(RADEON_OV0_V_INC, v_inc);
     OUTREG(RADEON_OV0_P1_BLANK_LINES_AT_TOP, 0x00000fff | ((src_h - 1) << 16));
     OUTREG(RADEON_OV0_VID_BUF_PITCH0_VALUE, pitch);
     OUTREG(RADEON_OV0_VID_BUF_PITCH1_VALUE, pitch);
     OUTREG(RADEON_OV0_P1_X_START_END, (src_w + left - 1) | (left << 16));
-    if(!is_rgb) { left >>= 1; src_w >>= 1; }
+    left >>= 1; src_w >>= 1;
     OUTREG(RADEON_OV0_P2_X_START_END, (src_w + left - 1) | (left << 16));
     OUTREG(RADEON_OV0_P3_X_START_END, (src_w + left - 1) | (left << 16));
     OUTREG(RADEON_OV0_VID_BUF0_BASE_ADRS, offset1 & 0xfffffff0);
@@ -2615,46 +2620,44 @@ RADEONDisplayVideo(
     OUTREG(RADEON_OV0_VID_BUF4_BASE_ADRS, offset1 & 0xfffffff0);
     OUTREG(RADEON_OV0_VID_BUF5_BASE_ADRS, offset2 & 0xfffffff0);
     OUTREG(RADEON_OV0_P1_V_ACCUM_INIT, p1_v_accum_init);
-    OUTREG(RADEON_OV0_P23_V_ACCUM_INIT, p1_v_accum_init & ~ (1<<25));
     OUTREG(RADEON_OV0_P1_H_ACCUM_INIT, p1_h_accum_init);
     OUTREG(RADEON_OV0_P23_H_ACCUM_INIT, p23_h_accum_init);
 
-/*  older, original magic, for reference. Note that it is wrong, as register bits have changed since r128.
+#if 0
     if(id == FOURCC_UYVY)
        OUTREG(RADEON_OV0_SCALE_CNTL, 0x41008C03);
     else
        OUTREG(RADEON_OV0_SCALE_CNTL, 0x41008B03);
-*/
+#endif
 
    scale_cntl = RADEON_SCALER_ADAPTIVE_DEINT | RADEON_SCALER_DOUBLE_BUFFER 
-   	| RADEON_SCALER_ENABLE | RADEON_SCALER_SMART_SWITCH | (0x7f<<16);
+        | RADEON_SCALER_ENABLE | RADEON_SCALER_SMART_SWITCH | (0x7f<<16);
    switch(id){
-   	case FOURCC_UYVY:
-       		OUTREG(RADEON_OV0_SCALE_CNTL, RADEON_SCALER_SOURCE_YVYU422 | scale_cntl);
-		break;
-	case FOURCC_RGB24:
-	case FOURCC_RGBA32:
-       		OUTREG(RADEON_OV0_SCALE_CNTL, RADEON_SCALER_SOURCE_32BPP | scale_cntl | 0x10000000);
-		break;
-	case FOURCC_RGBT16:
-       		OUTREG(RADEON_OV0_SCALE_CNTL, RADEON_SCALER_SOURCE_16BPP 
-			| 0x10000000 
-	       		| scale_cntl);
-		break;
-	case FOURCC_RGB16:
-       		OUTREG(RADEON_OV0_SCALE_CNTL, RADEON_SCALER_SOURCE_16BPP 
-			| 0x10000000 
-	       		| scale_cntl);
-		break;
-	case FOURCC_YUY2:
-   	case FOURCC_YV12:
-   	case FOURCC_I420:
-	default:
-       		OUTREG(RADEON_OV0_SCALE_CNTL,  RADEON_SCALER_SOURCE_VYUY422 
-			| (info->IsR200 ? R200_SCALER_TEMPORAL_DEINT :0) 
-			| scale_cntl);
-	}
-
+        case FOURCC_UYVY:
+                OUTREG(RADEON_OV0_SCALE_CNTL, RADEON_SCALER_SOURCE_YVYU422 | scale_cntl);
+                break;
+        case FOURCC_RGB24:
+        case FOURCC_RGBA32:
+                OUTREG(RADEON_OV0_SCALE_CNTL, RADEON_SCALER_SOURCE_32BPP | scale_cntl | 0x10000000);
+                break;
+        case FOURCC_RGBT16:
+                OUTREG(RADEON_OV0_SCALE_CNTL, RADEON_SCALER_SOURCE_16BPP 
+                        | 0x10000000 
+                        | scale_cntl);
+                break;
+        case FOURCC_RGB16:
+                OUTREG(RADEON_OV0_SCALE_CNTL, RADEON_SCALER_SOURCE_16BPP 
+                        | 0x10000000 
+                        | scale_cntl);
+                break;
+        case FOURCC_YUY2:
+        case FOURCC_YV12:
+        case FOURCC_I420:
+        default:
+                OUTREG(RADEON_OV0_SCALE_CNTL,  RADEON_SCALER_SOURCE_VYUY422 
+                        | ((info->ChipFamily>=CHIP_FAMILY_R200) ? RADEON_SCALER_TEMPORAL_DEINT :0) 
+                        | scale_cntl);
+        }
     OUTREG(RADEON_OV0_REG_LOAD_CNTL, 0);
 }
 
@@ -2688,7 +2691,7 @@ RADEONPutImage(
    if(pPriv->video_stream_active)
    {
 	RADEONWaitForFifo(pScrn, 2); 
-        OUTREG(RADEON_FCP_CNTL, RADEON_FCP_CNTL__GND);
+        OUTREG(RADEON_FCP_CNTL, RADEON_FCP0_SRC_GND);
 	OUTREG(RADEON_CAP0_TRIG_CNTL, 0);
 	pPriv->video_stream_active = FALSE;
 	if(pPriv->msp3430 != NULL) xf86_MSP3430SetVolume(pPriv->msp3430, MSP3430_FAST_MUTE);
@@ -2774,7 +2777,7 @@ RADEONPutImage(
 	break;
    }
 
-   if(!(pPriv->linear = RADEONAllocateMemory(pScrn, pPriv->linear,
+   if(!(info->videoLinear = RADEONAllocateMemory(pScrn, info->videoLinear,
 		pPriv->doubleBuffer ? (new_size << 1) : new_size)))
    {
 	return BadAlloc;
@@ -2787,7 +2790,7 @@ RADEONPutImage(
    left = (xa >> 16) & ~1;
    npixels = ((((xb + 0xffff) >> 16) + 1) & ~1) - left;
 
-   offset = (pPriv->linear->offset * bpp) + (top * dstPitch);
+   offset = (info->videoLinear->offset * bpp) + (top * dstPitch);
    if(pPriv->doubleBuffer)
 	offset += pPriv->currentBuffer * new_size * bpp;
    dst_start = info->FB + offset;
@@ -2806,9 +2809,24 @@ RADEONPutImage(
 	   s3offset = tmp;
 	}
 	nlines = ((((yb + 0xffff) >> 16) + 1) & ~1) - top;
+	{
+
+#if X_BYTE_ORDER == X_BIG_ENDIAN
+       unsigned char *RADEONMMIO = info->MMIO;
+	CARD32 surface_cntl;
+
+	surface_cntl = INREG(RADEON_SURFACE_CNTL);
+	OUTREG(RADEON_SURFACE_CNTL, (surface_cntl | 
+		RADEON_NONSURF_AP0_SWP_32BPP) & ~RADEON_NONSURF_AP0_SWP_16BPP);
+#endif
 	RADEONCopyMungedData(buf + (top * srcPitch) + left, buf + s2offset,
 			   buf + s3offset, dst_start, srcPitch, srcPitch2,
 			   dstPitch, nlines, npixels);
+#if X_BYTE_ORDER == X_BIG_ENDIAN
+	/* restore byte swapping */
+	OUTREG(RADEON_SURFACE_CNTL, surface_cntl);
+#endif
+	}
 	break;
     case FOURCC_RGBA32:
 	buf += (top * srcPitch) + left*4;
@@ -2837,14 +2855,19 @@ RADEONPutImage(
 
 
     /* update cliplist */
-    if(!RegionsEqual(&pPriv->clip, clipBoxes)) {
+    if(!RegionsEqual(&pPriv->clip, clipBoxes)) 
+    {
 	REGION_COPY(pScreen, &pPriv->clip, clipBoxes);
 	/* draw these */
-	if(pPriv->autopaint_colorkey)(*info->accel->FillSolidRects)(pScrn, pPriv->colorKey, GXcopy,
-					(CARD32)~0,
-					REGION_NUM_RECTS(clipBoxes),
-					REGION_RECTS(clipBoxes));
+	if(pPriv->autopaint_colorkey)
+	    (*info->accel->FillSolidRects)(pScrn, pPriv->colorKey, GXcopy,
+					   (CARD32)~0,
+					   REGION_NUM_RECTS(clipBoxes),
+					   REGION_RECTS(clipBoxes));
     }
+
+    if (!(pPriv->videoStatus & CLIENT_VIDEO_ON))
+	xf86ForceHWCursor (pScrn->pScreen, TRUE);
 
     RADEONDisplayVideo(pScrn, pPriv, id, offset, offset, offset, offset, width, height, dstPitch,
 		     xa, xb, ya, &dstBox, src_w, src_h, drw_w, drw_h, METHOD_BOB);
@@ -2917,147 +2940,147 @@ void RADEON_board_setmisc(RADEONPortPrivPtr pPriv)
     if((((pPriv->board_info & 0xf)==5) ||
         ((pPriv->board_info & 0xf)==11)||
         ((pPriv->board_info & 0xf)==14))
-	&& (pPriv->fi1236!=NULL))
+        && (pPriv->fi1236!=NULL))
     {
         if((pPriv->encoding>=1)&&(pPriv->encoding<=3)) /*PAL*/
-	{
-    	   pPriv->fi1236->parm.band_low = 0xA1;
-	   pPriv->fi1236->parm.band_mid = 0x91;
-	   pPriv->fi1236->parm.band_high = 0x31;
-	}
+        {
+           pPriv->fi1236->parm.band_low = 0xA1;
+           pPriv->fi1236->parm.band_mid = 0x91;
+           pPriv->fi1236->parm.band_high = 0x31;
+        }
         if((pPriv->encoding>=7)&&(pPriv->encoding<=9)) /*SECAM*/
-	{
-    	   pPriv->fi1236->parm.band_low = 0xA3;
-	   pPriv->fi1236->parm.band_mid = 0x93;
-	   pPriv->fi1236->parm.band_high = 0x33;
-	}
+        {
+           pPriv->fi1236->parm.band_low = 0xA3;
+           pPriv->fi1236->parm.band_mid = 0x93;
+           pPriv->fi1236->parm.band_high = 0x33;
+        }
     }
 }
 
 void RADEON_RT_SetEncoding(RADEONPortPrivPtr pPriv)
 {
 switch(pPriv->encoding){
-	case 1:
-		xf86_RT_SetStandard(pPriv->theatre,DEC_PAL | extPAL);
-		xf86_RT_SetConnector(pPriv->theatre,DEC_COMPOSITE, 0);
-		pPriv->v=24;
-		break;
-	case 2:
-		xf86_RT_SetStandard(pPriv->theatre,DEC_PAL | extPAL);
-		xf86_RT_SetConnector(pPriv->theatre,DEC_TUNER,0);
-		pPriv->v=24;
-		break;
-	case 3:
-		xf86_RT_SetStandard(pPriv->theatre,DEC_PAL | extPAL);
-		xf86_RT_SetConnector(pPriv->theatre,DEC_SVIDEO,0);
-		pPriv->v=24;
-		break;
-	case 4:
-		xf86_RT_SetStandard(pPriv->theatre,DEC_NTSC | extNONE);
-		xf86_RT_SetConnector(pPriv->theatre, DEC_COMPOSITE,0);
-		pPriv->v=23;
-		break;
-	case 5:
-		xf86_RT_SetStandard(pPriv->theatre,DEC_NTSC | extNONE);
-		xf86_RT_SetConnector(pPriv->theatre, DEC_TUNER, 0);
-		pPriv->v=23;
-		break;
-	case 6:
-		xf86_RT_SetStandard(pPriv->theatre,DEC_NTSC | extNONE);
-		xf86_RT_SetConnector(pPriv->theatre, DEC_SVIDEO, 0);
-		pPriv->v=23;
-		break;
-	case 7:
-		xf86_RT_SetStandard(pPriv->theatre,DEC_SECAM | extNONE);
-		xf86_RT_SetConnector(pPriv->theatre, DEC_COMPOSITE, 0);
-		pPriv->v=25;
-		break;
-	case 8:
-		xf86_RT_SetStandard(pPriv->theatre,DEC_SECAM | extNONE);
-		xf86_RT_SetConnector(pPriv->theatre, DEC_TUNER, 0);
-		pPriv->v=25;
-		break;
-	case 9:
-		xf86_RT_SetStandard(pPriv->theatre,DEC_SECAM | extNONE);
-		xf86_RT_SetConnector(pPriv->theatre, DEC_SVIDEO, 0);
-		pPriv->v=25;
-		break;
-	case 10:
-		xf86_RT_SetStandard(pPriv->theatre,DEC_PAL | extPAL_60);
-		xf86_RT_SetConnector(pPriv->theatre,DEC_COMPOSITE, 0);
-		pPriv->v=24;
-		break;
-	case 11:
-		xf86_RT_SetStandard(pPriv->theatre,DEC_PAL | extPAL_60);
-		xf86_RT_SetConnector(pPriv->theatre,DEC_TUNER,0);
-		pPriv->v=24;
-		break;
-	case 12:
-		xf86_RT_SetStandard(pPriv->theatre,DEC_PAL | extPAL_60);
-		xf86_RT_SetConnector(pPriv->theatre,DEC_SVIDEO,0);
-		pPriv->v=24;
-		break;
-	default:
-	        pPriv->v=0;
-		return;
-	}	
+        case 1:
+                xf86_RT_SetStandard(pPriv->theatre,DEC_PAL | extPAL);
+                xf86_RT_SetConnector(pPriv->theatre,DEC_COMPOSITE, 0);
+                pPriv->v=24;
+                break;
+        case 2:
+                xf86_RT_SetStandard(pPriv->theatre,DEC_PAL | extPAL);
+                xf86_RT_SetConnector(pPriv->theatre,DEC_TUNER,0);
+                pPriv->v=24;
+                break;
+        case 3:
+                xf86_RT_SetStandard(pPriv->theatre,DEC_PAL | extPAL);
+                xf86_RT_SetConnector(pPriv->theatre,DEC_SVIDEO,0);
+                pPriv->v=24;
+                break;
+        case 4:
+                xf86_RT_SetStandard(pPriv->theatre,DEC_NTSC | extNONE);
+                xf86_RT_SetConnector(pPriv->theatre, DEC_COMPOSITE,0);
+                pPriv->v=23;
+                break;
+        case 5:
+                xf86_RT_SetStandard(pPriv->theatre,DEC_NTSC | extNONE);
+                xf86_RT_SetConnector(pPriv->theatre, DEC_TUNER, 0);
+                pPriv->v=23;
+                break;
+        case 6:
+                xf86_RT_SetStandard(pPriv->theatre,DEC_NTSC | extNONE);
+                xf86_RT_SetConnector(pPriv->theatre, DEC_SVIDEO, 0);
+                pPriv->v=23;
+                break;
+        case 7:
+                xf86_RT_SetStandard(pPriv->theatre,DEC_SECAM | extNONE);
+                xf86_RT_SetConnector(pPriv->theatre, DEC_COMPOSITE, 0);
+                pPriv->v=25;
+                break;
+        case 8:
+                xf86_RT_SetStandard(pPriv->theatre,DEC_SECAM | extNONE);
+                xf86_RT_SetConnector(pPriv->theatre, DEC_TUNER, 0);
+                pPriv->v=25;
+                break;
+        case 9:
+                xf86_RT_SetStandard(pPriv->theatre,DEC_SECAM | extNONE);
+                xf86_RT_SetConnector(pPriv->theatre, DEC_SVIDEO, 0);
+                pPriv->v=25;
+                break;
+        case 10:
+                xf86_RT_SetStandard(pPriv->theatre,DEC_PAL | extPAL_60);
+                xf86_RT_SetConnector(pPriv->theatre,DEC_COMPOSITE, 0);
+                pPriv->v=24;
+                break;
+        case 11:
+                xf86_RT_SetStandard(pPriv->theatre,DEC_PAL | extPAL_60);
+                xf86_RT_SetConnector(pPriv->theatre,DEC_TUNER,0);
+                pPriv->v=24;
+                break;
+        case 12:
+                xf86_RT_SetStandard(pPriv->theatre,DEC_PAL | extPAL_60);
+                xf86_RT_SetConnector(pPriv->theatre,DEC_SVIDEO,0);
+                pPriv->v=24;
+                break;
+        default:
+                pPriv->v=0;
+                return;
+        }       
 }
 
 void RADEON_MSP_SetEncoding(RADEONPortPrivPtr pPriv)
 {
 xf86_MSP3430SetVolume(pPriv->msp3430, MSP3430_FAST_MUTE);
 switch(pPriv->encoding){
-	case 1:
-		pPriv->msp3430->standard = MSP3430_PAL;
-		pPriv->msp3430->connector = MSP3430_CONNECTOR_3;
-		break;
-	case 2:
-		pPriv->msp3430->standard = MSP3430_PAL;
-		pPriv->msp3430->connector = MSP3430_CONNECTOR_1;
-		break;
-	case 3:
-		pPriv->msp3430->standard = MSP3430_PAL;
-		pPriv->msp3430->connector = MSP3430_CONNECTOR_2;
-		break;
-	case 4:
-		pPriv->msp3430->standard = MSP3430_NTSC;
-		pPriv->msp3430->connector = MSP3430_CONNECTOR_3;
-		break;
-	case 5:
-		pPriv->msp3430->standard = MSP3430_NTSC;
-		pPriv->msp3430->connector = MSP3430_CONNECTOR_1;
-		break;
-	case 6:
-		pPriv->msp3430->standard = MSP3430_NTSC;
-		pPriv->msp3430->connector = MSP3430_CONNECTOR_2;
-		break;
-	case 7:
-		pPriv->msp3430->standard = MSP3430_SECAM;
-		pPriv->msp3430->connector = MSP3430_CONNECTOR_3;
-		break;
-	case 8:
-		pPriv->msp3430->standard = MSP3430_SECAM;
-		pPriv->msp3430->connector = MSP3430_CONNECTOR_1;
-		break;
-	case 9:
-		pPriv->msp3430->standard = MSP3430_SECAM;
-		pPriv->msp3430->connector = MSP3430_CONNECTOR_2;
-		break;
-	case 10:
-		pPriv->msp3430->standard = MSP3430_SECAM;
-		pPriv->msp3430->connector = MSP3430_CONNECTOR_3;
-		break;
-	case 11:
-		pPriv->msp3430->standard = MSP3430_SECAM;
-		pPriv->msp3430->connector = MSP3430_CONNECTOR_1;
-		break;
-	case 12:
-		pPriv->msp3430->standard = MSP3430_SECAM;
-		pPriv->msp3430->connector = MSP3430_CONNECTOR_2;
-		break;
-	default:
-		return;
-	}
+        case 1:
+                pPriv->msp3430->standard = MSP3430_PAL;
+                pPriv->msp3430->connector = MSP3430_CONNECTOR_3;
+                break;
+        case 2:
+                pPriv->msp3430->standard = MSP3430_PAL;
+                pPriv->msp3430->connector = MSP3430_CONNECTOR_1;
+                break;
+        case 3:
+                pPriv->msp3430->standard = MSP3430_PAL;
+                pPriv->msp3430->connector = MSP3430_CONNECTOR_2;
+                break;
+        case 4:
+                pPriv->msp3430->standard = MSP3430_NTSC;
+                pPriv->msp3430->connector = MSP3430_CONNECTOR_3;
+                break;
+        case 5:
+                pPriv->msp3430->standard = MSP3430_NTSC;
+                pPriv->msp3430->connector = MSP3430_CONNECTOR_1;
+                break;
+        case 6:
+                pPriv->msp3430->standard = MSP3430_NTSC;
+                pPriv->msp3430->connector = MSP3430_CONNECTOR_2;
+                break;
+        case 7:
+                pPriv->msp3430->standard = MSP3430_SECAM;
+                pPriv->msp3430->connector = MSP3430_CONNECTOR_3;
+                break;
+        case 8:
+                pPriv->msp3430->standard = MSP3430_SECAM;
+                pPriv->msp3430->connector = MSP3430_CONNECTOR_1;
+                break;
+        case 9:
+                pPriv->msp3430->standard = MSP3430_SECAM;
+                pPriv->msp3430->connector = MSP3430_CONNECTOR_2;
+                break;
+        case 10:
+                pPriv->msp3430->standard = MSP3430_SECAM;
+                pPriv->msp3430->connector = MSP3430_CONNECTOR_3;
+                break;
+        case 11:
+                pPriv->msp3430->standard = MSP3430_SECAM;
+                pPriv->msp3430->connector = MSP3430_CONNECTOR_1;
+                break;
+        case 12:
+                pPriv->msp3430->standard = MSP3430_SECAM;
+                pPriv->msp3430->connector = MSP3430_CONNECTOR_2;
+                break;
+        default:
+                return;
+        }
 xf86_InitMSP3430(pPriv->msp3430);
 xf86_MSP3430SetVolume(pPriv->msp3430, pPriv->mute ? MSP3430_FAST_MUTE : MSP3430_VOLUME(pPriv->volume));
 }
@@ -3082,71 +3105,71 @@ t->gating=1;
 t->top_adjustment=0x10;
 
 switch(pPriv->encoding){
-		/* PAL */
-	case 1:
-	case 2:
-	case 3:
-		t->standard_video_if=0;
-		t->standard_sound_carrier=3;
-		break;
-		/* NTSC */
-	case 4:
-	case 5:
-	case 6:
-		t->standard_video_if=1;
-		t->standard_sound_carrier=0;
-		break;
-		/* SECAM */
-	case 7:
-	case 8:
-	case 9:
-	case 10:
-	case 11:
-	case 12:
-		t->standard_video_if=0;
-		t->standard_sound_carrier=3;
-		t->modulation=0; /* positive AM */
-		break;
-	default:
-		return;
-	}	
+                /* PAL */
+        case 1:
+        case 2:
+        case 3:
+                t->standard_video_if=0;
+                t->standard_sound_carrier=3;
+                break;
+                /* NTSC */
+        case 4:
+        case 5:
+        case 6:
+                t->standard_video_if=1;
+                t->standard_sound_carrier=0;
+                break;
+                /* SECAM */
+        case 7:
+        case 8:
+        case 9:
+        case 10:
+        case 11:
+        case 12:
+                t->standard_video_if=0;
+                t->standard_sound_carrier=3;
+                t->modulation=0; /* positive AM */
+                break;
+        default:
+                return;
+        }       
 xf86_tda9885_setparameters(pPriv->tda9885); 
 xf86_tda9885_getstatus(pPriv->tda9885);
 xf86_tda9885_dumpstatus(pPriv->tda9885);
 }
 
 /* capture config constants */
-#define BUF_TYPE_FIELD		0
-#define BUF_TYPE_ALTERNATING	1
-#define BUF_TYPE_FRAME		2
+#define BUF_TYPE_FIELD          0
+#define BUF_TYPE_ALTERNATING    1
+#define BUF_TYPE_FRAME          2
 
 
-#define BUF_MODE_SINGLE		0
-#define BUF_MODE_DOUBLE		1
-#define BUF_MODE_TRIPLE		2
+#define BUF_MODE_SINGLE         0
+#define BUF_MODE_DOUBLE         1
+#define BUF_MODE_TRIPLE         2
 /* CAP0_CONFIG values */
 
-#define FORMAT_BROOKTREE	0
-#define FORMAT_CCIR656		1
-#define FORMAT_ZV		2
-#define FORMAT_VIP16		3
-#define FORMAT_TRANSPORT	4
+#define FORMAT_BROOKTREE        0
+#define FORMAT_CCIR656          1
+#define FORMAT_ZV               2
+#define FORMAT_VIP16            3
+#define FORMAT_TRANSPORT        4
 
 #define ENABLE_RADEON_CAPTURE_WEAVE (RADEON_CAP0_CONFIG_CONTINUOS \
-			| (BUF_MODE_DOUBLE <<7) \
-			| (BUF_TYPE_FRAME << 4) \
-			| ( (pPriv->theatre !=NULL)?(FORMAT_CCIR656<<23):(FORMAT_BROOKTREE<<23)) \
-			| RADEON_CAP0_CONFIG_HORZ_DECIMATOR \
-			| (pPriv->capture_vbi_data ? RADEON_CAP0_CONFIG_VBI_EN : 0) \
-			| RADEON_CAP0_CONFIG_VIDEO_IN_VYUY422)
+                        | (BUF_MODE_DOUBLE <<7) \
+                        | (BUF_TYPE_FRAME << 4) \
+                        | ( (pPriv->theatre !=NULL)?(FORMAT_CCIR656<<23):(FORMAT_BROOKTREE<<23)) \
+                        | RADEON_CAP0_CONFIG_HORZ_DECIMATOR \
+                        | (pPriv->capture_vbi_data ? RADEON_CAP0_CONFIG_VBI_EN : 0) \
+                        | RADEON_CAP0_CONFIG_VIDEO_IN_VYUY422)
 
 #define ENABLE_RADEON_CAPTURE_BOB (RADEON_CAP0_CONFIG_CONTINUOS \
-			| (BUF_MODE_SINGLE <<7)  \
-			| (BUF_TYPE_ALTERNATING << 4) \
-			| ( (pPriv->theatre !=NULL)?(FORMAT_CCIR656<<23):(FORMAT_BROOKTREE<<23)) \
-			| RADEON_CAP0_CONFIG_HORZ_DECIMATOR \
-			| (pPriv->capture_vbi_data ? RADEON_CAP0_CONFIG_VBI_EN : 0) \
-			| RADEON_CAP0_CONFIG_VIDEO_IN_VYUY422)
+                        | (BUF_MODE_SINGLE <<7)  \
+                        | (BUF_TYPE_ALTERNATING << 4) \
+                        | ( (pPriv->theatre !=NULL)?(FORMAT_CCIR656<<23):(FORMAT_BROOKTREE<<23)) \
+                        | RADEON_CAP0_CONFIG_HORZ_DECIMATOR \
+                        | (pPriv->capture_vbi_data ? RADEON_CAP0_CONFIG_VBI_EN : 0) \
+                        | RADEON_CAP0_CONFIG_VIDEO_IN_VYUY422)
 
 static int
 RADEONPutVideo(
@@ -3186,9 +3209,9 @@ RADEONPutVideo(
    s2offset = s3offset = srcPitch2 = 0;
 
    if(src_w > (drw_w << 4))
-	drw_w = src_w >> 4;
+        drw_w = src_w >> 4;
    if(src_h > (drw_h << 4))
-	drw_h = src_h >> 4;
+        drw_h = src_h >> 4;
 
    /* Clip */
    xa = src_x;
@@ -3205,7 +3228,7 @@ RADEONPutVideo(
    height = InputVideoEncodings[pPriv->encoding].height;
         
    if(!RADEONClipVideo(&dstBox, &xa, &xb, &ya, &yb, clipBoxes, width, height))
-	return Success;
+        return Success;
 
    dstBox.x1 -= pScrn->frameX0;
    dstBox.x2 -= pScrn->frameX0;
@@ -3216,18 +3239,18 @@ RADEONPutVideo(
    pitch = bpp * pScrn->displayWidth;
 
    switch(pPriv->overlay_deinterlacing_method){
-   	case METHOD_BOB:
-	case METHOD_SINGLE:
-		mult=2;
-		break;
-	case METHOD_WEAVE:
-	case METHOD_ADAPTIVE:
-		mult=4;
-		break;
-	default:
-		xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Internal error: PutVideo\n");
-		mult=4;
-	}
+        case METHOD_BOB:
+        case METHOD_SINGLE:
+                mult=2;
+                break;
+        case METHOD_WEAVE:
+        case METHOD_ADAPTIVE:
+                mult=4;
+                break;
+        default:
+                xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Internal error: PutVideo\n");
+                mult=4;
+        }
 
    id = FOURCC_YUY2;
    
@@ -3236,27 +3259,27 @@ RADEONPutVideo(
    switch(id) {
    case FOURCC_YV12:
    case FOURCC_I420:
-   	top &= ~1;
-	dstPitch = ((width << 1) + 15) & ~15;
-	new_size = ((dstPitch * height) + bpp - 1) / bpp;
-	srcPitch = (width + 3) & ~3;
-	s2offset = srcPitch * height;
-	srcPitch2 = ((width >> 1) + 3) & ~3;
-	s3offset = (srcPitch2 * (height >> 1)) + s2offset;
-	break;
+        top &= ~1;
+        dstPitch = ((width << 1) + 15) & ~15;
+        new_size = ((dstPitch * height) + bpp - 1) / bpp;
+        srcPitch = (width + 3) & ~3;
+        s2offset = srcPitch * height;
+        srcPitch2 = ((width >> 1) + 3) & ~3;
+        s3offset = (srcPitch2 * (height >> 1)) + s2offset;
+        break;
    case FOURCC_UYVY:
    case FOURCC_YUY2:
    default:
-	dstPitch = ((width<<1) + 15) & ~15;
-	new_size = ((dstPitch * height) + bpp - 1) / bpp;
-	srcPitch = (width<<1);
-	break;
+        dstPitch = ((width<<1) + 15) & ~15;
+        new_size = ((dstPitch * height) + bpp - 1) / bpp;
+        srcPitch = (width<<1);
+        break;
    }
 
    new_size = new_size + 0x1f; /* for aligning */
-   if(!(pPriv->linear = RADEONAllocateMemory(pScrn, pPriv->linear, new_size*mult+(pPriv->capture_vbi_data?2*dstPitch*20:0))))
+   if(!(info->videoLinear = RADEONAllocateMemory(pScrn, info->videoLinear, new_size*mult+(pPriv->capture_vbi_data?2*dstPitch*20:0))))
    {
-	return BadAlloc;
+        return BadAlloc;
    }
 
    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "PutVideo Checkpoint 1\n");
@@ -3267,31 +3290,31 @@ RADEONPutVideo(
    
    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "PutVideo Checkpoint 2\n");
 
-   RADEONWaitForIdle(pScrn);
+   RADEONWaitForIdleMMIO(pScrn);
    display_base=INREG(RADEON_DISPLAY_BASE_ADDR);   
 
 /*   RADEONWaitForFifo(pScrn, 15); */
 
    switch(pPriv->overlay_deinterlacing_method){
-   	case METHOD_BOB:
-	case METHOD_SINGLE:
-	   offset1 = (pPriv->linear->offset*bpp+0xf) & (~0xf);
-	   offset2 = ((pPriv->linear->offset+new_size)*bpp + 0x1f) & (~0xf);
-	   offset3 = offset1;
-	   offset4 = offset2;
-	   break;
-	case METHOD_WEAVE:
-	   offset1 = (pPriv->linear->offset*bpp+0xf) & (~0xf);
-	   offset2 = offset1+dstPitch;
-	   offset3 = ((pPriv->linear->offset+2*new_size)*bpp + 0x1f) & (~0xf);
-	   offset4 = offset3+dstPitch;
-	   break;
-	default:
-	   offset1 = (pPriv->linear->offset*bpp+0xf) & (~0xf);
-	   offset2 = ((pPriv->linear->offset+new_size)*bpp + 0x1f) & (~0xf);
-	   offset3 = offset1;
-	   offset4 = offset2;
-	}
+        case METHOD_BOB:
+        case METHOD_SINGLE:
+           offset1 = (info->videoLinear->offset*bpp+0xf) & (~0xf);
+           offset2 = ((info->videoLinear->offset+new_size)*bpp + 0x1f) & (~0xf);
+           offset3 = offset1;
+           offset4 = offset2;
+           break;
+        case METHOD_WEAVE:
+           offset1 = (info->videoLinear->offset*bpp+0xf) & (~0xf);
+           offset2 = offset1+dstPitch;
+           offset3 = ((info->videoLinear->offset+2*new_size)*bpp + 0x1f) & (~0xf);
+           offset4 = offset3+dstPitch;
+           break;
+        default:
+           offset1 = (info->videoLinear->offset*bpp+0xf) & (~0xf);
+           offset2 = ((info->videoLinear->offset+new_size)*bpp + 0x1f) & (~0xf);
+           offset3 = offset1;
+           offset4 = offset2;
+        }
 
    OUTREG(RADEON_CAP0_BUF0_OFFSET, offset1+display_base);
    OUTREG(RADEON_CAP0_BUF0_EVEN_OFFSET, offset2+display_base);
@@ -3301,13 +3324,13 @@ RADEONPutVideo(
    OUTREG(RADEON_CAP0_ONESHOT_BUF_OFFSET, offset1+display_base);
 
    if(pPriv->capture_vbi_data){
-   	vbi_offset0 = ((pPriv->linear->offset+mult*new_size)*bpp+0xf) & (~0xf);
-	vbi_offset1 = vbi_offset0 + dstPitch*20;
-   	OUTREG(RADEON_CAP0_VBI0_OFFSET, vbi_offset0+display_base);
-	OUTREG(RADEON_CAP0_VBI1_OFFSET, vbi_offset1+display_base);
-	OUTREG(RADEON_CAP0_VBI_V_WINDOW, 9 | ((pPriv->v-1)<<16));
-	OUTREG(RADEON_CAP0_VBI_H_WINDOW, 0 | (2*width)<<16);
-   	}
+        vbi_offset0 = ((info->videoLinear->offset+mult*new_size)*bpp+0xf) & (~0xf);
+        vbi_offset1 = vbi_offset0 + dstPitch*20;
+        OUTREG(RADEON_CAP0_VBI0_OFFSET, vbi_offset0+display_base);
+        OUTREG(RADEON_CAP0_VBI1_OFFSET, vbi_offset1+display_base);
+        OUTREG(RADEON_CAP0_VBI_V_WINDOW, 9 | ((pPriv->v-1)<<16));
+        OUTREG(RADEON_CAP0_VBI_H_WINDOW, 0 | (2*width)<<16);
+        }
    
    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "PutVideo Checkpoint 3\n");
 
@@ -3315,10 +3338,10 @@ RADEONPutVideo(
    OUTREG(RADEON_CAP0_H_WINDOW, (2*width)<<16);
    OUTREG(RADEON_CAP0_V_WINDOW, (((height)+pPriv->v-1)<<16)|(pPriv->v));
    if(mult==2){
-	   OUTREG(RADEON_CAP0_CONFIG, ENABLE_RADEON_CAPTURE_BOB);
-	   } else {
-	   OUTREG(RADEON_CAP0_CONFIG, ENABLE_RADEON_CAPTURE_WEAVE);
-	   }
+           OUTREG(RADEON_CAP0_CONFIG, ENABLE_RADEON_CAPTURE_BOB);
+           } else {
+           OUTREG(RADEON_CAP0_CONFIG, ENABLE_RADEON_CAPTURE_WEAVE);
+           }
    OUTREG(RADEON_CAP0_DEBUG, 0);
    
    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "PutVideo Checkpoint 4\n");
@@ -3332,7 +3355,7 @@ RADEONPutVideo(
    if(! pPriv->video_stream_active)
    {
 
-      RADEONWaitForIdle(pScrn);
+      RADEONWaitForIdleMMIO(pScrn);
       xf86DrvMsg(pScrn->scrnIndex, X_INFO, "RADEON_VIDEOMUX_CNT=0x%08x\n", INREG(RADEON_VIDEOMUX_CNTL));
       OUTREG(RADEON_VIDEOMUX_CNTL, INREG(RADEON_VIDEOMUX_CNTL)|1 ); 
       OUTREG(RADEON_CAP0_PORT_MODE_CNTL, (pPriv->theatre!=NULL)? 1: 0);
@@ -3342,7 +3365,7 @@ RADEONPutVideo(
    Explanation: FCP_CNTL is now apart from PLL registers   
 */   
 
-      OUTREG(RADEON_FCP_CNTL, RADEON_FCP_CNTL__PCLK);
+      OUTREG(RADEON_FCP_CNTL, RADEON_FCP0_SRC_PCLK);
       OUTREG(RADEON_CAP0_TRIG_CNTL, 0x11);
       if(pPriv->theatre != NULL) 
       {
@@ -3357,51 +3380,51 @@ RADEONPutVideo(
    
    /* update cliplist */
    if(!RegionsEqual(&pPriv->clip, clipBoxes)) {
-	REGION_COPY(pScreen, &pPriv->clip, clipBoxes);
-	/* draw these */
-	if(pPriv->autopaint_colorkey)(*info->accel->FillSolidRects)(pScrn, pPriv->colorKey, GXcopy, ~0,
-					REGION_NUM_RECTS(clipBoxes),
-					REGION_RECTS(clipBoxes));
+        REGION_COPY(pScreen, &pPriv->clip, clipBoxes);
+        /* draw these */
+        if(pPriv->autopaint_colorkey)(*info->accel->FillSolidRects)(pScrn, pPriv->colorKey, GXcopy, ~0,
+                                        REGION_NUM_RECTS(clipBoxes),
+                                        REGION_RECTS(clipBoxes));
    }
 
    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "PutVideo Checkpoint 6\n");
 
    RADEONDisplayVideo(pScrn, pPriv, id, offset1+top*srcPitch, offset2+top*srcPitch, offset3+top*srcPitch, offset4+top*srcPitch, width, height, dstPitch*mult/2,
-		     xa, xb, ya, &dstBox, src_w, src_h*mult/2, drw_w, drw_h, pPriv->overlay_deinterlacing_method);
+                     xa, xb, ya, &dstBox, src_w, src_h*mult/2, drw_w, drw_h, pPriv->overlay_deinterlacing_method);
 
    RADEONWaitForFifo(pScrn, 1);
    OUTREG(RADEON_OV0_REG_LOAD_CNTL,  RADEON_REG_LD_CTL_LOCK);
-   RADEONWaitForIdle(pScrn);
+   RADEONWaitForIdleMMIO(pScrn);
    while(!(INREG(RADEON_OV0_REG_LOAD_CNTL) & RADEON_REG_LD_CTL_LOCK_READBACK));
 
 
    switch(pPriv->overlay_deinterlacing_method){
-   	case METHOD_BOB:
-	   OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0xAAAAA);
-	   OUTREG(RADEON_OV0_AUTO_FLIP_CNTL,0 /*| RADEON_OV0_AUTO_FLIP_CNTL_SOFT_BUF_ODD*/
-	   	|RADEON_OV0_AUTO_FLIP_CNTL_SHIFT_ODD_DOWN);
-	   break;
-   	case METHOD_SINGLE:
-	   OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0xEEEEE | (9<<28));
-	   OUTREG(RADEON_OV0_AUTO_FLIP_CNTL, RADEON_OV0_AUTO_FLIP_CNTL_SOFT_BUF_ODD
-	   	|RADEON_OV0_AUTO_FLIP_CNTL_SHIFT_ODD_DOWN);
-	   break;
-	case METHOD_WEAVE:
-	   OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0x11111 | (9<<28));
-	   OUTREG(RADEON_OV0_AUTO_FLIP_CNTL, 0  |RADEON_OV0_AUTO_FLIP_CNTL_SOFT_BUF_ODD 
-	   	| RADEON_OV0_AUTO_FLIP_CNTL_P1_FIRST_LINE_EVEN 
-		/* |RADEON_OV0_AUTO_FLIP_CNTL_SHIFT_ODD_DOWN */
-		/*|RADEON_OV0_AUTO_FLIP_CNTL_SHIFT_EVEN_DOWN */
-		|RADEON_OV0_AUTO_FLIP_CNTL_FIELD_POL_SOURCE);
-	   break;
-	default:
-	   OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0xAAAAA);
-	   OUTREG(RADEON_OV0_AUTO_FLIP_CNTL, RADEON_OV0_AUTO_FLIP_CNTL_SOFT_BUF_ODD
-	   	|RADEON_OV0_AUTO_FLIP_CNTL_SHIFT_ODD_DOWN);
-	}
-		
+        case METHOD_BOB:
+           OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0xAAAAA);
+           OUTREG(RADEON_OV0_AUTO_FLIP_CNTL,0 /*| RADEON_OV0_AUTO_FLIP_CNTL_SOFT_BUF_ODD*/
+                |RADEON_OV0_AUTO_FLIP_CNTL_SHIFT_ODD_DOWN);
+           break;
+        case METHOD_SINGLE:
+           OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0xEEEEE | (9<<28));
+           OUTREG(RADEON_OV0_AUTO_FLIP_CNTL, RADEON_OV0_AUTO_FLIP_CNTL_SOFT_BUF_ODD
+                |RADEON_OV0_AUTO_FLIP_CNTL_SHIFT_ODD_DOWN);
+           break;
+        case METHOD_WEAVE:
+           OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0x11111 | (9<<28));
+           OUTREG(RADEON_OV0_AUTO_FLIP_CNTL, 0  |RADEON_OV0_AUTO_FLIP_CNTL_SOFT_BUF_ODD 
+                | RADEON_OV0_AUTO_FLIP_CNTL_P1_FIRST_LINE_EVEN 
+                /* |RADEON_OV0_AUTO_FLIP_CNTL_SHIFT_ODD_DOWN */
+                /*|RADEON_OV0_AUTO_FLIP_CNTL_SHIFT_EVEN_DOWN */
+                |RADEON_OV0_AUTO_FLIP_CNTL_FIELD_POL_SOURCE);
+           break;
+        default:
+           OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0xAAAAA);
+           OUTREG(RADEON_OV0_AUTO_FLIP_CNTL, RADEON_OV0_AUTO_FLIP_CNTL_SOFT_BUF_ODD
+                |RADEON_OV0_AUTO_FLIP_CNTL_SHIFT_ODD_DOWN);
+        }
+                
    
-   RADEONWaitForIdle(pScrn);
+   RADEONWaitForIdleMMIO(pScrn);
    OUTREG (RADEON_OV0_AUTO_FLIP_CNTL, (INREG (RADEON_OV0_AUTO_FLIP_CNTL) ^ RADEON_OV0_AUTO_FLIP_CNTL_SOFT_EOF_TOGGLE ));
    OUTREG (RADEON_OV0_AUTO_FLIP_CNTL, (INREG (RADEON_OV0_AUTO_FLIP_CNTL) ^ RADEON_OV0_AUTO_FLIP_CNTL_SOFT_EOF_TOGGLE ));
 
@@ -3431,22 +3454,24 @@ RADEONVideoTimerCallback(ScrnInfoPtr pScrn, Time now)
     RADEONInfoPtr info = RADEONPTR(pScrn);
     RADEONPortPrivPtr pPriv = info->adaptor->pPortPrivates[0].ptr;
 
-    info->accel->Sync(pScrn);
     if(pPriv->videoStatus & TIMER_MASK) {
 	if(pPriv->videoStatus & OFF_TIMER) {
 	    if(pPriv->offTime < now) {
 		unsigned char *RADEONMMIO = info->MMIO;
-                RADEONWaitForFifo(pScrn, 2);
-		OUTREG(RADEON_OV0_SCALE_CNTL, 0x80000000);
+		OUTREG(RADEON_OV0_SCALE_CNTL, 0);
+		if (pPriv->videoStatus & CLIENT_VIDEO_ON)
+		    xf86ForceHWCursor (pScrn->pScreen, FALSE);
 		pPriv->videoStatus = FREE_TIMER;
 		pPriv->freeTime = now + FREE_DELAY;
 	    }
 	} else {  /* FREE_TIMER */
 	    if(pPriv->freeTime < now) {
-		if(pPriv->linear) {
-		   xf86FreeOffscreenLinear(pPriv->linear);
-		   pPriv->linear = NULL;
+		if(info->videoLinear) {
+		   xf86FreeOffscreenLinear(info->videoLinear);
+		   info->videoLinear = NULL;
 		}
+		if (pPriv->videoStatus & CLIENT_VIDEO_ON)
+		    xf86ForceHWCursor (pScrn->pScreen, FALSE);
 		pPriv->videoStatus = 0;
 		info->VideoTimerCallback = NULL;
 	    }
@@ -3455,5 +3480,216 @@ RADEONVideoTimerCallback(ScrnInfoPtr pScrn, Time now)
 	info->VideoTimerCallback = NULL;
 }
 
+/****************** Offscreen stuff ***************/
+typedef struct {
+  FBLinearPtr linear;
+  Bool isOn;
+} OffscreenPrivRec, * OffscreenPrivPtr;
+
+static int 
+RADEONAllocateSurface(
+    ScrnInfoPtr pScrn,
+    int id,
+    unsigned short w, 	
+    unsigned short h,
+    XF86SurfacePtr surface
+){
+    FBLinearPtr linear;
+    int pitch, fbpitch, size, bpp;
+    OffscreenPrivPtr pPriv;
+    if((w > 1024) || (h > 1024))
+	return BadAlloc;
+
+    w = (w + 1) & ~1;
+    pitch = ((w << 1) + 15) & ~15;
+    bpp = pScrn->bitsPerPixel >> 3;
+    fbpitch = bpp * pScrn->displayWidth;
+    size = ((pitch * h) + bpp - 1) / bpp;
+
+    if(!(linear = RADEONAllocateMemory(pScrn, NULL, size)))
+	return BadAlloc;
+
+    surface->width = w;
+    surface->height = h;
+
+    if(!(surface->pitches = xalloc(sizeof(int)))) {
+	xf86FreeOffscreenLinear(linear);
+	return BadAlloc;
+    }
+    if(!(surface->offsets = xalloc(sizeof(int)))) {
+	xfree(surface->pitches);
+	xf86FreeOffscreenLinear(linear);
+	return BadAlloc;
+    }
+    if(!(pPriv = xalloc(sizeof(OffscreenPrivRec)))) {
+	xfree(surface->pitches);
+	xfree(surface->offsets);
+	xf86FreeOffscreenLinear(linear);
+	return BadAlloc;
+    }
+
+    pPriv->linear = linear;
+    pPriv->isOn = FALSE;
+
+    surface->pScrn = pScrn;
+    surface->id = id;   
+    surface->pitches[0] = pitch;
+    surface->offsets[0] = linear->offset * bpp;
+    surface->devPrivate.ptr = (pointer)pPriv;
+
+    return Success;
+}
+
+static int 
+RADEONStopSurface(
+    XF86SurfacePtr surface
+){
+  OffscreenPrivPtr pPriv = (OffscreenPrivPtr)surface->devPrivate.ptr;
+  RADEONInfoPtr info = RADEONPTR(surface->pScrn);
+  unsigned char *RADEONMMIO = info->MMIO;
+
+  if(pPriv->isOn) {
+	OUTREG(RADEON_OV0_SCALE_CNTL, 0);
+	pPriv->isOn = FALSE;
+  }
+  return Success;
+}
+
+
+static int 
+RADEONFreeSurface(
+    XF86SurfacePtr surface
+){
+    OffscreenPrivPtr pPriv = (OffscreenPrivPtr)surface->devPrivate.ptr;
+
+    if(pPriv->isOn)
+	RADEONStopSurface(surface);
+    xf86FreeOffscreenLinear(pPriv->linear);
+    xfree(surface->pitches);
+    xfree(surface->offsets);
+    xfree(surface->devPrivate.ptr);
+
+    return Success;
+}
+
+static int
+RADEONGetSurfaceAttribute(
+    ScrnInfoPtr pScrn,
+    Atom attribute,
+    INT32 *value
+){
+   return RADEONGetPortAttribute(pScrn, attribute, value, 
+   		(pointer)(GET_PORT_PRIVATE(pScrn)));
+}
+
+static int
+RADEONSetSurfaceAttribute(
+    ScrnInfoPtr pScrn,
+    Atom attribute,
+    INT32 value
+){
+   return RADEONSetPortAttribute(pScrn, attribute, value, 
+   		(pointer)(GET_PORT_PRIVATE(pScrn)));
+}
+
+
+static int 
+RADEONDisplaySurface(
+    XF86SurfacePtr surface,
+    short src_x, short src_y, 
+    short drw_x, short drw_y,
+    short src_w, short src_h, 
+    short drw_w, short drw_h,
+    RegionPtr clipBoxes
+){
+    OffscreenPrivPtr pPriv = (OffscreenPrivPtr)surface->devPrivate.ptr;
+    ScrnInfoPtr pScrn = surface->pScrn;
+
+    RADEONInfoPtr info = RADEONPTR(pScrn);
+    RADEONPortPrivPtr portPriv = info->adaptor->pPortPrivates[0].ptr;
+
+    INT32 xa, ya, xb, yb;
+    BoxRec dstBox;
+	
+    if (src_w > (drw_w << 4))
+	drw_w = src_w >> 4;
+    if (src_h > (drw_h << 4))
+	drw_h = src_h >> 4;
+
+    xa = src_x;
+    xb = src_x + src_w;
+    ya = src_y;
+    yb = src_y + src_h;
+
+    dstBox.x1 = drw_x;
+    dstBox.x2 = drw_x + drw_w;
+    dstBox.y1 = drw_y;
+    dstBox.y2 = drw_y + drw_h;
+
+    if (!RADEONClipVideo(&dstBox, &xa, &xb, &ya, &yb, clipBoxes, 
+			surface->width, surface->height))
+	return Success;
+
+    dstBox.x1 -= pScrn->frameX0;
+    dstBox.x2 -= pScrn->frameX0;
+    dstBox.y1 -= pScrn->frameY0;
+    dstBox.y2 -= pScrn->frameY0;
+
+    RADEONResetVideo(pScrn);
+
+    RADEONDisplayVideo(pScrn, pPriv, surface->id,
+		       surface->offsets[0], surface->offsets[0],
+		       surface->offsets[0], surface->offsets[0],
+		       surface->width, surface->height, surface->pitches[0],
+		       xa, xb, ya, &dstBox, src_w, src_h, drw_w, drw_h, METHOD_BOB);
+
+    if (portPriv->autopaint_colorkey)
+	(*info->accel->FillSolidRects)(pScrn, portPriv->colorKey, GXcopy,
+				       (CARD32)~0,
+				       REGION_NUM_RECTS(clipBoxes),
+				       REGION_RECTS(clipBoxes));
+
+    pPriv->isOn = TRUE;
+    /* we've prempted the XvImage stream so set its free timer */
+    if (portPriv->videoStatus & CLIENT_VIDEO_ON) {
+	REGION_EMPTY(pScrn->pScreen, &portPriv->clip);   
+	UpdateCurrentTime();
+	xf86ForceHWCursor (pScrn->pScreen, FALSE);
+	portPriv->videoStatus = FREE_TIMER;
+	portPriv->freeTime = currentTime.milliseconds + FREE_DELAY;
+	info->VideoTimerCallback = RADEONVideoTimerCallback;
+    }
+
+    return Success;
+}
+
+
+static void 
+RADEONInitOffscreenImages(ScreenPtr pScreen)
+{
+/*  ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
+    RADEONInfoPtr info = RADEONPTR(pScrn); */
+    XF86OffscreenImagePtr offscreenImages;
+    /* need to free this someplace */
+
+    if (!(offscreenImages = xalloc(sizeof(XF86OffscreenImageRec))))
+	return;
+
+    offscreenImages[0].image = &Images[0];
+    offscreenImages[0].flags = VIDEO_OVERLAID_IMAGES | 
+			       VIDEO_CLIP_TO_VIEWPORT;
+    offscreenImages[0].alloc_surface = RADEONAllocateSurface;
+    offscreenImages[0].free_surface = RADEONFreeSurface;
+    offscreenImages[0].display = RADEONDisplaySurface;
+    offscreenImages[0].stop = RADEONStopSurface;
+    offscreenImages[0].setAttribute = RADEONSetSurfaceAttribute;
+    offscreenImages[0].getAttribute = RADEONGetSurfaceAttribute;
+    offscreenImages[0].max_width = 1024;
+    offscreenImages[0].max_height = 1024;
+    offscreenImages[0].num_attributes = NUM_ATTRIBUTES;
+    offscreenImages[0].attributes = Attributes;
+
+    xf86XVRegisterOffscreenImages(pScreen, offscreenImages, 1);
+}
 
 #endif  /* !XvExtension */

@@ -1,6 +1,6 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/ativalid.c,v 1.12 2001/01/06 20:58:08 tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/ativalid.c,v 1.14 2002/02/14 22:08:03 tsi Exp $ */
 /*
- * Copyright 1997 through 2001 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
+ * Copyright 1997 through 2002 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
  * documentation for any purpose is hereby granted without fee, provided that
@@ -96,7 +96,7 @@ ATIValidMode
     if (pMode->Flags & V_DBLSCAN)
         VScan <<= 1;
 
-    if (!pATI->OptionCRT && (pATI->LCDPanelID >= 0))
+    if (pATI->OptionPanelDisplay && (pATI->LCDPanelID >= 0))
     {
         if ((pMode->CrtcHDisplay > pATI->LCDHorizontal) ||
             (pMode->CrtcVDisplay > pATI->LCDVertical))

@@ -480,7 +480,7 @@ void ATIResetVideo(ScrnInfoPtr pScrn)
     outf(OVERLAY_GRAPHICS_KEY_MSK, (1 << pScrn->depth) - 1);
     outf(OVERLAY_GRAPHICS_KEY_CLR, pPriv->colorKey);
     outf(OVERLAY_KEY_CNTL, 0x50);
-    outf(OVERLAY_TEST, 0);
+    outf(SCALER_TEST, 0);
 }
 
 /* I2C_CNTL_0 bits */
@@ -579,7 +579,7 @@ static Bool  Detect_ImpactTV(ScrnInfoPtr pScrn, ATIPtr pATI)
     CARD8 id;
     
     outr(TVO_CNTL, 0x0);
-    outr(MPP_STROBE_CONFIG, 0x383);
+    outr(MPP_STROBE_SEQ, 0x383);
     outr(DAC_CNTL, inr(DAC_CNTL) & 0xFFFFBFFF);
     outr(MPP_CONFIG, MPP_READ);
     MPP_wait(pATI);
@@ -1825,7 +1825,7 @@ ATIDisplayVideo(
 		-((pScrn->currentMode->Flags & V_DBLSCAN)?1:0)));
 
     v_inc = v_inc * pScrn->currentMode->VDisplay;
-    if((pATI->LCDPanelID>=0) && !pATI->OptionCRT)
+    if((pATI->LCDPanelID>=0) && !pATI->OptionPanelDisplay)
 	v_inc = v_inc/(drw_h*pATI->LCDVertical);
 	else
 	v_inc = v_inc/(drw_h*pScrn->currentMode->VDisplay);
@@ -2462,7 +2462,7 @@ ATIPutVideo(
    outf(CAPTURE_CONFIG, ENABLE_ATI_CAPTURE_DOUBLEBUF);
    outf(CAPTURE_DEBUG, 0);
    
-   outf(OVERLAY_TEST, 0);
+   outf(SCALER_TEST, 0);
    
    /* activate capture unit */
    outf(TRIG_CNTL, (1<<31) | 1);

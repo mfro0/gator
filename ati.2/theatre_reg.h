@@ -229,7 +229,8 @@
 #define VIPH_TIMEOUT_STAT__VIPH_REGR_DIS 0x01000000
 #define TEST_DEBUG_CNTL__TEST_DEBUG_OUT_EN 0x00000001
 
-#define RT_ATI_ID 0x4D541002
+#define RT100_ATI_ID 0x4D541002
+#define RT200_ATI_ID 0x4f4a1000
 
 /* Register/Field values: */
 #define     RT_COMP0              0x0

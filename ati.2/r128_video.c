@@ -1,10 +1,10 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/r128_video.c,v 1.20 2001/10/02 11:44:16 alanh Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/r128_video.c,v 1.23 2002/11/01 06:08:36 keithp Exp $ */
 
 #include "r128.h"
 #include "r128_reg.h"
 
 #ifdef XF86DRI
-#include "xf86drmR128.h"
+#include "r128_common.h"
 #include "r128_sarea.h"
 #endif
 
@@ -1535,25 +1535,12 @@ R128StopVideo(ScrnInfoPtr pScrn, pointer data, Bool cleanup)
   unsigned char *R128MMIO = info->MMIO;
   R128PortPrivPtr pPriv = (R128PortPrivPtr)data;
 
-  info->accel->Sync(pScrn);
-
   REGION_EMPTY(pScrn->pScreen, &pPriv->clip);
-
-  xf86DrvMsg(pScrn->scrnIndex, X_INFO, "StopVideo %s\n", cleanup ? "cleanup": "");
 
   if(cleanup) {
      if(pPriv->videoStatus & CLIENT_VIDEO_ON) {
-	R128WaitForFifo(pScrn, 2); 
-	OUTREG(R128_OV0_SCALE_CNTL, 0x80000000);
-     }
-     if(pPriv->video_stream_active) {
-	R128WaitForFifo(pScrn, 8); 
-        OUTPLL(R128_FCP_CNTL, 0x404);
-        OUTREG(R128_CAP0_TRIG_CNTL, 0x0);
-	R128ResetVideo(pScrn);
-	pPriv->video_stream_active = FALSE;
-        R128MuteAudio(pPriv, TRUE);
-        if(pPriv->i2c!=NULL) R128_board_setmisc(pPriv);
+	OUTREG(R128_OV0_SCALE_CNTL, 0);
+	xf86ForceHWCursor (pScrn->pScreen, FALSE);
      }
      if(pPriv->linear) {
 	xf86FreeOffscreenLinear(pPriv->linear);
@@ -1809,9 +1796,10 @@ R128DMA(
     int err=-1, i, idx, offset, hpass, passes, srcpassbytes, dstpassbytes;
     int sizes[MAXPASSES], list[MAXPASSES];
     drmDMAReq req;
+    drmR128Blit blit;
 
     /* Verify conditions and bail out as early as possible */
-    if (!info->directRenderingEnabled)    
+    if (!info->directRenderingEnabled || !info->DMAForXv)
         return FALSE;
 
     if ((hpass = min(h,(BUFSIZE/w))) == 0)
@@ -1868,8 +1856,17 @@ R128DMA(
 	    }
 	}
 
-	if ((err = drmR128TextureBlit(info->drmFD, idx, offset, dstPitch,
-		  (R128_DATATYPE_CI8 >> 16), (offset % 32), 0, w, hpass)) < 0)
+        blit.idx = idx;
+        blit.offset = offset;
+        blit.pitch = dstPitch;
+        blit.format = (R128_DATATYPE_CI8 >> 16);
+        blit.x = (offset % 32);
+        blit.y = 0;
+        blit.width = w;
+        blit.height = hpass;
+
+	if ((err = drmCommandWrite(info->drmFD, DRM_R128_BLIT,
+                                   &blit, sizeof(drmR128Blit))) < 0)
 	    break;
     }
 
@@ -2442,6 +2439,8 @@ R128PutImage(
 	break;
     }
 
+    if (!(pPriv->videoStatus & CLIENT_VIDEO_ON))
+	xf86ForceHWCursor (pScrn->pScreen, TRUE);
     pPriv->videoStatus = CLIENT_VIDEO_ON;
 
     info->VideoTimerCallback = R128VideoTimerCallback;
@@ -3014,8 +3013,9 @@ R128VideoTimerCallback(ScrnInfoPtr pScrn, Time now)
 	if(pPriv->videoStatus & OFF_TIMER) {
 	    if(pPriv->offTime < now) {
 		unsigned char *R128MMIO = info->MMIO;
-		info->accel->Sync(pScrn);
-		OUTREG(R128_OV0_SCALE_CNTL, 0x80000000);
+		OUTREG(R128_OV0_SCALE_CNTL, 0);
+		if (pPriv->videoStatus & CLIENT_VIDEO_ON)
+		    xf86ForceHWCursor (pScrn->pScreen, FALSE);
 		pPriv->videoStatus = FREE_TIMER;
 		pPriv->freeTime = now + FREE_DELAY;
 	    }
@@ -3025,6 +3025,8 @@ R128VideoTimerCallback(ScrnInfoPtr pScrn, Time now)
 		   xf86FreeOffscreenLinear(pPriv->linear);
 		   pPriv->linear = NULL;
 		}
+		if (pPriv->videoStatus & CLIENT_VIDEO_ON)
+		    xf86ForceHWCursor (pScrn->pScreen, FALSE);
 		pPriv->videoStatus = 0;
 		info->VideoTimerCallback = NULL;
 	    }

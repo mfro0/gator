@@ -1,6 +1,6 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atichip.h,v 1.19 2001/10/28 03:33:22 tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atichip.h,v 1.21 2002/10/12 01:38:06 martin Exp $ */
 /*
- * Copyright 1997 through 2001 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
+ * Copyright 1997 through 2002 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
  * documentation for any purpose is hereby granted without fee, provided that
@@ -91,7 +91,10 @@ typedef enum
     ATI_CHIP_RADEONMOBILITY6,   /* Radeon M6 */
     ATI_CHIP_RADEONMOBILITY7,   /* Radeon M7 */
     ATI_CHIP_R200,              /* R200 */
-    ATI_CHIP_RV200,             /* RV200 */    
+    ATI_CHIP_RV200,             /* RV200 */
+    ATI_CHIP_RV250,             /* RV250 */
+    ATI_CHIP_RADEONMOBILITY9,   /* Radeon M9 */
+    ATI_CHIP_R300,              /* R300 */
     ATI_CHIP_HDTV               /* HDTV */
 } ATIChipType;
 

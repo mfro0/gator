@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/radeon_probe.c,v 1.14 2001/12/28 17:31:44 dawes Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/radeon_probe.c,v 1.20 2002/10/12 01:38:07 martin Exp $ */
 /*
  * Copyright 2000 ATI Technologies Inc., Markham, Ontario, and
  *                VA Linux Systems Inc., Fremont, California.
@@ -29,7 +29,7 @@
 
 /*
  * Authors:
- *   Kevin E. Martin <martin@valinux.com>
+ *   Kevin E. Martin <martin@xfree86.org>
  *   Rickard E. Faith <faith@valinux.com>
  *
  * Modified by Marc Aurele La France <tsi@xfree86.org> for ATI driver merge.
@@ -53,14 +53,14 @@
  * The following exists to prevent the compiler from considering entry points
  * defined in a separate module from being constants.
  */
-static xf86PreInitProc     * const volatile PreInitProc     = RADEONPreInit;
-static xf86ScreenInitProc  * const volatile ScreenInitProc  = RADEONScreenInit;
-static xf86SwitchModeProc  * const volatile SwitchModeProc  = RADEONSwitchMode;
-static xf86AdjustFrameProc * const volatile AdjustFrameProc = RADEONAdjustFrame;
-static xf86EnterVTProc     * const volatile EnterVTProc     = RADEONEnterVT;
-static xf86LeaveVTProc     * const volatile LeaveVTProc     = RADEONLeaveVT;
-static xf86FreeScreenProc  * const volatile FreeScreenProc  = RADEONFreeScreen;
-static xf86ValidModeProc   * const volatile ValidModeProc   = RADEONValidMode;
+static xf86PreInitProc     *const volatile PreInitProc     = RADEONPreInit;
+static xf86ScreenInitProc  *const volatile ScreenInitProc  = RADEONScreenInit;
+static xf86SwitchModeProc  *const volatile SwitchModeProc  = RADEONSwitchMode;
+static xf86AdjustFrameProc *const volatile AdjustFrameProc = RADEONAdjustFrame;
+static xf86EnterVTProc     *const volatile EnterVTProc     = RADEONEnterVT;
+static xf86LeaveVTProc     *const volatile LeaveVTProc     = RADEONLeaveVT;
+static xf86FreeScreenProc  *const volatile FreeScreenProc  = RADEONFreeScreen;
+static xf86ValidModeProc   *const volatile ValidModeProc   = RADEONValidMode;
 
 #define RADEONPreInit     PreInitProc
 #define RADEONScreenInit  ScreenInitProc
@@ -80,12 +80,26 @@ SymTabRec RADEONChipsets[] = {
     { PCI_CHIP_RADEON_QG, "ATI Radeon QG (AGP)" },
     { PCI_CHIP_RADEON_QY, "ATI Radeon VE QY (AGP)" },
     { PCI_CHIP_RADEON_QZ, "ATI Radeon VE QZ (AGP)" },
-    { PCI_CHIP_RADEON_LW, "ATI Radeon Mobility LW (AGP)" },
-    { PCI_CHIP_RADEON_LY, "ATI Radeon Mobility LY (AGP)" },
-    { PCI_CHIP_RADEON_LZ, "ATI Radeon Mobility LZ (AGP)" },
+    { PCI_CHIP_RADEON_LW, "ATI Radeon Mobility M7 LW (AGP)" },
+    { PCI_CHIP_RADEON_LX, "ATI Radeon Mobility M7 LX (AGP)" },
+    { PCI_CHIP_RADEON_LY, "ATI Radeon Mobility M6 LY (AGP)" },
+    { PCI_CHIP_RADEON_LZ, "ATI Radeon Mobility M6 LZ (AGP)" },
     { PCI_CHIP_R200_QL, "ATI Radeon 8500 QL (AGP)" },
     { PCI_CHIP_R200_BB, "ATI Radeon 8500 BB (AGP)" },
     { PCI_CHIP_RV200_QW, "ATI Radeon 7500 QW (AGP)" },
+    { PCI_CHIP_RV200_QX, "ATI Radeon 7500 QX (AGP)" },
+    { PCI_CHIP_RV250_Id, "ATI Radeon 9000 Id (AGP)" },
+    { PCI_CHIP_RV250_Ie, "ATI Radeon 9000 Ie (AGP)" },
+    { PCI_CHIP_RV250_If, "ATI Radeon 9000 If (AGP)" },
+    { PCI_CHIP_RV250_Ig, "ATI Radeon 9000 Ig (AGP)" },
+    { PCI_CHIP_RV250_Ld, "ATI Radeon Mobility M9 Ld (AGP)" },
+    { PCI_CHIP_RV250_Le, "ATI Radeon Mobility M9 Le (AGP)" },
+    { PCI_CHIP_RV250_Lf, "ATI Radeon Mobility M9 Lf (AGP)" },
+    { PCI_CHIP_RV250_Lg, "ATI Radeon Mobility M9 Lg (AGP)" },
+    { PCI_CHIP_R300_ND, "ATI Radeon 9700 ND (AGP)" },
+    { PCI_CHIP_R300_NE, "ATI Radeon 9700 NE (AGP)" },
+    { PCI_CHIP_R300_NF, "ATI Radeon 9700 NF (AGP)" },
+    { PCI_CHIP_R300_NG, "ATI Radeon 9700 NG (AGP)" },
     { -1,                 NULL }
 };
 
@@ -97,11 +111,25 @@ PciChipsets RADEONPciChipsets[] = {
     { PCI_CHIP_RADEON_QY, PCI_CHIP_RADEON_QY, RES_SHARED_VGA },
     { PCI_CHIP_RADEON_QZ, PCI_CHIP_RADEON_QZ, RES_SHARED_VGA },
     { PCI_CHIP_RADEON_LW, PCI_CHIP_RADEON_LW, RES_SHARED_VGA },
+    { PCI_CHIP_RADEON_LX, PCI_CHIP_RADEON_LX, RES_SHARED_VGA },
     { PCI_CHIP_RADEON_LY, PCI_CHIP_RADEON_LY, RES_SHARED_VGA },
     { PCI_CHIP_RADEON_LZ, PCI_CHIP_RADEON_LZ, RES_SHARED_VGA },
     { PCI_CHIP_R200_QL, PCI_CHIP_R200_QL, RES_SHARED_VGA },
     { PCI_CHIP_R200_BB, PCI_CHIP_R200_BB, RES_SHARED_VGA },
     { PCI_CHIP_RV200_QW, PCI_CHIP_RV200_QW, RES_SHARED_VGA },
+    { PCI_CHIP_RV200_QX, PCI_CHIP_RV200_QX, RES_SHARED_VGA },
+    { PCI_CHIP_RV250_Id, PCI_CHIP_RV250_Id, RES_SHARED_VGA },
+    { PCI_CHIP_RV250_Ie, PCI_CHIP_RV250_Ie, RES_SHARED_VGA },
+    { PCI_CHIP_RV250_If, PCI_CHIP_RV250_If, RES_SHARED_VGA },
+    { PCI_CHIP_RV250_Ig, PCI_CHIP_RV250_Ig, RES_SHARED_VGA },
+    { PCI_CHIP_RV250_Ld, PCI_CHIP_RV250_Ld, RES_SHARED_VGA },
+    { PCI_CHIP_RV250_Le, PCI_CHIP_RV250_Le, RES_SHARED_VGA },
+    { PCI_CHIP_RV250_Lf, PCI_CHIP_RV250_Lf, RES_SHARED_VGA },
+    { PCI_CHIP_RV250_Lg, PCI_CHIP_RV250_Lg, RES_SHARED_VGA },
+    { PCI_CHIP_R300_ND, PCI_CHIP_R300_ND, RES_SHARED_VGA },
+    { PCI_CHIP_R300_NE, PCI_CHIP_R300_NE, RES_SHARED_VGA },
+    { PCI_CHIP_R300_NF, PCI_CHIP_R300_NF, RES_SHARED_VGA },
+    { PCI_CHIP_R300_NG, PCI_CHIP_R300_NG, RES_SHARED_VGA },
     { -1,                 -1,                 RES_UNDEFINED }
 };
 
@@ -111,7 +139,7 @@ int gRADEONEntityIndex = -1;
 const OptionInfoRec *
 RADEONAvailableOptions(int chipid, int busid)
 {
-    int i;
+    int  i;
 
     /*
      * Return options defined in the radeon submodule which will have been
@@ -139,28 +167,26 @@ RADEONIdentify(int flags)
 Bool
 RADEONProbe(DriverPtr drv, int flags)
 {
-    int           numUsed;
-    int           numDevSections, nATIGDev, nRadeonGDev;
-    int           *usedChips;
-    GDevPtr       *devSections, *ATIGDevs, *RadeonGDevs;
-    Bool          foundScreen = FALSE;
-    int           i;
+    int      numUsed;
+    int      numDevSections, nATIGDev, nRadeonGDev;
+    int     *usedChips;
+    GDevPtr *devSections, *ATIGDevs, *RadeonGDevs;
+    Bool     foundScreen = FALSE;
+    int      i;
 
     if (!xf86GetPciVideoInfo()) return FALSE;
 
     /* Collect unclaimed device sections for both driver names */
-    nATIGDev = xf86MatchDevice(ATI_NAME, &ATIGDevs);
+    nATIGDev    = xf86MatchDevice(ATI_NAME, &ATIGDevs);
     nRadeonGDev = xf86MatchDevice(RADEON_NAME, &RadeonGDevs);
 
     if (!(numDevSections = nATIGDev + nRadeonGDev)) return FALSE;
 
     if (!ATIGDevs) {
-	if (!(devSections = RadeonGDevs))
-	    numDevSections = 1;
-	else
-	    numDevSections = nRadeonGDev;
+	if (!(devSections = RadeonGDevs)) numDevSections = 1;
+	else                              numDevSections = nRadeonGDev;
     } if (!RadeonGDevs) {
-	devSections = ATIGDevs;
+	devSections    = ATIGDevs;
 	numDevSections = nATIGDev;
     } else {
 	/* Combine into one list */
@@ -183,85 +209,89 @@ RADEONProbe(DriverPtr drv, int flags)
 				    drv,
 				    &usedChips);
 
-    if (numUsed<=0) return FALSE;
+    if (numUsed <= 0) return FALSE;
 
-    if (flags & PROBE_DETECT) foundScreen = TRUE;
-    else for (i = 0; i < numUsed; i++) 
-    {
-        ScrnInfoPtr pScrn;
-        EntityInfoPtr pEnt;
+    if (flags & PROBE_DETECT) {
+	foundScreen = TRUE;
+    } else {
+	for (i = 0; i < numUsed; i++) {
+	    ScrnInfoPtr    pScrn = NULL;
+	    EntityInfoPtr  pEnt;
 
-        pScrn    = NULL;
-        if((pScrn = xf86ConfigPciEntity(pScrn, 0, usedChips[i],
-             RADEONPciChipsets, 0, 0, 0, 0, 0)))
-        { 
+	    if ((pScrn = xf86ConfigPciEntity(pScrn, 0, usedChips[i],
+					     RADEONPciChipsets, 0, 0, 0,
+					     0, 0))) {
 #ifdef XFree86LOADER
+		if (!xf86LoadSubModule(pScrn, "radeon")) {
+		    xf86Msg(X_ERROR, RADEON_NAME
+			    ":  Failed to load \"radeon\" module.\n");
+		    xf86DeleteScreen(pScrn->scrnIndex, 0);
+		    continue;
+		}
 
-	    if (!xf86LoadSubModule(pScrn, "radeon")) {
-		xf86Msg(X_ERROR,
-		    RADEON_NAME ":  Failed to load \"radeon\" module.\n");
-		xf86DeleteScreen(pScrn->scrnIndex, 0);
-		continue;
-	    }
-
-	    xf86LoaderReqSymLists(RADEONSymbols, NULL);
+		xf86LoaderReqSymLists(RADEONSymbols, NULL);
 #endif
 
-	    pScrn->driverVersion = RADEON_VERSION_CURRENT;
-	    pScrn->driverName    = RADEON_DRIVER_NAME;
-	    pScrn->name          = RADEON_NAME;
-	    pScrn->Probe         = RADEONProbe;
-	    pScrn->PreInit       = RADEONPreInit;
-	    pScrn->ScreenInit    = RADEONScreenInit;
-	    pScrn->SwitchMode    = RADEONSwitchMode;
-	    pScrn->AdjustFrame   = RADEONAdjustFrame;
-	    pScrn->EnterVT       = RADEONEnterVT;
-	    pScrn->LeaveVT       = RADEONLeaveVT;
-	    pScrn->FreeScreen    = RADEONFreeScreen;
-	    pScrn->ValidMode     = RADEONValidMode;
-	    foundScreen          = TRUE;
+		pScrn->driverVersion = RADEON_VERSION_CURRENT;
+		pScrn->driverName    = RADEON_DRIVER_NAME;
+		pScrn->name          = RADEON_NAME;
+		pScrn->Probe         = RADEONProbe;
+		pScrn->PreInit       = RADEONPreInit;
+		pScrn->ScreenInit    = RADEONScreenInit;
+		pScrn->SwitchMode    = RADEONSwitchMode;
+		pScrn->AdjustFrame   = RADEONAdjustFrame;
+		pScrn->EnterVT       = RADEONEnterVT;
+		pScrn->LeaveVT       = RADEONLeaveVT;
+		pScrn->FreeScreen    = RADEONFreeScreen;
+		pScrn->ValidMode     = RADEONValidMode;
+		foundScreen          = TRUE;
+	    }
 
-        } 
+	    pEnt = xf86GetEntityInfo(usedChips[i]);
 
-        pEnt = xf86GetEntityInfo(usedChips[i]);
+	    /* All Radeon chips except the original ones support
+	     * Dual-Head, mark the entity as sharable.
+	     */
+	    if (pEnt->chipset != PCI_CHIP_RADEON_QD &&
+		pEnt->chipset != PCI_CHIP_RADEON_QE &&
+		pEnt->chipset != PCI_CHIP_RADEON_QF &&
+		pEnt->chipset != PCI_CHIP_RADEON_QG) {
+		static int  instance = 0;
+		DevUnion   *pPriv;
 
-        /* VE/M6 card support Dual-Head, mark the entity as sharable*/
-        if(pEnt->chipset == PCI_CHIP_RADEON_QY ||
-           pEnt->chipset == PCI_CHIP_RADEON_QZ ||
-           pEnt->chipset == PCI_CHIP_R200_QL ||
-           pEnt->chipset == PCI_CHIP_R200_BB ||
-           pEnt->chipset == PCI_CHIP_RV200_QW ||
-           pEnt->chipset == PCI_CHIP_RADEON_LW ||
-           pEnt->chipset == PCI_CHIP_RADEON_LY ||
-           pEnt->chipset == PCI_CHIP_RADEON_LZ)
-        {
-            static int instance = 0;
-            DevUnion* pPriv;
+		xf86SetEntitySharable(usedChips[i]);
+		xf86SetEntityInstanceForScreen(pScrn, pScrn->entityList[0],
+					       instance);
 
-            xf86SetEntitySharable(usedChips[i]);
-            xf86SetEntityInstanceForScreen(pScrn,
-                pScrn->entityList[0], instance);
+		if (gRADEONEntityIndex < 0) {
+		    gRADEONEntityIndex = xf86AllocateEntityPrivateIndex();
+		    pPriv = xf86GetEntityPrivate(pScrn->entityList[0],
+						 gRADEONEntityIndex);
 
-            if(gRADEONEntityIndex < 0)
-            {
-                gRADEONEntityIndex = xf86AllocateEntityPrivateIndex();
-                pPriv = xf86GetEntityPrivate(pScrn->entityList[0],
-                        gRADEONEntityIndex);
+		    if (!pPriv->ptr) {
+			RADEONEntPtr pRADEONEnt;
 
-                if (!pPriv->ptr)
-                {
-                    RADEONEntPtr pRADEONEnt;
-                    pPriv->ptr = xnfcalloc(sizeof(RADEONEntRec), 1);
-                    pRADEONEnt = pPriv->ptr;
-                    pRADEONEnt->IsDRIEnabled = FALSE;
-                    pRADEONEnt->BypassSecondary = FALSE;
-                    pRADEONEnt->HasSecondary = FALSE;
-                    pRADEONEnt->IsSecondaryRestored = FALSE;                   
-                } 
-            }
-            instance++;
+			pPriv->ptr = xnfcalloc(sizeof(RADEONEntRec), 1);
+			pRADEONEnt = pPriv->ptr;
+			pRADEONEnt->IsDRIEnabled = FALSE;
+			pRADEONEnt->BypassSecondary = FALSE;
+			pRADEONEnt->HasSecondary = FALSE;
+			pRADEONEnt->IsSecondaryRestored = FALSE;
+		    }
+		}
+		instance++;
+		if (instance == 2) {
+		    RADEONEntPtr  pRADEONEnt;
+
+		    pPriv = xf86GetEntityPrivate(pScrn->entityList[0],
+						 gRADEONEntityIndex);
+		    pRADEONEnt = pPriv->ptr;		
+		    pRADEONEnt->HasSecondary = TRUE;
+		}
+
+	    }
+	    xfree(pEnt);
 	}
-	xfree(pEnt);
     }
 
     xfree(usedChips);
