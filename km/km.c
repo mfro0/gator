@@ -372,7 +372,6 @@ if(kms->deallocate_dvb!=NULL){
 	} else {
 	}
 kms->gdq_usage--;
-kms->gdq_usage--;
 if(kms->gdq_usage==0){
 	km_purge_queue(&(kms->gui_dma_queue));
 	}

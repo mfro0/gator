@@ -113,7 +113,7 @@ wmb();
 a=readl(kms->reg_aperture+RADEON_CAP0_BUF_PITCH);
 vwin->width=a/2;
 a=readl(kms->reg_aperture+RADEON_CAP0_V_WINDOW);
-vwin->height=(((a>>16)& 0xffff)-(a & 0xffff))+1;
+vwin->height=(((a>>16)& 0xffff)-(a & 0xffff));
 a=readl(kms->reg_aperture+RADEON_CAP0_BUF0_EVEN_OFFSET);
 kms->buf0_even_offset=a;
 a=readl(kms->reg_aperture+RADEON_CAP0_BUF0_OFFSET);
@@ -166,10 +166,14 @@ u32 a;
 /* stop interrupts */
 a=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
 writel(a & ~0xf, kms->reg_aperture+RADEON_CAP_INT_CNTL);
+wmb();
+writel(0xf, kms->reg_aperture+RADEON_CAP_INT_STATUS);
+wmb();
 if(kms->gdq_usage==1){
 	a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
 	writel(a & ~(1<<30), kms->reg_aperture+RADEON_GEN_INT_CNTL);
 	wmb();
+	writel((1<<30), kms->reg_aperture+RADEON_GEN_INT_STATUS);
 	/* stop outstanding DMA transfers */
 	a=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
 	if(a & RADEON_DMA_GUI_STATUS__ACTIVE){
@@ -213,10 +217,14 @@ u32 a;
 /* stop interrupts */
 a=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
 writel(a & ~0x30, kms->reg_aperture+RADEON_CAP_INT_CNTL);
+wmb();
+writel(0x30, kms->reg_aperture+RADEON_CAP_INT_STATUS);
+wmb();
 if(kms->gdq_usage==1){
 	a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
 	writel(a & ~(1<<30), kms->reg_aperture+RADEON_GEN_INT_CNTL);
 	wmb();
+	writel((1<<30), kms->reg_aperture+RADEON_GEN_INT_STATUS);
 	/* stop outstanding DMA transfers */
 	a=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
 	if(a & RADEON_DMA_GUI_STATUS__ACTIVE){
