@@ -37,7 +37,7 @@
 /*
  * Version Information
  */
-#define DRIVER_VERSION "v0.2"
+#define DRIVER_VERSION "2.1.0"
 #define DRIVER_AUTHOR "Vladimir Dergachev <volodya@minspring.com>"
 #define DRIVER_DESC "USB ATI Remote driver"
 
