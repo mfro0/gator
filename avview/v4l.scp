@@ -157,24 +157,12 @@ if {[ffmpeg_present] == "yes"} {
 	eval $cw.record_button configure [get_settings $cw.record_button Capture V4L]
 	grid x $cw.snapshot_button $cw.record_button -sticky ns -padx 5
 
-	label $cw.total_stream_length -text "Total stream length:"
-	label $cw.total_stream_length_value -text "0 Mb"
-	eval $cw.total_stream_length configure [get_settings $cw.total_stream_length Capture V4L]
-	eval $cw.total_stream_length_value configure [get_settings $cw.total_stream_length_value Capture V4L]
-	grid $cw.total_stream_length $cw.total_stream_length_value -sticky nws
+	frame $cw.video_stats 
+	eval $cw.video_stats configure [get_settings $cw.video_stats Capture V4L]
+	grid $cw.video_stats - - -sticky news
 
-	label $cw.frames_encoded -text "Video frames encoded:"
-	label $cw.frames_encoded_value -text "0"
-	eval $cw.frames_encoded configure [get_settings $cw.frames_encoded Capture V4L]
-	eval $cw.frames_encoded_value configure [get_settings $cw.frames_encoded_value Capture V4L]
-	grid $cw.frames_encoded $cw.frames_encoded_value -sticky nws
+        make_video_stats $cw.video_stats
 
-	label $cw.fifo_label -text "Fifo size: "
-	label $cw.fifo_value_label -text "0 Mb"
-	eval $cw.fifo_label configure [get_settings $cw.fifo_label Capture V4L]
-	eval $cw.fifo_value_label configure [get_settings $cw.fifo_value_label Capture V4L]
-	grid $cw.fifo_label $cw.fifo_value_label -sticky nws
-	
 	label $cw.fifo_limit_label -text "Fifo limit (Mb):"
 	entry $cw.fifo_limit_entry -textvariable fifo_limit
 	eval $cw.fifo_limit_label configure [get_settings $cw.fifo_limit_label Capture V4L]
@@ -440,22 +428,133 @@ if { [ffmpeg_present] == "no" } { return }
 catch {
 	set status [ffmpeg_encoding_status]
 	if { "$status" == "" } {
-		$cw.fifo_value_label configure -text "0 Mb"
+		reset_video_stats $cw.video_stats
 		return
 		}
 	set size [get_value $status "-total_fifo"]
-	set length [get_value $status "-encoded_stream_size"]
-	set frames_encoded [get_value $status "-frames_encoded"]
-	$cw.fifo_value_label configure -text "[expr $size/(1024*1024)] Mb"
-	$cw.total_stream_length_value configure -text "$length Mb"
-	$cw.frames_encoded_value configure -text "$frames_encoded"
-	if { $v4l_capture_on && ($size > [expr $fifo_limit*1024*1024]) } {
+	if { $v4l_capture_on && ("$size" != "") && ($size > [expr $fifo_limit*1024*1024]) } {
 		set v4l_capture_on false
 		$cw.record_button flash
 		tk_dialog .controlwin.limit_reached "Fifo limit reached" "Fifo limit has been reached.\nCapture stopped." "" 0 "OK"
 		}
+	update_video_stats $cw.video_stats $status
 	}
 after 800 "check_fifo $cw"
+}
+
+proc make_video_stats { widget } {
+label $widget.total_stream_length -text "Total stream length:"
+label $widget.total_stream_length_value -text "0 Mb"
+eval $widget.total_stream_length configure [get_settings $widget.total_stream_length Capture V4L]
+eval $widget.total_stream_length_value configure [get_settings $widget.total_stream_length_value Capture V4L]
+grid $widget.total_stream_length $widget.total_stream_length_value -sticky nws
+
+label $widget.frames_encoded -text "Video frames encoded:"
+label $widget.frames_encoded_value -text "0"
+eval $widget.frames_encoded configure [get_settings $widget.frames_encoded Capture V4L]
+eval $widget.frames_encoded_value configure [get_settings $widget.frames_encoded_value Capture V4L]
+grid $widget.frames_encoded $widget.frames_encoded_value -sticky nws
+
+label $widget.fifo_label -text "Fifo size: "
+label $widget.fifo_value_label -text "0 Mb"
+eval $widget.fifo_label configure [get_settings $widget.fifo_label Capture V4L]
+eval $widget.fifo_value_label configure [get_settings $widget.fifo_value_label Capture V4L]
+grid $widget.fifo_label $widget.fifo_value_label -sticky nws -padx 10
+
+frame $widget.f
+eval $widget.f configure [get_settings $widget.f Capture V4L]
+grid $widget.f - - - -sticky news	
+grid columnconfig $widget 3 -weight 1
+	
+label $widget.f.audio_levels_label -text "Audio levels"
+eval $widget.f.audio_levels_label configure [get_settings $widget.f.audio_levels Capture V4L]
+
+label $widget.f.video_hist_label -text "Luminosity histogram"
+eval $widget.f.video_hist_label configure [get_settings $widget.f.video_hist Capture V4L]
+grid $widget.f.audio_levels_label - $widget.f.video_hist_label
+	
+canvas $widget.f.left_audio_level  -height 80 -width 20 -relief sunken -borderwidth 1
+eval $widget.f.left_audio_level configure [get_settings $widget.f.left_audio_level Capture V4L]
+$widget.f.left_audio_level create polygon 1 79 19 79 19 79 1 79 -fill green -tags avg_volume 
+$widget.f.left_audio_level create polygon 1 79 19 79 19 79 1 79 -fill yellow -tags top_volume 
+$widget.f.left_audio_level create line 1 79 19 79 -fill red -tags top_volume_line 
+
+canvas $widget.f.right_audio_level  -height 80 -width 20 -relief sunken -borderwidth 1
+eval $widget.f.right_audio_level configure [get_settings $widget.f.right_audio_level Capture V4L]
+$widget.f.right_audio_level create polygon 1 79 19 79 19 79 1 79 -fill green -tags avg_volume 
+$widget.f.right_audio_level create polygon 1 79 19 79 19 79 1 79 -fill yellow -tags top_volume 
+$widget.f.right_audio_level create line 1 79 19 79 -fill red -tags top_volume_line 
+
+canvas $widget.f.video_hist  -height 80 -width 160 -relief sunken -borderwidth 1
+eval $widget.f.video_hist configure [get_settings $widget.f.video_hist Capture V4L]
+for {set i 0 } { $i < 31 } { incr i } {
+	$widget.f.video_hist create line [expr $i*10] 79 [expr ($i+1)*10] 79 -fill red \
+			-tags luma_hist$i
+	}
+
+grid $widget.f.left_audio_level $widget.f.right_audio_level $widget.f.video_hist  -padx 5
+}
+
+proc update_video_stats { widget status} {
+set size [get_value $status "-total_fifo"]
+set length [get_value $status "-encoded_stream_size"]
+set frames_encoded [get_value $status "-frames_encoded"]
+set luma_hist  [get_value $status "-luma_hist"]
+set luma_top_hist [get_value $status "-luma_top_hist"]
+set cheight [$widget.f.video_hist cget -height]
+set cwidth [$widget.f.video_hist cget -width]
+set avg_right_level [get_value $status "-avg_right_level"]
+set avg_left_level [get_value $status "-avg_left_level"]
+set top_right_level [get_value $status "-top_right_level"]
+set top_left_level [get_value $status "-top_left_level"]
+$widget.fifo_value_label configure -text "[expr $size/(1024*1024)] Mb"
+$widget.total_stream_length_value configure -text "$length Mb"
+$widget.frames_encoded_value configure -text "$frames_encoded"
+$widget.f.video_hist configure -scrollregion [list 1 1 [expr $cwidth -1] [expr $cheight-1]]
+for {set i 0 } { $i < 31 } { incr i } {
+	set left_luma [lindex $luma_hist $i]
+	set right_luma [lindex $luma_hist [expr $i+1]]
+	$widget.f.video_hist coords luma_hist$i [expr 1+($i*($cwidth-2))/31] [expr $cheight-1-(($cheight-2)*$left_luma)/$luma_top_hist] \
+		[expr 1+(($i+1)*($cwidth-2))/31] [expr $cheight-1-(($cheight-2)*$right_luma)/$luma_top_hist]
+	}
+set avg_left_coord [expr 79-($avg_left_level*78)/1000]
+$widget.f.left_audio_level coords avg_volume 1 79 20 79 20 $avg_left_coord 1 $avg_left_coord
+set top_left_coord [expr 79-($top_left_level*78)/1000]
+$widget.f.left_audio_level coords top_volume 1 $avg_left_coord 20 $avg_left_coord 20 $top_left_coord 1 $top_left_coord
+$widget.f.left_audio_level coords top_volume_line 1 $top_left_coord 20 $top_left_coord
+
+set avg_right_coord [expr 79-($avg_right_level*78)/1000]
+$widget.f.right_audio_level coords avg_volume 1 79 20 79 20 $avg_right_coord 1 $avg_right_coord
+set top_right_coord [expr 79-($top_right_level*78)/1000]
+$widget.f.right_audio_level coords top_volume 1 $avg_right_coord 20 $avg_right_coord 20 $top_right_coord 1 $top_right_coord
+$widget.f.right_audio_level coords top_volume_line 1 $top_right_coord 20 $top_right_coord
+}
+
+proc reset_video_stats { widget} {
+set cheight [$widget.f.video_hist cget -height]
+set cwidth [$widget.f.video_hist cget -width]
+$widget.fifo_value_label configure -text "0 Mb"
+$widget.total_stream_length_value configure -text "0 Mb"
+$widget.frames_encoded_value configure -text "0"
+$widget.f.video_hist configure -scrollregion [list 1 1 [expr $cwidth -1] [expr $cheight-1]]
+set luma_top_hist 1
+for {set i 0 } { $i < 31 } { incr i } {
+	set left_luma 0
+	set right_luma 0
+	$widget.f.video_hist coords luma_hist$i [expr 1+($i*($cwidth-2))/31] [expr $cheight-1-(($cheight-2)*$left_luma)/$luma_top_hist] \
+		[expr 1+(($i+1)*($cwidth-2))/31] [expr $cheight-1-(($cheight-2)*$right_luma)/$luma_top_hist]
+	}
+set avg_left_coord 79
+$widget.f.left_audio_level coords avg_volume 1 79 20 79 20 $avg_left_coord 1 $avg_left_coord
+set top_left_coord 79
+$widget.f.left_audio_level coords top_volume 1 $avg_left_coord 20 $avg_left_coord 20 $top_left_coord 1 $top_left_coord
+$widget.f.left_audio_level coords top_volume_line 1 $top_left_coord 20 $top_left_coord
+
+set avg_right_coord 79
+$widget.f.right_audio_level coords avg_volume 1 79 20 79 20 $avg_right_coord 1 $avg_right_coord
+set top_right_coord 79
+$widget.f.right_audio_level coords top_volume 1 $avg_right_coord 20 $avg_right_coord 20 $top_right_coord 1 $top_right_coord
+$widget.f.right_audio_level coords top_volume_line 1 $top_right_coord 20 $top_right_coord
 }
 
 proc save_v4l_capture { fileid } {

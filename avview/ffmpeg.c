@@ -55,9 +55,17 @@ typedef struct {
 	AVFormatContext format_context;
 	int audio_stream_num;
 	int video_stream_num;
+
 	int64 last_audio_timestamp;
 	int64 last_video_timestamp;
 
+	int64 audio_samples;
+	int64 audio_sample_sum_left;
+	int64 audio_sample_sum_right;
+	int   audio_sample_top_left;
+	int   audio_sample_top_right;
+	
+	int64 luma_hist[32];
 		
 	pthread_mutex_t format_context_mutex;
 	PACKET_STREAM *video_s;
@@ -86,14 +94,14 @@ void ffmpeg_preprocess_frame(V4L_DATA *data, FFMPEG_ENCODING_DATA *sdata,
 {
 switch(data->mode){
 	case MODE_SINGLE_FRAME:
-		convert_422_to_420p(sdata->width, sdata->height, sdata->width*2, f->buf, picture->data[0]);
+		convert_422_to_420p(sdata->width, sdata->height, sdata->width*2, f->buf, picture->data[0], sdata->luma_hist);
 		break;
 	case MODE_DEINTERLACE_BOB:
 	case MODE_DEINTERLACE_WEAVE:
-		deinterlace_422_bob_to_420p(sdata->width, sdata->height, sdata->width*2, f->buf, picture->data[0]);
+		deinterlace_422_bob_to_420p(sdata->width, sdata->height, sdata->width*2, f->buf, picture->data[0], sdata->luma_hist);
 		break;
 	case MODE_DEINTERLACE_HALF_WIDTH:
-		deinterlace_422_half_width_to_420p(sdata->width, sdata->height, sdata->width*2, f->buf, picture->data[0]);
+		deinterlace_422_half_width_to_420p(sdata->width, sdata->height, sdata->width*2, f->buf, picture->data[0], sdata->luma_hist);
 		break;
 	}
 }
@@ -210,6 +218,26 @@ s->consumer_thread_running=0;
 pthread_exit(NULL);
 }
 
+void ffmpeg_gather_audio_stats(PACKET *f)
+{
+signed short *p;
+signed short left,right;
+long i;
+if((f==NULL)||(sdata==NULL))return;
+p=(signed short *)f->buf;
+for(i=0;i<(f->free>>2);i++){
+	left=p[i<<1];
+	right=p[(i<<1)|1];
+	if(left<0)left=-left;
+	if(right<0)right=-right;
+	sdata->audio_sample_sum_left+=left;
+	sdata->audio_sample_sum_right+=right;
+	if(left>sdata->audio_sample_top_left)sdata->audio_sample_top_left=left;
+	if(right>sdata->audio_sample_top_right)sdata->audio_sample_top_right=right;
+	}
+sdata->audio_samples+=(f->free>>2);
+}
+
 void ffmpeg_audio_encoding_thread(PACKET_STREAM *s)
 {
 unsigned char *out_buf;
@@ -229,6 +257,7 @@ while(1){
 		}
 	pthread_mutex_unlock(&(s->ctr_mutex));
 	while((f!=NULL)&&((f->next!=NULL)||(s->stop_stream & STOP_PRODUCER_THREAD))){
+		ffmpeg_gather_audio_stats(f);
 		ob_free=avcodec_encode_audio(&(sdata->audio_codec_context), out_buf, ob_size, f->buf);	
 		if(ob_free>0){
 			sdata->encoded_stream_size+=ob_free; 
@@ -556,7 +585,7 @@ return 1;
 
 int ffmpeg_encode_v4l_stream(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
 {
-int k;
+int i,k;
 char *arg_filename;
 char *arg_step_frames;
 char *arg_av_format;
@@ -581,6 +610,12 @@ sdata=do_alloc(1, sizeof(FFMPEG_ENCODING_DATA));
 sdata->type=FFMPEG_CAPTURE_KEY;
 sdata->stop=0;
 sdata->encoded_stream_size=0;
+sdata->audio_samples=0;
+sdata->audio_sample_sum_left=0;
+sdata->audio_sample_sum_right=0;
+sdata->audio_sample_top_left=0;
+sdata->audio_sample_top_right=0;
+for(i=0;i<32;i++)sdata->luma_hist[i]=0;
 pthread_mutex_init(&(sdata->format_context_mutex), NULL);
 
 sdata->step_frames=0;
@@ -779,7 +814,11 @@ return TCL_OK;
 int ffmpeg_encoding_status(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
 {
 long total_fifo;
-Tcl_Obj *ans;
+int i;
+Tcl_Obj *ans, *list;
+int64 total;
+int a,b;
+
 Tcl_ResetResult(interp);
 if((sdata==NULL)||(sdata->type!=FFMPEG_CAPTURE_KEY)){
 	return TCL_OK;
@@ -831,7 +870,48 @@ Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj(sdata->frames_encoded));
 Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-encoded_stream_size", -1));
 Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj((long)((sdata->encoded_stream_size+((1<<20)-1))>>20))); /* convert to megabytes */
 
+if(sdata->audio_samples>0){
+	Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-avg_left_level", -1));
+	Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj((1000*(sdata->audio_sample_sum_left/sdata->audio_samples))/32768));
+
+	Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-avg_right_level", -1));
+	Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj((1000*(sdata->audio_sample_sum_right/sdata->audio_samples))/32768));
+	}
+
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-top_left_level", -1));
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj(((1000*sdata->audio_sample_top_left)/32768)));
+
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-top_right_level", -1));
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj(((1000*sdata->audio_sample_top_right)/32768)));
+
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-luma_hist", -1));
+
+list=Tcl_NewListObj(0, NULL);
+total=0;
+b=0;
+a=0;
+for(i=0;i<32;i++)total+=sdata->luma_hist[i];
+for(i=0;i<32;i++){
+	if(total>0)a=(1000*sdata->luma_hist[i])/total;
+	if(a>1000)a=1000;
+	if(a>b)b=a;
+	Tcl_ListObjAppendElement(interp, list, Tcl_NewIntObj(a));
+	}
+Tcl_ListObjAppendElement(interp, ans, list);
+
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-luma_top_hist", -1));
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj(b));
+
 Tcl_SetObjResult(interp, ans);
+
+sdata->audio_samples=0;
+sdata->audio_sample_sum_left=0;
+sdata->audio_sample_sum_right=0;
+sdata->audio_sample_top_left=0;
+sdata->audio_sample_top_right=0;
+for(i=0;i<32;i++)sdata->luma_hist[i]=0;
+
+
 if((sdata!=NULL)&&(sdata->audio_s==NULL)&&(sdata->video_s==NULL)){
 	pthread_mutex_lock(&(sdata->format_context_mutex));
 	if(sdata->format_context.format!=NULL)

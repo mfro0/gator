@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "global.h"
 #include "formats.h"
 
@@ -442,13 +443,13 @@ for(line=height-1;line>=0;line--){
 }
 
 /* this replicates Y */
-void deinterlace_422_bob_to_420p(long width, long height, long pitch, char *frame1, char *dest)
+void deinterlace_422_bob_to_420p(long width, long height, long pitch, char *frame1, char *dest, int64 *hist)
 {
 long line;
 long pixel;
 unsigned char *t1,*t2,*t3;
 unsigned char *s1;
-char y1,y2,v1,u1;
+unsigned char y1,y2,v1,u1;
 t1=dest;
 t2=dest+(width*height*2);
 t3=t2+(width*height*2)/4;
@@ -461,6 +462,10 @@ for(line=0;line<(height*2);line++){
 		v1=(*s1++);
 		(*t1++)=y1;
 		(*t1++)=y2;
+		if(hist!=NULL){
+			hist[y1>>3]++;
+			hist[y2>>3]++;
+			}
 		if(line & 1){
 			(*t3++)=v1;
 			} else {
@@ -471,7 +476,7 @@ for(line=0;line<(height*2);line++){
 }
 
 
-void deinterlace_422_half_width_to_420p(long width, long height, long pitch, char *frame1, char *dest)
+void deinterlace_422_half_width_to_420p(long width, long height, long pitch, char *frame1, char *dest, int64 *hist)
 {
 long line;
 long pixel;
@@ -494,6 +499,12 @@ for(line=0;line<height;line++){
 		v2=(*s1++);
 		(*t1++)=(y1+y2)>>1;
 		(*t1++)=(y3+y4)>>1;
+		if(hist!=NULL){
+			hist[y1>>3]++;
+			hist[y2>>3]++;
+			hist[y3>>3]++;
+			hist[y4>>3]++;
+			}
 		if(line & 1){
 			(*t3++)=(v1+v2)>>1;
 			} else {
@@ -504,13 +515,13 @@ for(line=0;line<height;line++){
 }
 
 /* this replicates discard U and V alternatively */
-void convert_422_to_420p(long width, long height, long pitch, char *frame1, char *dest)
+void convert_422_to_420p(long width, long height, long pitch, char *frame1, char *dest, int64 *hist)
 {
 long line;
 long pixel;
 unsigned char *t1,*t2,*t3;
 unsigned char *s1;
-char y1,y2,v1,u1;
+unsigned char y1,y2,v1,u1;
 t1=dest;
 t2=dest+(width*height);
 t3=t2+(width*height)/4;
@@ -523,6 +534,10 @@ for(line=0;line<height;line++){
 		v1=(*s1++);
 		(*t1++)=y1;
 		(*t1++)=y2;
+		if(hist!=NULL){
+			hist[y1>>3]++;
+			hist[y2>>3]++;
+			}
 		if(line & 1){
 			(*t3++)=v1;
 			} else {
