@@ -34,19 +34,20 @@
 
 	*** Pressed anywhere in AVview ***
 	
-	Control-F                toggles fullscreen
-	Keypad + or -  	         switches favorite channels
-	Control-Keypad + or -	 increases/decreases channel number
-	Control-i                switches between tuner/composite/svideo
-	Keypad *                 toggles mute
-	Arrow Up/Down            switches on-screen controls
-	Arrow Left/Right         adjusts on-screen control
-	Control-q or Escape      exits AVview
+	Control-F                toggle fullscreen
+	Keypad + or -  	         switch favorite channels
+	Control-Keypad + or -	 increas/decreases channel number
+	Control-i                switch between tuner/composite/svideo
+	Keypad *                 toggle mute
+	Arrow Up/Down            switch on-screen controls
+	Arrow Left/Right         adjust on-screen control
+	Control-q or Escape      exit AVview
 
 	*** Pressed in main window (with TV display) ***
 	
 	1-9,0, single letters    input channel name
-	Enter, Return		 switched to keyed in channel
+	Enter, Return		 switch to keyed in channel
 	Delete			 erase keyed in channel name and show 
 				 current channel
+	BackSpace		 erase last entered letter
 	
