@@ -1,7 +1,5 @@
 #!tclsh
 
-puts "This only works with km from CVS at the moment"
-
 proc get_km_status { km_control } {
 set file [open "$km_control" "w+"]
 puts $file "STATUS"
