@@ -87,7 +87,7 @@ SECOND_PASS:
 	  if(currentMode->flags &
 	     (DGA_PIXMAP_AVAILABLE | DGA_FILL_RECT |
 	      DGA_BLIT_RECT | DGA_BLIT_RECT_TRANS))
-	     currentMode->flags &= -DGA_CONCURRENT_ACCESS;
+	     currentMode->flags &= ~DGA_CONCURRENT_ACCESS;
 	}
 
 	if(pMode->Flags & V_DBLSCAN)
