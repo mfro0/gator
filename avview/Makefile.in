@@ -11,7 +11,7 @@ SRCS=xv.c frequencies.c xmisc.c string_cache.c v4l.c formats.c ffmpeg.c \
 	alsa.c packet_stream.c linux.c
 
 #LIBS=-lm -ldl $(X11LIBS) @FFMPEG_LIBS@
-LIBS=$(X11LIBS) @LIBS@ @FFMPEG_LIBS@
+LIBS=$(X11LIBS) @FFMPEG_LIBS@ @LIBS@ 
 
 TCLLIBS=-ltcl8.3
 TKLIBS=-ltk8.3
@@ -32,7 +32,7 @@ avview_shell: $(SRCS) main.c
 	@echo ""
 
 avview_shell.static: $(SRCS) main.c
-	$(CC) -static $(X11CFLAGS) @FFMPEG_CFLAGS@ $(SRCS) $(TCLLIBS) $(LIBS) main.c -lm -dl -o avview_shell.static
+	$(CC) -static $(X11CFLAGS) @FFMPEG_CFLAGS@ $(SRCS) $(TCLLIBS) $(LIBS) main.c -lm -ldl -lz -o avview_shell.static
 	strip avview_shell.static
 	
 write_test: write_test.c

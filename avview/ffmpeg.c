@@ -672,6 +672,9 @@ if(!strcasecmp("mpg", arg_av_format)){
 	} else
 if(!strcasecmp("mpeg", arg_av_format)){
 	sdata->format_context.oformat=guess_format("mpeg", NULL, NULL);
+	} else
+if(!strcasecmp("mov", arg_av_format)){
+	sdata->format_context.oformat=guess_format("mov", NULL, NULL);
 	}
 if(sdata->format_context.oformat!=NULL){
 	sdata->format_context.pb.write_packet=file_write;
@@ -681,8 +684,9 @@ if(sdata->format_context.oformat!=NULL){
 	sdata->format_context.pb.buf_ptr=sdata->format_context.pb.buffer;
 	sdata->format_context.pb.buf_end=sdata->format_context.pb.buffer+sdata->format_context.pb.buffer_size;
 	sdata->format_context.pb.opaque=sdata;
-	sdata->format_context.pb.packet_size=1;
+	sdata->format_context.pb.is_streamed=0;
 	sdata->format_context.pb.write_flag=1;
+	sdata->format_context.pb.max_packet_size=0;
 	sdata->format_context.oformat->flags=AVFMT_NOFILE;
 	sdata->format_context.flags=AVFMT_NOFILE;
 	strcpy(sdata->format_context.title, arg_filename);
@@ -957,7 +961,8 @@ void init_ffmpeg(Tcl_Interp *interp)
 long i;
 
 #if USE_FFMPEG
-register_all();
+av_register_all();
+avcodec_register_all();
 #endif
 
 for(i=0;ffmpeg_commands[i].name!=NULL;i++)
