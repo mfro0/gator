@@ -103,6 +103,7 @@ while(1){
 	/* wait for data to arrive */
 	sleep(1);
 	f=sdata->last;
+	fprintf(stderr,"frame_count=%d  stop=%d\n", sdata->frame_count, sdata->stop);
 	while((f!=NULL)&&(f->free==f->size)&&(f->prev!=NULL)){
 		free(f->data);
 		f=f->prev;
@@ -132,6 +133,8 @@ long status;
 FFMPEG_V4L_ENCODING_DATA *sdata;
 FFMPEG_INCOMING_FRAME *f;
 
+if(!(mask & TCL_READABLE))return;
+
 sdata=(FFMPEG_V4L_ENCODING_DATA *)data->priv;
 if((sdata==NULL)||(sdata->type!=FFMPEG_V4L_CAPTURE_KEY)){
 	fprintf(stderr,"INTERNAL ERROR: incorrect data->priv in ffmpeg_transfer_callback\n");
@@ -139,11 +142,8 @@ if((sdata==NULL)||(sdata->type!=FFMPEG_V4L_CAPTURE_KEY)){
 	return;
 	}
 f=sdata->first;
-if(f->free<f->size){
-	status=read(data->fd, f->data+f->free, f->size-f->free);
-	if(status<0)return;
-	f->free+=status;
-	} else { /* frame complete */
+if(f->free==f->size){
+	/* frame complete */
 	f=ffmpeg_allocate_frame(sdata->size);
 	f->next=sdata->first;
 	sdata->first->prev=f;
@@ -153,8 +153,11 @@ if(f->free<f->size){
 	pthread_mutex_unlock(&(sdata->incoming_wait));
 	pthread_mutex_lock(&(sdata->incoming_wait)); 
 	fprintf(stderr,"fifo size %ld\n", sdata->size*sdata->frame_count);
-	return;
 	}
+status=read(data->fd, f->data+f->free, f->size-f->free);
+fprintf(stderr,"status=%d\n", status);
+if(status<0)return;
+f->free+=status;
 }
 
 int ffmpeg_encode_v4l_stream(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])

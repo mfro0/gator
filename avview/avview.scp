@@ -607,12 +607,12 @@ if {[ffmpeg_present] == "yes"} {
 	grid $cw.codecl $cw.codecom
 	grid configure $cw.codecl -sticky nws
 	grid configure $cw.codecom -sticky news
-	button $cw.snapshotb -text "Snapshot" -command capture_snapshot
+	button $cw.snapshotb -text "Snapshot" -command capture_snapshot -state disabled
 	checkbutton $cw.recordb -text "Record" -variable v4l_capture_on \
 		-indicatoron false -state disabled
 	grid x $cw.snapshotb $cw.recordb -sticky ns -padx 5
 	} {
-	button $cw.snapshotb -text "Snapshot" -command capture_snapshot
+	button $cw.snapshotb -text "Snapshot" -command capture_snapshot -state disabled
 	grid x $cw.snapshotb
 	}
 rescan_v4l_devices
@@ -665,7 +665,10 @@ global v4l_capture_on
 if { "$current_v4l_device" == "none" } { 
 	v4l_close_device current_v4l_handle
 	set v4l_capture_on false
-	catch {$cw.recordb configure -state disabled}
+	catch {
+		$cw.recordb configure -state disabled
+		$cw.snapshotb configure -state disabled
+		}
 	return 
 	}
 set status "[v4l_open_device current_v4l_handle $current_v4l_device]"
@@ -673,6 +676,7 @@ if { "$status" != "" } {
 	set current_v4l_device "none"
 	}
 $cw.recordb configure -state normal
+$cw.snapshotb configure -state disabled
 update_v4l_window_info $cw
 }
 
