@@ -29,9 +29,7 @@ if test "$ALSA_PRESENT" = "no" ; then
 echo "** Avview requires ALSA version 0.9.x"
 fi
 
-echo -n "checking for video4linux... "
-AC_CHECK_HEADER(linux/videodex.h, ,echo "Avview requires video4linux support. You may want to upgrade to Linux 2.4.x."; exit)
-echo "present"
+AC_CHECK_HEADER(linux/videodev.h, ,echo "Avview requires video4linux support. You may want to upgrade to Linux 2.4.x."; exit)
 
 AC_CHECK_LIB([X11], [XCreateSimpleWindow],,,[$X_LIBS])
 AC_CHECK_LIB([Xext], [XInitExtension],,,[$X_LIBS])
