@@ -150,32 +150,34 @@ grid rowconfigure .controlwin 2 -weight 1
 #grid rowconfigure .controlwin 0 -weight 1
 grid .controlwin.alsamixer -column 2 -row 1 -rowspan 2 -sticky news -pady 2 
 
-trace variable show_control_window w "show_control_window_proc ; skip_args3"
-
-proc show_control_window_proc {} {
-global show_control_window
-if { $show_control_window } {
-	wm deiconify .controlwin
-	} {
-	if { "[winfo screen .controlwin]" != "[winfo screen . ]" } {
-		set ans [tk_dialog .controlwin.withdraw_question "Hide main control window ?" \
-			"The main control window is displayed on the monitor different from main viewer window. If you hide it you will only be able to restore it from the main viewer window. Perhaps you would prefer to iconify control window?" "" 0 "Iconify" "Hide" "Never mind" ]
-		update
-		switch "$ans" \
-			"0"  { wm iconify .controlwin ; set show_control_window 1} \
-			"1"  { wm withdraw .controlwin } \
-			"2"  { set show_control_window 1 }
-		} {
-		wm withdraw .controlwin
-		}
-	}
-} 
-
 update
 update idletasks
 
 xmisc_hidecursor .
 xmisc_hidecursor .video
+
+trace variable show_control_window w "show_control_window_proc ; skip_args3"
+
+proc show_control_window_proc {} {
+global show_control_window
+if { $show_control_window } {
+	after idle { wm deiconify .controlwin }
+	} {
+	if { "[winfo screen .controlwin]" != "[winfo screen . ]" } {
+		set ans [tk_dialog .controlwin.withdraw_question "Hide main control window ?" \
+			"The main control window is displayed on the monitor different from main viewer window. If you hide it you will only be able to restore it from the main viewer window. Perhaps you would prefer to iconify control window?" "" 0 "Iconify" "Hide" "Never mind" ]
+		update
+		update idletasks
+		switch "$ans" \
+			"0"  { after idle {wm iconify .controlwin ; set show_control_window 1 } } \
+			"1"  { after idle { wm withdraw .controlwin } } \
+			"2"  { set show_control_window 1 }
+		update
+		} {
+		after idle { wm withdraw .controlwin }
+		}
+	}
+} 
 
 proc hide_cursor_timer { window } {
 global hct_$window
@@ -513,6 +515,8 @@ menu .video_menu.channel_menu -type normal -tearoff false
 .video_menu add checkbutton -variable fullscreen_mode -label "Fullscreen"
 .video_menu add separator
 .video_menu add checkbutton -label "Show control window" -variable show_control_window
+.video_menu add separator
+.video_menu add command -label "Exit AVview" -command { save_settings; exit }
 .video_menu add separator
 .video_menu add command -label "Dismiss this menu"
 
