@@ -197,7 +197,7 @@ w=alpha<<24;
 for(j=0;j<pib->height;j++){
 	p=(long *)(pib->pixelPtr+j*pib->pitch);
 	for(i=0;i<pib->width;i++){
-		*p=((*p)&0xff000000)|w;
+		*p=((*p)&0x00ffffff)|w;
 		p++;
 		}
 	}
