@@ -22,6 +22,7 @@ if { [winfo exists $SETUP_MAIN] } {
 	update
 	update idletasks
 	raise $SETUP_MAIN
+	avview_set_icon $SETUP_MAIN "avview-control-16x16.ppm"
 	after idle {
 		global SETUP_MAIN
 		resize_frames

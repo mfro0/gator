@@ -56,6 +56,8 @@ foreach channel $CHANNEL_LIST {
 #	update idletasks
 	}
 reflect_favorite_channels
+update
+avview_set_icon .controlwin.channel_scan "avview-control-16x16.ppm"
 }
 
 proc do_scan {} {
