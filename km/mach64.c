@@ -101,12 +101,12 @@ a=readl(kms->reg_aperture+MACH64_CRTC_INT_CNTL);
 writel(a& ~(MACH64_CAPBUF0_INT_EN|MACH64_CAPBUF1_INT_EN), kms->reg_aperture+MACH64_CRTC_INT_CNTL);
 }
 
-static int mach64_setup_single_frame_buffer(KM_STRUCT *kms, bm_list_descriptor *dma_table, long offset, long free)
+static int mach64_setup_dma_table(KM_STRUCT *kms, bm_list_descriptor *dma_table, long offset, long free)
 {
 int i;
 long count;
 count=free;
-for(i=0;i<(kms->v4l_dvb.size/PAGE_SIZE);i++){
+for(i=0;i<(kms->dvb.size/PAGE_SIZE);i++){
 	dma_table[i].from_addr=offset+i*PAGE_SIZE;
 	if(count>PAGE_SIZE){
 		dma_table[i].command=PAGE_SIZE;
@@ -135,7 +135,7 @@ if(field){
 KM_DEBUG("buf=%d field=%d\n", buffer, field);
 kms->fi[buffer].timestamp_start=jiffies;
 mach64_wait_for_idle(kms);
-mach64_setup_single_frame_buffer(kms, (kms->dma_table[buffer]), offset, kms->v4l_free[buffer]);
+mach64_setup_dma_table(kms, (kms->dma_table[buffer]), offset, kms->v4l_free[buffer]);
 #if 0 
 /* no analog for mach64.. yet ? */
 /* wait for at least one available queue */

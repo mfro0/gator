@@ -111,12 +111,12 @@ a=readl(kms->reg_aperture+RAGE128_GEN_INT_CNTL);
 writel(a & ~((1<<16)|(1<<24)), kms->reg_aperture+RAGE128_GEN_INT_CNTL);
 }
 
-static int rage128_setup_single_frame_buffer(KM_STRUCT *kms, bm_list_descriptor *dma_table, long offset, long free)
+static int rage128_setup_dma_table(KM_STRUCT *kms, bm_list_descriptor *dma_table, long offset, long free)
 {
 int i;
 long count;
 count=free;
-for(i=0;i<(kms->v4l_dvb.size/PAGE_SIZE);i++){
+for(i=0;i<(kms->dvb.size/PAGE_SIZE);i++){
 	dma_table[i].from_addr=offset+i*PAGE_SIZE;
 	if(count>PAGE_SIZE){
 		dma_table[i].command=PAGE_SIZE | RAGE128_BM_FORCE_TO_PCI;
@@ -146,7 +146,7 @@ if(field){
 	}
 KM_DEBUG("buf=%d field=%d\n", buffer, field);
 kms->fi[buffer].timestamp_start=jiffies;
-rage128_setup_single_frame_buffer(kms, (kms->dma_table[buffer]), offset, kms->v4l_free[buffer]);
+rage128_setup_dma_table(kms, (kms->dma_table[buffer]), offset, kms->v4l_free[buffer]);
 rage128_wait_for_idle(kms);
 #if 0 
 /* no analog for rage128.. yet ? */

@@ -74,12 +74,12 @@ typedef struct S_KM_STRUCT {
 #if 0
 	SINGLE_FRAME frame_info[MAX_FRAME_BUFF_NUM];
 #endif
-	KM_DATA_VIRTUAL_BLOCK v4l_dvb_info;
+	KM_DATA_VIRTUAL_BLOCK dvb_info;
 	FIELD_INFO *fi;
 	long info_free;
 	int v4l_info_du;
 	
-	KM_DATA_VIRTUAL_BLOCK v4l_dvb;
+	KM_DATA_VIRTUAL_BLOCK dvb;
 	void *buffer[MAX_FRAME_BUFF_NUM];
 	long v4l_free[MAX_FRAME_BUFF_NUM];
 	int v4l_du;
@@ -100,10 +100,8 @@ typedef struct S_KM_STRUCT {
 	void (*get_window_parameters)(struct S_KM_STRUCT *kms, struct video_window *vwin);
 	void (*start_transfer)(struct S_KM_STRUCT *kms);
 	void (*stop_transfer)(struct S_KM_STRUCT *kms);
-	int (*allocate_v4l_dvb)(struct S_KM_STRUCT *kms, long size);
-	int (*deallocate_v4l_dvb)(struct S_KM_STRUCT *kms);
-	int (*allocate_single_frame_buffer)(struct S_KM_STRUCT *kms, SINGLE_FRAME *frame, long size);
-	void (*deallocate_single_frame_buffer)(struct S_KM_STRUCT *kms, SINGLE_FRAME *frame);
+	int (*allocate_dvb)(struct S_KM_STRUCT *kms, long size);
+	int (*deallocate_dvb)(struct S_KM_STRUCT *kms);
 	} KM_STRUCT;
 
 int acknowledge_dma(KM_STRUCT *kms);

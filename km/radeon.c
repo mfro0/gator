@@ -161,14 +161,14 @@ wmb();
 kms->capture_active=0;
 }
 
-static int radeon_setup_single_frame_buffer(KM_STRUCT *kms, bm_list_descriptor *dma_table, long offset, long free)
+static int radeon_setup_dma_table(KM_STRUCT *kms, bm_list_descriptor *dma_table, long offset, long free)
 {
 int i;
 long count;
 u32 mem_aperture;
 count=free;
 mem_aperture=pci_resource_start(kms->dev, 0);
-for(i=0;i<(kms->v4l_dvb.size/PAGE_SIZE);i++){
+for(i=0;i<(kms->dvb.size/PAGE_SIZE);i++){
 	dma_table[i].from_addr=offset+i*PAGE_SIZE;
 	if(count>PAGE_SIZE){
 		dma_table[i].command=PAGE_SIZE;
@@ -198,7 +198,7 @@ if(field){
 	}
 KM_DEBUG("buf=%d field=%d\n", buffer, field);
 kms->fi[buffer].timestamp_start=jiffies;
-radeon_setup_single_frame_buffer(kms, (kms->dma_table[buffer]), offset, kms->v4l_free[buffer]);
+radeon_setup_dma_table(kms, (kms->dma_table[buffer]), offset, kms->v4l_free[buffer]);
 wmb();
 /* wait for at least one available queue */
 do {

@@ -51,8 +51,8 @@ kms->get_window_parameters(kms, &(kms->vwin));
 buf_size=kms->vwin.width*kms->vwin.height*2;
 kms->buf_ptr=buf_size;
 
-if(kms->allocate_v4l_dvb!=NULL){
-	if(kms->allocate_v4l_dvb(kms, buf_size)<0){
+if(kms->allocate_dvb!=NULL){
+	if(kms->allocate_dvb(kms, buf_size)<0){
 		result=-ENOMEM;
 		goto fail;
 		}
@@ -78,8 +78,8 @@ KM_STRUCT *kms=(KM_STRUCT *)dev;
 spin_lock(&(kms->kms_lock));
 kms->stop_transfer(kms);
 kms->v4l_buf_read_from=-1; /* none */
-if(kms->deallocate_v4l_dvb!=NULL){
-	kms->deallocate_v4l_dvb(kms);
+if(kms->deallocate_dvb!=NULL){
+	kms->deallocate_dvb(kms);
 	kmd_signal_state_change(kms->kmd);
 	} else {
 }
