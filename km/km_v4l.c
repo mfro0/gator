@@ -34,15 +34,15 @@ kms->get_window_parameters(kms, &(kms->vwin));
 
 buf_size=kms->vwin.width*kms->vwin.height*2;
 
-deallocate_single_frame_buffer(kms, &(kms->frame));
-deallocate_single_frame_buffer(kms, &(kms->frame_even));
+kms->deallocate_single_frame_buffer(kms, &(kms->frame));
+kms->deallocate_single_frame_buffer(kms, &(kms->frame_even));
 
-if(allocate_single_frame_buffer(kms, &(kms->frame), buf_size)<0){
+if(kms->allocate_single_frame_buffer(kms, &(kms->frame), buf_size)<0){
 	result=-ENOMEM;
 	goto fail;
 	}
 
-if(allocate_single_frame_buffer(kms, &(kms->frame_even), buf_size)<0){
+if(kms->allocate_single_frame_buffer(kms, &(kms->frame_even), buf_size)<0){
 	result=-ENOMEM;
 	goto fail;
 	}
@@ -52,8 +52,8 @@ return 0;
 
 fail:
 
-  deallocate_single_frame_buffer(kms, &(kms->frame));
-  deallocate_single_frame_buffer(kms, &(kms->frame_even));
+  kms->deallocate_single_frame_buffer(kms, &(kms->frame));
+  kms->deallocate_single_frame_buffer(kms, &(kms->frame_even));
   return result;
 
 }
@@ -66,8 +66,8 @@ kms->stop_transfer(kms);
 kms->frame.buf_ptr=0;
 kms->frame_even.buf_ptr=0;
 kms->buf_read_from=-1; /* none */
-deallocate_single_frame_buffer(kms, &(kms->frame));
-deallocate_single_frame_buffer(kms, &(kms->frame_even));
+kms->deallocate_single_frame_buffer(kms, &(kms->frame));
+kms->deallocate_single_frame_buffer(kms, &(kms->frame_even));
 printk("km: total frames: %ld, overrun: %ld\n", kms->total_frames, kms->overrun);
 }
 

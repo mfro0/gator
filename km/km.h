@@ -39,9 +39,10 @@ typedef struct S_KM_STRUCT{
 	void (*get_window_parameters)(struct S_KM_STRUCT *kms, struct video_window *vwin);
 	void (*start_transfer)(struct S_KM_STRUCT *kms);
 	void (*stop_transfer)(struct S_KM_STRUCT *kms);
+	int (*allocate_single_frame_buffer)(struct S_KM_STRUCT *kms, SINGLE_FRAME *frame, long size);
+	void (*deallocate_single_frame_buffer)(struct S_KM_STRUCT *kms, SINGLE_FRAME *frame);
 	} KM_STRUCT;
 
-int allocate_single_frame_buffer(KM_STRUCT *kms, SINGLE_FRAME *frame, long size);
-void deallocate_single_frame_buffer(KM_STRUCT *kms, SINGLE_FRAME *frame);
+int acknowledge_dma(KM_STRUCT *kms);
 
 #endif
