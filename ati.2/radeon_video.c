@@ -534,10 +534,11 @@ static void RADEONSetTransform(  ScrnInfoPtr pScrn,
    #endif 
    
 	dwOvROff = ((INT32)(OvROff * 2.0)) & 0x1fff;
-	dwOvGOff = (INT32)(OvGOff * 2.0) & 0x1fff;
-	dwOvBOff = (INT32)(OvBOff * 2.0) & 0x1fff;
+	dwOvGOff = ((INT32)(OvGOff * 2.0)) & 0x1fff;
+	dwOvBOff = ((INT32)(OvBOff * 2.0)) & 0x1fff;
 	/* Whatever docs say about R200 having 3.8 format instead of 3.11
-	   as in Radeon is a lie */
+	   as in Radeon is a lie 
+	   Or more precisely the location of bit fields is a lie */
 	if(1 || !info->IsR200)
 	{
 		dwOvLuma =(((INT32)(OvLuma * 2048.0))&0x7fff)<<17;
