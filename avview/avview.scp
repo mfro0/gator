@@ -329,15 +329,12 @@ set current_table [lsearch -exact $TABLE_LIST "$current_table_name"]
 if { $current_table < 0 } { return }
 set CHANNEL_LIST [freq_get_channel_list $current_table]
 $current_channel_menu delete 0 end
-.video_menu.channel_menu delete 0 end
 foreach channel $CHANNEL_LIST {	
 	$current_channel_menu add radiobutton -label "$channel" -value "$channel" -variable current_channel
-	.video_menu.channel_menu add radiobutton -label "$channel" -value "$channel" -variable current_channel
-	}
+ 	}
 set num_channels [llength $CHANNEL_LIST]
 for {set i 16} { $i < $num_channels } {incr i 16 } {
 	$current_channel_menu entryconfigure $i -columnbreak 1
-	.video_menu.channel_menu entryconfigure $i -columnbreak 1
 	}
 reflect_favorite_channels
 }
@@ -349,7 +346,7 @@ if { $current_table < 0 } { return }
 set CHANNEL_LIST [freq_get_channel_list $current_table]
 global channel_freq
 set channel_freq [freq_get_channel_value $current_table [lsearch -exact $CHANNEL_LIST "$current_channel" ]]
-flash_message " Channel $current_channel "
+flash_message " [get_station_name $current_channel true] "
 update
 on_attribute_change XV_FREQ channel_freq a b
 vbi_new_channel primary
@@ -466,6 +463,7 @@ puts $fileid "set current_alsa_device1 \"$current_alsa_device\""
 puts $fileid ""
 save_v4l_capture $fileid
 puts $fileid ""
+save_station_names $fileid
 save_favorite_channels $fileid
 
 global fullscreen_mode
@@ -505,6 +503,7 @@ if { [file exists "~/.avview_state"] } {
 	}
 global avview_version current_port
 if { $avview_version != $saved_avview_version } {
+	convert_favorite_channels
 	wm deiconify .setup
 	update
 	update idletasks
@@ -522,6 +521,25 @@ if { $avview_version != $saved_avview_version } {
 	}
 global save_settings_on_exit
 if { $save_settings_on_exit == "unset" } { set save_settings_on_exit "true" }
+}
+
+proc convert_favorite_channels {} {
+global is_favorite_channel all_favorites
+
+catch {
+# Convert old style is_favorite_channel array to all_favorites array
+if { ![array exists is_favorite_channel] } { return }
+
+	set names [array names is_favorite_channel]
+	foreach id $names {
+		if { [set is_favorite_channel($id)] } {
+			regexp {(.+)_([0-9]+)_([0-9]+)} $id a b tableindex chindex
+			set CHANNEL_LIST [freq_get_channel_list $tableindex]
+			lappend all_favorites(${b}_${tableindex}) [lindex $CHANNEL_LIST $chindex]
+			reflect_favorite_channels
+			}
+	}
+}
 }
 
 proc exit_avview {} {
@@ -745,6 +763,7 @@ menu .video_menu -type normal -tearoff false
 menu .video_menu.size_menu -type normal -tearoff false
 menu .video_menu.aspect_menu -type normal -tearoff false
 menu .video_menu.channel_menu -type normal -tearoff false
+menu .video_menu.channel_menu.more_menu -type normal -tearoff false
 menu .video_menu.connector_menu -type normal -tearoff false
 menu .video_menu.cc_menu -type normal -tearoff false
 
@@ -789,6 +808,8 @@ for { set i 1 } { $i <= 8 } { incr i } {
 .video_menu.aspect_menu add radiobutton -label "Aspect ratio 3:4" -variable aspect_ratio -value [list 3 4]
 .video_menu.aspect_menu add radiobutton -label "Aspect ratio 16:9" -variable aspect_ratio -value [list 16 9]
 .video_menu.aspect_menu add radiobutton -label "Aspect ratio 9:16" -variable aspect_ratio -value [list 9 16]
+
+.video_menu.channel_menu add cascade -menu .video_menu.channel_menu.more_menu -label "More..."
 
 bind .video_menu <Unmap> {
 	grab release .video_menu

@@ -1,72 +1,254 @@
 #!avview_shell
 
+proc get_station_name {channel long_form} {
+global current_channel LOCATION_ID current_table station_names
+
+if { [info exists station_names(${LOCATION_ID}_${current_table}_${channel})] } {
+	return $station_names(${LOCATION_ID}_${current_table}_${channel})
+	} elseif { $long_form } {
+	return "Channel $channel"
+	} else {
+	return $channel
+	}
+}
+
+proc set_station_name {newname} {
+global current_channel LOCATION_ID current_table station_names 
+global all_favorites unselected_channels unselected_names 
+global favorite_names
+
+set station_names(${LOCATION_ID}_${current_table}_${current_channel}) $newname
+
+# Update favorite channel editor listboxes
+set i [lsearch -exact $all_favorites(${LOCATION_ID}_${current_table}) $current_channel]
+if {$i == -1} {
+	set i [lsearch -exact $unselected_channels $current_channel]
+	lset unselected_names $i $newname
+	} else {
+	lset favorite_names $i $newname
+	}
+reflect_favorite_channels
+}
+
+proc switch_channel_state {source_listbox_name source_list_name target_listbox_name target_list_name} {
+	upvar 1 $source_list_name source_list
+	upvar 1 $target_list_name target_list
+
+	set i [$source_listbox_name curselection]
+
+	if {$i != ""} {
+		set ch [lindex $source_list $i]
+
+		lappend target_list $ch
+		set source_list [lreplace $source_list $i $i]
+
+		eval $target_listbox_name insert end \
+		    {[$source_listbox_name get $i]}
+		eval $source_listbox_name delete $i
+
+		eval $target_listbox_name selection clear 0 end
+		eval $target_listbox_name selection set end
+		eval $target_listbox_name see end
+
+		reflect_favorite_channels
+	}
+}
+
+proc move_favorite {dir listboxname channellistname namelistname} {
+	upvar 1 $channellistname channels
+	upvar 1 $namelistname names
+
+	set i [$listboxname curselection]
+	set newindex [expr $i+$dir]
+
+	if {$i != "" && $newindex >= 0 && $newindex < [llength $channels]} {
+		set temp [lindex $channels $i]
+		lset channels $i [lindex $channels $newindex]
+		lset channels $newindex $temp
+
+		set temp [lindex $names $i]
+		lset names $i [lindex $names $newindex]
+		lset names $newindex $temp
+
+		eval $listboxname selection clear 0 end
+		eval $listboxname selection set $newindex
+		eval $listboxname see $newindex
+
+		reflect_favorite_channels
+	}
+}
+
+proc select_for_renaming {listboxname chlist} {
+	global current_station_name current_channel
+
+	set i [$listboxname curselection]
+
+	if {$i == ""} {
+		set current_station_name ""
+	} else {
+		set current_channel [lindex $chlist $i]
+		set current_station_name [$listboxname get $i]
+	}
+}
+
 proc scan_channels {} {
-global current_table VIDEO_WINDOW current_port current_channel LOCATION_ID
+global current_table current_port current_channel LOCATION_ID
+global favorite_names unselected_names unselected_channels 
+global all_favorites LOCATION_ID current_station_name
+
 if { "$current_table" == "none" } {
 	return
 	}
 set CHANNEL_LIST [freq_get_channel_list $current_table]
 set A .controlwin.channel_scan
-if { [winfo exists $A] } {
-	raise $A
-	foreach win [grid slaves $A] {
-		destroy $win
-		}	
-	} {
+if { ![winfo exists $A] } {
 	toplevel .controlwin.channel_scan
 	wm title .controlwin.channel_scan "Favorite channel editor"
 	eval $A configure [get_settings $A ChannelList]
-	}
-frame $A.ch_list
-eval $A.ch_list configure [get_settings $A.ch_list ChannelList]
-grid $A.ch_list - -padx 5 -pady 5
-scale $A.progress_scale -from 0 -to [llength $CHANNEL_LIST] -variable ch_scan_progress -orient horizontal \
-	-showvalue false
-eval $A.progress_scale configure [get_settings $A.progress_scale ChannelList]
-button $A.scan_now_button -text "Scan" -command do_scan -state disabled
+
+	# labels
+	label $A.channels_label -text "Channels"
+	grid $A.channels_label -column 0 -row 0 -sticky "s" -padx 2 -pady 2
+	label $A.favorite_label -text "Favorite channels"
+	grid $A.favorite_label -column 3 -row 0 -sticky "s" -padx 2 -pady 2
+	label $A.station_name_label -text "Station name"
+	grid $A.station_name_label -column 0 -row 6 -sticky "s" 
+
+	# listboxes
+	listbox $A.unselected_listbox -width 20 -height 15 \
+	    -listvariable unselected_names \
+	    -yscrollcommand {.controlwin.channel_scan.unselected_listbox_scrollbar set}
+	eval $A.unselected_listbox configure \
+	    [get_settings $A.unselected_listbox ChannelList]
+	grid $A.unselected_listbox -column 0 -row 1 -rowspan 5
+	listbox $A.favorite_listbox -width 20 -height 15 \
+	    -listvariable favorite_names \
+	    -yscrollcommand {.controlwin.channel_scan.favorite_listbox_scrollbar set}
+	eval $A.favorite_listbox configure \
+	    [get_settings $A.favorite_listbox ChannelList]
+	grid $A.favorite_listbox -column 3 -row 1 -rowspan 5
+
+	bind $A.unselected_listbox <<ListboxSelect>> {select_for_renaming %W $unselected_channels}
+	bind $A.favorite_listbox <<ListboxSelect>> {select_for_renaming %W $all_favorites(${LOCATION_ID}_${current_table})}
+
+	# scrollbars
+	scrollbar $A.unselected_listbox_scrollbar \
+	    -command {.controlwin.channel_scan.unselected_listbox yview}
+	eval $A.unselected_listbox_scrollbar configure \
+	    [get_settings $A.unselected_listbox_scrollbar ChannelList]
+	grid $A.unselected_listbox_scrollbar -column 1 -row 1 -rowspan 5 \
+	    -padx 1 -sticky "snw" 
+	scrollbar $A.favorite_listbox_scrollbar \
+	    -command {.controlwin.channel_scan.favorite_listbox yview}
+	eval $A.favorite_listbox_scrollbar configure \
+	    [get_settings $A.favorite_listbox_scrollbar ChannelList]
+	grid $A.favorite_listbox_scrollbar -column 4 -row 1 -rowspan 5 \
+	    -padx 1 -sticky "snw" 
+
+	# entries
+	entry $A.station_name_entry -width 20 \
+	    -textvariable current_station_name
+	eval $A.station_name_entry configure \
+	    [get_settings $A.station_name_entry ChannelList]
+	grid $A.station_name_entry -column 0 -row 7
+	bind $A.station_name_entry <Return> {set_station_name $current_station_name}
+
+	# buttons
+	button $A.add_to_favorites_button -text "-->" -width 5 \
+	    -command {switch_channel_state \
+			  ".controlwin.channel_scan.unselected_listbox" \
+			  "unselected_channels" \
+			  ".controlwin.channel_scan.favorite_listbox" \
+			  "all_favorites(${LOCATION_ID}_${current_table})"}
+	eval $A.add_to_favorites_button configure \
+	    [get_settings $A.add_to_favorites_button ChannelList]
+	grid $A.add_to_favorites_button -column 2 -row 1 \
+	    -padx 2 -pady 1 -sticky "s"
+	button $A.remove_from_favorites_button -text "<--" -width 5 \
+	    -command {switch_channel_state \
+			  ".controlwin.channel_scan.favorite_listbox" \
+			  "all_favorites(${LOCATION_ID}_${current_table})" \
+			  ".controlwin.channel_scan.unselected_listbox" \
+			  "unselected_channels"}
+	eval $A.remove_from_favorites_button configure \
+	    [get_settings $A.femove_from_favorites_button ChannelList]
+	grid $A.remove_from_favorites_button -column 2 -row 2 \
+	    -padx 2 -pady 1 -sticky "n"
+	button $A.favorite_up_button -text "Up" -width 5 \
+	    -command {move_favorite -1 \
+			  ".controlwin.channel_scan.favorite_listbox" \
+			  "all_favorites(${LOCATION_ID}_${current_table})" \
+			  "favorite_names"}
+	eval $A.favorite_up_button configure \
+	    [get_settings $A.favorite_up_button ChannelList]
+	grid $A.favorite_up_button -column 2 -row 4 \
+	    -padx 2 -pady 1 -sticky "s"
+	button $A.favorite_down_button -text "Down" -width 5 \
+	    -command {move_favorite 1 \
+			  ".controlwin.channel_scan.favorite_listbox" \
+			  "all_favorites(${LOCATION_ID}_${current_table})" \
+			  "favorite_names"}
+	eval $A.favorite_down_button configure \
+	    [get_settings $A.favorite_down_button ChannelList]
+	grid $A.favorite_down_button -column 2 -row 5 \
+	    -padx 2 -pady 1 -sticky "n"
+	button $A.rename_station_button -text "Rename" \
+	    -command {set_station_name $current_station_name}
+	eval $A.rename_station_button configure \
+	    [get_settings $A.rename_station_button ChannelList]
+	grid $A.rename_station_button -column 1 -row 7 -columnspan 2 \
+	    -padx 2 -pady 1
+	button $A.scan_button -text "Scan channels" \
+	    -command {do_scan}
+	eval $A.scan_button configure \
+	    [get_settings $A.channel_scan_button ChannelList]
+	grid $A.scan_button -column 3 -row 7 -padx 2 -pady 1
+
+	update
+	wm resizable $A false false
+	avview_set_icon .controlwin.channel_scan "avview-control-16x16.ppm"
+        }
+
 global tuner_status_index
 if { $tuner_status_index >= 0 } {
-	$A.scan_now_button configure -state normal
-	}
-eval $A.scan_now_button configure [get_settings $A.scan_now_button ChannelList]
-grid $A.progress_scale $A.scan_now_button -padx 2
-global ch_scan_progress
-set ch_scan_progress 0
+	$A.scan_button configure -state normal
+        } else {
+	$A.scan_button configure -state disabled
+        }
+	
+if { ![info exists all_favorites(${LOCATION_ID}_${current_table})] } {
+	set all_favorites(${LOCATION_ID}_${current_table}) {}
+        }
 
-set column 0
-set row 0
-foreach channel $CHANNEL_LIST {
-	checkbutton $A.ch_list.sel_${ch_scan_progress} -variable "is_favorite_channel(${LOCATION_ID}_${current_table}_${ch_scan_progress})"
-	radiobutton $A.ch_list.cch_${ch_scan_progress} -indicatoron false -text " [lindex $CHANNEL_LIST $ch_scan_progress] " \
-		-value "[lindex $CHANNEL_LIST $ch_scan_progress]" -variable current_channel
-	eval $A.ch_list.sel_${ch_scan_progress} configure [get_settings $A.ch_list.sel_${ch_scan_progress} ChannelList $row $column $ch_scan_progress]
-	eval $A.ch_list.cch_${ch_scan_progress} configure [get_settings $A.ch_list.cch_${ch_scan_progress} ChannelList $row [expr $column+1] $ch_scan_progress]
-	grid $A.ch_list.sel_${ch_scan_progress} -row $row -column $column -sticky news
-	grid $A.ch_list.cch_${ch_scan_progress} -row $row -column [expr $column+1] -sticky news
-	incr row
-	if { $row >= 15 } {
-		incr column 2
-		set row 0
-		}
-	incr ch_scan_progress
-#	update
-#	update idletasks
+# Construct auxiliary list of unselected (= non-favorite) channels and
+# lists of favorite and unselected channels names. These are used in
+# channel editor to keep track of order of the channels.
+set favorite_channels $all_favorites(${LOCATION_ID}_${current_table})
+set favorite_names {}
+foreach ch $favorite_channels {
+	lappend favorite_names [get_station_name $ch false]
+        }
+
+set unselected_names {}
+set unselected_channels {}
+foreach ch $CHANNEL_LIST {
+	if {[lsearch -exact $favorite_channels $ch] == -1} {
+		lappend unselected_channels $ch
+		lappend unselected_names [get_station_name $ch false]
+	        }
 	}
-reflect_favorite_channels
-update
-avview_set_icon .controlwin.channel_scan "avview-control-16x16.ppm"
 }
 
 proc do_scan {} {
-global current_table
-global VIDEO_WINDOW 
-global current_port
-global current_channel
-global ch_scan_progress
-set ch_scan_progress 0
+global current_table VIDEO_WINDOW current_port current_channel 
+global all_favorites LOCATION_ID favorite_names 
+global unselected_channels unselected_names
 set prev_channel $current_channel
-set A .controlwin.channel_scan
 set CHANNEL_LIST [freq_get_channel_list $current_table]
+set all_favorites(${LOCATION_ID}_${current_table}) {}
+set favorite_names {}
+set unselected_channels {}
+set unselected_names {}
 foreach channel $CHANNEL_LIST {
 	set current_channel "$channel"
 	after 100
@@ -82,40 +264,100 @@ foreach channel $CHANNEL_LIST {
 			}
 		}
 	if { $AFC == 4 } {
-		$A.ch_list.sel_${ch_scan_progress} deselect
+		lappend unselected_channels $channel
+		lappend unselected_names [get_station_name $channel false]
 		} {
-		$A.ch_list.sel_${ch_scan_progress} select
+		lappend all_favorites(${LOCATION_ID}_${current_table}) $channel
+		lappend favorite_names [get_station_name $channel false]
 		}
-	incr ch_scan_progress
 	update
 	update idletasks
 	}
+reflect_favorite_channels
 set current_channel $prev_channel
+tk_dialog .controlwin.channel_scan.notice "Scan completed" "Channel scan completed!" {} 0 "OK"
+}
+
+proc save_station_names {fileid} {
+global station_names
+puts $fileid "#\n# Station names\n#"
+puts $fileid "global station_names"
+if { [array exists station_names] } {
+	puts $fileid "array set station_names \[list [array get station_names]\]"	
+	}
+puts $fileid "#\n# End of station names\n#"
 }
 
 proc save_favorite_channels {fileid} {
-global is_favorite_channel
+global all_favorites
 puts $fileid "#\n# Favorite channel settings\n#"
-puts $fileid "global is_favorite_channel"
-if { [array exists is_favorite_channel] } {
-	puts $fileid "array set is_favorite_channel \[list [array get is_favorite_channel]\]"	
+puts $fileid "global all_favorites"
+if { [array exists all_favorites] } {
+	puts $fileid "array set all_favorites \[list [array get all_favorites]\]"	
 	}
 puts $fileid "reflect_favorite_channels"
 puts $fileid "#\n# End of favorite channel settings\n#"
 }
 
 proc reflect_favorite_channels {} {
-global current_channel_menu current_port current_table is_favorite_channel LOCATION_ID
-set num_entries [$current_channel_menu index end]
-for { set i 0 } { $i < $num_entries} { incr i } {
-	$current_channel_menu entryconfigure $i -foreground #505050
-	.video_menu.channel_menu entryconfigure $i -foreground #505050
-	catch {
-		if { [set is_favorite_channel(${LOCATION_ID}_${current_table}_$i)] } {
-			$current_channel_menu entryconfigure $i -foreground black
-			.video_menu.channel_menu entryconfigure $i -foreground black
-			}
+global current_table all_favorites LOCATION_ID station_names
+
+.video_menu.channel_menu delete 0 end
+.video_menu.channel_menu.more_menu delete 0 end
+if {$current_table < 0} { return }
+
+set channelmenuindex 0
+set moremenuindex -1
+set CHANNEL_LIST [freq_get_channel_list $current_table]
+if { [info exists all_favorites(${LOCATION_ID}_${current_table})] && \
+	 [llength $all_favorites(${LOCATION_ID}_${current_table})] > 0 } {
+	set favorites $all_favorites(${LOCATION_ID}_${current_table})
+	set menu1 ".video_menu.channel_menu"
+	set menu2 ".video_menu.channel_menu.more_menu"
+	} else {
+	# If there are no favorite channels populate only one menu
+	set favorites {}
+	set menu1 ".video_menu.channel_menu"
+	set menu2 ".video_menu.channel_menu"
+	}
+
+# Add favorites (in correct order)
+set i 0
+foreach ch $favorites {
+	set menulabel [get_station_name $ch false]
+	set menucommand "set current_channel $ch"
+	if {[expr $i % 16] == 0} {
+		set colbreak 1
+		} else {
+		set colbreak 0
 		}
+
+
+	$menu1 add command -label $menulabel \
+	    -command $menucommand -columnbreak $colbreak
+	incr i
+	}
+
+# Add non-favorites
+set i 0
+foreach ch $CHANNEL_LIST {
+	if {[lsearch -exact $favorites $ch] < 0} {
+		set menulabel [get_station_name $ch false]
+		set menucommand "set current_channel $ch"
+		if {[expr $i % 16] == 0} {
+			set colbreak 1
+			} else {
+			set colbreak 0
+			}
+
+		$menu2 add command -label $menulabel \
+		    -command $menucommand -columnbreak $colbreak
+		incr i
+	}
+}
+
+if {$menu1 != $menu2} {
+	.video_menu.channel_menu add cascade -menu .video_menu.channel_menu.more_menu -label "More..."
 	}
 }
 
@@ -155,22 +397,26 @@ return $connector
 }
 
 proc find_first_favorite_channel {start_with dir} {
-global current_channel_menu current_port current_table is_favorite_channel LOCATION_ID
+global current_port all_favorites LOCATION_ID current_table CHANNEL_LIST
+
 if { $current_port == "none" } { return "none" }
-set CHANNEL_LIST [freq_get_channel_list $current_table]
-set answer [lindex $CHANNEL_LIST [expr $start_with+$dir]]
-if {$answer == "" } { set answer [lindex $CHANNEL_LIST 0] }
-set num_entries [$current_channel_menu index end]
-catch {
-	for { set i [expr $start_with+$dir] } { $i != $start_with } { incr i $dir} {
-		if { $i >= $num_entries } { set i 0 }
-		if { $i < 0 } { set i [expr $num_entries - 1] }
-		if { [set is_favorite_channel(${LOCATION_ID}_${current_table}_$i)] } {
-			set answer [lindex $CHANNEL_LIST $i]
-			break;
-			}
-		if { $dir == 0 } { break }
-		}
+if { [info exists all_favorites(${LOCATION_ID}_${current_table})] } {
+	set channels $all_favorites(${LOCATION_ID}_${current_table})
+	} else {
+	set channels [freq_get_channel_list $current_table]
 	}
-return $answer
+
+set start_index [lsearch $channels $start_with]
+if {$start_index == -1} {
+	set answer [lindex $channels 0]
+	} else {
+	set newindex [expr ($start_index+$dir)%[llength $channels]]
+	set answer [lindex $channels $newindex]
+	}
+
+if {$answer == ""} {
+	return "none"
+	} else {
+	return $answer
+	}
 }
