@@ -21,8 +21,8 @@ puts "$r"
 proc find_km_device { location_id } {
 puts "Looking for km device that corresponds to $location_id"
 if { ! [file exists /proc/km ] } {
-	global km_warning
-	if { [info exists km_warning ] } { return }
+	global km_warning warn_about_missing_km
+	if { !$warn_about_missing_km || [info exists km_warning ] } { return }
 	tk_dialog .controlwin.b "KM is not loaded" "It does not appear that KM driver has been loaded.\nThis driver is required for snapshot and video capture and for closed captioning.\nSee README for more details\n" "" 0 "Acknowledged"
 	set km_warning 1
 	return
