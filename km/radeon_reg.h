@@ -19,6 +19,29 @@
 #define RADEON_DMA_GUI_STATUS    0x790
 #define RADEON_DMA_GUI_TABLE_ADDR 0x780
 
+#define BM_FRAME_BUF_OFFSET                        0x0a00
+#define BM_SYSTEM_MEM_ADDR                         0x0a04
+#define BM_COMMAND                                 0x0a08
+#define BM_STATUS                                  0x0a0c
+#define BM_QUEUE_STATUS                            0x0a10
+#define BM_QUEUE_FREE_STATUS                       0x0A14
+#define BM_CHUNK_0_VAL                             0x0a18
+#define BM_CHUNK_1_VAL                             0x0a1C
+#define BM_VIP0_BUF                                0x0A20
+#define BM_VIP0_ACTIVE                             0x0A24
+#define BM_VIP1_BUF                                0x0A30
+#define BM_VIP1_ACTIVE                             0x0A34
+#define BM_VIP2_BUF                                0x0A40
+#define BM_VIP2_ACTIVE                             0x0A44
+#define BM_VIP3_BUF                                0x0A50
+#define BM_VIP3_ACTIVE                             0x0A54
+#define BM_VIDCAP_BUF0                             0x0a60
+#define BM_VIDCAP_BUF1                             0x0a64
+#define BM_VIDCAP_BUF2                             0x0a68
+#define BM_VIDCAP_ACTIVE                           0x0a6c
+#define BM_GUI                                     0x0a80
+
+
 #define RADEON_DMA_GUI_COMMAND__BYTE_COUNT_MASK                   0x001fffff
 #define RADEON_DMA_GUI_COMMAND__INTDIS                            0x40000000
 #define RADEON_DMA_GUI_COMMAND__EOL                               0x80000000

@@ -1,36 +1,48 @@
 #ifndef __RAGE128_REG_H__
 #define __RAGE128_REG_H__
 
-#define RAGE128_FIFO_STAT	(0xC4*4+1024)
-#define RAGE128_GUI_STAT		(0xCE*4+1024)
+#define RAGE128_GEN_INT_STATUS 0x44
+#define RAGE128_GEN_INT_CNTL   0x40
+#define RAGE128_CAP_INT_CNTL   0x908
+#define RAGE128_CAP_INT_STATUS 0x90C
 
-#define RAGE128_CRTC_INT_CNTL (0x06*4+1024)
+#define RAGE128_CAP0_BUF0_OFFSET 	0x920
+#define RAGE128_CAP0_BUF1_OFFSET 	0x924
+#define RAGE128_CAP0_BUF0_EVEN_OFFSET 	0x928
+#define RAGE128_CAP0_BUF1_EVEN_OFFSET 	0x92C
 
-#define RAGE128_CAPBUF0_INT_EN  (1<<16)
-#define RAGE128_CAPBUF0_INT_ACK (1<<17)
-#define RAGE128_CAPBUF1_INT_EN  (1<<18)
-#define RAGE128_CAPBUF1_INT_ACK (1<<19)
-#define RAGE128_BUSMASTER_INT_EN  (1<<24)
-#define RAGE128_BUSMASTER_INT_ACK (1<<25)
-#define RAGE128_ACKS_MASK        ((1<<2)|(1<<4)|(1<<8)|(1<<10)|(1<<17)|(1<<19)|(1<<21)|(1<<23)|(1<<25)|(1<<31))
+#define RAGE128_CAP0_BUF_PITCH		0x930
+#define RAGE128_CAP0_V_WINDOW		0x934
 
+#define RAGE128_CAP0_CONFIG		0x958
 
-#define RAGE128_CAP0_BUF0_OFFSET 	(0x20*4)
-#define RAGE128_CAP0_BUF0_EVEN_OFFSET 	(0x21*4)
+#define RAGE128_BM_FRAME_BUF_OFFSET                        0xA00
+#define RAGE128_BM_SYSTEM_MEM_ADDR                         0xA04
+#define RAGE128_BM_COMMAND                                 0xA08
+#define RAGE128_BM_STATUS                                  0xA0c
+#define RAGE128_BM_QUEUE_STATUS                            0xA10
+#define RAGE128_BM_QUEUE_FREE_STATUS                       0xA14
+#define RAGE128_BM_CHUNK_0_VAL                             0xA18
+#define RAGE128_BM_CHUNK_1_VAL                             0xA1C
+#define RAGE128_BM_VIP0_BUF                                0xA20
+#define RAGE128_BM_VIP0_ACTIVE                             0xA24
+#define RAGE128_BM_VIP1_BUF                                0xA30
+#define RAGE128_BM_VIP1_ACTIVE                             0xA34
+#define RAGE128_BM_VIP2_BUF                                0xA40
+#define RAGE128_BM_VIP2_ACTIVE                             0xA44
+#define RAGE128_BM_VIP3_BUF                                0xA50
+#define RAGE128_BM_VIP3_ACTIVE                             0xA54
+#define RAGE128_BM_VIDCAP_BUF0                             0xA60
+#define RAGE128_BM_VIDCAP_BUF1                             0xA64
+#define RAGE128_BM_VIDCAP_BUF2                             0xA68
+#define RAGE128_BM_VIDCAP_ACTIVE                           0xA6c
+#define RAGE128_BM_GUI                                     0xA80
 
-#define RAGE128_CAP0_X_WIDTH		(0x11*4)
-#define RAGE128_CAP0_START_END		(0x10*4)
-
-#define RAGE128_CAP0_CONFIG		(0x14*4)
-
-#define RAGE128_BM_STATUS    		(0x63*4)
-#define RAGE128_BM_SYSTEM_TABLE   	(0x6f*4)
 #define RAGE128_SYSTEM_TRIGGER_SYSTEM_TO_VIDEO 	0x0
 #define RAGE128_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM	0x1
-#define RAGE128_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM_AFTER_BUF0_READY	0x2
-#define RAGE128_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM_AFTER_BUF1_READY	0x3
-#define RAGE128_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM_AFTER_SNAPSHOT_READY	0x4
 
+#define RAGE128_GUI_STAT                                   0x1740
+#define RAGE128_ENGINE_ACTIVE				   (1<<31)
 
 #define RAGE128_DMA_GUI_COMMAND__BYTE_COUNT_MASK                   0x001fffff
 #define RAGE128_DMA_GUI_COMMAND__INTDIS                            0x40000000

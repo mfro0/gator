@@ -19,8 +19,8 @@ void rage128_wait_for_fifo(KM_STRUCT *kms, int entries)
 {
 long count;
 u32 a;
-count=1000;
-while(((a=readl(kms->reg_aperture+RAGE128_FIFO_STAT))&0xFFFF)>((u32)(0x8000>>entries))){
+count=10000;
+while(((a=readl(kms->reg_aperture+RAGE128_GUI_STAT))&0xFFF)<entries){
 	udelay(1);
 	count--;
 	if(count<0){
@@ -34,9 +34,9 @@ void rage128_wait_for_idle(KM_STRUCT *kms)
 {
 u32 a;
 long count;
-rage128_wait_for_fifo(kms,16);
+rage128_wait_for_fifo(kms,64);
 count=1000;
-while(((a=readl(kms->reg_aperture+RAGE128_GUI_STAT)) & 0x1)!=0){
+while(((a=readl(kms->reg_aperture+RAGE128_GUI_STAT)) & RAGE128_ENGINE_ACTIVE)!=0){
 	udelay(1);
 	count--;
 	if(count<0){
@@ -44,6 +44,8 @@ while(((a=readl(kms->reg_aperture+RAGE128_GUI_STAT)) & 0x1)!=0){
 		return;
 		}
 	}
+/* according to docs we should do FlushPixelCache here. However we don't really
+read back framebuffer data, so no need */
 }
 
 int rage128_is_capture_active(KM_STRUCT *kms)
@@ -56,9 +58,9 @@ void rage128_get_window_parameters(KM_STRUCT *kms, struct video_window *vwin)
 u32 a;
 vwin->x=0;
 vwin->y=0;
-a=readl(kms->reg_aperture+RAGE128_CAP0_X_WIDTH);
-vwin->width=(a>>16)/2;
-a=readl(kms->reg_aperture+RAGE128_CAP0_START_END);
+a=readl(kms->reg_aperture+RAGE128_CAP0_BUF_PITCH);
+vwin->width=a/2;
+a=readl(kms->reg_aperture+RAGE128_CAP0_V_WINDOW);
 vwin->height=(((a>>16)& 0xffff)-(a & 0xffff))+1;
 printk("rage128_get_window_parameters: width=%d height=%d\n", vwin->width, vwin->height);
 }
@@ -67,17 +69,26 @@ void rage128_start_transfer(KM_STRUCT *kms)
 {
 u32 a;
 
-a=readl(kms->reg_aperture+RAGE128_CRTC_INT_CNTL);
-writel(a|RAGE128_CAPBUF0_INT_ACK|RAGE128_CAPBUF1_INT_ACK, kms->reg_aperture+RAGE128_CRTC_INT_CNTL);
-writel(a|RAGE128_CAPBUF0_INT_EN|RAGE128_CAPBUF1_INT_EN, kms->reg_aperture+RAGE128_CRTC_INT_CNTL);
+writel(3, kms->reg_aperture+RAGE128_CAP_INT_STATUS);
+writel(1<<8, kms->reg_aperture+RAGE128_GEN_INT_STATUS);
+a=readl(kms->reg_aperture+RAGE128_CAP_INT_CNTL);
+writel(a|3, kms->reg_aperture+RAGE128_CAP_INT_CNTL);
+#if 0
+a=readl(kms->reg_aperture+RAGE128_GEN_INT_CNTL);
+writel(a|(1<<30), kms->reg_aperture+RAGE128_GEN_INT_CNTL);
+#endif
 }
 
 void rage128_stop_transfer(KM_STRUCT *kms)
 {
 u32 a;
 
-a=readl(kms->reg_aperture+RAGE128_CRTC_INT_CNTL);
-writel(a& ~(RAGE128_CAPBUF0_INT_EN|RAGE128_CAPBUF1_INT_EN), kms->reg_aperture+RAGE128_CRTC_INT_CNTL);
+a=readl(kms->reg_aperture+RAGE128_CAP_INT_CNTL);
+writel(a & ~3, kms->reg_aperture+RAGE128_CAP_INT_CNTL);
+#if 0
+a=readl(kms->reg_aperture+RAGE128_GEN_INT_CNTL);
+writel(a & ~(1<<30), kms->reg_aperture+RAGE128_GEN_INT_CNTL);
+#endif
 }
 
 static int rage128_setup_single_frame_buffer(KM_STRUCT *kms, SINGLE_FRAME *frame, long offset)
@@ -122,7 +133,7 @@ if(kms->frame.buf_ptr!=kms->frame.buf_free){
 kms->total_frames++;
 kms->frame.dma_active=1;
 writel(kvirt_to_pa(kms->frame.dma_table)|RAGE128_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM, 
-	kms->reg_aperture+RAGE128_BM_SYSTEM_TABLE);
+	kms->reg_aperture+RAGE128_BM_VIP0_BUF);
 printk("start_frame_transfer_buf0\n");
 }
 
@@ -151,19 +162,22 @@ if(kms->frame_even.buf_ptr!=kms->frame_even.buf_free){
 kms->total_frames++;
 kms->frame_even.dma_active=1;
 writel(kvirt_to_pa(kms->frame_even.dma_table)|RAGE128_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM, 
-	kms->reg_aperture+RAGE128_BM_SYSTEM_TABLE);
+	kms->reg_aperture+RAGE128_BM_VIP0_BUF);
 printk("start_frame_transfer_buf0_even\n");
 }
 
 static int rage128_is_capture_irq_active(KM_STRUCT *kms)
 {
-long status;
-status=readl(kms->reg_aperture+RAGE128_CRTC_INT_CNTL);
-if(!(status & (RAGE128_CAPBUF0_INT_ACK|RAGE128_CAPBUF1_INT_ACK)))return 0;
-writel((status | RAGE128_CAPBUF0_INT_ACK|RAGE128_CAPBUF1_INT_ACK) & ~(RAGE128_ACKS_MASK & ~(RAGE128_CAPBUF0_INT_ACK|RAGE128_CAPBUF1_INT_ACK))  , kms->reg_aperture+RAGE128_CRTC_INT_CNTL);
+long status, mask;
+status=readl(kms->reg_aperture+RAGE128_GEN_INT_STATUS);
+if(!(status & (1<<8)))return 0;
+status=readl(kms->reg_aperture+RAGE128_CAP_INT_STATUS);
+mask=readl(kms->reg_aperture+RAGE128_CAP_INT_CNTL);
+if(!(status & mask))return 0;
+writel(status & mask, kms->reg_aperture+RAGE128_CAP_INT_STATUS);
 printk("CAP_INT_STATUS=0x%08x\n", status);
-if(status & RAGE128_CAPBUF0_INT_ACK)rage128_start_frame_transfer_buf0(kms);
-if(status & RAGE128_CAPBUF1_INT_ACK)rage128_start_frame_transfer_buf0_even(kms); 
+if(status & 1)rage128_start_frame_transfer_buf0(kms);
+if(status & 2)rage128_start_frame_transfer_buf0_even(kms); 
 return 1;
 }
 
@@ -181,20 +195,20 @@ count=10000;
 
 while(1){
 	printk("beep %ld\n", kms->interrupt_count);
-	count--;
-	if(count<0){
-		printk(KERN_ERR "Kmultimedia: IRQ %d locked up, disabling interrupts in the hardware\n", irq);
-		writel(0, kms->reg_aperture+RAGE128_CRTC_INT_CNTL);
-		}
 	if(!rage128_is_capture_irq_active(kms)){
-		status=readl(kms->reg_aperture+RAGE128_CRTC_INT_CNTL);
-		if(!(status & RAGE128_BUSMASTER_INT_ACK))return;
-		acknowledge_dma(kms);
-		writel((status|RAGE128_BUSMASTER_INT_ACK) & ~(RAGE128_ACKS_MASK & ~RAGE128_BUSMASTER_INT_ACK), kms->reg_aperture+RAGE128_CRTC_INT_CNTL);
+		status=readl(kms->reg_aperture+RAGE128_GEN_INT_STATUS);
+		mask=readl(kms->reg_aperture+RAGE128_GEN_INT_CNTL);
+		if(!(status & mask))return;
+		if(status & (1<<30))acknowledge_dma(kms);
+		writel(status & mask, kms->reg_aperture+RAGE128_GEN_INT_STATUS);
+		count--;
+		if(count<0){
+			printk(KERN_ERR "Kmultimedia: IRQ %d locked up, disabling interrupts in the hardware\n", irq);
+			writel(0, kms->reg_aperture+RAGE128_GEN_INT_STATUS);
+			}
 		}
 	}
 }
-
 
 int rage128_allocate_single_frame_buffer(KM_STRUCT *kms, SINGLE_FRAME *frame, long size)
 {
