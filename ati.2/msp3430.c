@@ -270,6 +270,14 @@ void MSP3430SetVolume (MSP3430Ptr m, CARD8 value)
 }
 
 
+void MSP3430SetSAP (MSP3430Ptr m, int mode)
+{
+	xf86DrvMsg(m->d.pI2CBus->scrnIndex, X_INFO, "Put actual code to change SAP here\n");
+
+      SetMSP3430Data(m, WR_DSP, 0x00, 0x08, mode & 0xff, 0x20); 
+}
+
+
 #if 0
 void MSP3430SetSource(MSP3430Ptr m, CARD8 value)
 {

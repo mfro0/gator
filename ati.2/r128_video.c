@@ -63,7 +63,7 @@ static void R128VideoTimerCallback(ScrnInfoPtr pScrn, Time now);
 
 static Atom xvBrightness, xvColorKey, xvSaturation, xvColor, xvDoubleBuffer, 
           xvEncoding, xvVolume, xvMute, xvFrequency, xvContrast, xvHue,
-	  xv_autopaint_colorkey, xv_set_defaults, xvTunerStatus;
+	  xv_autopaint_colorkey, xv_set_defaults, xvTunerStatus, xvSAP;
 
 typedef struct
 {
@@ -113,6 +113,7 @@ typedef struct _R128PortPrivRec {
    CARD32        frequency;
    int           volume;
    Bool		 mute;
+   int		 sap_channel;
    int           v;
    int           ecp_div;
    
@@ -222,7 +223,7 @@ static XF86VideoFormatRec Formats[NUM_FORMATS] =
 };
 
 
-#define NUM_ATTRIBUTES 14
+#define NUM_ATTRIBUTES 15
 
 static XF86AttributeRec Attributes[NUM_ATTRIBUTES+1] =
 {
@@ -239,6 +240,7 @@ static XF86AttributeRec Attributes[NUM_ATTRIBUTES+1] =
    {XvSettable | XvGettable, -1000, 1000, "XV_COLOR"},
    {XvSettable | XvGettable, -1000, 1000, "XV_HUE"},
    {XvSettable | XvGettable, 0, 1, "XV_MUTE"},
+   {XvSettable | XvGettable, 0, 1, "XV_SAP" },
    {XvSettable | XvGettable, 0x01, 0x7F, "XV_VOLUME"},
    { 0, 0, 0, NULL}  /* just a place holder so I don't have to be fancy with commas */
 };
@@ -371,6 +373,7 @@ R128ResetVideo(ScrnInfoPtr pScrn)
     xvFrequency    = MAKE_ATOM("XV_FREQ");
     xvVolume       = MAKE_ATOM("XV_VOLUME");
     xvMute         = MAKE_ATOM("XV_MUTE");
+    xvSAP          = MAKE_ATOM("XV_SAP");
     xvHue          = MAKE_ATOM("XV_HUE");
     xv_autopaint_colorkey = MAKE_ATOM("XV_AUTOPAINT_COLORKEY");
     xv_set_defaults = MAKE_ATOM("XV_SET_DEFAULTS");
@@ -1357,7 +1360,7 @@ R128SetupImageVideo(ScreenPtr pScreen)
 	       else 
        if((pPriv->theatre!=NULL)||(pPriv->bt829!=NULL))
 	       adapt->nAttributes = NUM_ATTRIBUTES-1;
-	       else adapt->nAttributes =  NUM_ATTRIBUTES-2;
+	       else adapt->nAttributes =  NUM_ATTRIBUTES-3;
        adapt->pAttributes = Attributes;
        adapt->nImages = NUM_IMAGES;
        adapt->pImages = Images;
@@ -1573,6 +1576,7 @@ R128SetPortAttribute(
         R128SetPortAttribute(pScrn, xvHue,   0, data);
         R128SetPortAttribute(pScrn, xvVolume,   0, data);
         R128SetPortAttribute(pScrn, xvMute,   1, data);
+        R128SetPortAttribute(pScrn, xvSAP,   0, data);
         R128SetPortAttribute(pScrn, xvDoubleBuffer,   0, data);
   } else
   if(attribute == xvBrightness) {
@@ -1649,6 +1653,11 @@ R128SetPortAttribute(
         R128MuteAudio(pPriv, pPriv->mute);
         if(pPriv->i2c!=NULL) R128_board_setmisc(pPriv);
   } else 
+  if(attribute == xvSAP) {
+        pPriv->sap_channel = value;
+	if(pPriv->msp3430!=NULL)xf86_MSP3430SetSAP(pPriv->msp3430, pPriv->sap_channel?4:3);
+	if(pPriv->tda9850)xf86_tda9850_sap_mute(pPriv->msp3430, pPriv->sap_channel?1:0);
+  } else 
   if(attribute == xvVolume) {
   	if(value<0x01) value=0x01;
 	if(value>0x7F) value=0x7F;
@@ -1712,6 +1721,9 @@ R128GetPortAttribute(
   } else 
   if(attribute == xvMute) {
         *value = pPriv->mute;
+  } else 
+  if(attribute == xvSAP) {
+        *value = pPriv->sap_channel;
   } else 
   if(attribute == xvVolume) {
         *value = pPriv->volume;

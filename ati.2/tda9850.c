@@ -89,6 +89,16 @@ t->mute = mute;
 TDA9850(0x06,(t->stereo<<6)|(t->sap<<7)|(t->mute?0x8:0x0)|(t->sap_mute?0x10:0x0)); 
 }
 
+void tda9850_sap_mute(TDA9850Ptr t, Bool sap_mute)
+{
+CARD8 data[2];
+
+xf86DrvMsg(t->d.pI2CBus->scrnIndex, X_INFO, "tda9850_sap_mute %s\n", sap_mute ? "on" : "off");
+t->sap_mute = sap_mute;
+   
+TDA9850(0x06,(t->stereo<<6)|(t->sap<<7)|(t->mute?0x8:0x0)|(t->sap_mute?0x10:0x0)); 
+}
+
 CARD16 tda9850_getstatus(TDA9850Ptr t)
 {
 CARD16 status;

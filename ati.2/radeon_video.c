@@ -92,6 +92,7 @@ typedef struct {
    CARD32        frequency;
    int           volume;
    Bool 	 mute;
+   int		 sap_channel;
    int           v;
    int           ecp_div;
 
@@ -142,7 +143,7 @@ static Atom xvBrightness, xvColorKey, xvSaturation, xvDoubleBuffer,
              xvEncoding, xvVolume, xvMute, xvFrequency, xvContrast, xvHue, xvColor,
 	     xv_autopaint_colorkey, xv_set_defaults,
 	     xvDecBrightness, xvDecContrast, xvDecHue, xvDecColor, xvDecSaturation,
-	     xvTunerStatus;
+	     xvTunerStatus, xvSAP;
 
 
 
@@ -224,8 +225,8 @@ static XF86VideoFormatRec Formats[NUM_FORMATS] =
 };
 
 
-#define NUM_DEC_ATTRIBUTES 18+3
-#define NUM_ATTRIBUTES 9+3
+#define NUM_DEC_ATTRIBUTES 18+4
+#define NUM_ATTRIBUTES 9+4
 
 static XF86AttributeRec Attributes[NUM_DEC_ATTRIBUTES+1] =
 {
@@ -250,6 +251,7 @@ static XF86AttributeRec Attributes[NUM_DEC_ATTRIBUTES+1] =
    {XvGettable, -1000, 1000, "XV_TUNER_STATUS"},
    {XvSettable | XvGettable, 0x01, 0x7F, "XV_VOLUME"},
    {XvSettable | XvGettable, 0, 1, "XV_MUTE"},
+   {XvSettable | XvGettable, 0, 1, "XV_SAP"},
    { 0, 0, 0, NULL}  /* just a place holder so I don't have to be fancy with commas */
 };
 
@@ -635,6 +637,7 @@ void RADEONResetVideo(ScrnInfoPtr pScrn)
     xvTunerStatus  = MAKE_ATOM("XV_TUNER_STATUS");
     xvVolume       = MAKE_ATOM("XV_VOLUME");
     xvMute         = MAKE_ATOM("XV_MUTE");
+    xvSAP         = MAKE_ATOM("XV_SAP");
     xvHue          = MAKE_ATOM("XV_HUE");
     xvRedIntensity   = MAKE_ATOM("XV_RED_INTENSITY");
     xvGreenIntensity = MAKE_ATOM("XV_GREEN_INTENSITY");
@@ -1950,6 +1953,7 @@ RADEONSetPortAttribute(
 
         RADEONSetPortAttribute(pScrn, xvVolume,   0, data);
         RADEONSetPortAttribute(pScrn, xvMute,   1, data);
+        RADEONSetPortAttribute(pScrn, xvSAP,   0, data);
         RADEONSetPortAttribute(pScrn, xvDoubleBuffer,   0, data);
   } else
   if(attribute == xvBrightness) {
@@ -2072,6 +2076,10 @@ RADEONSetPortAttribute(
         if(pPriv->msp3430 != NULL) xf86_MSP3430SetVolume(pPriv->msp3430, pPriv->mute ? MSP3430_FAST_MUTE : pPriv->volume);
 	if(pPriv->i2c != NULL) RADEON_board_setmisc(pPriv);
   } else 
+  if(attribute == xvSAP) {
+        pPriv->sap_channel = value;
+        if(pPriv->msp3430 != NULL) xf86_MSP3430SetSAP(pPriv->msp3430, pPriv->sap_channel?4:3);
+  } else 
   if(attribute == xvVolume) {
   	if(value<0x01)value = 0x01;
 	if(value>0x7f)value = 0x7F;
@@ -2155,6 +2163,9 @@ RADEONGetPortAttribute(
   } else 
   if(attribute == xvMute) {
         *value = pPriv->mute;
+  } else 
+  if(attribute == xvSAP) {
+        *value = pPriv->sap_channel;
   } else 
   if(attribute == xvVolume) {
         *value = pPriv->volume;
