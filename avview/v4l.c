@@ -20,34 +20,13 @@
 #include <X11/Xlib.h>
 #include <tcl.h>
 #include <tk.h>
-#include <linux/videodev.h>
 
 #include "string_cache.h"
 #include "global.h"
 #include "formats.h"
+#include "v4l.h"
 
 STRING_CACHE *v4l_sc=NULL;
-
-#define MODE_SINGLE_FRAME	1
-#define MODE_DEINTERLACE_BOB	2
-#define MODE_DEINTERLACE_WEAVE	3
-
-typedef struct S_V4L_DATA{
-	int fd;
-	struct video_capability vcap;
-	char *read_buffer;
-	long transfer_size;
-	long transfer_read;
-	void (*transfer_callback)(struct S_V4L_DATA *);
-	Tcl_Interp *interp;
-	char *transfer_complete_script;
-	char *transfer_failed_script;
-	Tk_PhotoHandle ph;
-	Tk_PhotoImageBlock pib;
-	int mode;
-	int frame_count; /* to keep track of odd/even fields */
-	} V4L_DATA;
-
 
 int v4l_open_device(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
 {
@@ -94,6 +73,14 @@ data->transfer_failed_script=NULL;
 data->mode=0;
 data->frame_count=0;
 return 0;
+}
+
+V4L_DATA *get_v4l_device_from_handle(char *handle)
+{
+long i;
+i=lookup_string(v4l_sc, handle);
+if(i<0)return NULL;
+return (V4L_DATA *)v4l_sc->data[i];	
 }
 
 int v4l_close_device(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])

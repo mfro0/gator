@@ -607,10 +607,14 @@ if {[ffmpeg_present] == "yes"} {
 	grid $cw.codecl $cw.codecom
 	grid configure $cw.codecl -sticky nws
 	grid configure $cw.codecom -sticky news
-}
-
-button $cw.snapshotb -text "Snapshot" -command capture_snapshot
-grid x $cw.snapshotb
+	button $cw.snapshotb -text "Snapshot" -command capture_snapshot
+	checkbutton $cw.recordb -text "Record" -variable v4l_capture_on \
+		-indicatoron false -state disabled
+	grid x $cw.snapshotb $cw.recordb -sticky ns -padx 5
+	} {
+	button $cw.snapshotb -text "Snapshot" -command capture_snapshot
+	grid x $cw.snapshotb
+	}
 rescan_v4l_devices
 }
 
@@ -657,14 +661,18 @@ switch "$current_v4l_mode" \
 
 proc set_v4l_device {cw name1 name2 op } {
 global current_v4l_device
+global v4l_capture_on
 if { "$current_v4l_device" == "none" } { 
 	v4l_close_device current_v4l_handle
+	set v4l_capture_on false
+	catch {$cw.recordb configure -state disabled}
 	return 
 	}
 set status "[v4l_open_device current_v4l_handle $current_v4l_device]"
 if { "$status" != "" } {
 	set current_v4l_device "none"
 	}
+$cw.recordb configure -state normal
 update_v4l_window_info $cw
 }
 
@@ -760,6 +768,13 @@ switch "$save_type" \
 		}
 }
 
+proc on_v4l_capture_set {cw name1 name2 w } {
+global v4l_capture_on
+global current_codec
+if { $v4l_capture_on } {
+	ffmpeg_encode_v4l_stream current_v4l_handle $current_codec "hello.mpg"
+	}
+}
 
 global current_port
 trace variable current_port w set_port
@@ -780,6 +795,9 @@ trace variable current_v4l_device w  "set_v4l_device .controlwin.capture"
 global current_v4l_mode
 set current_v4l_mode single-frame
 trace variable current_v4l_mode w {update_v4l_window_info .controlwin.capture ; skip_args3 }
+global v4l_capture_on
+set v4l_capture_on false
+trace variable v4l_capture_on w "on_v4l_capture_set .controlwin.capture"
 
 bind $VIDEO_WINDOW <Configure> {
 	global $VIDEO_WINDOW

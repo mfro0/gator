@@ -12,6 +12,7 @@ AC_ARG_WITH(ffmpeg, [  --with-ffmpeg=path      Path to compiled ffmpeg source tr
 
 AC_CHECK_LIB([dl], [dlopen])
 AC_CHECK_LIB([m], [sin])
+AC_CHECK_LIB([pthread], [pthread_create])
 AC_CHECK_LIB([X11], [XCreateSimpleWindow],,,[$X_LIBS])
 AC_CHECK_LIB([Xext], [XInitExtension],,,[$X_LIBS])
 AC_CHECK_LIB([Xv], [XvPutVideo],,,[$X_LIBS -lX11 -lXext])
@@ -26,7 +27,7 @@ AC_SUBST(X_PRE_LIBS)
 
 if ! test "$with_ffmpeg" = "" ; then
 AC_DEFINE(USE_FFMPEG)
-FFMPEG_LIBS="-L$with_ffmpeg/libav -L$with_ffmpeg/libavcodec -lav -lavcodec"
+FFMPEG_LIBS="-L$with_ffmpeg/libav -L$with_ffmpeg/libavcodec -lav -lavcodec -lpthread"
 FFMPEG_CFLAGS="-I$with_ffmpeg/libav -I$with_ffmpeg/libavcodec"
 else
 FFMPEG_LIBS=

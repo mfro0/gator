@@ -26,7 +26,9 @@
 
 #if USE_FFMPEG
 
+#include <pthread.h>
 #include "avcodec.h"
+#include "v4l.h"
 
 int ffmpeg_present(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
 {
@@ -35,11 +37,47 @@ Tcl_AppendResult(interp,"yes", NULL);
 return 0;
 }
 
+void *ffmpeg_v4l_encoding_thread(V4L_DATA *data)
+{
+int i;
+int retval;
+for(i=0;i<100;i++){
+	fprintf(stderr,"i=%d\n",i);
+	}
+pthread_exit(NULL);
+}
+
+int ffmpeg_encode_v4l_stream(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+{
+V4L_DATA *data;
+pthread_t thread;
+
+Tcl_ResetResult(interp);
+
+if(argc<4){
+	Tcl_AppendResult(interp,"ERROR: ffmpeg_encode_v4l_stream requires three arguments", NULL);
+	return TCL_ERROR;
+	}
+data=get_v4l_device_from_handle(argv[1]);
+if(data==NULL){
+	Tcl_AppendResult(interp,"ERROR: ffmpeg_encode_v4l_stream: no such v4l device", NULL);
+	return TCL_ERROR;
+	}
+if(pthread_create(&thread, NULL, ffmpeg_v4l_encoding_thread, data)<0){
+	Tcl_AppendResult(interp,"ERROR: ffmpeg_encode_v4l_stream: error creating encoding thread, ", NULL);
+	Tcl_AppendResult(interp, strerror(errno), NULL);
+	return TCL_ERROR;
+	}
+return 0;
+}
+
+
 struct {
 	char *name;
 	Tcl_CmdProc *command;
 	} ffmpeg_commands[]={
 	{"ffmpeg_present", ffmpeg_present},
+	{"ffmpeg_encode_v4l_stream", ffmpeg_encode_v4l_stream},
 	{NULL, NULL}
 	};
 
