@@ -18,6 +18,7 @@
 #include <X11/Xlib.h>
 #include <X11/extensions/XShm.h>
 #include <X11/extensions/dpms.h>
+#include <X11/Xutil.h>
 #include <tcl.h>
 #include <tk.h>
 
@@ -263,6 +264,199 @@ Tk_MoveWindow(tkwin, 0,0);
 Tk_ResizeWindow(tkwin, WidthOfScreen(s), HeightOfScreen(s));
 return TCL_OK;
 }
+
+#if 0
+#include "avview-16x16.2.icon"
+
+struct {
+	char *name;
+	long size;
+	unsigned long *data; }  icons[]={
+	{ "avview1", sizeof(avview1), avview1},
+	{ NULL, 0, NULL}
+	};
+#endif
+
+int xmisc_seticon(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+{
+Tk_Window tkwin;
+Window win,win2;
+Display *d;
+Screen *s;
+XWindowAttributes xwa;
+XSetWindowAttributes xswa;
+int i,j;
+Atom property, type;
+Tk_PhotoImageBlock pib;
+Tk_PhotoHandle image;
+unsigned long *data,*p;
+unsigned char *a,*r,*g,*b;
+
+Tcl_ResetResult(interp);
+
+if(argc<3){
+	Tcl_AppendResult(interp,"ERROR: xmisc_seticon requires aat least two arguments", NULL);
+	return TCL_ERROR;
+	}
+
+
+tkwin=Tk_NameToWindow(interp,argv[1], Tk_MainWindow(interp));
+
+if(tkwin==NULL){
+	Tcl_AppendResult(interp,"ERROR: xmisc_seticon: first argument must be an existing toplevel or frame window", NULL);
+	return TCL_ERROR;
+	}
+
+d=Tk_Display(tkwin);
+win=Tk_WindowId(tkwin);
+s=Tk_Screen(tkwin);
+if((d==NULL)||(win==(Window)NULL)||(s==NULL)){
+	Tcl_AppendResult(interp,"ERROR: xmisc_seticon: first argument must be a mapped toplevel or frame window", NULL);
+	return TCL_ERROR;
+	}
+image=Tk_FindPhoto(interp, argv[2]);
+if(image==NULL){
+	Tcl_AppendResult(interp,"ERROR: xmisc_seticon: second argument does not refer to valid existing photo image", NULL);
+	return TCL_ERROR;
+	}
+Tk_PhotoGetImage(image, &pib);
+data=alloca(pib.width*pib.height*4+8);
+data[0]=pib.width;
+data[1]=pib.height;
+for(j=0;j<pib.height;j++){
+	a=&(pib.pixelPtr[j*pib.pitch]);
+	r=&(a[pib.offset[0]]);
+	g=&(a[pib.offset[1]]);
+	b=&(a[pib.offset[2]]);
+	a=&(a[pib.offset[3]]);
+	p=&(data[2+j*pib.width]);
+	for(i=0;i<pib.width;i++){
+		*p=(*a<<24)|(*r<<16)|(*g<<8)|*b;
+		p++;
+		a+=pib.pixelSize;
+		r+=pib.pixelSize;
+		g+=pib.pixelSize;
+		b+=pib.pixelSize;		
+		}
+	}
+
+win2=0;
+if(argc>3)win2=atol(argv[3]);
+if(win2==0)win2=win;
+property=Tk_InternAtom(tkwin, "_NET_WM_ICON");
+type=Tk_InternAtom(tkwin, "CARDINAL");
+XSync(d, False);
+XChangeProperty(d, win2, property, type, 32, PropModeReplace, data, pib.width*pib.height+2);
+XSync(d, False);
+return TCL_OK;
+}
+
+int xmisc_settextproperty(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+{
+Tk_Window tkwin;
+Window win;
+Display *d;
+Screen *s;
+XWindowAttributes xwa;
+XSetWindowAttributes xswa;
+int icon;
+Atom property;
+XTextProperty xtp;
+
+Tcl_ResetResult(interp);
+
+if(argc<3){
+	Tcl_AppendResult(interp,"ERROR: xmisc_settextproperty requires at least two arguments", NULL);
+	return TCL_ERROR;
+	}
+
+
+tkwin=Tk_NameToWindow(interp,argv[1], Tk_MainWindow(interp));
+
+if(tkwin==NULL){
+	Tcl_AppendResult(interp,"ERROR: xmisc_settextproperty: first argument must be an existing toplevel or frame window", NULL);
+	return TCL_ERROR;
+	}
+
+d=Tk_Display(tkwin);
+win=Tk_WindowId(tkwin);
+s=Tk_Screen(tkwin);
+fprintf(stderr,"%d %d\n", Tk_IsTopLevel(tkwin), Tk_IsEmbedded(tkwin));
+if((d==NULL)||(win==(Window)NULL)||(s==NULL)){
+	Tcl_AppendResult(interp,"ERROR: xmisc_settextproperty: first argument must be a mapped toplevel or frame window", NULL);
+	return TCL_ERROR;
+	}
+property=Tk_InternAtom(tkwin, argv[2]);
+XStringListToTextProperty(&(argv[3]), argc-3, &xtp);
+XSync(d, False);
+XSetTextProperty(d, win, &xtp, property);
+XSync(d, False);
+XFree(xtp.value);
+return TCL_OK;
+}
+
+
+int xmisc_querytree(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+{
+Tk_Window tkwin;
+Window win,win2;
+Display *d;
+Screen *s;
+XWindowAttributes xwa;
+XSetWindowAttributes xswa;
+int i;
+Atom property, type;
+Window root, parent, *children;
+unsigned int n_children;
+Tcl_Obj *ans, *c;
+
+Tcl_ResetResult(interp);
+
+if(argc<2){
+	Tcl_AppendResult(interp,"ERROR: xmisc_querytree requires at least one argument", NULL);
+	return TCL_ERROR;
+	}
+tkwin=Tk_NameToWindow(interp,argv[1], Tk_MainWindow(interp));
+
+if(tkwin==NULL){
+	Tcl_AppendResult(interp,"ERROR: xmisc_seticon: first argument must be an existing toplevel or frame window", NULL);
+	return TCL_ERROR;
+	}
+
+d=Tk_Display(tkwin);
+win=Tk_WindowId(tkwin);
+s=Tk_Screen(tkwin);
+if((d==NULL)||(win==(Window)NULL)||(s==NULL)){
+	Tcl_AppendResult(interp,"ERROR: xmisc_seticon: first argument must be a mapped toplevel or frame window", NULL);
+	return TCL_ERROR;
+	}
+win2=NULL;
+if(argc>2)win2=atol(argv[2]);
+if(win2==NULL)win2=win;
+if(!XQueryTree(d, win2, &root, &parent, &children, &n_children)){
+	Tcl_AppendResult(interp,"ERROR: xmisc_seticon: XQueryTree failed", NULL);
+	return TCL_ERROR;
+	}
+ans=Tcl_NewListObj(0, NULL);
+
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("root", -1));
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj(root));
+
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("parent", -1));
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj(parent));
+
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("children", -1));
+
+c=Tcl_NewListObj(0, NULL);
+for(i=0;i<n_children;i++){
+	Tcl_ListObjAppendElement(interp, c, Tcl_NewIntObj(children[i]));	
+	}
+Tcl_ListObjAppendElement(interp, ans, c);
+
+Tcl_SetObjResult(interp, ans);
+return TCL_OK;
+}
+
 struct {
 	char *name;
 	Tcl_CmdProc *command;
@@ -271,6 +465,9 @@ struct {
 	{"xmisc_setscreensaver", xmisc_setscreensaver},	
 	{"xmisc_hidecursor", xmisc_hidecursor},
 	{"xmisc_setfullscreen", xmisc_setfullscreen},
+	{"xmisc_seticon", xmisc_seticon},
+	{"xmisc_settextproperty", xmisc_settextproperty},
+	{"xmisc_querytree", xmisc_querytree},
 	{NULL, NULL}
 	};
 

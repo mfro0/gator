@@ -670,9 +670,8 @@ wm protocol .controlwin WM_DELETE_WINDOW {
 	set show_control_window false
 	}
 
-wm title . "AV Viewer"
+wm title . "AVview"
 wm title .controlwin "AV Control"
-
 #
 # Generate theme menu
 #
