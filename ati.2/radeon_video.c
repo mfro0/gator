@@ -2619,8 +2619,8 @@ RADEONDisplayVideo(
 ){
     RADEONInfoPtr info = RADEONPTR(pScrn);
     unsigned char *RADEONMMIO = info->MMIO;
-    unsigned int v_inc, h_inc, h_inc_uv, step_by_y, step_by_uv, tmp;
-    double v_inc_d;
+    CARD32 v_inc, h_inc, h_inc_uv, step_by_y, step_by_uv, tmp;
+    double v_inc_d, h_inc_d;
     int p1_h_accum_init, p23_h_accum_init;
     int p1_v_accum_init;
     int ecp_div;
@@ -2669,7 +2669,7 @@ RADEONDisplayVideo(
 
     v_inc = v_inc_d * v_inc;
 
-    h_inc = ((src_w << (12 + ecp_div)) / drw_w);
+    h_inc = 1 << (12 + ecp_div);
     step_by_y = 1;
     step_by_uv = step_by_y;
 
@@ -2696,7 +2696,10 @@ RADEONDisplayVideo(
         h_inc >>= 1;
         }
     h_inc_uv = h_inc>>(step_by_uv-step_by_y);
-
+    h_inc_d = src_w;
+    h_inc_d = h_inc_d/drw_w;
+    h_inc = h_inc * h_inc_d;
+    h_inc_uv = h_inc_uv * h_inc_d;
     /* 1536 is magic number - maximum line length the overlay scaler can fit 
        in the buffer for 2 tap filtering */
     /* the only place it is documented in is in ATI source code */
@@ -3015,7 +3018,7 @@ RADEONPutImage(
     case FOURCC_YV12:
     case FOURCC_I420:
 	top &= ~1;
-	#if 0
+	#if 1
 	dst_start += left << 1;
 	#endif
 	tmp = ((top >> 1) * srcPitch2) + (left >> 1);
@@ -3601,7 +3604,7 @@ RADEONPutVideo(
 
    OUTREG(RADEON_CAP0_BUF_PITCH, dstPitch*mult/2);
    OUTREG(RADEON_CAP0_H_WINDOW, (2*width)<<16);
-   OUTREG(RADEON_CAP0_V_WINDOW, (((height)+pPriv->v-1)<<16)|(pPriv->v));
+   OUTREG(RADEON_CAP0_V_WINDOW, (((height)+pPriv->v-1)<<16)|(pPriv->v-1));
    if(mult==2){
            OUTREG(RADEON_CAP0_CONFIG, ENABLE_RADEON_CAPTURE_BOB);
            } else {
