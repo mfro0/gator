@@ -8,9 +8,10 @@ DEFINES=
 
 CC=gcc -pipe -g $(INCLUDES) $(DEFINES)
 
-SRCS=xv.c frequencies.c xmisc.c string_cache.c v4l.c formats.c ffmpeg.c
+SRCS=xv.c frequencies.c xmisc.c string_cache.c v4l.c formats.c ffmpeg.c alsa.c
 
-LIBS=-lm -ldl $(X11LIBS) @FFMPEG_LIBS@
+#LIBS=-lm -ldl $(X11LIBS) @FFMPEG_LIBS@
+LIBS=$(X11LIBS) @LIBS@ @FFMPEG_LIBS@
 
 TCLLIBS=-ltcl8.3
 TKLIBS=-ltk8.3
@@ -33,7 +34,7 @@ avview.static: $(SRCS) main.c
 	
 	
 tarball:
-	(cd .. ; tar cvf - avview/*.scp avview/*.[c,h] avview/Makefile.in avview/configure.in avview/configure avview/README | gzip - ) > avview.tgz
+	(cd .. ; tar cvf - avview/*.scp avview/*.[c,h] avview/Makefile.in avview/configure.in avview/configure avview/config.h.in avview/README| gzip - ) > avview.tgz
 
 clean:
 	rm -f *.o *.bck *.bak core

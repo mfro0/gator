@@ -9,5 +9,12 @@ Include ffmpeg-dependent code
 */
 #define USE_FFMPEG 	0
 
+/*
+
+Include asound (ALSA library) dependent code
+
+*/
+#define USE_ALSA 0
+
 
 #endif

@@ -13,17 +13,20 @@ AC_ARG_WITH(ffmpeg, [  --with-ffmpeg=path      Path to compiled ffmpeg source tr
 AC_CHECK_LIB([dl], [dlopen])
 AC_CHECK_LIB([m], [sin])
 AC_CHECK_LIB([pthread], [pthread_create])
+AC_CHECK_LIB([asound], [snd_card_get_name])
 AC_CHECK_LIB([X11], [XCreateSimpleWindow],,,[$X_LIBS])
 AC_CHECK_LIB([Xext], [XInitExtension],,,[$X_LIBS])
 AC_CHECK_LIB([Xv], [XvPutVideo],,,[$X_LIBS -lX11 -lXext])
 AC_CHECK_LIB([tcl8.3], [Tcl_Init],,,[$X_LIBS])
 AC_CHECK_LIB([tk8.3], [Tk_Init],,,[$X_LIBS])
 
+
 # Checks for header files.
 AC_SUBST(X_CFLAGS)
 AC_SUBST(X_LIBS)
 AC_SUBST(X_EXTRA_LIBS)
 AC_SUBST(X_PRE_LIBS)
+AC_SUBST(LIBS)
 
 if ! test "$with_ffmpeg" = "" ; then
 AC_DEFINE(USE_FFMPEG)
@@ -32,6 +35,10 @@ FFMPEG_CFLAGS="-I$with_ffmpeg/libav -I$with_ffmpeg/libavcodec"
 else
 FFMPEG_LIBS=
 FFMPEG_CFLAGS=
+fi
+
+if test "$ac_cv_lib_asound_snd_card_get_name" = "yes" ; then
+AC_DEFINE(USE_ALSA)
 fi
 
 AC_SUBST(FFMPEG_LIBS)
@@ -59,6 +66,7 @@ echo "------------------- Configuration -------------------"
 echo ""
 echo "  X11 libraries                    $X_LIBS"
 echo "  X11 cflags                       $X_CFLAGS"
+echo "  ALSA support                     $ac_cv_lib_asound_snd_card_get_name"
 if test "$with_ffmpeg" = "" ; then
 echo "  Movie recording                  disabled"
 echo "         to enable specify --with-ffmpeg=/path/to/compiled/ffmpeg/source"

@@ -46,6 +46,7 @@ init_xv(interp);
 init_xmisc(interp);
 init_v4l(interp);
 init_ffmpeg(interp);
+init_alsa(interp);
 return TCL_OK;
 }
 
