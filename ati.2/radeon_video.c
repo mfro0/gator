@@ -148,6 +148,7 @@ typedef struct {
 
    Bool          EEPROM_present;
    int           EEPROM_addr;
+   int		 overlay_scaler_buffer_width;
 
    Bool          addon_board;
    CARD8         board_info;
@@ -1853,6 +1854,16 @@ RADEONSetupImageVideo(ScreenPtr pScreen)
 		    RADEONInitI2C(pScrn,pPriv);
 		    }
 	}
+    /* overlay scaler line length differs for different revisions 
+       this needs to be maintained by hand  */
+    switch(info->ChipFamily){
+    	case CHIP_FAMILY_R200:
+	case CHIP_FAMILY_R300:
+		pPriv->overlay_scaler_buffer_width=1920;
+		break;
+	default:
+		pPriv->overlay_scaler_buffer_width=1536;
+    	}
     if((pPriv->theatre!=NULL) && !RADEONSetupTheatre(pScrn,pPriv,pPriv->theatre))
     {
     	free(pPriv->theatre);
@@ -2676,7 +2687,7 @@ RADEONDisplayVideo(
 
     /* if the source width was larger than what would fit in overlay scaler increase step_by values */
     i=src_w;
-    while(i>1536){
+    while(i>pPriv->overlay_scaler_buffer_width){
     	step_by_y++;
 	step_by_uv++;
 	h_inc >>=1;
@@ -2701,13 +2712,13 @@ RADEONDisplayVideo(
     h_inc_uv = h_inc>>(step_by_uv-step_by_y);
     h_inc = h_inc * h_inc_d;
     h_inc_uv = h_inc_uv * h_inc_d;
-    /* 1536 is magic number - maximum line length the overlay scaler can fit 
+    /* pPriv->overlay_scaler_buffer_width is magic number - maximum line length the overlay scaler can fit 
        in the buffer for 2 tap filtering */
     /* the only place it is documented in is in ATI source code */
     /* we need twice as much space for 4 tap filtering.. */
     /* under special circumstances turn on 4 tap filtering */
     if(!is_rgb && (step_by_y==1) && (step_by_uv==1) && (h_inc < (1<<12)) && (deinterlacing_method!=METHOD_WEAVE) 
-       && (drw_w*2 <= 1536)){
+       && (drw_w*2 <= pPriv->overlay_scaler_buffer_width)){
         step_by_y=0;
         step_by_uv=1;
         h_inc_uv = h_inc;
@@ -3112,8 +3123,8 @@ RADEONQueryImageAttributes(
 ){
     int size, tmp;
 
-    /* Overlay scaler has buffer that is 1536 pixels wide */
-    if(*w > 1536) *w = 1536;
+    /* Overlay scaler has buffer that is pPriv->overlay_scaler_buffer_width pixels wide */
+    if(*w > pPriv->overlay_scaler_buffer_width) *w = pPriv->overlay_scaler_buffer_width;
     if(*h > 2048) *h = 2048;
 
     *w = (*w + 1) & ~1;
