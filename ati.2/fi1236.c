@@ -320,16 +320,15 @@ MT2032_parameters m;
 CARD8 data[10];
 /* NTSC IF is 44mhz.. but 733/16=45.8125 and all TDAXXXX docs mention
      45.75, 39, 58.75 and 30. */
-MT2032_calculate_register_settings(&m, freq, 1090.0, 44.0, 5.25, 6.0, step);
+MT2032_calculate_register_settings(&m, freq, 1090.0, 45.125, 5.25, 6.0, step);
 MT2032_implement_settings(f, &m);
 MT2032_optimize_VCO(f, &m);
-MT2032_dump_parameters(f, &m);
+/* MT2032_dump_parameters(f, &m); */
 if(MT2032_wait_for_lock(f)){
 	data[0]=0x02;  /* LO Gain control register 0x02 */
 	data[1]=0x20;
 	I2C_WriteRead(&(f->d), (I2CByte *)data, 2, NULL, 0);
 	}
-MT2032_dump_status(f);
 }
 
 void FI1236_set_tuner_type(FI1236Ptr f, int type)

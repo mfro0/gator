@@ -1183,12 +1183,14 @@ Bool R128SetupTheatre(ScrnInfoPtr pScrn, R128PortPrivPtr pPriv, TheatrePtr t)
 			}
 		}
 
-	/* this is fiction, we should read MM table instead 
-	t->wTunerConnector=0;
-	t->wComp0Connector=5;
-	t->wSVideo0Connector=3;
-	 */
-	
+	xf86DrvMsg(t->VIP->scrnIndex,X_INFO,"Connectors (detected): tuner=%d, composite=%d, svideo=%d\n",t->wTunerConnector, t->wComp0Connector, t->wSVideo0Connector);
+/* not implemented yet	
+	if(info->RageTheatreTunerPort>=0)t->wTunerConnector=info->RageTheatreTunerPort;
+	if(info->RageTheatreCompositePort>=0)t->wComp0Connector=info->RageTheatreCompositePort;
+	if(info->RageTheatreSVideoPort>=0)t->wSVideo0Connector=info->RageTheatreSVideoPort;
+*/	
+	xf86DrvMsg(t->VIP->scrnIndex,X_INFO,"Connectors (using): tuner=%d, composite=%d, svideo=%d\n",t->wTunerConnector, t->wComp0Connector, t->wSVideo0Connector);
+
 	switch(pll->reference_freq){
 		case 2700:
 			t->video_decoder_type=RT_FREF_2700;

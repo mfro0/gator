@@ -559,13 +559,14 @@ static void RADEONSetTransform(  ScrnInfoPtr pScrn,
 		dwOvBCb = (((INT32)(OvBCb * 256.0))&0x7ff)<<4;
 		dwOvBCr = (((INT32)(OvBCr * 256.0))&0x7ff)<<20;
 	}
-
+#if 0
         xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Red: Off=%g Y=%g Cb=%g Cr=%g\n",
 		OvROff, OvLuma, OvRCb, OvRCr);
         xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Green: Off=%g Y=%g Cb=%g Cr=%g\n",
 		OvGOff, OvLuma, OvGCb, OvGCr);
         xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Blue: Off=%g Y=%g Cb=%g Cr=%g\n",
 		OvBOff, OvLuma, OvBCb, OvBCr);
+#endif
 	OUTREG(RADEON_OV0_LIN_TRANS_A, dwOvRCb | dwOvLuma);
 	OUTREG(RADEON_OV0_LIN_TRANS_B, dwOvROff | dwOvRCr);
 	OUTREG(RADEON_OV0_LIN_TRANS_C, dwOvGCb | dwOvLuma);
@@ -1531,11 +1532,15 @@ static Bool RADEONSetupTheatre(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv, Theat
 	t->wComp0Connector=5;
 	t->wSVideo0Connector=3;
 	 */
+
+	xf86DrvMsg(t->VIP->scrnIndex,X_INFO,"Connectors (detected): tuner=%d, composite=%d, svideo=%d\n",t->wTunerConnector, t->wComp0Connector, t->wSVideo0Connector);
 	
 	if(info->RageTheatreTunerPort>=0)t->wTunerConnector=info->RageTheatreTunerPort;
 	if(info->RageTheatreCompositePort>=0)t->wComp0Connector=info->RageTheatreCompositePort;
 	if(info->RageTheatreSVideoPort>=0)t->wSVideo0Connector=info->RageTheatreSVideoPort;
 	
+	xf86DrvMsg(t->VIP->scrnIndex,X_INFO,"Connectors (using): tuner=%d, composite=%d, svideo=%d\n",t->wTunerConnector, t->wComp0Connector, t->wSVideo0Connector);
+
 	switch((info->RageTheatreCrystal>=0)?info->RageTheatreCrystal:pll->reference_freq){
 		case 2700:
 			t->video_decoder_type=RT_FREF_2700;
@@ -2825,8 +2830,7 @@ switch(pPriv->encoding){
 		break;
 	default:
 		return;
-	}	
-xf86DrvMsg(0, X_INFO, "test--\n");
+	}
 xf86_InitMSP3430(pPriv->msp3430);
 xf86_MSP3430SetVolume(pPriv->msp3430, pPriv->mute ? MSP3430_FAST_MUTE : pPriv->volume);
 }
@@ -2836,7 +2840,7 @@ void RADEON_TDA9885_SetEncoding(RADEONPortPrivPtr pPriv)
 TDA9885Ptr t=pPriv->tda9885;
 t->sound_trap=0;
 t->auto_mute_fm=0; /* ? */
-t->carrier_mode=1; /* ??? */
+t->carrier_mode=0; /* ??? */
 t->modulation=2; /* negative FM */
 t->forced_mute_audio=0;
 t->port1=1;
