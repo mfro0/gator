@@ -984,6 +984,8 @@ static struct pci_device_id km_pci_tbl[] __devinitdata = {
          PCI_ANY_ID, PCI_ANY_ID, 0, 0, HARDWARE_RADEON},	
         {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_RADEON_IF,
          PCI_ANY_ID, PCI_ANY_ID, 0, 0, HARDWARE_RADEON},
+        {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_RADEON_QL,
+         PCI_ANY_ID, PCI_ANY_ID, 0, 0, HARDWARE_RADEON},
         {0,}
 };
 

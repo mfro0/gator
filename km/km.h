@@ -11,16 +11,20 @@
 
 #include <linux/videodev.h>
 #include <linux/spinlock.h>
+#include <linux/version.h>
 #include "km_api.h"
 #include "km_api_data.h"
 
 #define KM_VERSION      "alpha-3.0"
 
-#ifndef LINUX_2_6
+/* already in >= 2.4.22 */
+#ifndef LINUX_2_6 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,4,22)
 typedef void irqreturn_t;
 #define IRQ_NONE
 #define IRQ_HANDLED
 #define IRQ_RETVAL(x)
+#endif
 #endif
 
 typedef struct {
