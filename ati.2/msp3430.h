@@ -45,6 +45,8 @@ typedef struct {
 #define MSP3430_ADDR(a)         ((a)->d.SlaveAddr)
 
 #define MSP3430_FAST_MUTE	0xFF
+/* a handy volume transform function, -1000..1000 -> 0x01..0x7F */
+#define MSP3430_VOLUME(value) (0x01+(0x7F-0x01)*log(value+1001)/log(2001))
 
 /*----------------------------------------------------------*/
 
