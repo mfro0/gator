@@ -101,8 +101,9 @@ typedef struct {
    int           ecp_div;
 
 #define METHOD_BOB	0
-#define METHOD_WEAVE	1
-#define METHOD_ADAPTIVE	2
+#define METHOD_SINGLE	1
+#define METHOD_WEAVE	2
+#define METHOD_ADAPTIVE	3
 
    int		 overlay_deinterlacing_method;
    
@@ -119,6 +120,8 @@ typedef struct {
    int           board_control;
 
    Bool          autopaint_colorkey;
+   
+   Atom		 device_id, location_id, instance_id;
 } RADEONPortPrivRec, *RADEONPortPrivPtr;
 
 static XF86VideoAdaptorPtr RADEONSetupImageVideo(ScreenPtr);
@@ -155,7 +158,8 @@ static Atom xvBrightness, xvColorKey, xvSaturation, xvDoubleBuffer,
              xvEncoding, xvVolume, xvMute, xvFrequency, xvContrast, xvHue, xvColor,
 	     xv_autopaint_colorkey, xv_set_defaults,
 	     xvDecBrightness, xvDecContrast, xvDecHue, xvDecColor, xvDecSaturation,
-	     xvTunerStatus, xvSAP, xvOverlayDeinterlacingMethod;
+	     xvTunerStatus, xvSAP, xvOverlayDeinterlacingMethod,
+	     xvLocationID, xvDeviceID, xvInstanceID;
 
 
 
@@ -237,11 +241,14 @@ static XF86VideoFormatRec Formats[NUM_FORMATS] =
 };
 
 
-#define NUM_DEC_ATTRIBUTES 19+4
-#define NUM_ATTRIBUTES 9+4
+#define NUM_DEC_ATTRIBUTES 19+4+3
+#define NUM_ATTRIBUTES 9+4+3
 
 static XF86AttributeRec Attributes[NUM_DEC_ATTRIBUTES+1] =
 {
+   {             XvGettable, 0, ~0, "XV_DEVICE_ID"},
+   {             XvGettable, 0, ~0, "XV_LOCATION_ID"},
+   {             XvGettable, 0, ~0, "XV_INSTANCE_ID"},
    {XvSettable             , 0, 1, "XV_SET_DEFAULTS"},
    {XvSettable | XvGettable, 0, 1, "XV_AUTOPAINT_COLORKEY"},
    {XvSettable | XvGettable, 0, ~0, "XV_COLORKEY"},
@@ -258,7 +265,7 @@ static XF86AttributeRec Attributes[NUM_DEC_ATTRIBUTES+1] =
    {XvSettable | XvGettable, -1000, 1000, "XV_DEC_CONTRAST"},
    {XvSettable | XvGettable, -1000, 1000, "XV_DEC_SATURATION"},
    {XvSettable | XvGettable, -1000, 1000, "XV_DEC_HUE"},
-   {XvSettable | XvGettable, 0, 1, "XV_OVERLAY_DEINTERLACING_METHOD"},
+   {XvSettable | XvGettable, 0, 2, "XV_OVERLAY_DEINTERLACING_METHOD"},
    {XvSettable | XvGettable, 0, 12, "XV_ENCODING"},
    {XvSettable | XvGettable, 0, -1, "XV_FREQ"},
    {XvGettable, -1000, 1000, "XV_TUNER_STATUS"},
@@ -635,6 +642,7 @@ void RADEONResetVideo(ScrnInfoPtr pScrn)
     unsigned char *RADEONMMIO = info->MMIO;
     RADEONPortPrivPtr pPriv = info->adaptor->pPortPrivates[0].ptr;
     int i;
+    char tmp[200];
 
     /* this is done here because each time the server is reset these
        could change.. Otherwise they remain constant */
@@ -666,6 +674,17 @@ void RADEONResetVideo(ScrnInfoPtr pScrn)
     
     xv_autopaint_colorkey = MAKE_ATOM("XV_AUTOPAINT_COLORKEY");
     xv_set_defaults = MAKE_ATOM("XV_SET_DEFAULTS");
+    
+    xvInstanceID = MAKE_ATOM("XV_INSTANCE_ID");
+    xvDeviceID = MAKE_ATOM("XV_DEVICE_ID");
+    xvLocationID = MAKE_ATOM("XV_LOCATION_ID");
+    
+    sprintf(tmp, "RXXX:%d.%d.%d", info->PciInfo->vendor, info->PciInfo->chipType, info->PciInfo->chipRev);
+    pPriv->device_id = MAKE_ATOM(tmp);
+    sprintf(tmp, "PCI:%02d:%02d.%d", info->PciInfo->bus, info->PciInfo->device, info->PciInfo->func);
+    pPriv->location_id = MAKE_ATOM(tmp);
+    sprintf(tmp, "INSTANCE:%d", pScrn->scrnIndex);
+    pPriv->instance_id = MAKE_ATOM(tmp);
 
     RADEONWaitForIdle(pScrn);
 /*    RADEONWaitForFifo(pScrn, 7); */
@@ -1051,7 +1070,7 @@ const struct
 	{"UNKNOWN-27"		, -1},
 	{"UNKNOWN-28"		, -1},
 	{"Microtuner MT2032"		, TUNER_TYPE_MT2032},
-        {"UNKNOWN-30"		, -1},
+        {"Microtuner MT2032"		, TUNER_TYPE_MT2032},
 	{"UNKNOWN-31"		, -1}
     };
 
@@ -2141,11 +2160,14 @@ RADEONSetPortAttribute(
   } else 
   if(attribute == xvOverlayDeinterlacingMethod) {
   	if(value<0)value = 0;
-	if(value>1)value = 1;
+	if(value>2)value = 2;
         pPriv->overlay_deinterlacing_method = value;	
 	switch(pPriv->overlay_deinterlacing_method){
    		case METHOD_BOB:
 		   	OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0xAAAAA);
+	   		break;
+   		case METHOD_SINGLE:
+		   	OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0xEEEEE | (9<<28));
 	   		break;
 		case METHOD_WEAVE:
 	   		OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0x0);
@@ -2238,6 +2260,15 @@ RADEONGetPortAttribute(
   } else 
   if(attribute == xvOverlayDeinterlacingMethod) {
         *value = pPriv->overlay_deinterlacing_method;
+  } else 
+  if(attribute == xvDeviceID) {
+        *value = pPriv->device_id;
+  } else 
+  if(attribute == xvLocationID) {
+        *value = pPriv->location_id;
+  } else 
+  if(attribute == xvInstanceID) {
+        *value = pPriv->instance_id;
   } else 
      return BadMatch;
 
@@ -2506,7 +2537,7 @@ RADEONDisplayVideo(
     /* the only place it is documented in is in ATI source code */
     /* we need twice as much space for 4 tap filtering.. */
     /* under special circumstances turn on 4 tap filtering */
-    if(!is_rgb && (step_by_y==1) && (step_by_uv==1) && (h_inc < (1<<12)) && (deinterlacing_method==METHOD_BOB) 
+    if(!is_rgb && (step_by_y==1) && (step_by_uv==1) && (h_inc < (1<<12)) && (deinterlacing_method!=METHOD_WEAVE) 
        && (drw_w*2 < 1536)){
     	step_by_y=0;
 	step_by_uv=1;
@@ -2529,7 +2560,7 @@ RADEONDisplayVideo(
 		       ((tmp << 12) & 0x70000000);
 
     tmp = (top & 0x0000ffff) + 0x00018000;
-    p1_v_accum_init = ((tmp << 4) & 0x03ff8000) | (((deinterlacing_method==METHOD_BOB)&&!is_rgb)?0x03:0x01);
+    p1_v_accum_init = ((tmp << 4) & 0x03ff8000) | (((deinterlacing_method!=METHOD_WEAVE)&&!is_rgb)?0x03:0x01);
 
     left = (left >> 16) & 7;
 
@@ -3180,6 +3211,7 @@ RADEONPutVideo(
 
    switch(pPriv->overlay_deinterlacing_method){
    	case METHOD_BOB:
+	case METHOD_SINGLE:
 		mult=2;
 		break;
 	case METHOD_WEAVE:
@@ -3236,6 +3268,7 @@ RADEONPutVideo(
 
    switch(pPriv->overlay_deinterlacing_method){
    	case METHOD_BOB:
+	case METHOD_SINGLE:
 	   offset1 = (pPriv->linear->offset*bpp+0xf) & (~0xf);
 	   offset2 = ((pPriv->linear->offset+new_size)*bpp + 0x1f) & (~0xf);
 	   offset3 = offset1;
@@ -3339,6 +3372,11 @@ RADEONPutVideo(
    switch(pPriv->overlay_deinterlacing_method){
    	case METHOD_BOB:
 	   OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0xAAAAA);
+	   OUTREG(RADEON_OV0_AUTO_FLIP_CNTL, RADEON_OV0_AUTO_FLIP_CNTL_SOFT_BUF_ODD
+	   	|RADEON_OV0_AUTO_FLIP_CNTL_SHIFT_ODD_DOWN);
+	   break;
+   	case METHOD_SINGLE:
+	   OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0xEEEEE | (9<<28));
 	   OUTREG(RADEON_OV0_AUTO_FLIP_CNTL, RADEON_OV0_AUTO_FLIP_CNTL_SOFT_BUF_ODD
 	   	|RADEON_OV0_AUTO_FLIP_CNTL_SHIFT_ODD_DOWN);
 	   break;
