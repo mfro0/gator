@@ -1,0 +1,24 @@
+This file describes the actual protocol implemented by km_api 
+(versus the one described in km.rfc.txt).
+
+
+Reading from /proc/km/control? provides line-formatted information.
+Line can start with special character
+
+       +  indicates successful response to request
+       :  indicates out-of-sequence information (like status update)
+       
+Field information is provided in the form:
+
+FIELD_NAME=value
+
+FIELD_NAME should be a valid C identifier (we have to choose something).
+
+
+Writing to /proc/km/control is also line-based. 
+Each line is a separate command to be executed and must be terminated with '\n'. 
+So far the following commands are supported:
+
+             STATUS            -  print the current value of all fields.
+	     
+	      

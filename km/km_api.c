@@ -50,14 +50,16 @@ long field_length;
 KM_FIELD *f;
 int i;
 
+if(kmd->br_free+10>=kmd->br_size)expand_buffer(kmd, 10);
+kmd->br_free+=sprintf(kmd->buffer_read+kmd->br_free, "+STATUS\n");
+
 for(i=0;kmd->fields[i].type!=KM_FIELD_TYPE_EOL;i++){
 	f=&(kmd->fields[i]);
 	switch(f->type){
 		case KM_FIELD_TYPE_STATIC:
 			field_length=strlen(f->name)+strlen(f->data.c.string)+2;
 			if(kmd->br_free+field_length+10>=kmd->br_size)expand_buffer(kmd, field_length+10);
-			sprintf(kmd->buffer_read+kmd->br_free, "%s=%s\n", f->name, f->data.c.string);
-			kmd->br_free+=field_length;
+			kmd->br_free+=sprintf(kmd->buffer_read+kmd->br_free, "%s=%s\n", f->name, f->data.c.string);
 			break;
 		case KM_FIELD_TYPE_DYNAMIC_INT:
 			f->data.i.old_value=*(f->data.i.field);
@@ -84,8 +86,10 @@ for(i=0;kmd->fields[i].type!=KM_FIELD_TYPE_EOL;i++){
 			a=*(f->data.i.field);
 			if(a==f->data.i.old_value)continue;
 			f->data.i.old_value=a;
-			field_length=strlen(f->name)+20;
+			field_length=strlen(f->name)+22;
 			if(kmd->br_free+field_length>=kmd->br_size)expand_buffer(kmd, field_length);
+			kmd->buffer_read[kmd->br_free]=':';
+			kmd->br_free++;
 			kmd->br_free+=sprintf(kmd->buffer_read+kmd->br_free, "%s=%d\n", f->name, (f->data.i.old_value));
 			break;
 		}
