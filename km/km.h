@@ -15,7 +15,7 @@
 #include "km_api.h"
 #include "km_api_data.h"
 
-#define KM_VERSION      "alpha-3.0"
+#define KM_VERSION      "alpha-4.0"
 
 /* already in >= 2.4.22 */
 #ifndef LINUX_2_6 
@@ -88,8 +88,8 @@ typedef struct {
 	} KM_TRANSFER_QUEUE;
 
 typedef struct S_KM_STRUCT {
-	struct video_device vd;
-	struct video_device vbi_vd;
+	struct video_device *vd;
+	struct video_device *vbi_vd;
 	struct video_window vwin;
 	spinlock_t kms_lock;
 	long irq;
