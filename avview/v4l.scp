@@ -405,7 +405,7 @@ global v4l_capture_on \
  ffmpeg_video_bitrate ffmpeg_video_quality ffmpeg_video_bitrate_control \
  current_v4l_mode current_v4l_rrate current_capture_filename \
  current_alsa_device file_save_path \
- current_video_rate current_v4l_device \
+ current_video_rate current_v4l_device 
 if { $v4l_capture_on } {
 	if { ! [verify_v4l_stream_parameters] } {
 		set v4l_capture_on 0
