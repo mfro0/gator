@@ -1,3 +1,9 @@
+/*     km preliminary version
+
+       This code was derived from bt848 driver
+       
+*/
+
 #ifndef __KM_MEMORY_H__
 #define __KM_MEMORY_H__
 

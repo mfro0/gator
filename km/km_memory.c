@@ -1,3 +1,9 @@
+/*     km preliminary version
+
+       This code was derived from bt848 kernel driver
+       
+*/
+
 #include <linux/autoconf.h>
 #if defined(MODULE) && defined(CONFIG_MODVERSIONS)
 #define MODVERSIONS

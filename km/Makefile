@@ -8,9 +8,9 @@ LINUXINCLUDES=$(TOPDIR)/include
 
 KM_OBJS=km.o km_v4l.o km_memory.o radeon.o mach64.o rage128.o
 
-KM_API_OBJS=km_api.o
+KM_API_OBJS=km_api.o km_api_data.o
 
-all: km_drv.o km_api.o
+all: km_drv.o km_api_drv.o
 
 km.o:	km.c 
 	$(CC) $(CFLAGS) -DMODULE -D__KERNEL__ -DLINUX -I$(LINUXINCLUDES) -c km.c
@@ -18,8 +18,14 @@ km.o:	km.c
 km_api.o:	km_api.c 
 	$(CC) $(CFLAGS) -DMODULE -D__KERNEL__  -DEXPORT_SYMTAB -DLINUX -I$(LINUXINCLUDES) -c km_api.c
 
+km_api_data.o:	km_api_data.c 
+	$(CC) $(CFLAGS) -DMODULE -D__KERNEL__  -DEXPORT_SYMTAB -DLINUX -I$(LINUXINCLUDES) -c km_api_data.c
+
 km_drv.o: $(KM_OBJS)
 	ld -r $(KM_OBJS) -o km_drv.o
+
+km_api_drv.o: $(KM_API_OBJS)
+	ld -r $(KM_API_OBJS) -o km_api_drv.o
 
 km_v4l.o:	km_v4l.c
 	$(CC) $(CFLAGS) -DMODULE -D__KERNEL__ -DLINUX -I$(LINUXINCLUDES) -c km_v4l.c
@@ -38,7 +44,7 @@ rage128.o:	rage128.c
 
 test: km_drv.o km_api.o
 	sync
-	insmod ./km_api.o
+	insmod ./km_api_drv.o
 	insmod ./km_drv.o km_debug=0 
 
 install:
@@ -51,7 +57,7 @@ tarball:
 
 remove:
 	rmmod km_drv
-	rmmod km_api
+	rmmod km_api_drv
 
 clean:
 	rm -f *.o *.bck *.bak core

@@ -1,9 +1,17 @@
+/*     km preliminary version
+
+       (C) Vladimir Dergachev 2001-2002
+       
+       GNU Public License
+       
+*/
+
 #ifndef __KM_API_H__
 #define __KM_API_H__
 
 #include <linux/spinlock.h>
 
-#define KM_API_VERSION "alpha-2.0"
+#define KM_API_VERSION "alpha-3.0"
 
 #define KM_FIELD_TYPE_EOL		0      /* end of list marker */
 #define KM_FIELD_TYPE_STATIC		1	/* static string */

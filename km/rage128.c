@@ -1,3 +1,11 @@
+/*     km preliminary version
+
+       (C) Vladimir Dergachev 2001-2002
+       
+       GNU Public License
+       
+*/
+
 #include <linux/autoconf.h>
 #if defined(MODULE) && defined(CONFIG_MODVERSIONS)
 #define MODVERSIONS

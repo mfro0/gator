@@ -1,3 +1,11 @@
+/*     km preliminary version
+
+       (C) Vladimir Dergachev 2001-2002
+       
+       GNU Public License
+       
+*/
+
 #ifndef __RADEON_H__
 #define __RADEON_H__
 

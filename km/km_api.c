@@ -1,3 +1,11 @@
+/*     km preliminary version
+
+       (C) Vladimir Dergachev 2001-2002
+       
+       GNU Public License
+       
+*/
+
 #include <linux/autoconf.h>
 #if defined(MODULE) && defined(CONFIG_MODVERSIONS)
 #define MODVERSIONS
@@ -16,6 +24,7 @@
 #include <linux/poll.h>
 
 #include "km_api.h"
+#include "km_api_data.h"
 
 struct proc_dir_entry  *km_root=NULL;
 
@@ -33,6 +42,7 @@ MODULE_DESCRIPTION("kmultimedia");
 EXPORT_SYMBOL(add_km_device);
 EXPORT_SYMBOL(remove_km_device);
 EXPORT_SYMBOL(kmd_signal_state_change);
+EXPORT_SYMBOL(km_allocate_data_virtual_block);
 
 
 #define KM_MODULUS	255
@@ -396,8 +406,11 @@ if(km_root==NULL){
 	printk(KERN_ERR "km_api: unable to initialize /proc/km\n");
 	return -EACCES;
 	}
-
 memcpy(&km_file_operations, km_root->proc_fops, sizeof(struct file_operations));
+if((result=init_km_data_units())<0){
+	cleanup_module();
+	return result;
+	}
 devices_size=10;
 devices_free=0;
 devices=kmalloc(devices_size*sizeof(KM_DEVICE), GFP_KERNEL);
@@ -414,9 +427,9 @@ return 0;
 
 void cleanup_module(void)
 {
-kfree(devices);
+if(devices!=NULL)kfree(devices);
 if(km_root!=NULL)remove_proc_entry("km", &proc_root);
-
+cleanup_km_data_units();
 return;
 }
 

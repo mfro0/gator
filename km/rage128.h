@@ -1,3 +1,11 @@
+/*     km preliminary version
+
+       (C) Vladimir Dergachev 2001-2002
+       
+       GNU Public License
+       
+*/
+
 #ifndef __RAGE128_H__
 #define __RAGE128_H__
 
