@@ -356,7 +356,7 @@ int km_fo_control_perform_command(KM_FILE_PRIVATE_DATA *kmfpd, const char *comma
 	int i,j;
 	int field_length;
 	unsigned hash;
-	char *value;
+	const char *value;
 	KM_FIELD *kf;
 	KM_FIELD_DATA *kfd;
 	u32 int_value;
@@ -578,12 +578,11 @@ int remove_km_device(int num)
 
 #ifdef MODULE
 
-void cleanup_module(void);
+void km_api_cleanup_module(void);
 
-static int __init init_module(void)
+static int km_api_init_module(void)
 {
 	int result;
-	long i;
 
 	km_root=create_proc_entry("km", S_IFDIR, &proc_root);
 	if(km_root==NULL){
@@ -592,7 +591,7 @@ static int __init init_module(void)
 	}
 	memcpy(&km_file_operations, km_root->proc_fops, sizeof(struct file_operations));
 	if((result=init_km_data_units())<0){
-		cleanup_module();
+		km_api_cleanup_module();
 		return result;
 	}
 	devices_size=10;
@@ -600,7 +599,7 @@ static int __init init_module(void)
 	devices=kmalloc(devices_size*sizeof(KM_DEVICE), GFP_KERNEL);
 	if(devices==NULL){
 		printk(KERN_ERR "Could not allocate memory for devices array\n");
-		cleanup_module();
+		km_api_cleanup_module();
 		return -ENOMEM;
 	}
 
@@ -609,7 +608,7 @@ static int __init init_module(void)
 	return 0;
 }
 
-void cleanup_module(void)
+void km_api_cleanup_module(void)
 {
 	if(devices!=NULL)kfree(devices);
 	if(km_root!=NULL)remove_proc_entry("km", &proc_root);
@@ -617,6 +616,8 @@ void cleanup_module(void)
 	return;
 }
 
+module_init(km_api_init_module);
+module_exit(km_api_cleanup_module);
 
 #endif
 

@@ -78,7 +78,6 @@ u32 aperture, aperture_size;
 u32 mc_fb_location;
 u32 mc_agp_location;
 u32 new_mc_fb_location;
-u32 new_mc_agp_location;
 
 aperture=pci_resource_start(kms->dev,0);
 radeon_wait_for_idle(kms);

@@ -178,7 +178,6 @@ static int km_v4l_mmap(struct file *file, struct vm_area_struct *vma)
 	struct video_device *dev = video_devdata(file);
 
 	KM_STRUCT *kms=(KM_STRUCT *)dev->priv;
-	unsigned long page,pos;
 	KDU_FILE_PRIVATE_DATA *kdufpd=kms->v4l_kdufpd;
 	return -ENOMEM;
 #if 0

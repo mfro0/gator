@@ -204,7 +204,6 @@ return mask;
 static int km_fo_data_open(struct inode * inode, struct file * file)
 {
 char *filename;
-KM_DATA_UNIT *kdu;
 KDU_FILE_PRIVATE_DATA *kdufpd=NULL;
 int i;
 filename=file->f_dentry->d_iname;
@@ -225,7 +224,6 @@ return 0;
 static int km_fo_data_release(struct inode * inode, struct file * file)
 {
 KDU_FILE_PRIVATE_DATA *kdufpd=file->private_data;
-KM_DATA_UNIT *kdu=kdufpd->kdu;
 
 file->private_data=NULL;
 km_data_destroy_kdufpd(kdufpd);
@@ -271,7 +269,7 @@ for(i=0;i<dvb->n;i++)
 	for(j=0;j<dvb->size;j+=PAGE_SIZE){
 		if(chunk_size*i+PAGE_SIZE*j<offset)continue;
 		if(chunk_size*i+PAGE_SIZE*j>offset+size)return 0;
-		page=kvirt_to_pa(dvb->ptr[i]+j*PAGE_SIZE);
+		page=kvirt_to_pa((unsigned long)dvb->ptr[i]+j*PAGE_SIZE);
 		start=vma->vm_start+chunk_size*i+PAGE_SIZE*j-offset;
 #ifdef LINUX_2_6
 		if(remap_page_range(vma,start, page, PAGE_SIZE, PAGE_SHARED))
