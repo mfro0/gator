@@ -83,11 +83,11 @@ mc_fb_location=readl(kms->reg_aperture+RADEON_MC_FB_LOCATION);
 mc_agp_location=readl(kms->reg_aperture+RADEON_MC_AGP_LOCATION);
 
 
-new_mc_fb_location=(aperture>>16)|
+new_mc_fb_location=((aperture>>16)&0xffff)|
         ((aperture+aperture_size-1)&0xffff0000);
 
 if((new_mc_fb_location!=mc_fb_location) ||
-   ((mc_agp_location & 0xffff)!=(((aperture+aperture_size-1)>>16)&0xffff))){
+   ((mc_agp_location & 0xffff)!=(((aperture+aperture_size)>>16)&0xffff))){
         printk("WARNING !   Radeon memory controller is misconfigured, disabling capture\n");
         printk("WARNING !   upgrade your Xserver and DRM driver\n");
 	return 0;

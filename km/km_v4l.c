@@ -93,7 +93,7 @@ DECLARE_WAITQUEUE(wait, current);
 todo=count;
 if(kms->buf_read_from<0){
 	printk("Internal error in km_v4l:km_read()\n");
-	return -1;
+	return -EIO;
 	}
 if(kms->buf_read_from==1)frame=&(kms->frame_even);
 	else frame=&(kms->frame);

@@ -111,6 +111,7 @@ static int __devinit km_probe(struct pci_dev *dev, const struct pci_device_id *p
 {
 KM_STRUCT *kms;
 int result;
+void *irq_handler=NULL;
 /* too many */
 if(num_devices>=MAX_DEVICES)return -1;
 
@@ -146,7 +147,7 @@ switch(pci_id->driver_data){
 		kms->stop_transfer=radeon_stop_transfer;
 		kms->allocate_single_frame_buffer=radeon_allocate_single_frame_buffer;
 		kms->deallocate_single_frame_buffer=generic_deallocate_single_frame_buffer;
-		install_irq_handler(kms, radeon_km_irq);
+		irq_handler=radeon_km_irq;
 		break;
 	case HARDWARE_MACH64:
 		kms->is_capture_active=mach64_is_capture_active;
@@ -155,7 +156,7 @@ switch(pci_id->driver_data){
 		kms->stop_transfer=mach64_stop_transfer;
 		kms->allocate_single_frame_buffer=mach64_allocate_single_frame_buffer;
 		kms->deallocate_single_frame_buffer=generic_deallocate_single_frame_buffer;
-		install_irq_handler(kms, mach64_km_irq);
+		irq_handler=mach64_km_irq;
 		break;
 	case HARDWARE_RAGE128:
 		kms->is_capture_active=rage128_is_capture_active;
@@ -164,12 +165,18 @@ switch(pci_id->driver_data){
 		kms->stop_transfer=rage128_stop_transfer;
 		kms->allocate_single_frame_buffer=rage128_allocate_single_frame_buffer;
 		kms->deallocate_single_frame_buffer=generic_deallocate_single_frame_buffer;
-		install_irq_handler(kms, rage128_km_irq);
+		irq_handler=rage128_km_irq;
 		break;
 	default:
 		printk("Unknown hardware type %ld\n", pci_id->driver_data);
-		goto fail;
 		}
+if((irq_handler==NULL) || (install_irq_handler(kms, irq_handler)<0)){
+	iounmap(kms->reg_aperture);
+	release_mem_region(pci_resource_start(dev,2),
+        	pci_resource_len(dev,2));
+	pci_set_drvdata(dev, NULL);
+	return -EIO;
+	}
 init_km_v4l(kms);
 printk("sizeof(kmfl_template)=%d sizeof(KM_FIELD)=%d\n", sizeof(kmfl_template), sizeof(KM_FIELD));
 kms->kmfl=kmalloc(sizeof(kmfl_template), GFP_KERNEL);
