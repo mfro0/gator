@@ -672,7 +672,7 @@ const struct
 	{"FI1216MF"		, TUNER_TYPE_FI1216},
 	{"FI1236"		, TUNER_TYPE_FI1236},
 	{"TEMIC-FN5AL"		, TUNER_TYPE_TEMIC_FN5AL},
-	{"UNKNOWN-14"		, -1},
+	{"FQ1216ME/P"		, TUNER_TYPE_FI1216},
 	{"UNKNOWN-15"		, -1},
 	{"Alps TSBH5"		, -1},
 	{"Alps TSCxx"		, -1},
@@ -818,7 +818,7 @@ static void ATIInitI2C(ScrnInfoPtr pScrn, ATIPortPrivPtr pPriv)
        out8(I2C_CNTL_0+0, (I2C_DONE | I2C_NACK | I2C_HALT | I2C_SOFT_RST ));
     } else 
     if(Detect_ImpactTV(pScrn, pATI) && 
-	(pATI->Chip == ATI_CHIP_264GTDVD))
+	(pATI->Chip <= ATI_CHIP_264GTDVD))
     {  /* This mode is used _only_ on RageII+DVD boards with Impact TV chip */
        pPriv->i2c->BusName = "Mach64 i2c bus via ImpactTV";
        pPriv->setbits = Mach64_TB_setbits;
@@ -2062,7 +2062,8 @@ void ATI_board_setmisc(ATIPortPrivPtr pPriv)
    }
     /* Adjust PAL/SECAM constants for FI1216MF tuner */
     if((((pPriv->board_info & 0xf)==5) ||
-       ((pPriv->board_info & 0xf)==11))&& (pPriv->fi1236!=NULL))
+       ((pPriv->board_info & 0xf)==11) ||
+       ((pPriv->board_info & 0xf)==14))&& (pPriv->fi1236!=NULL))
     {
         if((pPriv->encoding>=1)&&(pPriv->encoding<=3)) /*PAL*/
 	{
@@ -2070,11 +2071,11 @@ void ATI_board_setmisc(ATIPortPrivPtr pPriv)
 	   pPriv->fi1236->parm.band_mid = 0x91;
 	   pPriv->fi1236->parm.band_high = 0x31;
 	}
-        if((pPriv->encoding>=7)&&(pPriv->encoding<=9)) /*SECAM*/
+        if((pPriv->encoding>=7)&&(pPriv->encoding<=9)) /*SECAM-L*/
 	{
-    	   pPriv->fi1236->parm.band_low = 0xA2;
-	   pPriv->fi1236->parm.band_mid = 0x92;
-	   pPriv->fi1236->parm.band_high = 0x32;
+    	   pPriv->fi1236->parm.band_low = 0xA3;
+	   pPriv->fi1236->parm.band_mid = 0x93;
+	   pPriv->fi1236->parm.band_high = 0x33;
 	}
     }
 }

@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atistruct.h,v 1.26 2001/05/25 02:44:35 tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atistruct.h,v 1.28 2001/10/28 03:33:25 tsi Exp $ */
 /*
  * Copyright 1999 through 2001 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
  *
@@ -35,6 +35,7 @@
 #include "atiregs.h"
 
 #include "xf86Cursor.h"
+#include "xf86Pci.h"
 #include "xf86Resources.h"
 #include "xaa.h"
 
@@ -178,19 +179,19 @@ typedef struct _ATIRec
      * Processor I/O decoding definitions.
      */
     CARD8 CPIODecoding;
-    CARD16 CPIOBase;
+    IOADDRESS CPIOBase;
 
 #ifndef AVOID_CPIO
 
     /*
      * Processor I/O port definition for VGA.
      */
-    CARD16 CPIO_VGABase;
+    IOADDRESS CPIO_VGABase;
 
     /*
      * Processor I/O port definitions for VGA Wonder.
      */
-    CARD16 CPIO_VGAWonder;
+    IOADDRESS CPIO_VGAWonder;
     CARD8 B2Reg;        /* The B2 mirror */
     CARD8 VGAOffset;    /* Low index for CPIO_VGAWonder */
 
@@ -202,7 +203,7 @@ typedef struct _ATIRec
 
 #ifndef AVOID_CPIO
 
-    CARD16 CPIO_DAC_MASK, CPIO_DAC_DATA, CPIO_DAC_READ, CPIO_DAC_WRITE;
+    IOADDRESS CPIO_DAC_MASK, CPIO_DAC_DATA, CPIO_DAC_READ, CPIO_DAC_WRITE;
 
 #endif /* AVOID_CPIO */
 
@@ -272,13 +273,6 @@ typedef struct _ATIRec
     int ExpansionBitmapWidth;
 
     /*
-     * XAAForceTransBlit alters the behavior of 'SetupForScreenToScreenCopy',
-     * such that ~0 is interpreted as a legitimate transparency key.  This
-     * is used by DGA.
-     */
-    Bool XAAForceTransBlit;
-
-    /*
      * Cursor-related definitions.
      */
     xf86CursorInfoPtr pCursorInfo;
@@ -333,12 +327,22 @@ typedef struct _ATIRec
     int pitchInc;
     rgb weight;
 
+#ifndef AVOID_DGA
+
     /*
      * DGA-related data.
      */
     DGAModePtr pDGAMode;
     DGAFunctionRec ATIDGAFunctions;
     int nDGAMode;
+
+    /*
+     * XAAForceTransBlit alters the behavior of 'SetupForScreenToScreenCopy',
+     * such that ~0 is interpreted as a legitimate transparency key.
+     */
+    CARD8 XAAForceTransBlit;
+
+#endif /* AVOID_DGA */
 
     /*
      * Data saved by ATIUnlock() and restored by ATILock().
@@ -383,6 +387,7 @@ typedef struct _ATIRec
      * Driver options.
      */
     CARD8 OptionAccel;          /* Use hardware draw engine */
+    CARD8 OptionBlend;          /* Force horizontal blending */
     CARD8 OptionCRT;            /* Prefer CRT over digital panel */
     CARD8 OptionCSync;          /* Use composite sync */
     CARD8 OptionDevel;          /* Intentionally undocumented */

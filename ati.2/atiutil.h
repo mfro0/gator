@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atiutil.h,v 1.5 2001/01/06 20:58:07 tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atiutil.h,v 1.6 2001/07/19 02:22:50 tsi Exp $ */
 /*
  * Copyright 1997 through 2001 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
  *
@@ -64,6 +64,7 @@
 #define GetWord(_Value, _Word)  GetBits(_Value, _WordMask(_Word))
 #define SetWord(_Value, _Word)  SetBits(_Value, _WordMask(_Word))
 
-extern int ATIDivide FunctionPrototype((int, int, int, const int));
+extern void ATIReduceRatio FunctionPrototype((int *, int *));
+extern int  ATIDivide      FunctionPrototype((int, int, int, const int));
 
 #endif /* ___ATIUTIL_H___ */

@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atiprint.c,v 1.20 2001/04/19 14:14:05 tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atiprint.c,v 1.21 2001/10/28 03:33:24 tsi Exp $ */
 /*
  * Copyright 1997 through 2001 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
  *
@@ -86,11 +86,11 @@ ATIPrintBIOS
 static void
 ATIPrintIndexedRegisters
 (
-    const CARD16 Port,
-    const CARD8  StartIndex,
-    const CARD8  EndIndex,
-    const char   *Name,
-    const CARD16 GenS1
+    const IOADDRESS Port,
+    const CARD8     StartIndex,
+    const CARD8     EndIndex,
+    const char      *Name,
+    const IOADDRESS GenS1
 )
 {
     int Index;
@@ -626,6 +626,10 @@ ATIPrintRegisters
     if (pATI->pMemory == pATI->pBank)
         xf86ErrorFVerb(4, "\n No linear aperture.\n");
     else
+
+#else /* AVOID_CPIO */
+
+    if (pATI->pMemory)
 
 #endif /* AVOID_CPIO */
 

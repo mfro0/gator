@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atiload.c,v 1.6 2001/03/25 05:32:07 tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atiload.c,v 1.7 2001/08/15 11:54:26 tsi Exp $ */
 /*
  * Copyright 2000 through 2001 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
  *
@@ -135,7 +135,7 @@ ATILoadModules
                 return FALSE;
 
             /* Require more fb symbols */
-            xf86LoaderReqSymbols("fbPictureInit", FALSE);
+            xf86LoaderReqSymbols("fbPictureInit", NULL);
             return TRUE;
 
         default:

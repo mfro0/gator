@@ -1,7 +1,12 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/r128_video.c,v 1.18 2001/03/03 22:26:10 tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/r128_video.c,v 1.20 2001/10/02 11:44:16 alanh Exp $ */
 
 #include "r128.h"
 #include "r128_reg.h"
+
+#ifdef XF86DRI
+#include "xf86drmR128.h"
+#include "r128_sarea.h"
+#endif
 
 #include "xf86.h"
 #include "dixstruct.h"
@@ -170,12 +175,15 @@ void R128InitVideo(ScreenPtr pScreen)
 	xfree(newAdaptors);
 }
 
+#define MAXWIDTH 2048
+#define MAXHEIGHT 2048
+
 /* client libraries expect an encoding */
 static XF86VideoEncodingRec DummyEncoding =
 {
    0,
    "XV_IMAGE",
-   2048, 2048,
+   MAXWIDTH, MAXHEIGHT,
    {1, 1}
 };
 
@@ -570,7 +578,7 @@ const struct
 	{"FI1216MF"		, TUNER_TYPE_FI1216},
 	{"FI1236"		, TUNER_TYPE_FI1236},
 	{"TEMIC-FN5AL"		, TUNER_TYPE_TEMIC_FN5AL},
-	{"UNKNOWN-14"		, -1},
+	{"FQ1216ME/P"		, TUNER_TYPE_FI1216},
 	{"UNKNOWN-15"		, -1},
 	{"Alps TSBH5"		, -1},
 	{"Alps TSCxx"		, -1},
@@ -713,7 +721,17 @@ static void R128InitI2C(ScrnInfoPtr pScrn, R128PortPrivPtr pPriv)
          if(!xf86_bt829_init(pPriv->bt829))pPriv->bt829 = NULL; /* disable it */
       }
     }
-    
+
+/* I am not sure whether this is really necessary.. but just in case - and it does
+   not hurt right now */
+
+#if 1    
+    if(!pPriv->MM_TABLE_valid)
+      {
+     	xf86DrvMsg(pScrn->scrnIndex,X_ERROR,"Skipping Rage Theatre detection because of absent or invalid MM_TABLE\n");
+	pPriv->theatre=NULL;
+      } else      
+#endif
     if(pPriv->bt829 == NULL){ 
     
        R128VIP_init(pScrn,pPriv);
@@ -1021,8 +1039,13 @@ static void R128ReadMM_TABLE(ScrnInfoPtr pScrn, R128PortPrivPtr pPriv)
      	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Cannot access BIOS: info->VBIOS==NULL.\n");
      	}
      
-     xf86DrvMsg(pScrn->scrnIndex, X_INFO, "0x%02x 0x%02x\n", info->VBIOS[0],
-               info->VBIOS[1]);	
+
+     if(!((info->VBIOS[0]==0x55)&&(info->VBIOS[1]==0xaa))){
+	     xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Required BIOS signature not found: 0x%02x 0x%02x, probably the card has OpenFirmware, no MM_TABLE found\n", info->VBIOS[0],
+                info->VBIOS[1]);	
+	     pPriv->MM_TABLE_valid=FALSE;
+	     }     	
+
      bios_header=info->VBIOS[0x48];
      bios_header+=(((int)info->VBIOS[0x49]+0)<<8);	     
 	
@@ -1448,6 +1471,7 @@ R128StopVideo(ScrnInfoPtr pScrn, pointer data, Bool cleanup)
 	R128WaitForFifo(pScrn, 8); 
         OUTPLL(R128_FCP_CNTL, 0x404);
         OUTREG(R128_CAP0_TRIG_CNTL, 0x0);
+	R128ResetVideo(pScrn);
 	pPriv->video_stream_active = FALSE;
 	if(pPriv->msp3430 != NULL) xf86_MSP3430SetVolume(pPriv->msp3430, MSP3430_FAST_MUTE);
 	if(pPriv->tda9850 != NULL) xf86_tda9850_mute(pPriv->tda9850, TRUE);
@@ -1644,8 +1668,115 @@ R128QueryBestSize(
 }
 
 
+/*
+ *
+ * R128DMA - abuse the texture blit ioctl to transfer rectangular blocks
+ *
+ * The block is split into 'passes' pieces of 'hpass' lines which fit entirely
+ * into an indirect buffer
+ *
+ */
+
+static Bool
+R128DMA(
+  R128InfoPtr info,
+  unsigned char *src,
+  unsigned char *dst,
+  int srcPitch,
+  int dstPitch,
+  int h,
+  int w
+){
+
+#ifdef XF86DRI
+
+#define BUFSIZE (R128_BUFFER_SIZE - R128_HOSTDATA_BLIT_OFFSET)
+#define MAXPASSES (MAXHEIGHT/(BUFSIZE/(MAXWIDTH*2))+1)
+
+    unsigned char *buf;
+    int err=-1, i, idx, offset, hpass, passes, srcpassbytes, dstpassbytes;
+    int sizes[MAXPASSES], list[MAXPASSES];
+    drmDMAReq req;
+
+    /* Verify conditions and bail out as early as possible */
+    if (!info->directRenderingEnabled)
+        return FALSE;
+
+    if ((hpass = min(h,(BUFSIZE/w))) == 0)
+	return FALSE;
+
+    if ((passes = (h+hpass-1)/hpass) > MAXPASSES)
+        return FALSE;
+
+    /* Request indirect buffers */
+    srcpassbytes = w*hpass;
+
+    req.context		= info->drmCtx;
+    req.send_count	= 0;
+    req.send_list	= NULL;
+    req.send_sizes	= NULL;
+    req.flags		= DRM_DMA_LARGER_OK;
+    req.request_count	= passes;
+    req.request_size	= srcpassbytes + R128_HOSTDATA_BLIT_OFFSET;
+    req.request_list	= &list[0];
+    req.request_sizes	= &sizes[0];
+    req.granted_count	= 0;
+
+    if (drmDMA(info->drmFD, &req))
+        return FALSE;
+
+    if (req.granted_count < passes) {
+        drmFreeBufs(info->drmFD, req.granted_count, req.request_list);
+	return FALSE;
+    }
+
+    /* Copy parts of the block into buffers and fire them */ 
+    dstpassbytes = hpass*dstPitch;
+    dstPitch /= 8;
+
+    for (i=0, offset=dst-info->FB; i<passes; i++, offset+=dstpassbytes) {
+        if (i == (passes-1) && (h % hpass) != 0) {
+	    hpass = h % hpass;
+	    srcpassbytes = w*hpass;
+	}
+
+	idx = req.request_list[i];
+	buf = (unsigned char *) info->buffers->list[idx].address + R128_HOSTDATA_BLIT_OFFSET;
+
+	if (srcPitch == w) {
+            memcpy(buf, src, srcpassbytes);
+	    src += srcpassbytes;
+	} else {
+	    int count = hpass;
+	    while(count--) {
+	        memcpy(buf, src, w);
+		src += srcPitch;
+		buf += w;
+	    }
+	}
+
+	if ((err = drmR128TextureBlit(info->drmFD, idx, offset, dstPitch,
+		  (R128_DATATYPE_CI8 >> 16), (offset % 32), 0, w, hpass)) < 0)
+	    break;
+    }
+
+    drmFreeBufs(info->drmFD, req.granted_count, req.request_list);
+
+    return (err==0) ? TRUE : FALSE;
+
+#else
+
+    /* This is to avoid cluttering the rest of the code with '#ifdef XF86DRI' */
+    return FALSE;
+
+#endif	/* XF86DRI */
+
+}
+
+
 static void
 R128CopyData422(
+  R128InfoPtr info,
   unsigned char *src,
   unsigned char *dst,
   int srcPitch,
@@ -1654,15 +1785,21 @@ R128CopyData422(
   int w
 ){
     w <<= 1;
-    while(h--) {
-	memcpy(dst, src, w);
-	src += srcPitch;
-	dst += dstPitch;
+
+    /* Attempt data transfer with DMA and fall back to memcpy */
+
+    if (!R128DMA(info, src, dst, srcPitch, dstPitch, h, w)) {
+        while(h--) {
+	    memcpy(dst, src, w);
+	    src += srcPitch;
+	    dst += dstPitch;
+	}
     }
 }
 
 static void
 R128CopyData420(
+   R128InfoPtr info,
    unsigned char *src1,
    unsigned char *src2,
    unsigned char *src3,
@@ -1677,29 +1814,37 @@ R128CopyData420(
 ){
    int count;
 
-   count = h;
-   while(count--) {
-	memcpy(dst1, src1, w);
-	src1 += srcPitch;
-	dst1 += dstPitch;
+   /* Attempt data transfer with DMA and fall back to memcpy */
+
+   if (!R128DMA(info, src1, dst1, srcPitch, dstPitch, h, w)) {
+       count = h;
+       while(count--) {
+	   memcpy(dst1, src1, w);
+	   src1 += srcPitch;
+	   dst1 += dstPitch;
+       }
    }
 
    w >>= 1;
    h >>= 1;
    dstPitch >>= 1;
 
-   count = h;
-   while(count--) {
-	memcpy(dst2, src2, w);
-	src2 += srcPitch2;
-	dst2 += dstPitch;
+   if (!R128DMA(info, src2, dst2, srcPitch2, dstPitch, h, w)) {
+       count = h;
+       while(count--) {
+	   memcpy(dst2, src2, w);
+	   src2 += srcPitch2;
+	   dst2 += dstPitch;
+       }
    }
 
-   count = h;
-   while(count--) {
-	memcpy(dst3, src3, w);
-	src3 += srcPitch2;
-	dst3 += dstPitch;
+   if (!R128DMA(info, src3, dst3, srcPitch2, dstPitch, h, w)) {
+       count = h;
+       while(count--) {
+	   memcpy(dst3, src3, w);
+	   src3 += srcPitch2;
+	   dst3 += dstPitch;
+       }
    }
 }
 
@@ -2109,9 +2254,24 @@ R128PutImage(
 	}
 
 	nlines = ((((yb + 0xffff) >> 16) + 1) & ~1) - top;
-	R128CopyData420(buf + s1offset, buf + s2offset, buf + s3offset,
-			info->FB+d1offset, info->FB+d2offset, info->FB+d3offset,
-			srcPitch, srcPitch2, dstPitch, nlines, npixels);
+	{
+#if X_BYTE_ORDER == X_BIG_ENDIAN
+	   unsigned char *R128MMIO = info->MMIO;
+	   CARD32 config_cntl;
+
+	   /* We need to disable byte swapping, or the data gets mangled */
+	   config_cntl = INREG(R128_CONFIG_CNTL);
+	   OUTREG(R128_CONFIG_CNTL, config_cntl &
+		 ~(APER_0_BIG_ENDIAN_16BPP_SWAP|APER_0_BIG_ENDIAN_32BPP_SWAP));
+#endif
+	   R128CopyData420(info, buf + s1offset, buf + s2offset, buf + s3offset,
+			  info->FB+d1offset, info->FB+d2offset, info->FB+d3offset,
+			  srcPitch, srcPitch2, dstPitch, nlines, npixels);
+#if X_BYTE_ORDER == X_BIG_ENDIAN
+	   /* restore byte swapping */
+	   OUTREG(R128_CONFIG_CNTL, config_cntl);
+#endif
+	}
 	break;
     case FOURCC_UYVY:
     case FOURCC_YUY2:
@@ -2125,7 +2285,7 @@ R128PutImage(
 	d3offset = 0;
 	s1offset += (top * srcPitch) + left;
 	nlines = ((yb + 0xffff) >> 16) - top;
-	R128CopyData422(buf + s1offset, info->FB + d1offset,
+	R128CopyData422(info, buf + s1offset, info->FB + d1offset,
 			srcPitch, dstPitch, nlines, npixels);
 	break;
     }
@@ -2174,8 +2334,8 @@ R128QueryImageAttributes(
 ){
     int size, tmp;
 
-    if(*w > 2048) *w = 2048;
-    if(*h > 2048) *h = 2048;
+    if(*w > MAXWIDTH) *w = MAXWIDTH;
+    if(*h > MAXHEIGHT) *h = MAXHEIGHT;
 
     *w = (*w + 1) & ~1;
     if(offsets) offsets[0] = 0;
@@ -2248,7 +2408,8 @@ void R128_board_setmisc(R128PortPrivPtr pPriv)
     }
     /* Adjust PAL/SECAM constants for FI1216MF tuner */
     if((((pPriv->board_info & 0xf)==5) ||
-       ((pPriv->board_info & 0xf)==11))&& (pPriv->fi1236!=NULL))
+       ((pPriv->board_info & 0xf)==11) ||
+       ((pPriv->board_info & 0xf)==14))&& (pPriv->fi1236!=NULL))
     {
         if((pPriv->encoding>=1)&&(pPriv->encoding<=3)) /*PAL*/
 	{
@@ -2258,9 +2419,9 @@ void R128_board_setmisc(R128PortPrivPtr pPriv)
 	}
         if((pPriv->encoding>=7)&&(pPriv->encoding<=9)) /*SECAM*/
 	{
-    	   pPriv->fi1236->parm.band_low = 0xA2;
-	   pPriv->fi1236->parm.band_mid = 0x92;
-	   pPriv->fi1236->parm.band_high = 0x32;
+    	   pPriv->fi1236->parm.band_low = 0xA3;
+	   pPriv->fi1236->parm.band_mid = 0x93;
+	   pPriv->fi1236->parm.band_high = 0x33;
 	}
     }
 

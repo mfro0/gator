@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/radeon_video.c,v 1.11 2001/03/03 22:26:11 tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/radeon_video.c,v 1.12 2001/07/19 02:22:50 tsi Exp $ */
 
 #include "radeon.h"
 #include "radeon_reg.h"
@@ -315,7 +315,8 @@ void RADEONResetVideo(ScrnInfoPtr pScrn)
     xv_autopaint_colorkey = MAKE_ATOM("XV_AUTOPAINT_COLORKEY");
     xv_set_defaults = MAKE_ATOM("XV_SET_DEFAULTS");
 
-    RADEONWaitForFifo(pScrn, 7);
+    RADEONWaitForIdle(pScrn);
+/*    RADEONWaitForFifo(pScrn, 7); */
     OUTREG(RADEON_OV0_SCALE_CNTL, 0x80000000);
     OUTREG(RADEON_OV0_AUTO_FLIP_CNTL, 0);   /* maybe */
     OUTREG(RADEON_OV0_FILTER_CNTL, 0x0000000f);
@@ -377,7 +378,7 @@ static CARD8 RADEON_I2C_WaitForAck (ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
     usleep(1);
     while(1)
     {
-        RADEONWaitForFifo(pScrn, 1); 
+        RADEONWaitForIdle(pScrn); 
         retval = INREG8(RADEON_I2C_CNTL_0);
         if (retval & I2C_HALT)
         {
@@ -443,7 +444,8 @@ static Bool RADEONI2CWriteRead(I2CDevPtr d, I2CByte *WriteBuffer, int nWrite,
     status=I2C_DONE;
 
     if(nWrite>0){
-       RADEONWaitForFifo(pScrn, 4+nWrite);
+       RADEONWaitForIdle(pScrn);
+/*       RADEONWaitForFifo(pScrn, 4+nWrite); */
 
        /* Clear the status bits of the I2C Controller */
        OUTREG(RADEON_I2C_CNTL_0, I2C_DONE | I2C_NACK | I2C_HALT | I2C_SOFT_RST);
@@ -788,7 +790,7 @@ static Bool RADEONVIP_read(GENERIC_BUS_Ptr b, CARD32 address, CARD32 count, CARD
          because 1 would have acknowledged various VIP
          interrupts unexpectedly 
 */	
-   RADEONWaitForFifo(pScrn, 2);
+   RADEONWaitForIdle(pScrn);
    OUTREG(VIPH_TIMEOUT_STAT, INREG(VIPH_TIMEOUT_STAT) & (0xffffff00 & ~VIPH_TIMEOUT_STAT__VIPH_REGR_DIS) );
 /*
          the value returned here is garbage.  The read merely initiates
@@ -864,7 +866,7 @@ void RADEONVIP_reset(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
     unsigned char *RADEONMMIO = info->MMIO;
 
 
-    RADEONWaitForFifo(pScrn, 5);
+    RADEONWaitForIdle(pScrn);
     OUTREG(VIPH_CONTROL, 0x003F0004); /* slowest, timeout in 16 phases */
     OUTREG(VIPH_TIMEOUT_STAT, (INREG(VIPH_TIMEOUT_STAT) & 0xFFFFFF00) | VIPH_TIMEOUT_STAT__VIPH_REGR_DIS);
     OUTREG(VIPH_DV_LAT, 0x444400FF); /* set timeslice */
@@ -1200,6 +1202,7 @@ RADEONSetupImageVideo(ScreenPtr pScreen)
     return adapt;
 }
 
+
 /* I really should stick this in miregion */
 static Bool
 RegionsEqual(RegionPtr A, RegionPtr B)
@@ -1339,6 +1342,7 @@ RADEONStopVideo(ScrnInfoPtr pScrn, pointer data, Bool cleanup)
 	RADEONWaitForFifo(pScrn, 2); 
         OUTREG(RADEON_FCP_CNTL, RADEON_FCP_CNTL__GND);
 	OUTREG(RADEON_CAP0_TRIG_CNTL, 0);
+	RADEONResetVideo(pScrn);
 	pPriv->video_stream_active = FALSE;
 	if(pPriv->msp3430 != NULL) xf86_MSP3430SetVolume(pPriv->msp3430, MSP3430_FAST_MUTE);
 	if(pPriv->i2c != NULL) RADEON_board_setmisc(pPriv);
@@ -1705,8 +1709,8 @@ RADEONDisplayVideo(
     RADEONWaitForFifo(pScrn, 15);
     OUTREG(RADEON_OV0_H_INC, h_inc | ((h_inc >> 1) << 16));
     OUTREG(RADEON_OV0_STEP_BY, step_by | (step_by << 8));
-    OUTREG(RADEON_OV0_Y_X_START, dstBox->x1+8 | ((dstBox->y1*((pScrn->currentMode->Flags & V_DBLSCAN)?2:1)) << 16));
-    OUTREG(RADEON_OV0_Y_X_END,   dstBox->x2+8 | ((dstBox->y2*((pScrn->currentMode->Flags & V_DBLSCAN)?2:1)) << 16));
+    OUTREG(RADEON_OV0_Y_X_START, dstBox->x1 | ((dstBox->y1*((pScrn->currentMode->Flags & V_DBLSCAN)?2:1)) << 16));
+    OUTREG(RADEON_OV0_Y_X_END,   dstBox->x2 | ((dstBox->y2*((pScrn->currentMode->Flags & V_DBLSCAN)?2:1)) << 16));
     OUTREG(RADEON_OV0_V_INC, v_inc);
     OUTREG(RADEON_OV0_P1_BLANK_LINES_AT_TOP, 0x00000fff | ((src_h - 1) << 16));
     OUTREG(RADEON_OV0_VID_BUF_PITCH0_VALUE, pitch);
@@ -1959,7 +1963,9 @@ void RADEON_board_setmisc(RADEONPortPrivPtr pPriv)
 {
     /* Adjust PAL/SECAM constants for FI1216MF tuner */
     if((((pPriv->board_info & 0xf)==5) ||
-       ((pPriv->board_info & 0xf)==11))&& (pPriv->fi1236!=NULL))
+        ((pPriv->board_info & 0xf)==11)||
+        ((pPriv->board_info & 0xf)==14))
+	&& (pPriv->fi1236!=NULL))
     {
         if((pPriv->encoding>=1)&&(pPriv->encoding<=3)) /*PAL*/
 	{
@@ -1969,9 +1975,9 @@ void RADEON_board_setmisc(RADEONPortPrivPtr pPriv)
 	}
         if((pPriv->encoding>=7)&&(pPriv->encoding<=9)) /*SECAM*/
 	{
-    	   pPriv->fi1236->parm.band_low = 0xA2;
-	   pPriv->fi1236->parm.band_mid = 0x92;
-	   pPriv->fi1236->parm.band_high = 0x32;
+    	   pPriv->fi1236->parm.band_low = 0xA3;
+	   pPriv->fi1236->parm.band_mid = 0x93;
+	   pPriv->fi1236->parm.band_high = 0x33;
 	}
     }
 }
@@ -2270,7 +2276,7 @@ RADEONPutVideo(
    if(! pPriv->video_stream_active)
    {
 
-      RADEONWaitForFifo(pScrn, 15);
+      RADEONWaitForIdle(pScrn);
       xf86DrvMsg(pScrn->scrnIndex, X_INFO, "RADEON_VIDEOMUX_CNT=0x%08x\n", INREG(RADEON_VIDEOMUX_CNTL));
       OUTREG(RADEON_VIDEOMUX_CNTL, INREG(RADEON_VIDEOMUX_CNTL)|1 ); 
       OUTREG(RADEON_CAP0_PORT_MODE_CNTL, (pPriv->theatre!=NULL)? 1: 0);
@@ -2307,14 +2313,16 @@ RADEONPutVideo(
    RADEONDisplayVideo(pScrn, pPriv, id, offset1+top*srcPitch, offset2+top*srcPitch, width, height, dstPitch,
 		     xa, xb, ya, &dstBox, src_w, src_h, drw_w, drw_h);
 
-   RADEONWaitForFifo(pScrn, 9);
+   RADEONWaitForFifo(pScrn, 1);
    OUTREG(RADEON_OV0_REG_LOAD_CNTL,  RADEON_REG_LD_CTL_LOCK);
+   RADEONWaitForIdle(pScrn);
    while(!(INREG(RADEON_OV0_REG_LOAD_CNTL) & RADEON_REG_LD_CTL_LOCK_READBACK));
 
    OUTREG(RADEON_OV0_AUTO_FLIP_CNTL, RADEON_OV0_AUTO_FLIP_CNTL_SOFT_BUF_ODD);
 
    OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0xAAAAA);
    
+   RADEONWaitForIdle(pScrn);
    OUTREG (RADEON_OV0_AUTO_FLIP_CNTL, (INREG (RADEON_OV0_AUTO_FLIP_CNTL) ^ RADEON_OV0_AUTO_FLIP_CNTL_SOFT_EOF_TOGGLE ));
    OUTREG (RADEON_OV0_AUTO_FLIP_CNTL, (INREG (RADEON_OV0_AUTO_FLIP_CNTL) ^ RADEON_OV0_AUTO_FLIP_CNTL_SOFT_EOF_TOGGLE ));
 

@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atiutil.c,v 1.5 2001/01/06 20:58:07 tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atiutil.c,v 1.6 2001/07/19 02:22:50 tsi Exp $ */
 /*
  * Copyright 1997 through 2001 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
  *
@@ -24,6 +24,34 @@
 #include "atiutil.h"
 
 /*
+ * ATIReduceRatio --
+ *
+ * Reduce a fraction by factoring out the largest common divider of the
+ * fraction's numerator and denominator.
+ */
+void
+ATIReduceRatio
+(
+    int *Numerator,
+    int *Denominator
+)
+{
+    int Multiplier, Divider, Remainder;
+
+    Multiplier = *Numerator;
+    Divider = *Denominator;
+
+    while ((Remainder = Multiplier % Divider))
+    {
+        Multiplier = Divider;
+        Divider = Remainder;
+    }
+
+    *Numerator /= Divider;
+    *Denominator /= Divider;
+}
+
+/*
  * ATIDivide --
  *
  * Using integer arithmetic and avoiding overflows, this function finds the
@@ -33,7 +61,7 @@
  *        ----------- * 2
  *        Denominator
  *
- * using the specified rounding (floor, nearest or ceiling).
+ * using the specified rounding (floor (<0), nearest (=0) or ceiling (>0)).
  */
 int
 ATIDivide
@@ -44,21 +72,11 @@ ATIDivide
     const int RoundingKind
 )
 {
-    int Multiplier, Divider, Remainder;
     int Rounding = 0;                           /* Default to floor */
 
 #define MaxInt ((int)((unsigned int)(-1) >> 2))
 
-    /* Filter out largest common divider */
-    Multiplier = Numerator;
-    Divider = Denominator;
-    while ((Remainder = Multiplier % Divider))
-    {
-        Multiplier = Divider;
-        Divider = Remainder;
-    }
-    Numerator /= Divider;
-    Denominator /= Divider;
+    ATIReduceRatio(&Numerator, &Denominator);
 
     /* Deal with left shifts but try to keep the denominator even */
     if (Denominator & 1)

@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atimode.c,v 1.5 2001/04/16 15:02:09 tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atimode.c,v 1.7 2001/08/15 11:54:26 tsi Exp $ */
 /*
  * Copyright 2000 through 2001 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
  *
@@ -297,9 +297,11 @@ ATIModePreInit
                             (pATI->Chip == ATI_CHIP_MOBILITY)) */
                 {
                     lcd_index = inr(LCD_INDEX);
-                    pATIHW->lcd_index = (lcd_index &
-                        ~(LCD_REG_INDEX | LCD_DISPLAY_DIS | LCD_SRC_SEL)) |
-                        (LCD_SRC_SEL_CRTC1 | LCD_CRTC2_DISPLAY_DIS);
+                    pATIHW->lcd_index = lcd_index &
+                        ~(LCD_REG_INDEX | LCD_DISPLAY_DIS | LCD_SRC_SEL |
+                          LCD_CRTC2_DISPLAY_DIS);
+                    if (pATI->Chip != ATI_CHIP_264XL)
+                        pATIHW->lcd_index |= LCD_CRTC2_DISPLAY_DIS;
                     pATIHW->config_panel =
                         ATIGetMach64LCDReg(LCD_CONFIG_PANEL) |
                         DONT_SHADOW_HEND;
@@ -436,37 +438,34 @@ ATIModeSave
 
             if (pATI->LCDPanelID >= 0)
             {
-                if (!pATI->OptionCRT)
-                {
-                    /* Switch to shadow registers */
-                    if (pATI->Chip == ATI_CHIP_264LT)
-                        outr(LCD_GEN_CTRL,
-                            (pATIHW->lcd_gen_ctrl & ~CRTC_RW_SELECT) |
-                            (SHADOW_EN | SHADOW_RW_EN));
-                    else /* if ((pATI->Chip == ATI_CHIP_264LTPRO) ||
-                                (pATI->Chip == ATI_CHIP_264XL) ||
-                                (pATI->Chip == ATI_CHIP_MOBILITY)) */
-                        ATIPutMach64LCDReg(LCD_GEN_CNTL,
-                            (pATIHW->lcd_gen_ctrl & ~CRTC_RW_SELECT) |
-                            (SHADOW_EN | SHADOW_RW_EN));
+                /* Switch to shadow registers */
+                if (pATI->Chip == ATI_CHIP_264LT)
+                    outr(LCD_GEN_CTRL,
+                        (pATIHW->lcd_gen_ctrl & ~CRTC_RW_SELECT) |
+                        (SHADOW_EN | SHADOW_RW_EN));
+                else /* if ((pATI->Chip == ATI_CHIP_264LTPRO) ||
+                            (pATI->Chip == ATI_CHIP_264XL) ||
+                            (pATI->Chip == ATI_CHIP_MOBILITY)) */
+                    ATIPutMach64LCDReg(LCD_GEN_CNTL,
+                        (pATIHW->lcd_gen_ctrl & ~CRTC_RW_SELECT) |
+                        (SHADOW_EN | SHADOW_RW_EN));
 
 #ifndef AVOID_CPIO
 
-                    /* Save shadow VGA CRTC registers */
-                    for (Index = 0;
-                         Index < NumberOf(pATIHW->shadow_vga);
-                         Index++)
-                        pATIHW->shadow_vga[Index] =
-                            GetReg(CRTX(pATI->CPIO_VGABase), Index);
+                /* Save shadow VGA CRTC registers */
+                for (Index = 0;
+                     Index < NumberOf(pATIHW->shadow_vga);
+                     Index++)
+                    pATIHW->shadow_vga[Index] =
+                        GetReg(CRTX(pATI->CPIO_VGABase), Index);
 
 #endif /* AVOID_CPIO */
 
-                    /* Save shadow Mach64 CRTC registers */
-                    pATIHW->shadow_h_total_disp = inr(CRTC_H_TOTAL_DISP);
-                    pATIHW->shadow_h_sync_strt_wid = inr(CRTC_H_SYNC_STRT_WID);
-                    pATIHW->shadow_v_total_disp = inr(CRTC_V_TOTAL_DISP);
-                    pATIHW->shadow_v_sync_strt_wid = inr(CRTC_V_SYNC_STRT_WID);
-                }
+                /* Save shadow Mach64 CRTC registers */
+                pATIHW->shadow_h_total_disp = inr(CRTC_H_TOTAL_DISP);
+                pATIHW->shadow_h_sync_strt_wid = inr(CRTC_H_SYNC_STRT_WID);
+                pATIHW->shadow_v_total_disp = inr(CRTC_V_TOTAL_DISP);
+                pATIHW->shadow_v_sync_strt_wid = inr(CRTC_V_SYNC_STRT_WID);
 
                 /* Restore CRTC selection and shadow state */
                 if (pATI->Chip == ATI_CHIP_264LT)
@@ -720,10 +719,87 @@ ATIModeCalculate
             ~(HORZ_STRETCH_RATIO | HORZ_STRETCH_LOOP | AUTO_HORZ_RATIO |
               HORZ_STRETCH_MODE | HORZ_STRETCH_EN);
         if (!pATI->OptionCRT && (pMode->HDisplay < pATI->LCDHorizontal))
+        do
+        {
+            /*
+             * The horizontal blender misbehaves when HDisplay is less than a
+             * a certain threshold (440 for a 1024-wide panel).  It doesn't
+             * stretch such modes enough.  Use pixel replication instead of
+             * blending to stretch modes that can be made to exactly fit the
+             * panel width.  The undocumented "NoLCDBlend" options allows the
+             * pixel-replicated mode to be slightly wider or narrower than the
+             * panel width.  It also causes a mode that is exactly half as wide
+             * as the panel to be pixel-replicated, rather than blended.
+             */
+            int HDisplay  = pMode->HDisplay & ~7;
+            int nStretch  = pATI->LCDHorizontal / HDisplay;
+            int Remainder = pATI->LCDHorizontal % HDisplay;
+
+            if ((!Remainder && ((nStretch > 2) || !pATI->OptionBlend)) ||
+                (((HDisplay * 16) / pATI->LCDHorizontal) < 7))
+            {
+                static const char StretchLoops[] = {10, 12, 13, 15, 16};
+                int horz_stretch_loop = -1, BestRemainder;
+                int Numerator = HDisplay, Denominator = pATI->LCDHorizontal;
+
+                ATIReduceRatio(&Numerator, &Denominator);
+
+                BestRemainder = (Numerator * 16) / Denominator;
+                Index = NumberOf(StretchLoops);
+                while (--Index >= 0)
+                {
+                    Remainder =
+                        ((Denominator - Numerator) * StretchLoops[Index]) %
+                        Denominator;
+                    if (Remainder < BestRemainder)
+                    {
+                        horz_stretch_loop = Index;
+                        if (!(BestRemainder = Remainder))
+                            break;
+                    }
+#if 0
+                    /*
+                     * Enabling this code allows the pixel-replicated mode to
+                     * be slightly wider than the panel width.
+                     */
+                    Remainder = Denominator - Remainder;
+                    if (Remainder < BestRemainder)
+                    {
+                        horz_stretch_loop = Index;
+                        BestRemainder = Remainder;
+                    }
+#endif
+                }
+
+                if ((horz_stretch_loop >= 0) &&
+                    (!BestRemainder || !pATI->OptionBlend))
+                {
+                    int horz_stretch_ratio = 0, Accumulator = 0;
+                    int reuse_previous = 1;
+
+                    Index = StretchLoops[horz_stretch_loop];
+
+                    while (--Index >= 0)
+                    {
+                        if (Accumulator > 0)
+                            horz_stretch_ratio |= reuse_previous;
+                        else
+                            Accumulator += Denominator;
+                        Accumulator -= Numerator;
+                        reuse_previous <<= 1;
+                    }
+
+                    pATIHW->horz_stretching |= HORZ_STRETCH_EN |
+                        SetBits(horz_stretch_loop, HORZ_STRETCH_LOOP) |
+                        SetBits(horz_stretch_ratio, HORZ_STRETCH_RATIO);
+                    break;      /* Out of the do { ... } while (0) */
+                }
+            }
+
             pATIHW->horz_stretching |= (HORZ_STRETCH_MODE | HORZ_STRETCH_EN) |
-                SetBits(((pMode->HDisplay & ~7) *
-                         (MaxBits(HORZ_STRETCH_BLEND) + 1)) /
+                SetBits((HDisplay * (MaxBits(HORZ_STRETCH_BLEND) + 1)) /
                         pATI->LCDHorizontal, HORZ_STRETCH_BLEND);
+        } while(0);
 
         if (pATI->OptionCRT || (VDisplay >= pATI->LCDVertical))
             pATIHW->vert_stretching = 0;
@@ -734,22 +810,18 @@ ATIModeCalculate
                         pATI->LCDVertical, VERT_STRETCH_RATIO0);
         }
 
-        if (!pATI->OptionCRT)
-        {
-
 #ifndef AVOID_CPIO
 
-            /* Copy non-shadow CRTC register values to the shadow set */
-            for (Index = 0;  Index < NumberOf(pATIHW->shadow_vga);  Index++)
-                pATIHW->shadow_vga[Index] = pATIHW->crt[Index];
+        /* Copy non-shadow CRTC register values to the shadow set */
+        for (Index = 0;  Index < NumberOf(pATIHW->shadow_vga);  Index++)
+            pATIHW->shadow_vga[Index] = pATIHW->crt[Index];
 
 #endif /* AVOID_CPIO */
 
-            pATIHW->shadow_h_total_disp = pATIHW->crtc_h_total_disp;
-            pATIHW->shadow_h_sync_strt_wid = pATIHW->crtc_h_sync_strt_wid;
-            pATIHW->shadow_v_total_disp = pATIHW->crtc_v_total_disp;
-            pATIHW->shadow_v_sync_strt_wid = pATIHW->crtc_v_sync_strt_wid;
-        }
+        pATIHW->shadow_h_total_disp = pATIHW->crtc_h_total_disp;
+        pATIHW->shadow_h_sync_strt_wid = pATIHW->crtc_h_sync_strt_wid;
+        pATIHW->shadow_v_total_disp = pATIHW->crtc_v_total_disp;
+        pATIHW->shadow_v_sync_strt_wid = pATIHW->crtc_v_sync_strt_wid;
     }
 
     /* Fill in clock data */
@@ -945,48 +1017,44 @@ ATIModeSet
 
     if (pATI->LCDPanelID >= 0)
     {
-        if (!pATI->OptionCRT &&
-            (!pATI->OptionDevel || (pATIHW == &pATI->OldHW)))
-        {
-            /* Switch to shadow registers */
-            if (pATI->Chip == ATI_CHIP_264LT)
-                outr(LCD_GEN_CTRL, (pATIHW->lcd_gen_ctrl &
-                     ~(DISABLE_PCLK_RESET | CRTC_RW_SELECT)) |
-                    (SHADOW_EN | SHADOW_RW_EN));
-            else /* if ((pATI->Chip == ATI_CHIP_264LTPRO) ||
-                        (pATI->Chip == ATI_CHIP_264XL) ||
-                        (pATI->Chip == ATI_CHIP_MOBILITY)) */
-                ATIPutMach64LCDReg(LCD_GEN_CNTL,
-                    (pATIHW->lcd_gen_ctrl &
-                     ~(DISABLE_PCLK_RESET | CRTC_RW_SELECT)) |
-                    (SHADOW_EN | SHADOW_RW_EN));
+        /* Switch to shadow registers */
+        if (pATI->Chip == ATI_CHIP_264LT)
+            outr(LCD_GEN_CTRL, (pATIHW->lcd_gen_ctrl &
+                 ~(DISABLE_PCLK_RESET | CRTC_RW_SELECT)) |
+                (SHADOW_EN | SHADOW_RW_EN));
+        else /* if ((pATI->Chip == ATI_CHIP_264LTPRO) ||
+                    (pATI->Chip == ATI_CHIP_264XL) ||
+                    (pATI->Chip == ATI_CHIP_MOBILITY)) */
+            ATIPutMach64LCDReg(LCD_GEN_CNTL,
+                (pATIHW->lcd_gen_ctrl &
+                 ~(DISABLE_PCLK_RESET | CRTC_RW_SELECT)) |
+                (SHADOW_EN | SHADOW_RW_EN));
 
-            /* Restore shadow registers */
-            switch (pATIHW->crtc)
-            {
+        /* Restore shadow registers */
+        switch (pATIHW->crtc)
+        {
 
 #ifndef AVOID_CPIO
 
-                case ATI_CRTC_VGA:
-                    for (Index = 0;
-                         Index < NumberOf(pATIHW->shadow_vga);
-                         Index++)
-                        PutReg(CRTX(pATI->CPIO_VGABase), Index,
-                            pATIHW->shadow_vga[Index]);
-                    /* Fall through */
+            case ATI_CRTC_VGA:
+                for (Index = 0;
+                     Index < NumberOf(pATIHW->shadow_vga);
+                     Index++)
+                    PutReg(CRTX(pATI->CPIO_VGABase), Index,
+                        pATIHW->shadow_vga[Index]);
+                /* Fall through */
 
 #endif /* AVOID_CPIO */
 
-                case ATI_CRTC_MACH64:
-                    outr(CRTC_H_TOTAL_DISP, pATIHW->shadow_h_total_disp);
-                    outr(CRTC_H_SYNC_STRT_WID, pATIHW->shadow_h_sync_strt_wid);
-                    outr(CRTC_V_TOTAL_DISP, pATIHW->shadow_v_total_disp);
-                    outr(CRTC_V_SYNC_STRT_WID, pATIHW->shadow_v_sync_strt_wid);
-                    break;
+            case ATI_CRTC_MACH64:
+                outr(CRTC_H_TOTAL_DISP, pATIHW->shadow_h_total_disp);
+                outr(CRTC_H_SYNC_STRT_WID, pATIHW->shadow_h_sync_strt_wid);
+                outr(CRTC_V_TOTAL_DISP, pATIHW->shadow_v_total_disp);
+                outr(CRTC_V_SYNC_STRT_WID, pATIHW->shadow_v_sync_strt_wid);
+                break;
 
-                default:
-                    break;
-            }
+            default:
+                break;
         }
 
         /* Restore CRTC selection & shadow state and enable stretching */

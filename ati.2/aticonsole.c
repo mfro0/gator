@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/aticonsole.c,v 1.16 2001/02/12 03:27:04 tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/aticonsole.c,v 1.18 2001/10/28 03:33:23 tsi Exp $ */
 /*
  * Copyright 1997 through 2001 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
  *
@@ -105,7 +105,7 @@ ATISetDPMSMode
     switch (pATI->Adapter)
     {
         case ATI_ADAPTER_MACH64:
-            ATIMach64SetDPMSMode(pATI, DPMSMode);
+            ATIMach64SetDPMSMode(pScreenInfo, pATI, DPMSMode);
             break;
 
         default:
@@ -201,7 +201,17 @@ ATILeaveGraphics
     ATILock(pATI);
 
     /* Unmap apertures */
+
+#ifdef AVOID_DGA
+
+    if (!pATI->Closeable)
+
+#else /* AVOID_DGA */
+
     if (!pATI->Closeable || !pATI->nDGAMode)
+
+#endif /* AVOID_DGA */
+
         ATIUnmapApertures(pScreenInfo->scrnIndex, pATI);
 
     SetTimeSinceLastInputEvent();
@@ -346,7 +356,11 @@ ATIFreeScreen
 
     xfree(pATI->pShadow);
 
+#ifndef AVOID_DGA
+
     xfree(pATI->pDGAMode);
+
+#endif /* AVOID_DGA */
 
     xfree(pATI);
     pScreenInfo->driverPrivate = NULL;

@@ -64,7 +64,7 @@ void FI1236_tune(FI1236Ptr f, CARD32 frequency)
     if(frequency > f->parm.max_freq) frequency = f->parm.max_freq;
 
     divider = (f->parm.fcar+(CARD16)frequency) & 0x7fff;
-    f->tuner_data.div1 = (CARD8)((divider>>8)&0xff);
+    f->tuner_data.div1 = (CARD8)((divider>>8)&0x7f);
     f->tuner_data.div2 = (CARD8)(divider & 0xff);
     f->tuner_data.control = f->parm.control; 
 

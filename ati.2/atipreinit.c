@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atipreinit.c,v 1.48 2001/05/22 15:55:49 tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atipreinit.c,v 1.50 2001/10/28 03:33:24 tsi Exp $ */
 /*
  * Copyright 1999 through 2001 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
  *
@@ -1605,7 +1605,7 @@ ATIPreInit
                 pATI->LCDVSyncWidth =
                     (pATIHW->crt[17] - pATIHW->crt[16]) & 0x0FU;
                 pATI->LCDVBlankWidth =
-                    (pATIHW->crt[22] - pATIHW->crt[21]) & 0xFFU;
+                    ((pATIHW->crt[22] - pATIHW->crt[21]) & 0xFFU) + 1;
 
                 HDisplay = pATIHW->crt[0] + 5 - pATI->LCDHBlankWidth;
                 VDisplay = (((pATIHW->crt[7] << 4) & 0x0200U) |
@@ -2008,7 +2008,7 @@ ATIPreInit
 #ifndef AVOID_CPIO
 
             /* Except for PCI & AGP, allow for user override */
-            if (!pATI->PCIInfo)
+            if (!pVideo)
             {
                 if (pATI->Chip == ATI_CHIP_88800CX)
                     IOValue = ~((CARD32)((1 << 23) - 1));
@@ -2037,7 +2037,7 @@ ATIPreInit
                             pATI->LinearSize = 8 * 1024 * 1024;
                     }
 
-                    Resources[0].type = ResExcMemBlock;
+                    Resources[0].type = ResExcMemBlock | ResBus;
                     Resources[0].rBegin = pATI->LinearBase;
                     Resources[0].rEnd =
                         pATI->LinearBase + pATI->LinearSize - 1;

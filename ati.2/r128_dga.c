@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/r128_dga.c,v 1.5 2001/05/25 02:44:36 tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/r128_dga.c,v 1.6 2001/11/06 15:53:10 alanh Exp $ */
 /*
  * Authors:
  *   Ove Kåven <ovek@transgaming.com>,
@@ -248,8 +248,8 @@ R128_SetMode(
 
 	pScrn->currentMode = info->CurrentLayout.mode;
 
-	R128SwitchMode(indx, pScrn->currentMode, 0);
-	R128AdjustFrame(indx, 0, 0, 0);
+	pScrn->SwitchMode(indx, pScrn->currentMode, 0);
+	pScrn->AdjustFrame(indx, 0, 0, 0);
 	info->DGAactive = FALSE;
    } else {
 	if(!info->DGAactive) {  /* save the old parameters */
@@ -267,7 +267,7 @@ R128_SetMode(
 					  : pMode->depth);
 	/* R128ModeInit() will set the mode field */
 
-	R128SwitchMode(indx, pMode->mode, 0);
+	pScrn->SwitchMode(indx, pMode->mode, 0);
    }
 
    return TRUE;
@@ -293,7 +293,7 @@ R128_SetViewport(
 ){
    R128InfoPtr info = R128PTR(pScrn);
 
-   R128AdjustFrame(pScrn->pScreen->myNum, x, y, flags);
+   pScrn->AdjustFrame(pScrn->pScreen->myNum, x, y, flags);
    info->DGAViewportStatus = 0;  /* FIXME */
 }
 

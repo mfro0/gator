@@ -318,7 +318,7 @@
 #define     RT_PAL_COMB_CNTL0_COMPOSITE       0x09438090
 #define     RT_PAL_COMB_CNTL0_SVIDEO          0x40348090
 
-#define     RT_SECAM_COMB_CNTL0_COMPOSITE     0xD0088090
+#define     RT_SECAM_COMB_CNTL0_COMPOSITE     0xD0108090 /* instead of orig 0xD0088090 - eric*/
 #define     RT_SECAM_COMB_CNTL0_SVIDEO        0x50148090
 
 #define     RT_PALN_COMB_CNTL0_COMPOSITE      0x09438090
@@ -352,7 +352,7 @@
 #define     RT_PAL_COMB_CNTL2_COMPOSITE       0x06080102 /* instead of 0x16161010 - Ivo */
 #define     RT_PAL_COMB_CNTL2_SVIDEO          0x06080102
 
-#define     RT_SECAM_COMB_CNTL2_COMPOSITE     0x06080102
+#define     RT_SECAM_COMB_CNTL2_COMPOSITE     0xffffffff /* instead of 0x06080102 - eric */
 #define     RT_SECAM_COMB_CNTL2_SVIDEO        0x06080102
 
 #define     RT_PALN_COMB_CNTL2_COMPOSITE      0x06080102
@@ -469,12 +469,12 @@
 #define     RT_SECAM_CLAMP_REF                 0x0000003B
 #define     RT_SECAM_PEAKWHITE                 0xFF /* instead of 0x000000C1 - Ivo */
 #define     RT_SECAM_VBI_PEAKWHITE             0xC6 /* instead of 0x000000C7 - Ivo */
-#define     RT_SECAM_WPA_THRESHOLD             0x6A4 /* instead of 0x0000059C is Ivo's value */
+#define     RT_SECAM_WPA_THRESHOLD             0x57A /* instead of 0x6A4,  instead of 0x0000059C is Ivo's value , -eric*/
 
-#define     RT_SECAM_WPA_TRIGGER_LO            0x0000026B
+#define     RT_SECAM_WPA_TRIGGER_LO            0x96 /* instead of 0x0000026B - eric */
 #define     RT_SECAM_WPA_TRIGGER_HIGH          0x000001C2
-#define     RT_SECAM_LP_LOCKOUT_START          0x0000026B
-#define     RT_SECAM_LP_LOCKOUT_END            0x0000002C
+#define     RT_SECAM_LP_LOCKOUT_START          0x263 /* instead of 0x0000026B - eric */
+#define     RT_SECAM_LP_LOCKOUT_END            0x2b /* instead of 0x0000002C -eric */
 
 #define     RT_SECAM_CH_DTO_INC                0x003E7A28
 #define     RT_SECAM_CH_PLL_SGAIN              0x4 /* instead of 0x00000006 - Volodya */
@@ -488,8 +488,8 @@
 #define     RT_SECAM_CH_AGC_FILTER_EN          0x00000000
 #define     RT_SECAM_CH_AGC_LOOP_SPEED         0x00000000
 
-#define     RT_SECAM_CRDR_ACTIVE_GAIN          0x00000200
-#define     RT_SECAM_CBDB_ACTIVE_GAIN          0x00000200
+#define     RT_SECAM_CRDR_ACTIVE_GAIN          0x11B /* instead of 0x00000200 - eric */
+#define     RT_SECAM_CBDB_ACTIVE_GAIN          0x15A /* instead of 0x00000200 - eric */
 #define     RT_SECAM_VERT_LOCKOUT_START        0x00000269
 #define     RT_SECAM_VERT_LOCKOUT_END          0x00000012
 
@@ -542,23 +542,23 @@
 
 #define     RT_NTSCM_H_IN_START                0x70
 #define     RT_PAL_H_IN_START                  154 /* instead of 144 - Ivo */
-#define     RT_SECAM_H_IN_START                0x9A /* Ivo value is 154,  instead of 144 - Volodya */
+#define     RT_SECAM_H_IN_START                0x91 /* instead of 0x9A,  Ivo value is 154,  instead of 144 - Volodya, - eric */
 #define     RT_NTSC_H_ACTIVE_SIZE              744
 #define     RT_PAL_H_ACTIVE_SIZE               928 /* instead of 927 - Ivo */
-#define     RT_SECAM_H_ACTIVE_SIZE             928 /* instead of 927 - Ivo */
+#define     RT_SECAM_H_ACTIVE_SIZE             932 /* instead of 928, instead of 927 - Ivo, - eric */
 #define     RT_NTSCM_V_IN_START                (0x23)
 #define     RT_PAL_V_IN_START                  44 /* instead of (45-6) - Ivo */
 #define     RT_SECAM_V_IN_START                0x2C /* instead of (45-6) - Volodya */
 #define     RT_NTSCM_V_ACTIVE_SIZE             480
 #define     RT_PAL_V_ACTIVE_SIZE               572 /* instead of 575 - Ivo */
-#define     RT_SECAM_V_ACTIVE_SIZE             572 /* instead of 575 - Ivo */
+#define     RT_SECAM_V_ACTIVE_SIZE             570 /* instead of 572, instead of 575 - Ivo, - eric */
 
 #define     RT_NTSCM_WIN_CLOSE_LIMIT           0x4D
 #define     RT_NTSCJ_WIN_CLOSE_LIMIT           0x4D
 #define     RT_NTSC443_WIN_CLOSE_LIMIT         0x5F
 #define     RT_PALM_WIN_CLOSE_LIMIT            0x4D
 #define     RT_PALN_WIN_CLOSE_LIMIT            0x5F
-#define     RT_SECAM_WIN_CLOSE_LIMIT           0x5F
+#define     RT_SECAM_WIN_CLOSE_LIMIT           0xC7 /* instead of 0x5F - eric */
 
 #define     RT_NTSCM_VS_FIELD_BLANK_START      0x206
 

@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atidga.c,v 1.6 2001/05/25 02:44:35 tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atidga.c,v 1.7 2001/10/28 03:33:23 tsi Exp $ */
 /*
  * Copyright 2000 through 2001 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
  *
@@ -20,6 +20,8 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
+
+#ifndef AVOID_DGA
 
 #include "ati.h"
 #include "atiadjust.h"
@@ -473,3 +475,5 @@ ATIDGAInit
     return DGAInit(pScreen, &pATI->ATIDGAFunctions, pATI->pDGAMode,
                    pATI->nDGAMode);
 }
+
+#endif /* AVOID_DGA */
