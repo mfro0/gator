@@ -25,7 +25,6 @@ typedef struct {
 	CARD8	c_fmmatrix;	/*current state of fmmatrix register */
 	int		c_mode;	/* current state of mode for autoswitchimg */
 	CARD8	volume;
-	
 	} MSP3430Rec, * MSP3430Ptr;
 
 

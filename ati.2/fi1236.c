@@ -42,7 +42,7 @@ FI1236Ptr Detect_FI1236(I2CBusPtr b, I2CSlaveAddr addr)
    f->d.ByteTimeout = b->ByteTimeout;
    f->type=TUNER_TYPE_FI1236;
    f->afc_timer_installed=FALSE;
-   f->last_afc_hint=FI1236_OFF;
+   f->last_afc_hint=TUNER_OFF;
    f->video_if=45.7812;
   
    if(!I2C_WriteRead(&(f->d), NULL, 0, &a, 1))
@@ -276,10 +276,10 @@ CARD8 out;
 CARD8 AFC;
 I2C_WriteRead(&(f->d), NULL, 0, &out, 1);
 AFC=out & 0x7;
-if(AFC==2)return FI1236_TUNED;
-if(AFC==3)return FI1236_JUST_BELOW;
-if(AFC==1)return FI1236_JUST_ABOVE;
-return FI1236_OFF;
+if(AFC==2)return TUNER_TUNED;
+if(AFC==3)return TUNER_JUST_BELOW;
+if(AFC==1)return TUNER_JUST_ABOVE;
+return TUNER_OFF;
 }
 
 
@@ -294,16 +294,16 @@ AFC=(out[0]>>4) & 0x7;
 #if 0
 xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "AFC=%d TAD1=%d TAD2=%d\n", AFC, out[1] & 0x7, (out[1]>>4)& 0x07);
 #endif
-if(AFC==2)return FI1236_TUNED;
-if(AFC==3)return FI1236_JUST_BELOW;
-if(AFC==1)return FI1236_JUST_ABOVE;
-return FI1236_OFF;
+if(AFC==2)return TUNER_TUNED;
+if(AFC==3)return TUNER_JUST_BELOW;
+if(AFC==1)return TUNER_JUST_ABOVE;
+return TUNER_OFF;
 }
 
 /* this function is for external use only */
 int TUNER_get_afc_hint(FI1236Ptr f)
 {
-if(f->afc_timer_installed)return FI1236_STILL_TUNING;
+if(f->afc_timer_installed)return TUNER_STILL_TUNING;
 return f->last_afc_hint;
 if(f->type==TUNER_TYPE_MT2032)
 	return MT2032_get_afc_hint(f);
@@ -453,27 +453,27 @@ int FI1236_AFC(FI1236Ptr f)
     f->afc_count++;
     if(f->type==TUNER_TYPE_MT2032){
     	f->last_afc_hint=MT2032_get_afc_hint(f);
-	if(f->last_afc_hint==FI1236_TUNED)return 0;
-	if(f->afc_count>3)f->last_afc_hint=FI1236_OFF;
-	if(f->last_afc_hint==FI1236_OFF){
+	if(f->last_afc_hint==TUNER_TUNED)return 0;
+	if(f->afc_count>3)f->last_afc_hint=TUNER_OFF;
+	if(f->last_afc_hint==TUNER_OFF){
 		f->afc_delta=0;
 		} else
 		f->afc_delta+=f->last_afc_hint;
         xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "AFC: Setting tuner frequency to %g\n", (0.5*(2*f->original_frequency+f->afc_delta))/16.0);
     	MT2032_tune(f, (1.0*f->original_frequency+0.5*f->afc_delta)/16.0, 0.03125);
-	if(f->last_afc_hint==FI1236_OFF)return 0;
+	if(f->last_afc_hint==TUNER_OFF)return 0;
 	return 1; /* call me again */
 	} else {
     	f->last_afc_hint=FI1236_get_afc_hint(f);
-	if(f->last_afc_hint==FI1236_TUNED)return 0;
-	if(f->afc_count>3)f->last_afc_hint=FI1236_OFF;
-	if(f->last_afc_hint==FI1236_OFF){
+	if(f->last_afc_hint==TUNER_TUNED)return 0;
+	if(f->afc_count>3)f->last_afc_hint=TUNER_OFF;
+	if(f->last_afc_hint==TUNER_OFF){
 		f->afc_delta=0;
 		} else
 		f->afc_delta+=f->last_afc_hint;
         xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "AFC: Setting tuner frequency to %g\n", (0.5*(2*f->original_frequency+f->afc_delta))/16.0);
 	FI1236_tune(f, f->original_frequency+f->afc_delta);
-	if(f->last_afc_hint==FI1236_OFF)return 0;
+	if(f->last_afc_hint==TUNER_OFF)return 0;
 	return 1; /* call me again */
 	}
     return 0; /* done */

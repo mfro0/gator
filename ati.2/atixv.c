@@ -1626,7 +1626,7 @@ ATIGetPortAttribute(
   } else 
   if(attribute == xvTunerStatus) {
   	if(pPriv->fi1236==NULL){
-		*value=FI1236_OFF;
+		*value=TUNER_OFF;
 		} else
 		{
 	        *value = xf86_TUNER_get_afc_hint(pPriv->fi1236);
