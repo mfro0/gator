@@ -264,12 +264,18 @@ return 0;
 
 static void radeon_start_request_transfer(KM_TRANSFER_REQUEST *kmtr)
 {
-long status;
+u32 status;
+int count;
 KM_STRUCT *kms=kmtr->user_data;
 wmb();
 /* wait for at least one available queue */
+count=0;
 do {
 	status=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
+	count++;
+	if(count==10){
+		printk(KERN_ERR "radeon DMA_GUI queue full DMA_GUI_STATUS=0x%08x\n", status);
+		}
 	KM_DEBUG("status=0x%08lx\n", status);
 	} while (!(status & 0x1f));
 wmb();
@@ -306,7 +312,7 @@ km_add_transfer_request(&(kms->gui_dma_queue),
 void radeon_km_irq(int irq, void *dev_id, struct pt_regs *regs)
 {
 KM_STRUCT *kms;
-u32 status, mask;
+u32 status, status_cap, mask;
 int count;
 
 kms=dev_id;
@@ -318,27 +324,27 @@ count=10000;
 while(1){
 /*	KM_DEBUG("beep %ld\n", kms->interrupt_count); */
              /* Check capture registers first */
-	status=readl(kms->reg_aperture+RADEON_CAP_INT_STATUS);
+	status_cap=readl(kms->reg_aperture+RADEON_CAP_INT_STATUS);
 	mask=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
-	KM_DEBUG("CAP_INT_STATUS=0x%08x mask=0x%08x\n", status, mask);
-	status&=0x3f & mask; /* be nice to other users */
-	if(status){
+	KM_DEBUG("CAP_INT_STATUS=0x%08x mask=0x%08x\n", status_cap, mask);
+	status_cap&=0x3f & mask; /* be nice to other users */
+	if(status_cap){
 		/*radeon_wait_for_idle(kms); */
 		wmb();
-		writel(status, kms->reg_aperture+RADEON_CAP_INT_STATUS);
+		writel(status_cap, kms->reg_aperture+RADEON_CAP_INT_STATUS);
 
-		if(status & 1)radeon_schedule_request(kms, &(kms->capture), kms->buf0_odd_offset, KM_FI_ODD);
-		if(status & 2)radeon_schedule_request(kms, &(kms->capture), kms->buf0_even_offset, 0);
-		if(status & 4)radeon_schedule_request(kms, &(kms->capture), kms->buf1_odd_offset, KM_FI_ODD);
-		if(status & 8)radeon_schedule_request(kms, &(kms->capture), kms->buf1_even_offset, 0);
-		if(status & 0x10)radeon_schedule_request(kms, &(kms->vbi),  kms->vbi0_offset, KM_FI_ODD);
-		if(status & 0x20)radeon_schedule_request(kms, &(kms->vbi),  kms->vbi1_offset, 0);		
+		if(status_cap & 1)radeon_schedule_request(kms, &(kms->capture), kms->buf0_odd_offset, KM_FI_ODD);
+		if(status_cap & 2)radeon_schedule_request(kms, &(kms->capture), kms->buf0_even_offset, 0);
+		if(status_cap & 4)radeon_schedule_request(kms, &(kms->capture), kms->buf1_odd_offset, KM_FI_ODD);
+		if(status_cap & 8)radeon_schedule_request(kms, &(kms->capture), kms->buf1_even_offset, 0);
+		if(status_cap & 0x10)radeon_schedule_request(kms, &(kms->vbi),  kms->vbi0_offset, KM_FI_ODD);
+		if(status_cap & 0x20)radeon_schedule_request(kms, &(kms->vbi),  kms->vbi1_offset, 0);		
 		}
              /* check DMA and vblank bits in GEN_INT_STATUS */
 	status=readl(kms->reg_aperture+RADEON_GEN_INT_STATUS);
 	mask=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL) & ((1<<30)|7);
 	status &=mask & ((1<<30)|7);
-	if(!status){
+	if(!status && !status_cap){
 		return;
 		}
 	writel(status, kms->reg_aperture+RADEON_GEN_INT_STATUS);
