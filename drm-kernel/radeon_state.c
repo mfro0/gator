@@ -920,7 +920,7 @@ static void radeon_cp_dispatch_indices( drm_device_t *dev,
 	RING_LOCALS;
 	DRM_DEBUG( "indices: s=%d e=%d c=%d\n", start, end, count );
 
-	printk("radeon_cp_dispatch_indices\n");
+	printk("radeon_cp_dispatch_indices offset=0x%08x\n", offset);
 	if ( 0 )
 		radeon_print_dirty( "dispatch_indices", sarea_priv->dirty );
 
@@ -1001,7 +1001,7 @@ static int radeon_cp_dispatch_texture( drm_device_t *dev,
 
 	/* FIXME: Be smarter about this...
 	 */
-	 printk("radeon_cp_dispatch_texture\n");
+	 printk("radeon_cp_dispatch_texture offset=0x%08x\n", tex->offset);
 	buf = radeon_freelist_get( dev );
 	if ( !buf ) return -EAGAIN;
 
@@ -1109,7 +1109,7 @@ static int radeon_cp_dispatch_texture( drm_device_t *dev,
 	buffer[7] = dwords;
 
 	buffer += 8;
-
+	printk("buffer=0x%08x data=0x%08x\n", buffer, data);
 	if ( tex_width >= 32 ) {
 		/* Texture image width is larger than the minimum, so we
 		 * can upload it directly.
@@ -1133,7 +1133,6 @@ static int radeon_cp_dispatch_texture( drm_device_t *dev,
 			data += tex_width;
 		}
 	}
-
 	buf->pid = current->pid;
 	buf->used = (dwords + 8) * sizeof(u32);
 	buf_priv->discard = 1;
@@ -1387,6 +1386,7 @@ int radeon_cp_texture( struct inode *inode, struct file *filp,
 
 	LOCK_TEST_WITH_RETURN( dev );
 
+	printk("radeon_cp_texture\n");
 	if ( copy_from_user( &tex, (drm_radeon_texture_t *)arg, sizeof(tex) ) )
 		return -EFAULT;
 
@@ -1395,11 +1395,13 @@ int radeon_cp_texture( struct inode *inode, struct file *filp,
 		return -EINVAL;
 	}
 
+	printk("radeon_cp_texture checkpoint 1\n");
 	if ( copy_from_user( &image,
 			     (drm_radeon_tex_image_t *)tex.image,
 			     sizeof(image) ) )
 		return -EFAULT;
 
+	printk("radeon_cp_texture checkpoint 2\n");
 	RING_SPACE_TEST_WITH_RETURN( dev_priv );
 	VB_AGE_TEST_WITH_RETURN( dev_priv );
 

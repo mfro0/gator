@@ -311,7 +311,7 @@ typedef struct drm_radeon_tex_image {
 } drm_radeon_tex_image_t;
 
 typedef struct drm_radeon_texture {
-	int offset;
+	unsigned int offset;
 	int pitch;
 	int format;
 	int width;			/* Texture image coordinates */
