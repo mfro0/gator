@@ -152,8 +152,8 @@ while(1){
 			ob_written=0;
 			while(ob_written<ob_free){
 				pthread_mutex_lock(&(sdata->format_context_mutex));
-				if(sdata->format_context.format!=NULL){
-					sdata->format_context.format->write_packet(&(sdata->format_context),sdata->video_stream_num, output_buf+ob_written, ob_free-ob_written, 0);
+				if(sdata->format_context.oformat!=NULL){
+					sdata->format_context.oformat->write_packet(&(sdata->format_context),sdata->video_stream_num, output_buf+ob_written, ob_free-ob_written, 0);
 					i=ob_free-ob_written;
 					} else {
 					i=write(sdata->fd_out, output_buf+ob_written, ob_free-ob_written);
@@ -264,8 +264,8 @@ while(1){
 			ob_written=0;
 			while(ob_written<ob_free){
 				pthread_mutex_lock(&(sdata->format_context_mutex));
-				if(sdata->format_context.format!=NULL){
-					sdata->format_context.format->write_packet(&(sdata->format_context),sdata->audio_stream_num, out_buf+ob_written, ob_free-ob_written, 0);
+				if(sdata->format_context.oformat!=NULL){
+					sdata->format_context.oformat->write_packet(&(sdata->format_context),sdata->audio_stream_num, out_buf+ob_written, ob_free-ob_written, 0);
 					i=ob_free-ob_written;
 					} else {
 					i=write(sdata->fd_out, out_buf+ob_written, ob_free-ob_written);
@@ -624,23 +624,23 @@ if(sdata->format_context.nb_streams==0){
 	Tcl_AppendResult(interp,"ERROR: ffmpeg_encode_v4l_stream: no streams to encode", NULL);
 	return TCL_ERROR;
 	}
-sdata->format_context.format=NULL;
+sdata->format_context.oformat=NULL;
 if(arg_av_format==NULL){
 	/* nothing */
 	} else
 if(!strcasecmp("avi", arg_av_format)){
-	sdata->format_context.format=&avi_format;
+	sdata->format_context.oformat=guess_format("avi", NULL, NULL);
 	} else
 if(!strcasecmp("asf", arg_av_format)){
-	sdata->format_context.format=&asf_format;
+	sdata->format_context.oformat=guess_format("asf", NULL, NULL);
 	} else 
 if(!strcasecmp("mpg", arg_av_format)){
-	sdata->format_context.format=&mpeg_mux_format;
+	sdata->format_context.oformat=guess_format("mpeg", NULL, NULL);
 	} else
 if(!strcasecmp("mpeg", arg_av_format)){
-	sdata->format_context.format=&mpeg_mux_format;
+	sdata->format_context.oformat=guess_format("mpeg", NULL, NULL);
 	}
-if(sdata->format_context.format!=NULL){
+if(sdata->format_context.oformat!=NULL){
 	sdata->format_context.pb.write_packet=file_write;
 	sdata->format_context.pb.seek=file_seek;
 	sdata->format_context.pb.buffer_size=1024*1024; /* 1 meg should do fine */
@@ -650,8 +650,12 @@ if(sdata->format_context.format!=NULL){
 	sdata->format_context.pb.opaque=sdata;
 	sdata->format_context.pb.packet_size=1;
 	sdata->format_context.pb.write_flag=1;
+	sdata->format_context.oformat->flags=AVFMT_NOFILE;
+	sdata->format_context.flags=AVFMT_NOFILE;
 	strcpy(sdata->format_context.title, arg_filename);
-	sdata->format_context.format->write_header(&(sdata->format_context));
+	av_write_header(&(sdata->format_context));
+	} else {
+	fprintf(stderr,"Warning: sdata->format_context.oformat==NULL, report to volodya@mindspring.com if you did choose a valid file format\n");
 	}
 if(sdata->audio_stream_num>=0){
 	sdata->audio_s->producer_thread_running=1;
@@ -738,8 +742,8 @@ if(sdata->audio_s!=NULL){
 Tcl_SetObjResult(interp, Tcl_NewIntObj(total));
 if((sdata!=NULL)&&(sdata->audio_s==NULL)&&(sdata->video_s==NULL)){
 	pthread_mutex_lock(&(sdata->format_context_mutex));
-	if(sdata->format_context.format!=NULL)
-		sdata->format_context.format->write_trailer(&(sdata->format_context));
+	if(sdata->format_context.oformat!=NULL)
+		av_write_trailer(&(sdata->format_context));
 	pthread_mutex_unlock(&(sdata->format_context_mutex));
 	close(sdata->fd_out);
 	free(sdata);
@@ -860,8 +864,8 @@ for(i=0;i<32;i++)sdata->luma_hist[i]=0;
 
 if((sdata!=NULL)&&(sdata->audio_s==NULL)&&(sdata->video_s==NULL)){
 	pthread_mutex_lock(&(sdata->format_context_mutex));
-	if(sdata->format_context.format!=NULL)
-		sdata->format_context.format->write_trailer(&(sdata->format_context));
+	if(sdata->format_context.oformat!=NULL)
+		av_write_trailer(&(sdata->format_context));
 	pthread_mutex_unlock(&(sdata->format_context_mutex));
 	close(sdata->fd_out);
 	free(sdata);
@@ -914,8 +918,7 @@ void init_ffmpeg(Tcl_Interp *interp)
 long i;
 
 #if USE_FFMPEG
-avcodec_init();
-avcodec_register_all();
+register_all();
 #endif
 
 for(i=0;ffmpeg_commands[i].name!=NULL;i++)
