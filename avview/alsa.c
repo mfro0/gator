@@ -451,10 +451,12 @@ while(!s->stop_stream){
 	
 	/* do the reading */
 	if((a=snd_pcm_readi(data->recording_handle, p->buf+p->free, (p->size-p->free)/data->frame_size))>0){
-		p->free+=a;
+		p->free+=a*data->frame_size;
 		/* deliver always */
+		#if 0
 		fprintf(stderr,"Read %d samples\n", a);
-		if(1 || (p->free>=(p->size/2))){ /* deliver packet */
+		#endif
+		if(p->free>=p->size){ /* deliver packet */
 			pthread_mutex_lock(&(s->ctr_mutex));
 			if(!s->stop_stream){
 				deliver_packet(s, p);

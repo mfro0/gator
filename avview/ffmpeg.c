@@ -179,6 +179,13 @@ out_buf=do_alloc(ob_size, 1);
 while(1){
 	pthread_mutex_lock(&(s->ctr_mutex));
 	f=s->first;
+	if(!s->stop_stream &&((f==NULL)||(f->next==NULL))){
+		/* no data to encode - terminate thread instead of spinning */
+		do_free(out_buf);
+		s->consumer_thread_running=0;
+		pthread_mutex_unlock(&(s->ctr_mutex));
+		pthread_exit(NULL);
+		}
 	pthread_mutex_unlock(&(s->ctr_mutex));
 	while((f!=NULL)&&(f->next!=NULL)){
 		ob_free=avcodec_encode_audio(&(sdata->audio_codec_context), out_buf, ob_size, f->buf);	
