@@ -170,6 +170,7 @@ switch(cmd){
 		struct video_window vwin;
 		strcpy(b.name,kms->vd.name);
 		b.type = VID_TYPE_CAPTURE;
+		if(kms->get_window_parameters==NULL)return -EINVAL;
 		kms->get_window_parameters(kms, &(vwin));
 		spin_unlock(&(kms->kms_lock));
 
@@ -208,6 +209,7 @@ switch(cmd){
 		}
 	case VIDIOCGWIN:{
 		struct video_window vwin;
+		if(kms->get_window_parameters==NULL)return -EINVAL;
 		kms->get_window_parameters(kms, &(vwin));
 		spin_unlock(&(kms->kms_lock));
 
@@ -217,6 +219,7 @@ switch(cmd){
 		}
 	case VIDIOCSWIN: {
 		struct video_window vwin, vwin1;
+		if(kms->get_window_parameters==NULL)return -EINVAL;
 		kms->get_window_parameters(kms, &(vwin1));
 		spin_unlock(&(kms->kms_lock));
 
@@ -295,12 +298,16 @@ spin_unlock(&(kms->kms_lock));
 return mask;
 }
 
+#ifndef VID_HARDWARE_KM
+#define VID_HARDWARE_KM 100
+#endif
+
 static struct video_device km_template=
 {
 	owner:		THIS_MODULE,
 	name:		"Km",
 	type:		VID_TYPE_CAPTURE|VID_TYPE_TELETEXT,
-	hardware:	VID_HARDWARE_BT848,
+	hardware:	VID_HARDWARE_KM,
 	open:		km_open,
 	close:		km_close,
 	read:		km_read,

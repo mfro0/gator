@@ -35,6 +35,43 @@ KM_DATA_UNIT *data_units=NULL;
 long du_size=0;
 long du_free=0;
 
+KDU_FILE_PRIVATE_DATA* km_data_create_kdufpd(KM_DATA_UNIT *kdu)
+{
+KDU_FILE_PRIVATE_DATA *kdufpd=NULL;
+MOD_INC_USE_COUNT;
+spin_lock(&(kdu->lock));
+if(kdu->use_count<=0){
+	MOD_DEC_USE_COUNT;
+	spin_unlock(&(kdu->lock));
+	return NULL;
+	}
+kdu->use_count++;
+kdufpd=kmalloc(sizeof(KDU_FILE_PRIVATE_DATA), GFP_KERNEL);
+if(kdufpd==NULL){
+	kdu->use_count--;
+	MOD_DEC_USE_COUNT;
+	spin_unlock(&(kdu->lock));
+	return NULL;
+	}
+memset(kdufpd, 0, sizeof(KDU_FILE_PRIVATE_DATA));
+
+kdufpd->kdu=kdu;
+
+spin_unlock(&(kdu->lock));
+return kdufpd;
+}
+
+void km_data_destroy_kdufpd(KDU_FILE_PRIVATE_DATA *kdufpd)
+{
+KM_DATA_UNIT *kdu;
+kdu=kdufpd->kdu;
+if(kdu==NULL)printk(KERN_ERR "BUG in %s", __FUNCTION__);
+spin_lock(&(kdu->lock));
+kdu->use_count--;
+spin_unlock(&(kdu->lock));
+MOD_DEC_USE_COUNT;
+kfree(kdufpd);
+}
 
 static int km_fo_data_open(struct inode * inode, struct file * file)
 {
@@ -50,31 +87,15 @@ i=simple_strtol(filename+4, NULL, 10);
 if(i<0)return -EINVAL;
 if(i>=du_free)return -EINVAL;
 
-MOD_INC_USE_COUNT;
 spin_lock(&data_units_lock);
 kdu=&(data_units[i]);
-spin_unlock(&data_units_lock);
 
-spin_lock(&(kdu->lock));
-if(kdu->use_count<=0){
-	MOD_DEC_USE_COUNT;
-	spin_unlock(&(kdu->lock));
-	return -EINVAL;
-	}
-kdu->use_count++;
-kdufpd=kmalloc(sizeof(KDU_FILE_PRIVATE_DATA), GFP_KERNEL);
+kdufpd=km_data_create_kdufpd(kdu);
+spin_unlock(&data_units_lock);
 if(kdufpd==NULL){
-	kdu->use_count--;
-	MOD_DEC_USE_COUNT;
-	spin_unlock(&(kdu->lock));
 	return -ENOMEM;
 	}
-memset(kdufpd, 0, sizeof(KDU_FILE_PRIVATE_DATA));
-
-kdufpd->kdu=kdu;
-
 file->private_data=kdufpd;
-spin_unlock(&(kdu->lock));
 
 return 0;
 }
@@ -86,8 +107,7 @@ KM_DATA_UNIT *kdu=kdufpd->kdu;
 
 KM_CHECKPOINT
 file->private_data=NULL;
-kfree(kdufpd);
-km_deallocate_data(kdu->number);
+km_data_destroy_kdufpd(kdufpd);
 return 0;
 }
 
