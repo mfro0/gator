@@ -489,6 +489,8 @@ s->priv=NULL;
 snd_pcm_drop(data->recording_handle);
 snd_pcm_close(data->recording_handle);
 s->producer_thread_running=0;
+/* process what is left.. */
+start_consumer_thread(s);
 pthread_mutex_unlock(&(s->ctr_mutex));
 pthread_exit(NULL);
 }
