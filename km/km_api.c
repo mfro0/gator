@@ -44,6 +44,8 @@ EXPORT_SYMBOL(remove_km_device);
 EXPORT_SYMBOL(kmd_signal_state_change);
 EXPORT_SYMBOL(km_allocate_data_virtual_block);
 EXPORT_SYMBOL(km_deallocate_data);
+EXPORT_SYMBOL(km_data_create_kdufpd);
+EXPORT_SYMBOL(km_data_destroy_kdufpd);
 
 
 #define KM_MODULUS	255

@@ -68,12 +68,13 @@ typedef struct S_KM_STRUCT {
 	KM_DATA_VIRTUAL_BLOCK dvb_info;
 	FIELD_INFO *fi;
 	long info_free;
-	int v4l_info_du;
+	int info_du;
+	int capture_du;
 	
 	KM_DATA_VIRTUAL_BLOCK dvb;
 	void *buffer[MAX_FRAME_BUFF_NUM];
 	long v4l_free[MAX_FRAME_BUFF_NUM];
-	int v4l_du;
+	KM_FILE_PRIVATE_DATA *v4l_kdufpd;
 	
 	bm_list_descriptor **dma_table;
 	int num_buffers;

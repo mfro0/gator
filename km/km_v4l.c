@@ -61,7 +61,7 @@ if(kms->allocate_dvb!=NULL){
 	} else {
 	goto fail;
 	}
-
+kms->v4l_kdufpd=km_data_create_kdufpd(kms->capture_du);
 spin_unlock(&(kms->kms_lock));
 kms->start_transfer(kms);
 return 0;
@@ -78,6 +78,7 @@ KM_STRUCT *kms=(KM_STRUCT *)dev;
 DECLARE_WAITQUEUE(wait, current);
 
 spin_lock(&(kms->kms_lock));
+km_data_destroy_kdufpd(kms->v4l_kdufpd);
 kms->stop_transfer(kms);
 kms->v4l_buf_read_from=-1; /* none */
 if(kms->deallocate_dvb!=NULL){

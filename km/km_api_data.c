@@ -35,11 +35,17 @@ KM_DATA_UNIT *data_units=NULL;
 long du_size=0;
 long du_free=0;
 
-KDU_FILE_PRIVATE_DATA* km_data_create_kdufpd(KM_DATA_UNIT *kdu)
+KDU_FILE_PRIVATE_DATA* km_data_create_kdufpd(int data_unit)
 {
+KM_DATA_UNIT *kdu;
 KDU_FILE_PRIVATE_DATA *kdufpd=NULL;
+spin_lock(&data_units_lock);
+if(data_unit<0)return NULL;
+if(data_unit>=du_free)return NULL;
+kdu=&(data_units[data_unit]);
 MOD_INC_USE_COUNT;
 spin_lock(&(kdu->lock));
+spin_unlock(&data_units_lock);
 if(kdu->use_count<=0){
 	MOD_DEC_USE_COUNT;
 	spin_unlock(&(kdu->lock));
@@ -84,14 +90,8 @@ if(strncmp(filename, "data", 4)){
 	return -EINVAL;
 	}
 i=simple_strtol(filename+4, NULL, 10);
-if(i<0)return -EINVAL;
-if(i>=du_free)return -EINVAL;
 
-spin_lock(&data_units_lock);
-kdu=&(data_units[i]);
-
-kdufpd=km_data_create_kdufpd(kdu);
-spin_unlock(&data_units_lock);
+kdufpd=km_data_create_kdufpd(i);
 if(kdufpd==NULL){
 	return -ENOMEM;
 	}

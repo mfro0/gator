@@ -81,8 +81,8 @@ kms->dvb.size=((size+PAGE_SIZE-1)/PAGE_SIZE)*PAGE_SIZE;
 kms->dvb.n=kms->num_buffers;
 kms->dvb.free=kms->v4l_free;
 kms->dvb.ptr=kms->buffer;
-kms->v4l_du=km_allocate_data_virtual_block(&(kms->dvb), S_IFREG | S_IRUGO);
-if(kms->v4l_du<0)return -1;
+kms->capture_du=km_allocate_data_virtual_block(&(kms->dvb), S_IFREG | S_IRUGO);
+if(kms->capture_du<0)return -1;
 KM_CHECKPOINT
 /* allocate data unit to hold field info */
 kms->dvb_info.size=kms->num_buffers*sizeof(FIELD_INFO);
@@ -90,10 +90,10 @@ kms->dvb_info.n=1;
 kms->dvb_info.free=&(kms->info_free);
 kms->info_free=kms->num_buffers*sizeof(FIELD_INFO);
 kms->dvb_info.ptr=&(kms->fi);
-kms->v4l_info_du=km_allocate_data_virtual_block(&(kms->dvb_info), S_IFREG | S_IRUGO);
-if(kms->v4l_info_du<0){
-	km_deallocate_data(kms->v4l_du);
-	kms->v4l_du=-1;
+kms->info_du=km_allocate_data_virtual_block(&(kms->dvb_info), S_IFREG | S_IRUGO);
+if(kms->info_du<0){
+	km_deallocate_data(kms->capture_du);
+	kms->capture_du=-1;
 	return -1;
 	}
 /*
@@ -140,10 +140,10 @@ for(k=0;k<kms->num_buffers;k++){
 	}
 kfree(kms->dma_table);
 kms->dma_table=NULL;
-km_deallocate_data(kms->v4l_info_du);
-kms->v4l_info_du=-1;
-km_deallocate_data(kms->v4l_du);
-kms->v4l_du=-1;
+km_deallocate_data(kms->info_du);
+kms->info_du=-1;
+km_deallocate_data(kms->capture_du);
+kms->capture_du=-1;
 return 0;
 }
 
@@ -308,8 +308,8 @@ kms->irq_handler=NULL;
 if(km_buffers<2)km_buffers=2;
 if(km_buffers>=MAX_FRAME_BUFF_NUM)km_buffers=MAX_FRAME_BUFF_NUM-1;
 kms->num_buffers=km_buffers;
-kms->v4l_du=-1;
-kms->v4l_info_du=-1;
+kms->capture_du=-1;
+kms->info_du=-1;
 spin_lock_init(&(kms->kms_lock));
 printk("km: using irq %ld\n", kms->irq);
 init_waitqueue_head(&(kms->frameq));
@@ -405,9 +405,9 @@ kms->kmfl[5].data.i.field=&(kms->vline_count);
 
 kms->kmfl[6].data.i.field=&(kms->vd.minor);
 
-kms->kmfl[7].data.i.field=&(kms->v4l_du);
+kms->kmfl[7].data.i.field=&(kms->capture_du);
 
-kms->kmfl[8].data.i.field=&(kms->v4l_info_du);
+kms->kmfl[8].data.i.field=&(kms->info_du);
 
 kms->kmd=add_km_device(kms->kmfl, kms);
 printk("Device %s %s (0x%04x:0x%04x) corresponds to /dev/video%d\n",
