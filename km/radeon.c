@@ -393,7 +393,7 @@ for(k=0;k<kms->num_buffers;k++){
 	kms->frame_info[k].dma_active=0;
 	rvfree(kms->frame_info[k].dma_table, 4096);
 	}
-kmd_deallocate_data_virtual_block(kms->v4l_du);
+km_deallocate_data(kms->v4l_du);
 kms->v4l_du=-1;
 }
 

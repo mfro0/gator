@@ -51,6 +51,13 @@ kms->get_window_parameters(kms, &(kms->vwin));
 
 buf_size=kms->vwin.width*kms->vwin.height*2;
 
+if(kms->allocate_v4l_dvb!=NULL){
+	if(kms->allocate_v4l_dvb(kms, buf_size)<0){
+		result=-ENOMEM;
+		goto fail;
+		}
+	} else {
+
 kms->deallocate_single_frame_buffer(kms, &(kms->frame_info[FRAME_ODD]));
 kms->deallocate_single_frame_buffer(kms, &(kms->frame_info[FRAME_EVEN]));
 
@@ -63,6 +70,7 @@ if(kms->allocate_single_frame_buffer(kms, &(kms->frame_info[FRAME_EVEN]), buf_si
 	result=-ENOMEM;
 	goto fail;
 	}
+}
 
 spin_unlock(&(kms->kms_lock));
 kms->start_transfer(kms);
@@ -86,8 +94,12 @@ kms->stop_transfer(kms);
 kms->frame_info[FRAME_ODD].buf_ptr=0;
 kms->frame_info[FRAME_EVEN].buf_ptr=0;
 kms->buf_read_from=-1; /* none */
+if(kms->deallocate_v4l_dvb!=NULL){
+	kms->deallocate_v4l_dvb(kms);
+	} else {
 kms->deallocate_single_frame_buffer(kms, &(kms->frame_info[FRAME_ODD]));
 kms->deallocate_single_frame_buffer(kms, &(kms->frame_info[FRAME_EVEN]));
+}
 printk("km: total frames: %ld, overrun: %ld\n", kms->total_frames, kms->overrun);
 spin_unlock(&(kms->kms_lock));
 }

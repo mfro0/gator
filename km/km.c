@@ -211,6 +211,8 @@ switch(pci_id->driver_data){
 		kms->get_window_parameters=radeon_get_window_parameters;
 		kms->start_transfer=radeon_start_transfer;
 		kms->stop_transfer=radeon_stop_transfer;
+		kms->allocate_v4l_dvb=radeon_allocate_v4l_dvb;
+		kms->deallocate_v4l_dvb=radeon_deallocate_v4l_dvb;
 		kms->allocate_single_frame_buffer=radeon_allocate_single_frame_buffer;
 		kms->deallocate_single_frame_buffer=generic_deallocate_single_frame_buffer;
 		kms->irq_handler=radeon_km_irq;

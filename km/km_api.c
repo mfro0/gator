@@ -43,6 +43,7 @@ EXPORT_SYMBOL(add_km_device);
 EXPORT_SYMBOL(remove_km_device);
 EXPORT_SYMBOL(kmd_signal_state_change);
 EXPORT_SYMBOL(km_allocate_data_virtual_block);
+EXPORT_SYMBOL(km_deallocate_data);
 
 
 #define KM_MODULUS	255

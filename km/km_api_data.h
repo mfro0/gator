@@ -42,6 +42,6 @@ typedef struct {
 int init_km_data_units(void);
 void cleanup_km_data_units(void);
 int km_allocate_data_virtual_block(KM_DATA_VIRTUAL_BLOCK *, mode_t mode);
-void km_deallocate_data_virtual_block(int data_unit);
+void km_deallocate_data(int data_unit);
 
 #endif
