@@ -272,8 +272,4 @@ global alsa_window
 set alsa_window 1
 global current_alsa_device
 set current_alsa_device "none"
-frame .f
-pack .f -expand yes -fill both
-generate_alsa_window .f
 
-trace variable current_alsa_device1 w "set_alsa_device .f ; skip_args3"

@@ -1,0 +1,9 @@
+#!avview_shell
+
+source alsa.scp
+
+frame .f
+pack .f -expand yes -fill both
+generate_alsa_window .f
+
+trace variable current_alsa_device1 w "set_alsa_device .f ; skip_args3"
