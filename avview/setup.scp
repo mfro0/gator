@@ -19,6 +19,8 @@ proc create_setup_window {} {
 global SETUP_MAIN
 if { [winfo exists $SETUP_MAIN] } {
 	wm deiconify $SETUP_MAIN
+	update
+	update idletasks
 	raise $SETUP_MAIN
 	after idle {
 		global SETUP_MAIN

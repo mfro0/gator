@@ -495,9 +495,9 @@ catch {
 		tk_dialog .controlwin.limit_reached "Fifo limit reached" "Fifo limit has been reached.\nCapture stopped." "" 0 "OK"
 		}
 	set length [get_value $status "-encoded_stream_size"]
-	if { $ffmpeg_recording_chunk_size > 2000 } {
-		set ffmpeg_recording_chunk_size 2000
-		}
+#	if { $ffmpeg_recording_chunk_size > 2000 } {
+#		set ffmpeg_recording_chunk_size 2000
+#		}
 	if { $ffmpeg_recording_chunk_size < 10 } {
 		set ffmpeg_recording_chunk_size 10 
 		}

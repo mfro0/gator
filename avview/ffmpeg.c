@@ -326,14 +326,19 @@ done=0;
 while(done<size){
 	a=write(sdata->fd_out, buf+done, size-done);
 	if(a>0)done+=a;
+	 else 
+	if(errno==ENOSPC){
+		fprintf(stderr, "Please free up some disk space\n");
+		sleep(1);
+		}
 	}
 return 1;
 }
 
 offset_t file_seek(FFMPEG_ENCODING_DATA *sdata, offset_t pos, int whence)
 {
-fprintf(stderr,"file_seek pos=%d whence=%d\n", (int)pos, whence);
-return lseek(sdata->fd_out, pos, whence);
+fprintf(stderr,"file_seek pos=%lld whence=%d\n", pos, whence);
+return lseek64(sdata->fd_out, pos, whence);
 }
 
 int ffmpeg_create_video_codec(Tcl_Interp* interp, int argc, char * argv[])
@@ -616,7 +621,7 @@ for(i=0;i<32;i++)sdata->luma_hist[i]=0;
 pthread_mutex_init(&(sdata->format_context_mutex), NULL);
 
 
-sdata->fd_out=open(arg_filename, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
+sdata->fd_out=open64(arg_filename, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
 if(sdata->fd_out<0){
 	do_free(sdata);
 	Tcl_AppendResult(interp, "failed: ", NULL);
