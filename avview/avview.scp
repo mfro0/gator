@@ -374,7 +374,7 @@ if { $current_port == "none" } { return }
 
 set ENCODINGS [xv_port_encodings $VIDEO_WINDOW $current_port]
 set current_encoding [lsearch $ENCODINGS $current_encoding_name]
-if { $current_encoding > 0 } {
+if { ($current_encoding >= 0) } {
 	on_attribute_change XV_ENCODING current_encoding a b
 	switch -glob -- "$current_encoding_name" \
 		"*pal*" {
