@@ -610,7 +610,7 @@ if { $fullscreen_mode } {
 set in_set_fullscreen false
 }
 
-proc make_half_size {} {
+proc set_video_window_size { w h } {
 global VIDEO_WINDOW
 global fullscreen_mode
 
@@ -618,46 +618,21 @@ if {$fullscreen_mode} {
 	set fullscreen_mode 0
 	return
 	}
-
-$VIDEO_WINDOW configure -width [expr [winfo width $VIDEO_WINDOW]/2] \
-			-height [expr [winfo height $VIDEO_WINDOW]/2]
-wm geometry . =[$VIDEO_WINDOW cget -width]x[$VIDEO_WINDOW cget -height]
-}
-
-proc make_double_size {} {
-global VIDEO_WINDOW
-global fullscreen_mode
-
-if {$fullscreen_mode} {
-	set fullscreen_mode 0
-	return
-	}
-
-$VIDEO_WINDOW configure -width [expr [winfo width $VIDEO_WINDOW]*2] \
-			-height [expr [winfo height $VIDEO_WINDOW]*2]
-wm geometry . =[$VIDEO_WINDOW cget -width]x[$VIDEO_WINDOW cget -height]
-}
-
-proc make_aspect_ratio {xr yr} {
-global VIDEO_WINDOW
-global fullscreen_mode
-
-if {$fullscreen_mode} {
-	set fullscreen_mode 0
-	return
-	}
-set current_width [winfo width $VIDEO_WINDOW]
-set current_height [winfo width $VIDEO_WINDOW]
-set new_width [expr $current_height*$xr/$yr]
-set new_height [expr $current_width*$yr/$xr]
-
-if { $new_width <= $current_width } { 
-	set new_height $current_height 
+	
+if { [ regexp {^\*} $w ] } {
+	set new_width [expr [winfo width $VIDEO_WINDOW] $w ]
 	} {
-	set new_width $current_width
+	set new_width $w
 	}
 
-$VIDEO_WINDOW configure -width $new_width -height $new_height
+if { [ regexp {^\*} $h ] } {
+	set new_height [expr [winfo height $VIDEO_WINDOW] $h ]
+	} {
+	set new_height $h
+	}
+
+$VIDEO_WINDOW configure -width [expr $new_width] \
+			-height [expr $new_height]
 wm geometry . =[$VIDEO_WINDOW cget -width]x[$VIDEO_WINDOW cget -height]
 }
 
@@ -748,16 +723,18 @@ for { set i 1 } { $i <= 8 } { incr i } {
 	}
 
 .video_menu.size_menu add checkbutton -variable fullscreen_mode -label "Fullscreen" -onvalue true -offvalue false
-.video_menu.size_menu add command -label "Half size" -command "make_half_size"
-.video_menu.size_menu add command -label "Double size" -command "make_double_size"
+.video_menu.size_menu add command -label "Half size" -command "set_video_window_size *0.5 *0.5"
+.video_menu.size_menu add command -label "Double size" -command "set_video_window_size *2 *2"
+.video_menu.size_menu add command -label "160x120" -command "set_video_window_size 160 120"
+.video_menu.size_menu add command -label "320x240" -command "set_video_window_size 320 240"
+.video_menu.size_menu add command -label "480x320" -command "set_video_window_size 480 320"
+.video_menu.size_menu add command -label "640x480" -command "set_video_window_size 640 480"
+.video_menu.size_menu add command -label "800x600" -command "set_video_window_size 800 600"
 .video_menu.size_menu add radiobutton -label "Unconstrained aspect ratio" -variable aspect_ratio -value [list NONE NONE]
 .video_menu.size_menu add radiobutton -label "Aspect ratio 4:3" -variable aspect_ratio -value [list 4 3]
 .video_menu.size_menu add radiobutton -label "Aspect ratio 3:4" -variable aspect_ratio -value [list 3 4]
 .video_menu.size_menu add radiobutton -label "Aspect ratio 16:9" -variable aspect_ratio -value [list 16 9]
 .video_menu.size_menu add radiobutton -label "Aspect ratio 9:16" -variable aspect_ratio -value [list 9 16]
-#.video_menu.size_menu add command -label "Adjust to 4:3 aspect ratio" -command "make_aspect_ratio 4 3"
-#.video_menu.size_menu add command -label "Adjust to 16:9 aspect ratio" -command "make_aspect_ratio 16 9"
-#.video_menu.size_menu add command -label "Adjust to 9:16 aspect ratio" -command "make_aspect_ratio 9 16"
 
 .video_menu.interface_menu add command -label "Show setup window" -command "create_setup_window"
 .video_menu.interface_menu add command -label "Favorite channel editor" -command scan_channels
