@@ -1844,7 +1844,7 @@ RADEONStopVideo(ScrnInfoPtr pScrn, pointer data, Bool cleanup)
   if(cleanup) {
      if(pPriv->videoStatus & CLIENT_VIDEO_ON) {
 	RADEONWaitForFifo(pScrn, 2); 
-	OUTREG(RADEON_OV0_SCALE_CNTL, 0);
+	OUTREG(RADEON_OV0_SCALE_CNTL, 0x80000000);
      }
      if(pPriv->video_stream_active) {
 	RADEONWaitForFifo(pScrn, 2); 
@@ -3128,7 +3128,7 @@ RADEONVideoTimerCallback(ScrnInfoPtr pScrn, Time now)
 	    if(pPriv->offTime < now) {
 		unsigned char *RADEONMMIO = info->MMIO;
                 RADEONWaitForFifo(pScrn, 2);
-		OUTREG(RADEON_OV0_SCALE_CNTL, 0);
+		OUTREG(RADEON_OV0_SCALE_CNTL, 0x80000000);
 		pPriv->videoStatus = FREE_TIMER;
 		pPriv->freeTime = now + FREE_DELAY;
 	    }

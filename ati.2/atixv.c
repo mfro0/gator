@@ -1425,7 +1425,7 @@ ATIStopVideo(ScrnInfoPtr pScrn, pointer data, Bool cleanup)
   if(cleanup) {
      ATIMach64WaitForFIFO(pATI, 2); 
      if(pPriv->videoStatus & CLIENT_VIDEO_ON) {
-	outf(OVERLAY_SCALE_CNTL, 0);
+	outf(OVERLAY_SCALE_CNTL, 0x80000000);
      }
      if(pPriv->video_stream_active) {
         outf(TRIG_CNTL, 0x0);
@@ -2397,7 +2397,7 @@ ATIVideoTimerCallback(ScrnInfoPtr pScrn, Time time)
 	if(pPriv->videoStatus & OFF_TIMER) {
 	    if(pPriv->offTime < time) {
 		ATIMach64WaitForFIFO(pATI, 2); 
-		outf(OVERLAY_SCALE_CNTL, 0);
+		outf(OVERLAY_SCALE_CNTL, 0x80000000);
 		pPriv->videoStatus = FREE_TIMER;
 		pPriv->freeTime = time + FREE_DELAY;
 	    }

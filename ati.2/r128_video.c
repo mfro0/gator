@@ -1465,7 +1465,7 @@ R128StopVideo(ScrnInfoPtr pScrn, pointer data, Bool cleanup)
   if(cleanup) {
      if(pPriv->videoStatus & CLIENT_VIDEO_ON) {
 	R128WaitForFifo(pScrn, 2); 
-	OUTREG(R128_OV0_SCALE_CNTL, 0);
+	OUTREG(R128_OV0_SCALE_CNTL, 0x80000000);
      }
      if(pPriv->video_stream_active) {
 	R128WaitForFifo(pScrn, 8); 
@@ -2872,7 +2872,7 @@ R128VideoTimerCallback(ScrnInfoPtr pScrn, Time now)
 	if(pPriv->videoStatus & OFF_TIMER) {
 	    if(pPriv->offTime < now) {
 		unsigned char *R128MMIO = info->MMIO;
-		OUTREG(R128_OV0_SCALE_CNTL, 0);
+		OUTREG(R128_OV0_SCALE_CNTL, 0x80000000);
 		pPriv->videoStatus = FREE_TIMER;
 		pPriv->freeTime = now + FREE_DELAY;
 	    }
