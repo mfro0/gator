@@ -352,6 +352,7 @@ CARD8 data[10];
      45.75, 39, 58.75 and 30. */
 #if 0
 MT2032_calculate_register_settings(&m, freq, 1090.0, 45.125, 5.25, 6.0, step);
+MT2032_calculate_register_settings(&m, freq, 1090.0, 45.74, 5.25, 6.0, step);
 #endif
 MT2032_calculate_register_settings(&m, freq, 1090.0, 45.7812, 5.25, 6.0, step);
 MT2032_implement_settings(f, &m);

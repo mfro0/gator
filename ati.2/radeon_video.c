@@ -2966,11 +2966,12 @@ t->port1=1;
 t->port2=1;
 t->top_adjustment=0x10;
 t->deemphasis=1; 
-t->deemphasis=1; 
 t->audio_gain=0;
 t->minimum_gain=0;
 t->gating=0; 
 t->vif_agc=1; /* set to 1 ? - depends on design */
+t->gating=1; 
+t->top_adjustment=0x10;
 
 switch(pPriv->encoding){
 		/* PAL */
@@ -2996,6 +2997,7 @@ switch(pPriv->encoding){
 	case 12:
 		t->standard_video_if=0;
 		t->standard_sound_carrier=3;
+		t->modulation=0; /* positive AM */
 		break;
 	default:
 		return;
