@@ -135,6 +135,11 @@ typedef enum {
     OPTION_PANEL_SIZE,
 #ifdef XvExtension
     OPTION_VIDEO_KEY,
+    OPTION_RAGE_THEATRE_CRYSTAL,
+    OPTION_RAGE_THEATRE_TUNER_PORT,
+    OPTION_RAGE_THEATRE_COMPOSITE_PORT,
+    OPTION_RAGE_THEATRE_SVIDEO_PORT,
+    OPTION_TUNER_TYPE,
 #endif
     OPTION_FBDEV
 } RADEONOpts;
@@ -158,6 +163,11 @@ const OptionInfoRec RADEONOptions[] = {
     { OPTION_PANEL_SIZE,   "PanelSize",        OPTV_ANYSTR,  {0}, FALSE },
 #ifdef XvExtension
     { OPTION_VIDEO_KEY, "VideoKey",      OPTV_INTEGER, {0}, FALSE },
+    { OPTION_RAGE_THEATRE_CRYSTAL, "RageTheatreCrystal",      OPTV_INTEGER, {0}, FALSE },
+    { OPTION_RAGE_THEATRE_TUNER_PORT, "RageTheatreTunerPort",      OPTV_INTEGER, {0}, FALSE },
+    { OPTION_RAGE_THEATRE_COMPOSITE_PORT, "RageTheatreCompositePort",      OPTV_INTEGER, {0}, FALSE },
+    { OPTION_RAGE_THEATRE_SVIDEO_PORT, "RageTheatreSVideoPort",      OPTV_INTEGER, {0}, FALSE },
+    { OPTION_TUNER_TYPE, "TunerType",      OPTV_INTEGER, {0}, FALSE },
 #endif
     { OPTION_FBDEV,        "UseFBDev",         OPTV_BOOLEAN, {0}, FALSE },
     { -1,                  NULL,               OPTV_NONE,    {0}, FALSE }
@@ -2252,6 +2262,41 @@ Bool RADEONPreInit(ScrnInfoPtr pScrn, int flags)
         /* this default is very unlikely to occur (mostly a few pixels in photos) */
 	/* Unlike R128, Radeon's videokey is always stored in 32 bit ARGB format */
         info->videoKey = (1<<8) | (2<<8) | (3<<8);
+    }
+
+    if(xf86GetOptValInteger(info->Options, OPTION_RAGE_THEATRE_CRYSTAL, &(info->RageTheatreCrystal))) {
+        xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "Rage Theatre Crystal frequency was specified as %d.%d Mhz\n",
+                                info->RageTheatreCrystal/100, info->RageTheatreCrystal % 100);
+    } else {
+    	info->RageTheatreCrystal=-1;
+    }
+
+    if(xf86GetOptValInteger(info->Options, OPTION_RAGE_THEATRE_TUNER_PORT, &(info->RageTheatreTunerPort))) {
+        xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "Rage Theatre tuner port was specified as %d\n",
+                                info->RageTheatreTunerPort);
+    } else {
+    	info->RageTheatreTunerPort=-1;
+    }
+
+    if(xf86GetOptValInteger(info->Options, OPTION_RAGE_THEATRE_COMPOSITE_PORT, &(info->RageTheatreCompositePort))) {
+        xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "Rage Theatre composite port was specified as %d\n",
+                                info->RageTheatreCompositePort);
+    } else {
+    	info->RageTheatreCompositePort=-1;
+    }
+
+    if(xf86GetOptValInteger(info->Options, OPTION_RAGE_THEATRE_SVIDEO_PORT, &(info->RageTheatreSVideoPort))) {
+        xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "Rage Theatre SVideo Port was specified as %d\n",
+                                info->RageTheatreSVideoPort);
+    } else {
+    	info->RageTheatreSVideoPort=-1;
+    }
+
+    if(xf86GetOptValInteger(info->Options, OPTION_TUNER_TYPE, &(info->tunerType))) {
+        xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "Tuner type was specified as %d\n",
+                                info->tunerType);
+    } else {
+    	info->tunerType=-1;
     }
 #endif
 

@@ -466,6 +466,11 @@ typedef struct {
     XF86VideoAdaptorPtr adaptor;
     void              (*VideoTimerCallback)(ScrnInfoPtr, Time);
     int               videoKey;
+    int		      RageTheatreCrystal;
+    int               RageTheatreTunerPort;
+    int               RageTheatreCompositePort;
+    int               RageTheatreSVideoPort;
+    int               tunerType;
     Bool              showCache;
     OptionInfoPtr     Options;
 } RADEONInfoRec, *RADEONInfoPtr;
