@@ -1729,6 +1729,19 @@ RADEONAllocAdaptor(ScrnInfoPtr pScrn)
     pPriv->hue = 0;
     pPriv->currentBuffer = 0;
     pPriv->autopaint_colorkey = TRUE;
+    pPriv->video_stream_active = FALSE;
+    pPriv->encoding = 4;
+    pPriv->frequency = 1000;
+    pPriv->volume = -1000;
+    pPriv->mute = TRUE;
+    pPriv->v = 0;
+    pPriv->overlay_deinterlacing_method = METHOD_BOB;
+    pPriv->capture_vbi_data = 1;
+    pPriv->dec_brightness = 0;
+    pPriv->dec_saturation = 0;
+    pPriv->dec_contrast = 0;
+    pPriv->dec_hue = 0;
+    
 
     /*
      * Unlike older Mach64 chips, RADEON has only two ECP settings: 

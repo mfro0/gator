@@ -230,7 +230,7 @@
 #define TEST_DEBUG_CNTL__TEST_DEBUG_OUT_EN 0x00000001
 
 #define RT100_ATI_ID 0x4D541002
-#define RT200_ATI_ID 0x4f4a1000
+#define RT200_ATI_ID 0x4f4a1002
 
 /* Register/Field values: */
 #define     RT_COMP0              0x0
