@@ -1,0 +1,29 @@
+
+lirc_usb.c:
+
+The LIRC driver is a hack between the GATOS ATI remote driver and another
+LIRC usb driver.  Currently, it creates a device file (/dev/usb/remote0)
+and LIRC must be told to access that device via command line.  I've tested
+it with LIRC version 0.6.6 successfully.
+
+This driver is a temporary solution.  I am working towards a LIRC driver
+that uses their new driver interface (lirc_dev) and will eventually be
+included with LIRC, not GATOS.
+
+Anyhow, to install it:
+
+Since I haven't messed with GNU's build tools, this is very half-assed...
+
+1) Download LIRC source and run ./autogen.sh; ./configure
+2) Copy the lirc_usb.c source over another driver's source
+3) Run make in that driver's source directory
+4) Rename driver to lirc_usb.o
+5) Copy to /lib/modules/(kernel version)/misc
+6) Run depmod -a
+7) Run insmod lirc_usb debug=1
+8) Run lircd -d /dev/usb/remote0
+
+Good luck!
+
+Paul Miller <pmiller9@users.sourceforge.net>
+
