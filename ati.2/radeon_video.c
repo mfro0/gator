@@ -152,6 +152,7 @@ typedef struct {
 void RADEON_RT_SetEncoding(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv);
 void RADEON_board_setmisc(RADEONPortPrivPtr pPriv);
 void RADEON_MSP_SetEncoding(RADEONPortPrivPtr pPriv);
+void RADEON_FI1236_SetEncoding(RADEONPortPrivPtr pPriv);
 void RADEONSetColorKey(ScrnInfoPtr pScrn, CARD32 pixel);
 static void RADEONResetI2C(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv);
 void RADEONShutdownVideo(ScrnInfoPtr pScrn);
@@ -2158,6 +2159,7 @@ RADEONSetPortAttribute(ScrnInfoPtr  pScrn,
            if(pPriv->theatre != NULL) RADEON_RT_SetEncoding(pScrn, pPriv);
            if(pPriv->msp3430 != NULL) RADEON_MSP_SetEncoding(pPriv);
            if(pPriv->tda9885 != NULL) RADEON_TDA9885_SetEncoding(pPriv);
+	   if(pPriv->fi1236 != NULL) RADEON_FI1236_SetEncoding(pPriv);
            if(pPriv->i2c != NULL) RADEON_board_setmisc(pPriv);
         /* put more here to actually change it */
         }
@@ -3286,6 +3288,36 @@ xf86_tda9885_getstatus(pPriv->tda9885);
 xf86_tda9885_dumpstatus(pPriv->tda9885);
 }
 
+void RADEON_FI1236_SetEncoding(RADEONPortPrivPtr pPriv)
+{
+/* at the moment this only affect MT2032 */
+switch(pPriv->encoding){
+                /* PAL */
+        case 1:
+        case 2:
+        case 3:
+		pPriv->fi1236->video_if=58.75;
+                break;
+                /* NTSC */
+        case 4:
+        case 5:
+        case 6:
+		pPriv->fi1236->video_if=45.7812;
+                break;
+                /* SECAM */
+        case 7:
+        case 8:
+        case 9:
+        case 10:
+        case 11:
+        case 12:
+		pPriv->fi1236->video_if=58.75;
+                break;
+        default:
+                return;
+        }       
+}
+
 /* capture config constants */
 #define BUF_TYPE_FIELD          0
 #define BUF_TYPE_ALTERNATING    1
@@ -3517,6 +3549,8 @@ RADEONPutVideo(
          xf86_RT_SetOutputVideoSize(pPriv->theatre, width, height*2, 0, 0);   
       }
       if(pPriv->msp3430 != NULL) RADEON_MSP_SetEncoding(pPriv);
+      if(pPriv->tda9885 != NULL) RADEON_TDA9885_SetEncoding(pPriv);
+      if(pPriv->fi1236 != NULL) RADEON_FI1236_SetEncoding(pPriv);
       if(pPriv->i2c != NULL)RADEON_board_setmisc(pPriv);
    }
 
