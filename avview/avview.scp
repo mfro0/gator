@@ -676,7 +676,7 @@ if { "$status" != "" } {
 	set current_v4l_device "none"
 	}
 $cw.recordb configure -state normal
-$cw.snapshotb configure -state disabled
+$cw.snapshotb configure -state normal
 update_v4l_window_info $cw
 }
 

@@ -153,9 +153,9 @@ if(f->free==f->size){
 	pthread_mutex_unlock(&(sdata->incoming_wait));
 	pthread_mutex_lock(&(sdata->incoming_wait)); 
 	fprintf(stderr,"fifo size %ld\n", sdata->size*sdata->frame_count);
+	Tcl_DoOneEvent(TCL_WINDOW_EVENTS|TCL_TIMER_EVENTS|TCL_IDLE_EVENTS|TCL_DONT_WAIT);
 	}
 status=read(data->fd, f->data+f->free, f->size-f->free);
-fprintf(stderr,"status=%d\n", status);
 if(status<0)return;
 f->free+=status;
 }
