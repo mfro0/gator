@@ -2,7 +2,7 @@
 
           uC preliminary version 
 	  
-	  (C) Vladimir Dergachev 2001-2003
+	  (C) Vladimir Dergachev 2001-2004
 	  
 	  GNU public license
 	  
