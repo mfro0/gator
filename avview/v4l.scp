@@ -401,6 +401,10 @@ if { $v4l_capture_on } {
 	if { "$status" == "" } { 
 		after cancel "check_fifo $cw"
 		after 800 "check_fifo $cw"
+		} {
+		tk_messageBox -default ok -icon info -message "Could not start recording:\n$status" \
+			-title "Could not start recording" -parent .controlwin -type ok
+		set v4l_capture_on false
 		}
 	puts "status=$status"
 	} {

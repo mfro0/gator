@@ -620,15 +620,14 @@ sdata->audio_sample_top_right=0;
 for(i=0;i<32;i++)sdata->luma_hist[i]=0;
 pthread_mutex_init(&(sdata->format_context_mutex), NULL);
 
-
+errno=0;
+while(0){}
 sdata->fd_out=open64(arg_filename, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
-if(sdata->fd_out<0){
+if((sdata->fd_out<0)||(errno!=0)){
 	do_free(sdata);
-	Tcl_AppendResult(interp, "failed: ", NULL);
 	Tcl_AppendResult(interp, strerror(errno), NULL);
-	free(sdata);
 	sdata=NULL;
-	return 0;
+	return TCL_OK;
 	}
 motion_estimation_method=ME_FULL;
 memset(&(sdata->format_context), 0, sizeof(AVFormatContext));
@@ -659,8 +658,8 @@ if(sdata->format_context.nb_streams==0){
 	close(sdata->fd_out);
 	free(sdata);
 	sdata=NULL;
-	Tcl_AppendResult(interp,"ERROR: ffmpeg_encode_v4l_stream: no streams to encode", NULL);
-	return TCL_ERROR;
+	Tcl_AppendResult(interp,"no streams to encode", NULL);
+	return TCL_OK;
 	}
 sdata->format_context.oformat=NULL;
 if(arg_av_format==NULL){
