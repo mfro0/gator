@@ -4,7 +4,7 @@ AC_PREREQ(2.57)
 # Note to self: always bump version number when there are changes
 # in setup window or avview_shell
 #
-AC_INIT([AVview], [0.11.2], [gatos-devel@lists.sf.net])
+AC_INIT([AVview], [0.11.5], [gatos-devel@lists.sf.net])
 #
 # For now I'll be happier without NEWS and Changelog files.
 #
@@ -40,6 +40,7 @@ AC_CHECK_LIB([dl], [dlopen])
 AC_CHECK_LIB([z], [uncompress])
 AC_CHECK_LIB([m], [sin])
 AC_CHECK_LIB([pthread], [pthread_create])
+AC_CHECK_LIB([zvbi], [vbi_capture_v4l_new])
 AC_CHECK_LIB([asound], [snd_card_get_name])
 
 #

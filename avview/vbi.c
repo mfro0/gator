@@ -10,6 +10,11 @@
 #include <config.h>
 #endif
 
+#include <X11/X.h>
+#include <X11/Xlib.h>
+#include <tcl.h>
+#include <tk.h>
+
 #include <libzvbi.h>
 
 #include "global.h"
@@ -39,9 +44,9 @@ if(vbi_sc->data[i]!=NULL){
 	data=(VBI_DATA*) vbi_sc->data[i];
 	vbi_capture_delete(data->cap);
 	} else {
-	vbi_sc->data[i]=do_alloc(1, sizeof(V4L_DATA));
+	vbi_sc->data[i]=do_alloc(1, sizeof(VBI_DATA));
 	}
-data=(V4L_DATA*) vbi_sc->data[i];
+data=(VBI_DATA*) vbi_sc->data[i];
 memset(data, 0, sizeof(*data));
 
 services = VBI_SLICED_VBI_525 | VBI_SLICED_VBI_625
@@ -107,7 +112,7 @@ i=lookup_string(vbi_sc, argv[1]);
 if(i<0){
 	return 0;
 	}
-data=(V4L_DATA *)vbi_sc->data[i];	
+data=(VBI_DATA *)vbi_sc->data[i];	
 if(data==NULL){
 	return 0;
 	}
@@ -132,8 +137,6 @@ void init_vbi(Tcl_Interp *interp)
 long i;
 
 vbi_sc=new_string_cache();
-snapshot_data=NULL;
-minfo=NULL;
 
 for(i=0;vbi_commands[i].name!=NULL;i++)
 	Tcl_CreateCommand(interp, vbi_commands[i].name, vbi_commands[i].command, (ClientData)0, NULL);
