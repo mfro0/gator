@@ -339,6 +339,7 @@ vbi_new_channel primary
 for { set i 1 } { $i <= 8 } { incr i } {
 	.video_menu.cc_menu entryconfigure $i -foreground black -label "$i"
 	}
+.video delete cc_text
 }
 
 proc display_video {} {
@@ -812,7 +813,8 @@ if {[alsa_present] == "yes" } {
 bind $VIDEO_WINDOW <Configure> {
 	global $VIDEO_WINDOW
 	display_video
-	place $VIDEO_WINDOW.onscreen_display -relx 0.05 -rely 0.05 -anchor nw
+	place forget $VIDEO_WINDOW.onscreen_display
+#	place $VIDEO_WINDOW.onscreen_display -relx 0.05 -rely 0.05 -anchor nw
 	if { [winfo exists $VIDEO_WINDOW.control] } {
 		destroy $VIDEO_WINDOW.control
 		next_control 0
