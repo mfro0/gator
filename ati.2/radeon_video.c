@@ -1102,6 +1102,9 @@ static void RADEONInitI2C(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
 
     if(info->IsRV200){
 	    nm=(pll->reference_freq * 40000.0)/(1.0*I2C_CLOCK_FREQ);
+	    } else 
+    if(info->IsR200){
+	    nm=(pll->reference_freq * 40000.0)/(4.0*I2C_CLOCK_FREQ);
 	    } else {
 	    nm=(pll->reference_freq * 10000.0)/(4.0*I2C_CLOCK_FREQ);
 	    }
