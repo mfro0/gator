@@ -340,6 +340,7 @@ char *arg_v4l_rate;
 char *arg_video_bitrate;
 char *arg_deinterlace_mode;
 char *arg_step_frames;
+char *arg_video_quality;
 struct video_picture vpic;
 double a,b;
 
@@ -352,6 +353,7 @@ arg_v4l_rate=get_value(argc, argv, "-v4l_rate");
 arg_video_bitrate=get_value(argc, argv, "-video_bitrate");
 arg_deinterlace_mode=get_value(argc, argv, "-deinterlace_mode");
 arg_step_frames=get_value(argc, argv, "-step_frames");
+arg_video_quality=get_value(argc, argv, "-video_quality");
 
 if((arg_v4l_handle==NULL)||
 	(!strcmp(arg_v4l_handle, "none"))||
@@ -471,6 +473,10 @@ sdata->video_codec_context.pix_fmt=PIX_FMT_YUV422;
 sdata->video_codec_context.flags=CODEC_FLAG_QSCALE;
 sdata->video_codec_context.qmin=qmin;
 sdata->video_codec_context.quality=qmin;
+if(arg_video_quality!=NULL)sdata->video_codec_context.quality=atoi(arg_video_quality);
+if(sdata->sdata->video_codec_context.quality<qmin)sdata->video_codec_context.quality=qmin;
+if(sdata->sdata->video_codec_context.quality>31)sdata->video_codec_context.quality=31;
+
 sdata->video_codec_context.qmax=15;
 sdata->video_codec_context.max_qdiff=3;
 sdata->video_codec_context.aspect_ratio_info=FF_ASPECT_4_3_625;

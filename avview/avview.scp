@@ -593,8 +593,20 @@ bind $VIDEO_WINDOW <Configure> {
 
 read_settings
 
-wm protocol . WM_DELETE_WINDOW { save_settings ; exit }
-wm protocol .controlwin WM_DELETE_WINDOW { save_settings ; exit }
+wm protocol . WM_DELETE_WINDOW { 
+        if { [ffmpeg_present] == "yes" } {
+                ffmpeg_stop_encoding current_v4l_handle
+                }
+	save_settings  
+	exit 
+	}
+wm protocol .controlwin WM_DELETE_WINDOW {
+        if { [ffmpeg_present] == "yes" } {
+                ffmpeg_stop_encoding current_v4l_handle
+                }
+	 save_settings
+	 exit 
+	 }
 wm title . "AV Viewer"
 wm title .controlwin "AV Control"
 
