@@ -1,5 +1,8 @@
 #!avview_shell
 
+global debug
+set debug 0
+
 source themes.scp
 source alsa.scp
 

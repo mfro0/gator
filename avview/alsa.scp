@@ -16,15 +16,21 @@ return [lindex $value_list $i]
 
 proc set_element_value { name values_count i j} {
 global current_alsa_device
+global debug
 global $name.$i.v$j
-puts "changed $name value $j to [set $name.$i.v$j]"
+if { $debug } {
+	puts "changed $name value $j to [set $name.$i.v$j]"
+	}
 alsa_hctl_set_element_value "$current_alsa_device" $i $j [set $name.$i.v$j]
 }
 
 proc set_element_average_value { name values_count i} {
 global current_alsa_device
+global debug
 global $name.$i.average_v
-puts "changed $name value all values to [set $name.$i.average_v]"
+if { $debug } {
+	puts "changed $name value all values to [set $name.$i.average_v]"
+	}
 for { set k 0 } { $k < $values_count } { incr k } {
 	alsa_hctl_set_element_value "$current_alsa_device" $i $k [set $name.$i.average_v]
 	}
@@ -42,7 +48,9 @@ proc set_locked_state { mw name element i } {
 global $name.$i.locked
 global current_alsa_device
 global $name.$i.average_v
-puts "$name.$i.locked=[set $name.$i.locked]"
+if { $debug } {
+	puts "$name.$i.locked=[set $name.$i.locked]"
+	}
 set row [get_value [grid info $mw.label$i] "-row"]
 if { [set $name.$i.locked] } {
 	grid forget $mw.frame$i
@@ -208,7 +216,6 @@ foreach element $current_alsa_info {
 
 update
 set bbox [grid bbox $mw]
-puts "$bbox"
 $canvas configure -scrollregion "[grid bbox $mw]" -width [expr [lindex $bbox 2]+8]
 }
 	

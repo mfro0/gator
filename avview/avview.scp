@@ -7,6 +7,9 @@
 #       GNU Public License
 #       
 
+global debug
+set debug 0
+
 source themes.scp
 source alsa.scp
 source v4l.scp

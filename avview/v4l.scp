@@ -261,7 +261,6 @@ update
 
 proc save_image_as { sw image } {
 global save_type
-puts "$image $save_type"
 switch "$save_type" \
 	"Postscript" {
 		set file [tk_getSaveFile -defaultextension .eps \
