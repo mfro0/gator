@@ -1,7 +1,7 @@
 # Process this file with autoconf to produce a configure script.
 AC_PREREQ(2.52)
 
-AC_INIT([AV viewer], [0.10.0], [gatos-devel@lists.sf.net])
+AC_INIT([AV viewer], [0.10.3], [gatos-devel@lists.sf.net])
 AC_CONFIG_SRCDIR([frequencies.c])
 AC_CONFIG_HEADER([config.h])
 
