@@ -2033,7 +2033,8 @@ R128DisplayVideo422(
 		+ ((pScrn->currentMode->Flags & V_INTERLACE)?1:0)
 		- ((pScrn->currentMode->Flags & V_DBLSCAN)?1:0)));
 
-    v_inc_d = src_h/drw_h;
+    v_inc_d = src_h;
+    v_inc_d = v_inc_d/drw_h;
     v_inc = v_inc * v_inc_d;
 
     h_inc = ((src_w << (12
