@@ -1041,7 +1041,7 @@ if((table<0)||(table>=(sizeof(chanlists)/sizeof(struct CHANLISTS)))||(chanlists[
 	}
 channel=atoi(argv[2]);
 if((channel<0)||(channel>=chanlists[table].count)){
-	Tcl_AppendResult(interp, "ERROR: freq_get_channel_value: no such channel");
+	Tcl_AppendResult(interp, "ERROR: freq_get_channel_value: no such channel", NULL);
 	return TCL_ERROR;
 	}
 

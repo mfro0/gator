@@ -269,6 +269,7 @@ for {set i 16} { $i < $num_channels } {incr i 16 } {
 	.video_menu.channel_menu entryconfigure $i -columnbreak 1
 	}
 reflect_favorite_channels
+set current_channel [find_first_favorite_channel]
 }
 
 proc set_channel {a b c} {

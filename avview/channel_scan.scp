@@ -111,3 +111,22 @@ for { set i 0 } { $i < $num_entries} { incr i } {
 		}
 	}
 }
+
+proc find_first_favorite_channel {} {
+global current_channel_menu
+global current_port
+global current_table
+global is_favorite_channel
+set CHANNEL_LIST [freq_get_channel_list $current_table]
+set answer [lindex $CHANNEL_LIST 0]
+set num_entries [$current_channel_menu index end]
+catch {
+	for { set i 0 } { $i < $num_entries} { incr i } {
+		if { [set is_favorite_channel(${current_port}_${current_table}_$i)] } {
+			set answer [lindex $CHANNEL_LIST $i]
+			break;
+			}
+		}
+	}
+return $answer
+}

@@ -1,3 +1,11 @@
+/*     avview preliminary version
+
+       (C) Vladimir Dergachev 2001-2002
+       
+       GNU Public License
+       
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>

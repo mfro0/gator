@@ -1,3 +1,10 @@
+/*     avview preliminary version
+
+       (C) Vladimir Dergachev 2001-2002
+       
+       GNU Public License
+       
+*/
 #ifndef __ALSA_H__
 #define __ALSA_H__
 
