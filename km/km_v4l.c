@@ -24,10 +24,15 @@ static int km_open(struct video_device *dev, int flags)
 u32 buf_size;
 int result;
 KM_STRUCT *kms=(KM_STRUCT *)dev;
-
+if(spin_is_locked(&(kms->kms_lock))){
+	printk("Locked\n");
+	return -1;
+	}
+spin_lock(&(kms->kms_lock));
 if(!kms->is_capture_active(kms)){
 	printk("km: no data is available until xawtv is started\n");
 	result=-ENODATA;
+	spin_unlock(&(kms->kms_lock));
 	goto fail;
 	}
 
@@ -55,12 +60,14 @@ if(kms->allocate_single_frame_buffer(kms, &(kms->frame_even), buf_size)<0){
 	}
 
 kms->start_transfer(kms);
+spin_unlock(&(kms->kms_lock));
 return 0;
 
 fail:
 
   kms->deallocate_single_frame_buffer(kms, &(kms->frame));
   kms->deallocate_single_frame_buffer(kms, &(kms->frame_even));
+  spin_unlock(&(kms->kms_lock));
   return result;
 
 }
@@ -69,6 +76,7 @@ fail:
 static void km_close(struct video_device *dev)
 {
 KM_STRUCT *kms=(KM_STRUCT *)dev;
+spin_lock(&(kms->kms_lock));
 kms->stop_transfer(kms);
 kms->frame.buf_ptr=0;
 kms->frame_even.buf_ptr=0;
@@ -76,6 +84,7 @@ kms->buf_read_from=-1; /* none */
 kms->deallocate_single_frame_buffer(kms, &(kms->frame));
 kms->deallocate_single_frame_buffer(kms, &(kms->frame_even));
 printk("km: total frames: %ld, overrun: %ld\n", kms->total_frames, kms->overrun);
+spin_unlock(&(kms->kms_lock));
 }
 
 static long km_write(struct video_device *v, const char *buf, unsigned long count, int nonblock)
@@ -90,9 +99,11 @@ SINGLE_FRAME *frame;
 int q,todo;
 DECLARE_WAITQUEUE(wait, current);
 
+spin_lock(&(kms->kms_lock));
 todo=count;
 if(kms->buf_read_from<0){
 	printk("Internal error in km_v4l:km_read()\n");
+	spin_unlock(&(kms->kms_lock));
 	return -EIO;
 	}
 if(kms->buf_read_from==1)frame=&(kms->frame_even);
@@ -102,23 +113,32 @@ printk("frame->buf_ptr=%d frame->buf_free=%d\n", frame->buf_ptr, frame->buf_free
 #endif
 while(frame->buf_ptr==frame->buf_free){
 	KM_DEBUG("frame->dma_active=%d\n", frame->dma_active);
-	if(nonblock)return -EWOULDBLOCK;
+	if(nonblock){
+		spin_unlock(&(kms->kms_lock));
+		return -EWOULDBLOCK;
+		}
 	add_wait_queue(&(kms->frameq), &wait);
 	current->state=TASK_INTERRUPTIBLE;
+	spin_unlock(&(kms->kms_lock));
 	schedule();
 	if(signal_pending(current)){
+		spin_lock(&(kms->kms_lock));
 		remove_wait_queue(&(kms->frameq), &wait);
 		current->state=TASK_RUNNING;
+		spin_unlock(&(kms->kms_lock));
 		return -EINTR;
 		}
+	spin_lock(&(kms->kms_lock));
 	remove_wait_queue(&(kms->frameq), &wait);
 	current->state=TASK_RUNNING;
 	}
 while(todo>0){	
 	q=todo;
 	if((frame->buf_ptr+q)>=frame->buf_free)q=frame->buf_free-frame->buf_ptr;   
-	if(copy_to_user((void *) buf, (void *) (frame->buffer+frame->buf_ptr), q))
+	if(copy_to_user((void *) buf, (void *) (frame->buffer+frame->buf_ptr), q)){
+		spin_unlock(&(kms->kms_lock));
 		return -EFAULT;
+		}
 	todo-=q;
 	frame->buf_ptr+=q;
 	buf+=q;
@@ -127,12 +147,14 @@ while(todo>0){
 		break;
 		}
 	}
+spin_unlock(&(kms->kms_lock));
 return (count-todo);
 }
 
 static int km_ioctl(struct video_device *dev, unsigned int cmd, void *arg)
 {
 KM_STRUCT *kms=(KM_STRUCT *)dev;
+spin_lock(&(kms->kms_lock));
 switch(cmd){
 	case VIDIOCGCAP:{
 		struct video_capability b;
@@ -140,6 +162,8 @@ switch(cmd){
 		strcpy(b.name,kms->vd.name);
 		b.type = VID_TYPE_CAPTURE;
 		kms->get_window_parameters(kms, &(vwin));
+		spin_unlock(&(kms->kms_lock));
+
 		b.channels = 1;
 		b.audios = 0;
 		b.maxwidth = vwin.width;
@@ -158,12 +182,16 @@ switch(cmd){
 		p.colour=32768;
 		p.whiteness=32768;
 		p.depth=16;
+		spin_unlock(&(kms->kms_lock));
+
 		if(copy_to_user(arg, &p, sizeof(p)))
 			return -EFAULT;
 		return 0;
 		}
 	case VIDIOCSPICT:{
 		struct video_picture p;
+		spin_unlock(&(kms->kms_lock));
+
 		if(copy_from_user(&p, arg,sizeof(p)))
 			return -EFAULT;
 		if(p.palette!=VIDEO_PALETTE_YUV422)return -EINVAL;
@@ -172,6 +200,8 @@ switch(cmd){
 	case VIDIOCGWIN:{
 		struct video_window vwin;
 		kms->get_window_parameters(kms, &(vwin));
+		spin_unlock(&(kms->kms_lock));
+
 		if(copy_to_user(arg,&vwin,sizeof(vwin)))
 			return -EFAULT;
 		return 0;
@@ -179,6 +209,8 @@ switch(cmd){
 	case VIDIOCSWIN: {
 		struct video_window vwin, vwin1;
 		kms->get_window_parameters(kms, &(vwin1));
+		spin_unlock(&(kms->kms_lock));
+
 		if(copy_from_user(&vwin, arg, sizeof(vwin)))
 			return -EFAULT;
 		if((vwin.width!=vwin1.width)||(vwin.height!=vwin1.height)){
@@ -189,6 +221,7 @@ switch(cmd){
 		return 0;
 		}
 	}
+spin_unlock(&(kms->kms_lock));
 return -EINVAL;
 }
 
@@ -229,15 +262,20 @@ KM_STRUCT *kms=(KM_STRUCT *)dev;
 unsigned int mask=0;
 SINGLE_FRAME *frame;
 
+spin_lock(&(kms->kms_lock));
 if(kms->buf_read_from<0){
 	printk("km: internal error in kmv4l:km_poll\n");
+	spin_unlock(&(kms->kms_lock));
 	return 0;
 	}
 if(kms->buf_read_from==0)frame=&(kms->frame);
 	else frame=&(kms->frame_even);
 
-if(frame->buf_ptr==frame->buf_free)
+if(frame->buf_ptr==frame->buf_free){
+	spin_unlock(&(kms->kms_lock));
 	poll_wait(file, &(kms->frameq), wait);
+	spin_lock(&(kms->kms_lock));
+	}
 
 #if 0
 	if (btv->vbip < VBIBUF_SIZE)
@@ -249,6 +287,7 @@ if(frame->buf_ptr<frame->buf_free)
 	/* Now we have more data.. */
 	mask |= (POLLIN | POLLRDNORM);
 
+spin_unlock(&(kms->kms_lock));
 return mask;
 }
 

@@ -241,6 +241,7 @@ KM_STRUCT *kms;
 long status, mask;
 int count;
 
+/* spin_lock(&(kms->kms_lock)); */
 kms=dev_id;
 kms->interrupt_count++;
 
@@ -252,7 +253,10 @@ while(1){
 	if(!radeon_is_capture_irq_active(kms)){
 		status=readl(kms->reg_aperture+RADEON_GEN_INT_STATUS);
 		mask=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
-		if(!(status & mask))return;
+		if(!(status & mask)){
+/*			spin_unlock(&(kms->kms_lock)); */
+			return;
+			}
 		radeon_wait_for_idle(kms);
 		wmb();
 		if(status & (1<<30))acknowledge_dma(kms);
@@ -354,7 +358,7 @@ memset(frame->dma_table, 0, 4096);
 printk("Frame %p\n", frame);
 for(i=0;i<(frame->buf_size/PAGE_SIZE);i++){
 	frame->dma_table[i].to_addr=kvirt_to_pa(frame->buffer+i*PAGE_SIZE);
-	#if 1
+	#if 0
 	printk("entry virt %p phys %p %s\n", frame->buffer+i*PAGE_SIZE, frame->dma_table[i].to_addr,
 		((unsigned long)frame->dma_table[i].to_addr)<64*1024*1024?"*":"");
 	#endif

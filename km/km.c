@@ -138,7 +138,7 @@ kms->frame.dma_table=NULL;
 kms->frame_even.buffer=NULL;
 kms->frame_even.dma_table=NULL;
 kms->interrupt_count=0;
-
+spin_lock_init(&(kms->kms_lock));
 printk("km: using irq %ld\n", kms->irq);
 init_waitqueue_head(&(kms->frameq));
 if (pci_enable_device(dev))
