@@ -12,36 +12,7 @@
 
 #include "km.h"
 #include "km_memory.h"
-#include "radeon_reg.h"
-
-static int radeon_is_capture_active(KM_STRUCT *kms)
-{
-return (readl(kms->reg_aperture+RADEON_CAP0_CONFIG) & 0x1);
-}
-
-static void radeon_get_window_parameters(KM_STRUCT *kms, struct video_window *vwin)
-{
-u32 a;
-vwin->x=0;
-vwin->y=0;
-a=readl(kms->reg_aperture+RADEON_CAP0_BUF_PITCH);
-vwin->width=a/2;
-a=readl(kms->reg_aperture+RADEON_CAP0_V_WINDOW);
-vwin->height=(((a>>16)& 0xffff)-(a & 0xffff))+1;
-printk("radeon_get_window_parameters: width=%d height=%d\n", vwin->width, vwin->height);
-}
-
-static void radeon_start_transfer(KM_STRUCT *kms)
-{
-u32 a;
-
-writel(3, kms->reg_aperture+RADEON_CAP_INT_STATUS);
-writel(1<<30, kms->reg_aperture+RADEON_GEN_INT_STATUS);
-a=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
-writel(a|3, kms->reg_aperture+RADEON_CAP_INT_CNTL);
-a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
-writel(a|(1<<30), kms->reg_aperture+RADEON_GEN_INT_CNTL);
-}
+#include "radeon.h"
 
 static int km_open(struct video_device *dev, int flags)
 {
@@ -91,13 +62,8 @@ fail:
 
 static void km_close(struct video_device *dev)
 {
-u32 a;
 KM_STRUCT *kms=(KM_STRUCT *)dev;
-/* stop interrupts */
-a=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
-writel(a & ~3, kms->reg_aperture+RADEON_CAP_INT_CNTL);
-a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
-writel(a & ~(1<<30), kms->reg_aperture+RADEON_GEN_INT_CNTL);
+radeon_stop_transfer(kms);
 kms->frame.buf_ptr=0;
 kms->frame_even.buf_ptr=0;
 kms->buf_read_from=-1; /* none */

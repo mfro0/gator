@@ -74,7 +74,7 @@ for(i=0;i<(frame->buf_size/PAGE_SIZE);i++){
 return 0;
 }
 
-static void start_frame_transfer_buf0(KM_STRUCT *kms)
+static void radeon_start_frame_transfer_buf0(KM_STRUCT *kms)
 {
 long offset, status;
 if(kms->frame.buffer==NULL)return;
@@ -98,7 +98,7 @@ writel(kvirt_to_pa(kms->frame.dma_table), kms->reg_aperture+RADEON_DMA_GUI_TABLE
 printk("start_frame_transfer_buf0\n");
 }
 
-static void start_frame_transfer_buf0_even(KM_STRUCT *kms)
+static void radeon_start_frame_transfer_buf0_even(KM_STRUCT *kms)
 {
 long offset, status;
 if(kms->frame_even.buffer==NULL)return;
@@ -142,22 +142,8 @@ return 0;
 }
 
 
-static int is_capture_irq_active(int irq, KM_STRUCT *kms)
-{
-long status, mask;
-status=readl(kms->reg_aperture+RADEON_GEN_INT_STATUS);
-if(!(status & (1<<8)))return 0;
-status=readl(kms->reg_aperture+RADEON_CAP_INT_STATUS);
-mask=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
-if(!(status & mask))return 0;
-writel(status & mask, kms->reg_aperture+RADEON_CAP_INT_STATUS);
-printk("CAP_INT_STATUS=0x%08x\n", status);
-if(status & 1)start_frame_transfer_buf0(kms);
-if(status & 2)start_frame_transfer_buf0_even(kms); 
-return 1;
-}
 
-static void km_irq(int irq, void *dev_id, struct pt_regs *regs)
+static void radeon_km_irq(int irq, void *dev_id, struct pt_regs *regs)
 {
 KM_STRUCT *kms;
 long status, mask;
@@ -185,12 +171,13 @@ while(1){
 	}
 }
 
-/* you shouldn't be having more than 2 actually.. */
-#define MAX_RADEONS 1
+/* you shouldn't be having more than 3 actually.. - 1 agp and 2 pci - 
+    number of slots + bandwidth issues */
+#define MAX_RADEONS 10
 KM_STRUCT radeon[10];
 int num_radeons=0;
 
-static int __devinit km_probe(struct pci_dev *dev, const struct pci_device_id *pci_id)
+static int __devinit radeon_km_probe(struct pci_dev *dev, const struct pci_device_id *pci_id)
 {
 KM_STRUCT *kms;
 int result;
@@ -223,7 +210,7 @@ kms->frame_even.buffer=NULL;
 kms->frame_even.dma_table=NULL;
 
 
-result=request_irq(kms->irq, km_irq, SA_SHIRQ, "km", (void *)kms);
+result=request_irq(kms->irq, radeon_km_irq, SA_SHIRQ, "km", (void *)kms);
 if(result==-EINVAL){
 	printk(KERN_ERR "km: bad irq number or handler\n");
 	goto fail;
@@ -262,7 +249,7 @@ release_mem_region(pci_resource_start(pci_dev,2),
 pci_set_drvdata(pci_dev, NULL);
 }
 
-static struct pci_device_id km_pci_tbl[] __devinitdata = {
+static struct pci_device_id radeon_km_pci_tbl[] __devinitdata = {
         {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_RADEON_LE,
          PCI_ANY_ID, PCI_ANY_ID, 0, 0, 0},
         {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_RADEON_LF,
@@ -282,12 +269,12 @@ static struct pci_device_id km_pci_tbl[] __devinitdata = {
         {0,}
 };
 
-MODULE_DEVICE_TABLE(pci, km_pci_tbl);
+MODULE_DEVICE_TABLE(pci, radeon_km_pci_tbl);
 
-static struct pci_driver km_pci_driver = {
+static struct pci_driver radeon_km_pci_driver = {
         name:     "km",
-        id_table: km_pci_tbl,
-        probe:    km_probe,
+        id_table: radeon_km_pci_tbl,
+        probe:    radeon_km_probe,
         remove:   km_remove,
 };
 
@@ -301,14 +288,14 @@ printk("Kmultimedia module version %s loaded\n", KM_VERSION);
 printk("Page size is %ld sizeof(bm_list_descriptor)=%ld sizeof(KM_STRUCT)=%ld\n", PAGE_SIZE, sizeof(bm_list_descriptor), sizeof(KM_STRUCT));
 num_radeons=0;
 
-result=pci_module_init(&km_pci_driver);
+result=pci_module_init(&radeon_km_pci_driver);
 
 return result;
 }
 
 void cleanup_module(void)
 {
-pci_unregister_driver(&km_pci_driver);
+pci_unregister_driver(&radeon_km_pci_driver);
 return;
 }
 
