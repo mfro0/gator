@@ -258,6 +258,9 @@ for(k=0;k<kms->num_buffers;k++){
 			}
 		}
 	}
+kms->fi[0].prev=kms->num_buffers-1;
+kms->fi[kms->num_buffers-1].next=0;
+kms->next_cap_buf=0;
 return 0;
 }
 
