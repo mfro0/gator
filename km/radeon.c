@@ -1,6 +1,6 @@
 /*     km preliminary version
 
-       (C) Vladimir Dergachev 2001-2002
+       (C) Vladimir Dergachev 2001-2003
        
        GNU Public License
        
@@ -314,11 +314,13 @@ km_add_transfer_request(&(kms->gui_dma_queue),
 static int radeon_is_capture_irq_active(KM_STRUCT *kms)
 {
 u32 status, mask;
+#if 0
 status=readl(kms->reg_aperture+RADEON_GEN_INT_STATUS);
 if(!(status & (1<<8)))return 0;
+#endif
 status=readl(kms->reg_aperture+RADEON_CAP_INT_STATUS);
 mask=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
-KM_DEBUG("CAP_INT_STATUS=0x%08x\n", status);
+KM_DEBUG("CAP_INT_STATUS=0x%08x mask=0x%08x\n", status, mask);
 status&=mask;
 if(!status)return 0;
 /*radeon_wait_for_idle(kms); */
@@ -351,7 +353,7 @@ while(1){
 /*	KM_DEBUG("beep %ld\n", kms->interrupt_count); */
 	if(!radeon_is_capture_irq_active(kms)){
 		status=readl(kms->reg_aperture+RADEON_GEN_INT_STATUS);
-		mask=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
+		mask=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL) & ((1<<30)|7);
 		if(!(status & mask)){
 /*			spin_unlock(&(kms->kms_lock)); */
 			return;

@@ -1,6 +1,6 @@
 /*     km preliminary version
 
-       (C) Vladimir Dergachev 2001-2002
+       (C) Vladimir Dergachev 2001-2003
        
        GNU Public License
        
@@ -65,7 +65,6 @@ return next;
 int generic_allocate_dvb(KM_STREAM *stream, int num_buffers,  long size)
 {
 int i,k;
-KM_CHECKPOINT
 if(size>(4096*4096/sizeof(bm_list_descriptor))){
 	printk("Too large buffer allocation requested: %ld bytes\n", size);
 	return -1;
@@ -80,7 +79,6 @@ stream->dvb_info.ptr=&(stream->dvb.kmsbi);
 stream->dvb_info.kmsbi=NULL; /* no meta-metainfo */
 stream->info_du=km_allocate_data_virtual_block(&(stream->dvb_info), S_IFREG | S_IRUGO);
 if(stream->info_du<0)return -1;
-KM_CHECKPOINT
 /* allocate data unit to hold video data */
 stream->num_buffers=num_buffers;
 stream->dvb.size=((size+PAGE_SIZE-1)/PAGE_SIZE)*PAGE_SIZE;
@@ -128,7 +126,6 @@ for(k=0;k<num_buffers;k++){
 stream->dvb.kmsbi[0].prev=num_buffers-1;
 stream->dvb.kmsbi[num_buffers-1].next=0;
 stream->next_buf=0;
-KM_CHECKPOINT
 return 0;
 }
 
@@ -200,7 +197,6 @@ kmtq->request[last].buffer=buffer;
 kmtq->request[last].flag=flag;
 kmtq->request[last].start_transfer=start_transfer;
 kmtq->request[last].user_data=user_data;
-
 kmtq->last++;
 if(kmtq->last>=kmtq->size)kmtq->last=0;
 /* check if any transfer has been scheduled */
@@ -475,8 +471,6 @@ char *tag;
 /* too many */
 if(num_devices>=MAX_DEVICES)return -1;
 
-KM_CHECKPOINT
-
 switch(pci_id->driver_data){
 	case HARDWARE_RADEON:
 		tag="km_ati (Radeon)";
@@ -532,8 +526,8 @@ switch(pci_id->driver_data){
 		kms->get_vbi_buf_size=radeon_get_vbi_buf_size;
 		kms->start_transfer=radeon_start_transfer;
 		kms->stop_transfer=radeon_stop_transfer;
-		kms->start_transfer=radeon_start_vbi_transfer;
-		kms->stop_transfer=radeon_stop_vbi_transfer;
+		kms->start_vbi_transfer=radeon_start_vbi_transfer;
+		kms->stop_vbi_transfer=radeon_stop_vbi_transfer;
 		kms->allocate_dvb=generic_allocate_dvb;
 		kms->deallocate_dvb=generic_deallocate_dvb;
 		kms->irq_handler=radeon_km_irq;

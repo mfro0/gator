@@ -1,6 +1,6 @@
 /*     km preliminary version
 
-       (C) Vladimir Dergachev 2001-2002
+       (C) Vladimir Dergachev 2001-2003
        
        GNU Public License
        
@@ -164,6 +164,7 @@ unsigned int km_data_generic_stream_poll(KDU_FILE_PRIVATE_DATA *kdufpd, KM_DATA_
 KM_DATA_UNIT *kdu=kdufpd->kdu;
 KM_STREAM_BUFFER_INFO *kmsbi=dvb->kmsbi;
 unsigned int mask=0;
+int q;
 
 spin_lock(&(kdu->lock));
 if(kdufpd->buffer<0){
@@ -171,13 +172,15 @@ if(kdufpd->buffer<0){
 	spin_unlock(&(kdu->lock));
 	return 0;
 	}
-if(kdufpd->bytes_read==dvb->free[kdufpd->buffer]){
+q=kmsbi[kdufpd->buffer].next;
+if((kdufpd->bytes_read>=dvb->free[kdufpd->buffer])||(q<0)){
 	spin_unlock(&(kdu->lock));
 	poll_wait(file, &(kdu->dataq), wait);
 	spin_lock(&(kdu->lock));
 	}
 
-if(kdufpd->bytes_read<dvb->free[kdufpd->buffer])
+q=kmsbi[kdufpd->buffer].next;
+if((kdufpd->bytes_read<dvb->free[kdufpd->buffer])&&(q>=0))
 	/* Now we have more data.. */
 	mask |= (POLLIN | POLLRDNORM);
 
@@ -211,7 +214,6 @@ static int km_fo_data_release(struct inode * inode, struct file * file)
 KDU_FILE_PRIVATE_DATA *kdufpd=file->private_data;
 KM_DATA_UNIT *kdu=kdufpd->kdu;
 
-KM_CHECKPOINT
 file->private_data=NULL;
 km_data_destroy_kdufpd(kdufpd);
 return 0;
@@ -221,7 +223,7 @@ static int km_fo_data_mmap(struct file * file, struct vm_area_struct * vma)
 {
 KDU_FILE_PRIVATE_DATA *kdufpd=file->private_data;
 KM_DATA_UNIT *kdu=kdufpd->kdu;
-KM_CHECKPOINT
+
 if(kdu->mmap==NULL)return -ENOTSUPP;
 return kdu->mmap(file, vma);
 }
@@ -230,7 +232,7 @@ static int km_fo_data_read(struct file *file, char *buf, size_t count, loff_t *p
 {
 KDU_FILE_PRIVATE_DATA *kdufpd=file->private_data;
 KM_DATA_UNIT *kdu=kdufpd->kdu;
-KM_CHECKPOINT
+
 if(kdu->read==NULL)return -ENOTSUPP;
 return kdu->read(file, buf, count, ppos);
 }
@@ -246,15 +248,12 @@ unsigned long chunk_size;
 unsigned long page, start;
 int i,j;
 
-KM_CHECKPOINT
 if(kdu->type!=KDU_TYPE_VIRTUAL_BLOCK){
 	printk(KERN_ERR "km: internal error %s %s %d\n", __FILE__, __FUNCTION__, __LINE__);
 	return -ENOTSUPP;
 	}
-KM_CHECKPOINT
 chunk_size=((dvb->size+PAGE_SIZE-1)&~(PAGE_SIZE-1));
 if(offset+size>chunk_size*dvb->n)return -EINVAL;
-KM_CHECKPOINT
 for(i=0;i<dvb->n;i++)
 	for(j=0;j<dvb->size;j+=PAGE_SIZE){
 		if(chunk_size*i+PAGE_SIZE*j<offset)continue;
@@ -264,7 +263,6 @@ for(i=0;i<dvb->n;i++)
 		if(remap_page_range(start, page, PAGE_SIZE, PAGE_SHARED))
 			return -EAGAIN;
 		}
-KM_CHECKPOINT
 return 0;
 }
 
@@ -398,13 +396,11 @@ kdu=&(data_units[data_unit]);
 spin_lock(&(kdu->lock));
 spin_unlock(&data_units_lock);
 kdu->use_count--;
-KM_CHECKPOINT
 if(kdu->use_count>0){
 	MOD_DEC_USE_COUNT;
 	spin_unlock(&(kdu->lock));
 	return; /* something is still using it */
 	}
-KM_CHECKPOINT
 /* free the data */
 sprintf(temp, "data%d", data_unit);
 if(kdu->data!=NULL){
