@@ -49,6 +49,11 @@ set c .controlwin.control
 
 global current_port_menu
 global current_encoding_menu
+global current_encoding
+global current_encoding_name
+global current_table
+set current_table -1
+set current_encoding -1
 
 label $c.portl -text "Port: "
 set current_port_menu [tk_optionMenu $c.portom current_port  none]
@@ -57,13 +62,11 @@ grid $c.portl $c.portom -sticky news
 grid configure $c.portl -sticky nws
 
 label $c.encodingl -text "Encoding: "
-set current_encoding_menu [tk_optionMenu $c.encodingom current_encoding  none]
+set current_encoding_menu [tk_optionMenu $c.encodingom current_encoding_name  none]
 $current_encoding_menu delete 0 end
 grid $c.encodingl $c.encodingom -sticky news
 grid configure $c.encodingl -sticky nws
 
-global current_table
-set current_table -1
 label $c.tablel -text "Channel table: "
 set current_table_menu [tk_optionMenu $c.tableom current_table_name none]
 $current_table_menu delete 0 end
@@ -143,7 +146,7 @@ global current_port
 global current_encoding
 
 if { $current_port == "none" } { return }
-if { $current_encoding == "none" } { return }
+if { $current_encoding < 0 } { return }
 
 set port_size [xv_port_encoding_size $VIDEO_WINDOW $current_port $current_encoding]
 
@@ -274,13 +277,13 @@ global current_encoding
 set NUM_ENCODINGS [xv_num_port_encodings $VIDEO_WINDOW $current_port]
 $current_encoding_menu delete 0 end
 for {set i 0 } {$i < $NUM_ENCODINGS} {incr i} {
-	$current_encoding_menu add radiobutton -label "[xv_port_encoding_name $VIDEO_WINDOW $current_port $i]" -value "[xv_port_encoding_id $VIDEO_WINDOW $current_port $i]" -variable current_encoding
+	$current_encoding_menu add radiobutton -label "[xv_port_encoding_name $VIDEO_WINDOW $current_port $i]" -value "[xv_port_encoding_name $VIDEO_WINDOW $current_port $i]" -variable current_encoding_name
 	}
 
 set current_encoding [xv_getportattribute $VIDEO_WINDOW $current_port "XV_ENCODING"]
-
-trace vdelete current_encoding w "on_attribute_change XV_ENCODING"
-trace variable current_encoding w "on_attribute_change XV_ENCODING"
+if { $current_encoding >= 0 } {
+	set current_encoding_name [lindex [xv_port_encodings $VIDEO_WINDOW $current_port] $current_encoding]
+	}
 
 set NUM_ATTRIBUTES [xv_num_port_attributes $VIDEO_WINDOW $current_port]
 set af  .controlwin.allattributes
@@ -295,29 +298,41 @@ for { set i 0 } {$i < $NUM_ATTRIBUTES } { incr i } {
 display_video
 }
 
+proc set_encoding {name1 name2 op} {
+global current_encoding_name 
+global current_encoding
+global current_port
+global VIDEO_WINDOW
+
+set ENCODINGS [xv_port_encodings $VIDEO_WINDOW $current_port]
+set current_encoding [lsearch $ENCODINGS $current_encoding_name]
+if { $current_encoding > 0 } {
+	on_attribute_change XV_ENCODING current_encoding a b
+	}
+}
 
 proc save_settings {} {
 global current_port
 global current_table_name
-global current_encoding
+global current_encoding_name
 global current_channel
 catch {
 	set fileid [open "~/.avview_state" w]
 	}
 puts $fileid "global current_port"
-puts $fileid "global current_encoding"
+puts $fileid "global current_encoding_name"
 puts $fileid "global current_table_name"
 puts $fileid "global current_channel"
 if { $current_port != "none" } {
-	puts $fileid "set current_port $current_port"
-	if { $current_encoding != "none" } {
-		puts $fileid "set current_encoding $current_encoding"
+	puts $fileid "set current_port \"$current_port\""
+	if { $current_encoding_name != "none" } {
+		puts $fileid "set current_encoding_name \"$current_encoding_name\""
 		}
 	}
 if { $current_table_name != "none" } {
-	puts $fileid "set current_table_name $current_table_name"
+	puts $fileid "set current_table_name \"$current_table_name\""
 	if { $current_channel != "none" } {
-		puts $fileid "set current_channel $current_channel"
+		puts $fileid "set current_channel \"$current_channel\""
 		}
 	}
 close $fileid
@@ -418,10 +433,13 @@ adjust_message_font
 
 global current_port
 trace variable current_port w set_port
-global current_table
+global current_encoding_name
+trace variable current_encoding_name w set_encoding
+global current_table_name
 trace variable current_table_name w set_channel_table
 global current_channel
 trace variable current_channel w "set_channel"
+
 
 bind $VIDEO_WINDOW <Configure> {
 	global $VIDEO_WINDOW

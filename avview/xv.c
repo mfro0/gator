@@ -236,7 +236,7 @@ Tcl_Obj *ans;
 Tcl_ResetResult(interp);
 
 if(argc<3){
-	Tcl_AppendResult(interp,"ERROR: xv_adaptor_type requires two arguments", NULL);
+	Tcl_AppendResult(interp,"ERROR: xv_num_port_encodings requires two arguments", NULL);
 	return TCL_ERROR;
 	}
 
@@ -244,7 +244,7 @@ if(argc<3){
 tkwin=Tk_NameToWindow(interp,argv[1], Tk_MainWindow(interp));
 
 if(tkwin==NULL){
-	Tcl_AppendResult(interp,"ERROR: xv_adaptor_type: first argument must be an existing toplevel or frame window", NULL);
+	Tcl_AppendResult(interp,"ERROR: xv_num_port_encodings: first argument must be an existing toplevel or frame window", NULL);
 	return TCL_ERROR;
 	}
 
@@ -252,19 +252,73 @@ d=Tk_Display(tkwin);
 win=Tk_WindowId(tkwin);
 
 if((d==NULL)||(win==(Window)NULL)){
-	Tcl_AppendResult(interp,"ERROR: xv_adaptor_type: first argument must be a mapped toplevel or frame window", NULL);
+	Tcl_AppendResult(interp,"ERROR: xv_num_port_encodings: first argument must be a mapped toplevel or frame window", NULL);
 	return TCL_ERROR;
 	}
 
 port=atoi(argv[2]);
 if((port<0)){
-	Tcl_AppendResult(interp,"ERROR: xv_adaptor_type: no such port", NULL);
+	Tcl_AppendResult(interp,"ERROR: xv_num_port_encodings: no such port", NULL);
 	return TCL_ERROR;
 	}
 
 XvQueryEncodings(d, port, &num_encodings, &xei);
 
 Tcl_SetObjResult(interp, Tcl_NewIntObj(num_encodings));
+
+XvFreeEncodingInfo(xei);
+
+return 0;
+}
+
+int xv_port_encodings(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+{
+Tk_Window tkwin;
+Window win;
+Display *d;
+int num_encodings;
+int port;
+XvEncodingInfo *xei;
+Tcl_Obj *ans;
+long i;
+
+Tcl_ResetResult(interp);
+
+if(argc<3){
+	Tcl_AppendResult(interp,"ERROR: xv_port_encodings requires two arguments", NULL);
+	return TCL_ERROR;
+	}
+
+
+tkwin=Tk_NameToWindow(interp,argv[1], Tk_MainWindow(interp));
+
+if(tkwin==NULL){
+	Tcl_AppendResult(interp,"ERROR: xv_port_encodings: first argument must be an existing toplevel or frame window", NULL);
+	return TCL_ERROR;
+	}
+
+d=Tk_Display(tkwin);
+win=Tk_WindowId(tkwin);
+
+if((d==NULL)||(win==(Window)NULL)){
+	Tcl_AppendResult(interp,"ERROR: xv_port_encodings: first argument must be a mapped toplevel or frame window", NULL);
+	return TCL_ERROR;
+	}
+
+port=atoi(argv[2]);
+if((port<0)){
+	Tcl_AppendResult(interp,"ERROR: xv_port_encodings: no such port", NULL);
+	return TCL_ERROR;
+	}
+
+XvQueryEncodings(d, port, &num_encodings, &xei);
+
+ans=Tcl_NewListObj(0, NULL);
+
+for(i=0;i<num_encodings;i++)
+	Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj(xei[i].name, strlen(xei[i].name)));
+Tcl_SetObjResult(interp, ans);
+
 
 XvFreeEncodingInfo(xei);
 
@@ -858,6 +912,7 @@ struct {
 	{"xv_adaptor_type", xv_adaptor_type},
 	{"xv_adaptor_ports", xv_adaptor_ports},
 	{"xv_num_port_encodings", xv_num_port_encodings},
+	{"xv_port_encodings", xv_port_encodings},
 	{"xv_port_encoding_name", xv_port_encoding_name},
 	{"xv_port_encoding_id", xv_port_encoding_id},
 	{"xv_port_encoding_size", xv_port_encoding_size},
