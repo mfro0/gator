@@ -135,13 +135,15 @@ typedef struct {
 int add_km_device(KM_FIELD *kmfl, void *priv);
 int remove_km_device(int num);
 void kmd_signal_state_change(int num);
+void km_fo_control_perform_command(KM_FILE_PRIVATE_DATA *kmfpd, const char *command, size_t count);
+
 
 #if 1
 #define KM_CHECKPOINT printk("**CKPT %s %s %d\n", __FILE__, __FUNCTION__, __LINE__);
-#define KM_API_DEBUG if(0)printk
+#define KM_API_DEBUG  printk
 #else
 #define KM_CHECKPOINT
-#define KM_API_DEBUG if(0)printk
+#define KM_API_DEBUG  if(0)printk
 #endif
 
 #endif

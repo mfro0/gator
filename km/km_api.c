@@ -48,11 +48,12 @@ EXPORT_SYMBOL(km_data_create_kdufpd);
 EXPORT_SYMBOL(km_data_destroy_kdufpd);
 EXPORT_SYMBOL(km_data_generic_stream_read);
 EXPORT_SYMBOL(km_data_generic_stream_poll);
+EXPORT_SYMBOL(km_fo_control_perform_command);
 
 #define KM_MODULUS	255
 #define KM_MULTIPLE	23
 
-unsigned  km_command_hash(char *s, int length)
+unsigned  km_command_hash(const char *s, int length)
 {
 int i;
 unsigned r;
@@ -292,44 +293,52 @@ if (kmfpd->br_free<kmfpd->br_read)
 return 0;
 }
 
-static ssize_t km_fo_control_write(struct file * file, const char * buffer, size_t count, loff_t *ppos)
+/* for now only process one command per string */
+
+void km_fo_control_perform_command(KM_FILE_PRIVATE_DATA *kmfpd, const char *command, size_t count)
 {
-KM_FILE_PRIVATE_DATA *kmfpd=file->private_data;
 KM_DEVICE *kmd=kmfpd->kmd;
 int i;
 int field_length;
 unsigned hash;
-hash=km_command_hash(buffer, count);
-if((hash==kmd->status_hash) && !strncmp("STATUS\n", buffer, count)){
+hash=km_command_hash(command, count);
+if((hash==kmd->status_hash) && !strncmp("STATUS\n", command, count)){
 	spin_lock(&(kmfpd->lock));
 	kmfpd->request_flags|=KM_STATUS_REQUESTED;
 	spin_unlock(&(kmfpd->lock));
 	kmd_signal_state_change(kmd->number);
 	} else
-if((hash==kmd->report_hash)&& (count>8) && !strncmp("REPORT ", buffer, 7)){
+if((hash==kmd->report_hash)&& (count>8) && !strncmp("REPORT ", command, 7)){
 	field_length=count-8; /* exclude trailing \n */
-	if(field_length<=0)return count; /* bogus command */
+	if(field_length<=0)return; /* bogus command */
 	for(i=0;i<kmd->num_fields;i++){
-		if(!strncmp(buffer+7, kmd->fields[i].name, field_length)&&
+		if(!strncmp(command+7, kmd->fields[i].name, field_length)&&
 			!kmd->fields[i].name[field_length]){
 			spin_lock(&(kmfpd->lock));
 			kmfpd->field_flags[i]|=KM_FIELD_UPDATE_REQUESTED;
 			spin_unlock(&(kmfpd->lock));
 			kmd_signal_state_change(kmd->number);
 			printk("Reporting field %d = %s\n", i, kmd->fields[i].name);
-			return count;
+			return;
 			}
 		}
 	} else {
 	i=kmd->command_hash[hash];
-	while((i>=0) && strncmp(kmd->fields[i].name, buffer, count))i=kmd->fields[i].next_command;
-	if(i<0)return count; /* nothing matched, gobble up rest of input */
+	while((i>=0) && strncmp(kmd->fields[i].name, command, count))i=kmd->fields[i].next_command;
+	if(i<0)return; /* nothing matched */
+	
 	printk("Performing action %s [not implemented]\n", kmd->fields[i].name);
 	switch(kmd->fields[i].type){
 		case KM_FIELD_TYPE_PROGRAMMABLE:
 			break;
 		}
 	}
+}
+
+static ssize_t km_fo_control_write(struct file * file, const char * buffer, size_t count, loff_t *ppos)
+{
+KM_FILE_PRIVATE_DATA *kmfpd=file->private_data;
+km_fo_control_perform_command(kmfpd, buffer, count);
 return count;
 }
 
