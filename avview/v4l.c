@@ -45,6 +45,7 @@ typedef struct S_V4L_DATA{
 	Tk_PhotoHandle ph;
 	Tk_PhotoImageBlock pib;
 	int mode;
+	int frame_count; /* to keep track of odd/even fields */
 	} V4L_DATA;
 
 
@@ -91,6 +92,7 @@ data->interp=interp;
 data->transfer_complete_script=NULL;
 data->transfer_failed_script=NULL;
 data->mode=0;
+data->frame_count=0;
 return 0;
 }
 
@@ -227,19 +229,38 @@ char *p=NULL;
 if(data->transfer_size==data->transfer_read){
 	data->pib.pixelPtr=do_alloc(data->pib.pitch*data->pib.height, 1);
 	switch(data->mode){
+		case MODE_SINGLE_FRAME:
+			data->frame_count++;
+			break;
 		case MODE_DEINTERLACE_BOB:
-			p=do_alloc(data->transfer_size, 1);
-			deinterlace_422_bob(data->pib.width, data->pib.height/2, data->pib.width*2,
+			p=do_alloc(data->pib.width*data->pib.height*2, 1);
+			if(data->frame_count & 1){
+				deinterlace_422_bob(data->pib.width, data->pib.height/2, data->pib.width*2,
+					data->read_buffer+(data->transfer_size/3), data->read_buffer+2*(data->transfer_size/3),
+					p);
+				data->frame_count+=3;
+				} else {
+				deinterlace_422_bob(data->pib.width, data->pib.height/2, data->pib.width*2,
 					data->read_buffer, data->read_buffer+(data->transfer_size/2),
 					p);
+				data->frame_count+=2;
+				}
 			free(data->read_buffer);
 			data->read_buffer=p;
 			break;
 		case MODE_DEINTERLACE_WEAVE:
-			p=do_alloc(data->transfer_size, 1);
-			deinterlace_422_weave(data->pib.width, data->pib.height/2, data->pib.width*2,
+			p=do_alloc(data->pib.width*data->pib.height*2, 1);
+			if(data->frame_count & 1){
+				deinterlace_422_weave(data->pib.width, data->pib.height/2, data->pib.width*2,
+					data->read_buffer+(data->transfer_size/3), data->read_buffer+2*(data->transfer_size/3),
+					p);
+				data->frame_count+=3;
+				} else {
+				deinterlace_422_weave(data->pib.width, data->pib.height/2, data->pib.width*2,
 					data->read_buffer, data->read_buffer+(data->transfer_size/2),
 					p);
+				data->frame_count+=2;
+				}
 			free(data->read_buffer);
 			data->read_buffer=p;
 			break;
@@ -323,10 +344,15 @@ data->pib.width=vwin.width;
 switch(data->mode){
 	case MODE_SINGLE_FRAME:
 		data->pib.height=vwin.height;
+		data->transfer_size=2*vwin.width*vwin.height; 
 		break;
 	case MODE_DEINTERLACE_BOB:
 	case MODE_DEINTERLACE_WEAVE:
 		data->pib.height=vwin.height*2;
+		if(data->frame_count & 1)
+			data->transfer_size=3*2*vwin.width*vwin.height; 
+			else
+			data->transfer_size=2*2*vwin.width*vwin.height; 
 		break;
 	}
 data->pib.offset[0]=0;
@@ -336,7 +362,6 @@ data->pib.offset[3]=3;
 data->pib.pixelSize=4;
 data->pib.pitch=data->pib.width*data->pib.pixelSize;
 data->pib.pixelPtr=NULL;
-data->transfer_size=2*data->pib.width*data->pib.height; 
 data->transfer_read=0;
 data->read_buffer=do_alloc(data->transfer_size, 1);
 Tcl_CreateFileHandler(data->fd, TCL_READABLE, v4l_transfer_handler, data);
