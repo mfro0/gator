@@ -1,6 +1,8 @@
 #ifndef __RADEON_REG_H__
 #define __RADEON_REG_H__
 
+#define RADEON_BUS_CNTL		0x30
+
 #define RADEON_GEN_INT_STATUS 0x44
 #define RADEON_GEN_INT_CNTL   0x40
 #define RADEON_CAP_INT_CNTL   0x908
