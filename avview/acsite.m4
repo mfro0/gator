@@ -1,5 +1,5 @@
 #------------------------------------------------------------------------
-# SC_PATH_TCLCONFIG --
+# SC2_PATH_TCLCONFIG --
 #
 #	Locate the tclConfig.sh file and perform a sanity check on
 #	the Tcl compile flags
@@ -17,7 +17,7 @@
 #				the tclConfig.sh file
 #------------------------------------------------------------------------
 
-AC_DEFUN(SC_PATH_TCLCONFIG, [
+AC_DEFUN(SC2_PATH_TCLCONFIG, [
     #
     # Ok, lets find the tcl configuration
     # First, look for one uninstalled.
@@ -96,7 +96,7 @@ AC_DEFUN(SC_PATH_TCLCONFIG, [
 ])
 
 #------------------------------------------------------------------------
-# SC_PATH_TKCONFIG --
+# SC2_PATH_TKCONFIG --
 #
 #	Locate the tkConfig.sh file
 #
@@ -113,7 +113,7 @@ AC_DEFUN(SC_PATH_TCLCONFIG, [
 #				the tkConfig.sh file
 #------------------------------------------------------------------------
 
-AC_DEFUN(SC_PATH_TKCONFIG, [
+AC_DEFUN(SC2_PATH_TKCONFIG, [
     #
     # Ok, lets find the tk configuration
     # First, look for one uninstalled.
@@ -190,7 +190,7 @@ AC_DEFUN(SC_PATH_TKCONFIG, [
 ])
 
 #------------------------------------------------------------------------
-# SC_LOAD_TCLCONFIG --
+# SC2_LOAD_TCLCONFIG --
 #
 #	Load the tclConfig.sh file
 #
@@ -208,7 +208,7 @@ AC_DEFUN(SC_PATH_TKCONFIG, [
 #
 #------------------------------------------------------------------------
 
-AC_DEFUN(SC_LOAD_TCLCONFIG, [
+AC_DEFUN(SC2_LOAD_TCLCONFIG, [
     AC_MSG_CHECKING([for existence of $TCL_BIN_DIR/tclConfig.sh])
 
     if test -f "$TCL_BIN_DIR/tclConfig.sh" ; then
@@ -232,7 +232,7 @@ AC_DEFUN(SC_LOAD_TCLCONFIG, [
 ])
 
 #------------------------------------------------------------------------
-# SC_LOAD_TKCONFIG --
+# SC2_LOAD_TKCONFIG --
 #
 #	Load the tkConfig.sh file
 #
@@ -247,7 +247,7 @@ AC_DEFUN(SC_LOAD_TCLCONFIG, [
 #		TK_BIN_DIR
 #------------------------------------------------------------------------
 
-AC_DEFUN(SC_LOAD_TKCONFIG, [
+AC_DEFUN(SC2_LOAD_TKCONFIG, [
     AC_MSG_CHECKING([for existence of $TK_BIN_DIR/tkConfig.sh])
 
     if test -f "$TK_BIN_DIR/tkConfig.sh" ; then
@@ -263,7 +263,7 @@ AC_DEFUN(SC_LOAD_TKCONFIG, [
 ])
 
 #------------------------------------------------------------------------
-# SC_ENABLE_GCC --
+# SC2_ENABLE_GCC --
 #
 #	Allows the use of GCC if available
 #
@@ -279,7 +279,7 @@ AC_DEFUN(SC_LOAD_TKCONFIG, [
 #		CC	Command to use for the compiler
 #------------------------------------------------------------------------
 
-AC_DEFUN(SC_ENABLE_GCC, [
+AC_DEFUN(SC2_ENABLE_GCC, [
     AC_ARG_ENABLE(gcc, [  --enable-gcc            allow use of gcc if available [--disable-gcc]],
 	[ok=$enableval], [ok=no])
     if test "$ok" = "yes"; then
@@ -296,7 +296,7 @@ AC_DEFUN(SC_ENABLE_GCC, [
 ])
 
 #------------------------------------------------------------------------
-# SC_ENABLE_SHARED --
+# SC2_ENABLE_SHARED --
 #
 #	Allows the building of shared libraries
 #
@@ -316,7 +316,7 @@ AC_DEFUN(SC_ENABLE_GCC, [
 #		SHARED_BUILD	Value of 1 or 0
 #------------------------------------------------------------------------
 
-AC_DEFUN(SC_ENABLE_SHARED, [
+AC_DEFUN(SC2_ENABLE_SHARED, [
     AC_MSG_CHECKING([how to build libraries])
     AC_ARG_ENABLE(shared,
 	[  --enable-shared         build and link with shared libraries [--enable-shared]],
@@ -340,7 +340,7 @@ AC_DEFUN(SC_ENABLE_SHARED, [
 ])
 
 #------------------------------------------------------------------------
-# SC_ENABLE_THREADS --
+# SC2_ENABLE_THREADS --
 #
 #	Specify if thread support should be enabled
 #
@@ -362,7 +362,7 @@ AC_DEFUN(SC_ENABLE_SHARED, [
 #
 #------------------------------------------------------------------------
 
-AC_DEFUN(SC_ENABLE_THREADS, [
+AC_DEFUN(SC2_ENABLE_THREADS, [
     AC_MSG_CHECKING(for building with threads)
     AC_ARG_ENABLE(threads, [  --enable-threads        build with threads],
 	[tcl_ok=$enableval], [tcl_ok=no])
@@ -412,7 +412,7 @@ AC_DEFUN(SC_ENABLE_THREADS, [
 ])
 
 #------------------------------------------------------------------------
-# SC_ENABLE_SYMBOLS --
+# SC2_ENABLE_SYMBOLS --
 #
 #	Specify if debugging symbols should be used
 #
@@ -439,7 +439,7 @@ AC_DEFUN(SC_ENABLE_THREADS, [
 #
 #------------------------------------------------------------------------
 
-AC_DEFUN(SC_ENABLE_SYMBOLS, [
+AC_DEFUN(SC2_ENABLE_SYMBOLS, [
     AC_MSG_CHECKING([for build with symbols])
     AC_ARG_ENABLE(symbols, [  --enable-symbols        build with debugging symbols [--disable-symbols]],    [tcl_ok=$enableval], [tcl_ok=no])
 # FIXME: Currently, LDFLAGS_DEFAULT is not used, it should work like CFLAGS_DEFAULT.
@@ -457,7 +457,7 @@ AC_DEFUN(SC_ENABLE_SYMBOLS, [
 ])
 
 #--------------------------------------------------------------------
-# SC_CONFIG_CFLAGS
+# SC2_CONFIG_CFLAGS
 #
 #	Try to determine the proper flags to pass to the compiler
 #	for building shared libraries and other such nonsense.
@@ -539,7 +539,7 @@ AC_DEFUN(SC_ENABLE_SYMBOLS, [
 #		CFLAGS_OPTIMIZE
 #--------------------------------------------------------------------
 
-AC_DEFUN(SC_CONFIG_CFLAGS, [
+AC_DEFUN(SC2_CONFIG_CFLAGS, [
 
     # Step 0.a: Enable 64 bit support?
 
@@ -1359,7 +1359,7 @@ dnl AC_CHECK_TOOL(AR, ar, :)
 ])
 
 #--------------------------------------------------------------------
-# SC_SERIAL_PORT
+# SC2_SERIAL_PORT
 #
 #	Determine which interface to use to talk to the serial port.
 #	Note that #include lines must begin in leftmost column for
@@ -1377,7 +1377,7 @@ dnl AC_CHECK_TOOL(AR, ar, :)
 #
 #--------------------------------------------------------------------
 
-AC_DEFUN(SC_SERIAL_PORT, [
+AC_DEFUN(SC2_SERIAL_PORT, [
     AC_MSG_CHECKING([termios vs. termio vs. sgtty])
 
     AC_TRY_RUN([
@@ -1495,7 +1495,7 @@ main()
 ])
 
 #--------------------------------------------------------------------
-# SC_MISSING_POSIX_HEADERS
+# SC2_MISSING_POSIX_HEADERS
 #
 #	Supply substitutes for missing POSIX header files.  Special
 #	notes:
@@ -1525,7 +1525,7 @@ main()
 #
 #--------------------------------------------------------------------
 
-AC_DEFUN(SC_MISSING_POSIX_HEADERS, [
+AC_DEFUN(SC2_MISSING_POSIX_HEADERS, [
 
     AC_MSG_CHECKING(dirent.h)
     AC_TRY_LINK([#include <sys/types.h>
@@ -1586,7 +1586,7 @@ closedir(d);
 ])
 
 #--------------------------------------------------------------------
-# SC_PATH_X
+# SC2_PATH_X
 #
 #	Locate the X11 header files and the X11 library archive.  Try
 #	the ac_path_x macro first, but if it doesn't find the X stuff
@@ -1606,7 +1606,7 @@ closedir(d);
 #
 #--------------------------------------------------------------------
 
-AC_DEFUN(SC_PATH_X, [
+AC_DEFUN(SC2_PATH_X, [
     AC_PATH_X
     not_really_there=""
     if test "$no_x" = ""; then
@@ -1672,7 +1672,7 @@ AC_DEFUN(SC_PATH_X, [
     fi
 ])
 #--------------------------------------------------------------------
-# SC_BLOCKING_STYLE
+# SC2_BLOCKING_STYLE
 #
 #	The statements below check for systems where POSIX-style
 #	non-blocking I/O (O_NONBLOCK) doesn't work or is unimplemented. 
@@ -1692,7 +1692,7 @@ AC_DEFUN(SC_PATH_X, [
 #
 #--------------------------------------------------------------------
 
-AC_DEFUN(SC_BLOCKING_STYLE, [
+AC_DEFUN(SC2_BLOCKING_STYLE, [
     AC_CHECK_HEADERS(sys/ioctl.h)
     AC_CHECK_HEADERS(sys/filio.h)
     AC_MSG_CHECKING([FIONBIO vs. O_NONBLOCK for nonblocking I/O])
@@ -1739,7 +1739,7 @@ AC_DEFUN(SC_BLOCKING_STYLE, [
 ])
 
 #--------------------------------------------------------------------
-# SC_TIME_HANLDER
+# SC2_TIME_HANLDER
 #
 #	Checks how the system deals with time.h, what time structures
 #	are used on the system, and what fields the structures have.
@@ -1757,7 +1757,7 @@ AC_DEFUN(SC_BLOCKING_STYLE, [
 #
 #--------------------------------------------------------------------
 
-AC_DEFUN(SC_TIME_HANDLER, [
+AC_DEFUN(SC2_TIME_HANDLER, [
     AC_CHECK_HEADERS(sys/time.h)
     AC_HEADER_TIME
     AC_STRUCT_TIMEZONE
@@ -1808,7 +1808,7 @@ AC_DEFUN(SC_TIME_HANDLER, [
 ])
 
 #--------------------------------------------------------------------
-# SC_BUGGY_STRTOD
+# SC2_BUGGY_STRTOD
 #
 #	Under Solaris 2.4, strtod returns the wrong value for the
 #	terminating character under some conditions.  Check for this
@@ -1827,7 +1827,7 @@ AC_DEFUN(SC_TIME_HANDLER, [
 #
 #--------------------------------------------------------------------
 
-AC_DEFUN(SC_BUGGY_STRTOD, [
+AC_DEFUN(SC2_BUGGY_STRTOD, [
     AC_CHECK_FUNC(strtod, tcl_strtod=1, tcl_strtod=0)
     if test "$tcl_strtod" = 1; then
 	AC_MSG_CHECKING([for Solaris2.4/Tru64 strtod bugs])
@@ -1859,7 +1859,7 @@ AC_DEFUN(SC_BUGGY_STRTOD, [
 ])
 
 #--------------------------------------------------------------------
-# SC_TCL_LINK_LIBS
+# SC2_TCL_LINK_LIBS
 #
 #	Search for the libraries needed to link the Tcl shell.
 #	Things like the math library (-lm) and socket stuff (-lsocket vs.
@@ -1885,7 +1885,7 @@ AC_DEFUN(SC_BUGGY_STRTOD, [
 #
 #--------------------------------------------------------------------
 
-AC_DEFUN(SC_TCL_LINK_LIBS, [
+AC_DEFUN(SC2_TCL_LINK_LIBS, [
     #--------------------------------------------------------------------
     # On a few very rare systems, all of the libm.a stuff is
     # already in libc.a.  Set compiler flags accordingly.
@@ -1937,7 +1937,7 @@ AC_DEFUN(SC_TCL_LINK_LIBS, [
 	    [LIBS="$LIBS -lnsl"])])
     
     # Don't perform the eval of the libraries here because DL_LIBS
-    # won't be set until we call SC_CONFIG_CFLAGS
+    # won't be set until we call SC2_CONFIG_CFLAGS
 
     TCL_LIBS='${DL_LIBS} ${LIBS} ${MATH_LIBS}'
     AC_SUBST(TCL_LIBS)
