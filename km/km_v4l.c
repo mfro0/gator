@@ -68,7 +68,6 @@ return 0;
 fail:
   spin_unlock(&(kms->kms_lock));
   return result;
-
 }
 
 
@@ -95,7 +94,6 @@ return -EINVAL;
 static long km_read(struct video_device *v, char *buf, unsigned long count, int nonblock)
 {
 KM_STRUCT *kms=(KM_STRUCT *)v;
-SINGLE_FRAME *frame;
 int q,todo;
 DECLARE_WAITQUEUE(wait, current);
 
@@ -229,7 +227,6 @@ return -EINVAL;
 static int km_mmap(struct video_device *dev, const char *adr, unsigned long size)
 {
 KM_STRUCT *kms=(KM_STRUCT *)dev;
-SINGLE_FRAME *frame;
 unsigned long start=(unsigned long) adr;
 unsigned long page,pos;
 
@@ -263,7 +260,6 @@ static unsigned int km_poll(struct video_device *dev, struct file *file,
 {
 KM_STRUCT *kms=(KM_STRUCT *)dev;
 unsigned int mask=0;
-SINGLE_FRAME *frame;
 
 spin_lock(&(kms->kms_lock));
 if(kms->v4l_buf_read_from<0){

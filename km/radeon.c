@@ -66,16 +66,6 @@ while(((a=readl(kms->reg_aperture+RADEON_RBBM_STATUS)) & RADEON_ENGINE_ACTIVE)!=
 read back framebuffer data, so no need */
 }
 
-void verify_dma_table(KM_STRUCT *kms, SINGLE_FRAME *frame)
-{
-long i;
-for(i=0;i<(frame->buf_size/PAGE_SIZE);i++){
-	if(frame->dma_table[i].to_addr!=kvirt_to_pa(frame->buffer+i*PAGE_SIZE)){
-		printk(KERN_ERR "Corrupt entry %ld in dma_table %p\n", i, frame->dma_table);
-		}
-	}
-}
-
 int radeon_check_mc_settings(KM_STRUCT *kms)
 {
 u32 aperture, aperture_size;

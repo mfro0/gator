@@ -23,16 +23,6 @@ typedef struct {
 	u32 reserved;
 	} bm_list_descriptor;
 
-typedef struct {
-	char *buffer;
-	long timestamp;
-	long buf_size;
-	long buf_ptr;
-	long buf_free;
-	int dma_active;
-	bm_list_descriptor *dma_table;
-	} SINGLE_FRAME;
-
 #define KM_FI_ODD		1
 #define KM_FI_DMA_ACTIVE	2
 #define KM_FI_PINNED		4
