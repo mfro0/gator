@@ -208,7 +208,7 @@ long status;
 V4L_SNAPSHOT_DATA *sdata;
 sdata=(V4L_SNAPSHOT_DATA *)data->priv;
 if((sdata==NULL)||(sdata->type!=V4L_SNAPSHOT_KEY)){
-	fprintf(stderr,"INTERNAL ERROR: unset data->priv in v4l_transfer_callback\n");
+	fprintf(stderr,"INTERNAL ERROR: incorrect data->priv in v4l_transfer_callback\n");
 	Tcl_DeleteFileHandler(data->fd);
 	return;
 	}

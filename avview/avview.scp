@@ -772,7 +772,10 @@ proc on_v4l_capture_set {cw name1 name2 w } {
 global v4l_capture_on
 global current_codec
 if { $v4l_capture_on } {
-	ffmpeg_encode_v4l_stream current_v4l_handle $current_codec "hello.mpg"
+	set status [ffmpeg_encode_v4l_stream current_v4l_handle $current_codec "hello.mpg"]
+	puts "$status"
+	} {
+	ffmpeg_stop_encoding current_v4l_handle
 	}
 }
 
