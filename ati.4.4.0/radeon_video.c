@@ -55,8 +55,6 @@ static int  RADEONQueryImageAttributes(ScrnInfoPtr, int, unsigned short *,
 			unsigned short *,  int *, int *);
 
 
-void RADEONResetVideo(ScrnInfoPtr);
-
 static void RADEONVideoTimerCallback(ScrnInfoPtr pScrn, Time now);
 static void RADEONSetOverlayAlpha(ScrnInfoPtr pScrn, int ov_alpha, int gr_alpha, int alpha_mode);
 static int RADEONPutVideo(ScrnInfoPtr pScrn, short src_x, short src_y, short drw_x, short drw_y,
@@ -170,7 +168,7 @@ void RADEON_RT_SetEncoding(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv);
 void RADEON_board_setmisc(RADEONPortPrivPtr pPriv);
 void RADEON_MSP_SetEncoding(RADEONPortPrivPtr pPriv);
 void RADEON_FI1236_SetEncoding(RADEONPortPrivPtr pPriv);
-void RADEONSetColorKey(ScrnInfoPtr pScrn, CARD32 pixel);
+static void RADEONSetColorKey(ScrnInfoPtr pScrn, CARD32 pixel);
 static void RADEONResetI2C(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv);
 void RADEONShutdownVideo(ScrnInfoPtr pScrn);
 void RADEONVIP_reset(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv);
@@ -756,8 +754,7 @@ void RADEONShutdownVideo(ScrnInfoPtr pScrn)
         }
 }
 
-void
-RADEONResetVideo(ScrnInfoPtr pScrn)
+void RADEONResetVideo(ScrnInfoPtr pScrn)
 {
     RADEONInfoPtr   info      = RADEONPTR(pScrn);
     unsigned char *RADEONMMIO = info->MMIO;
@@ -815,6 +812,9 @@ RADEONResetVideo(ScrnInfoPtr pScrn)
     pPriv->location_id = MAKE_ATOM(tmp);
     sprintf(tmp, "INSTANCE:%d", pScrn->scrnIndex);
     pPriv->instance_id = MAKE_ATOM(tmp);
+
+    REGION_NULL(pScrn->pScreen, &(pPriv->clip));
+
 
     RADEONWaitForIdleMMIO(pScrn);
     OUTREG(RADEON_OV0_SCALE_CNTL, 0x80000000);
@@ -2026,37 +2026,6 @@ RADEONSetupImageVideo(ScreenPtr pScreen)
     return adapt;
 }
 
-/* I really should stick this in miregion */
-static Bool
-RegionsEqual(RegionPtr A, RegionPtr B)
-{
-    int *dataA, *dataB;
-    int num;
-
-    num = REGION_NUM_RECTS(A);
-    if(num != REGION_NUM_RECTS(B))
-	return FALSE;
-
-    if((A->extents.x1 != B->extents.x1) ||
-       (A->extents.x2 != B->extents.x2) ||
-       (A->extents.y1 != B->extents.y1) ||
-       (A->extents.y2 != B->extents.y2))
-	return FALSE;
-
-    dataA = (pointer)REGION_RECTS(A);
-    dataB = (pointer)REGION_RECTS(B);
-
-    while(num--) {
-	if((dataA[0] != dataB[0]) || (dataA[1] != dataB[1]))
-	   return FALSE;
-	dataA += 2;
-	dataB += 2;
-    }
-
-    return TRUE;
-}
-
-
 /* RADEONClipVideo -
 
    Takes the dst box in standard X BoxRec form (top and left
@@ -3217,7 +3186,7 @@ RADEONPutImage(
 #endif
 
     /* update cliplist */
-    if(!RegionsEqual(&pPriv->clip, clipBoxes)) 
+    if(!REGION_EQUAL(pScrn->pScreen, &pPriv->clip, clipBoxes))
     {
 	REGION_COPY(pScrn->pScreen, &pPriv->clip, clipBoxes);
 	/* draw these */
@@ -3801,7 +3770,7 @@ RADEONPutVideo(
 
    
    /* update cliplist */
-   if(!RegionsEqual(&pPriv->clip, clipBoxes)) {
+   if(!REGION_EQUAL(pScrn->pScreen, &pPriv->clip, clipBoxes)) {
         REGION_COPY(pScrn->pScreen, &pPriv->clip, clipBoxes);
         /* draw these */
         if(pPriv->autopaint_colorkey)(*info->accel->FillSolidRects)(pScrn, pPriv->colorKey, GXcopy, ~0,
