@@ -216,6 +216,10 @@ release_mem_region(pci_resource_start(pci_dev,2),
 pci_set_drvdata(pci_dev, NULL);
 }
 
+#ifndef PCI_DEVICE_ID_ATI_RADEON_BB 
+#define PCI_DEVICE_ID_ATI_RADEON_BB 0x4242
+#endif
+
 static struct pci_device_id km_pci_tbl[] __devinitdata = {
 	/* mach64 cards */
         {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_215GB,
@@ -356,6 +360,9 @@ static struct pci_device_id km_pci_tbl[] __devinitdata = {
          PCI_ANY_ID, PCI_ANY_ID, 0, 0, HARDWARE_RADEON},
         {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_RADEON_RD,
          PCI_ANY_ID, PCI_ANY_ID, 0, 0, HARDWARE_RADEON},
+	        /* Radeon200 i.e. 8500 */
+        {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_RADEON_BB,
+         PCI_ANY_ID, PCI_ANY_ID, 0, 0, HARDWARE_RADEON},	
         {0,}
 };
 
