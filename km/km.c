@@ -220,6 +220,18 @@ pci_set_drvdata(pci_dev, NULL);
 #define PCI_DEVICE_ID_ATI_RADEON_BB 0x4242
 #endif
 
+#ifndef PCI_DEVICE_ID_ATI_RADEON_QD
+#define PCI_DEVICE_ID_ATI_RADEON_QD      0x5144
+#endif
+
+#ifndef PCI_DEVICE_ID_ATI_RADEON_QF
+#define PCI_DEVICE_ID_ATI_RADEON_QF      0x5146
+#endif
+
+#ifndef PCI_DEVICE_ID_ATI_RADEON_QG
+#define PCI_DEVICE_ID_ATI_RADEON_QG      0x5147
+#endif
+
 static struct pci_device_id km_pci_tbl[] __devinitdata = {
 	/* mach64 cards */
         {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_215GB,
@@ -353,6 +365,12 @@ static struct pci_device_id km_pci_tbl[] __devinitdata = {
         {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_RADEON_N2,
          PCI_ANY_ID, PCI_ANY_ID, 0, 0, HARDWARE_RADEON},
         {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_RADEON_RA,
+         PCI_ANY_ID, PCI_ANY_ID, 0, 0, HARDWARE_RADEON},
+        {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_RADEON_QD,
+         PCI_ANY_ID, PCI_ANY_ID, 0, 0, HARDWARE_RADEON},
+        {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_RADEON_QF,
+         PCI_ANY_ID, PCI_ANY_ID, 0, 0, HARDWARE_RADEON},
+        {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_RADEON_QG,
          PCI_ANY_ID, PCI_ANY_ID, 0, 0, HARDWARE_RADEON},
         {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_RADEON_RB,
          PCI_ANY_ID, PCI_ANY_ID, 0, 0, HARDWARE_RADEON},
