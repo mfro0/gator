@@ -95,8 +95,6 @@ set height [lindex $cc_page 1]
 foreach line [lrange $cc_page 2 end] {
 	render_vbi_line $canvas cc_text [winfo width $canvas] [winfo height $canvas] $width $height $line
 	}
-update
-update idletasks
 }
 
 proc vbi_event_handler_on_screen {a b} {
@@ -108,8 +106,6 @@ switch -exact -- $a {
 		.video_menu.cc_menu entryconfigure $b -foreground #008000 -label "$b (available)"
 		global on_screen_cc_page
 		if { $b != $on_screen_cc_page } { 
-			update
-			update idletasks
 			continue 
 			}
 		render_cc_page .video $b

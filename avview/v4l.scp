@@ -133,8 +133,8 @@ if {[ffmpeg_present] == "yes"} {
 	checkbutton $cw.record_button -text "Record" -variable v4l_capture_on \
 		-indicatoron false 
 	eval $cw.record_button configure [get_settings $cw.record_button Capture V4L]
-	grid $cw.snapshot_button $cw.monitor_button $cw.record_button -sticky ns -padx 5
-#	grid $cw.snapshot_button $cw.record_button -sticky ns -padx 5
+#	grid $cw.snapshot_button $cw.monitor_button $cw.record_button -sticky ns -padx 5
+	grid $cw.snapshot_button $cw.record_button -sticky ns -padx 5
 
 	frame $cw.video_stats 
 	eval $cw.video_stats configure [get_settings $cw.video_stats Capture V4L]

@@ -291,17 +291,6 @@ set_hiding_cursor .video left_ptr
 #		}
 #	}
 
-proc find_port_adaptor { port } {
-global VIDEO_WINDOW
-set NUM_ADAPTORS [xv_numadaptors $VIDEO_WINDOW]
-for { set i 0 } { $i < $NUM_ADAPTORS } { incr i 1 } { 
-	if { [lsearch -exact [xv_adaptor_ports $VIDEO_WINDOW $i] "$port"] >= 0 } {
-		return $i
-		}
-	}
-return -1
-}
-
 proc set_channel_table {name1 name2 op} {
 global TABLE_LIST
 global current_table

@@ -50,6 +50,7 @@ typedef struct {
 	long stop;
 	long frame_count;
 	long frames_encoded;
+	int quality;
 	int64 encoded_stream_size;
 	V4L_DATA *v4l_device;
 	int fd_out;
@@ -107,7 +108,7 @@ return 0;
 }
 
 void ffmpeg_preprocess_frame(V4L_DATA *data, FFMPEG_ENCODING_DATA *sdata, 
-		PACKET *f, AVPicture *picture)
+		PACKET *f, AVFrame *picture)
 {
 switch(data->mode){
 	case MODE_SINGLE_FRAME:
@@ -124,6 +125,8 @@ switch(data->mode){
 		deinterlace_422_double_interpolate_to_420p(sdata->width, sdata->height, sdata->width*2, f->buf, picture->data[0], sdata->luma_hist);
 		break;		
 	}
+picture->pts=f->timestamp;
+picture->quality=sdata->quality;
 }
 
 void ffmpeg_v4l_encoding_thread(PACKET_STREAM *s)
@@ -132,7 +135,7 @@ int64 start_ts;
 int i;
 PACKET *f;
 V4L_DATA *data;
-AVPicture picture;
+AVFrame picture;
 char *output_buf;
 long ob_size, ob_free, ob_written;
 
@@ -157,6 +160,7 @@ picture.linesize[0]=sdata->video_codec_context.width;
 picture.linesize[1]=sdata->video_codec_context.width/2;
 start_ts=timestamp_now();
 picture.linesize[2]=sdata->video_codec_context.width/2;
+picture.type=FF_BUFFER_TYPE_SHARED;
 pthread_mutex_lock(&(s->ctr_mutex));
 while(1){
 	f=get_packet(s);
@@ -526,22 +530,25 @@ sdata->video_codec_context.flags=0;
 if((arg_video_bitrate_control!=NULL)&&!strcmp(arg_video_bitrate_control, "Fix quality"))
 	sdata->video_codec_context.flags=CODEC_FLAG_QSCALE;
 sdata->video_codec_context.qmin=qmin;
-sdata->video_codec_context.quality=qmin;
-if(arg_video_quality!=NULL)sdata->video_codec_context.quality=atoi(arg_video_quality);
-if(sdata->video_codec_context.quality<qmin)sdata->video_codec_context.quality=qmin;
-if(sdata->video_codec_context.quality>31)sdata->video_codec_context.quality=31;
-
 sdata->video_codec_context.qmax=15;
+if(arg_video_quality!=NULL)sdata->quality=atoi(arg_video_quality);
+if(sdata->quality<qmin)sdata->quality=qmin;
+if(sdata->quality>sdata->video_codec_context.qmax)sdata->quality=sdata->video_codec_context.qmax;
+
 sdata->video_codec_context.max_qdiff=3;
-sdata->video_codec_context.aspect_ratio_info=FF_ASPECT_4_3_625;
+sdata->video_codec_context.aspect_ratio=FF_ASPECT_4_3_625;
 sdata->video_codec_context.me_method=4;
 sdata->video_codec_context.qblur=0.5;
 sdata->video_codec_context.qcompress=0.5;
-sdata->video_codec_context.b_quant_factor=2.0;
+sdata->video_codec_context.b_quant_factor=1.25;
+sdata->video_codec_context.b_quant_offset=1.25;
+sdata->video_codec_context.i_quant_factor=-0.8;
+sdata->video_codec_context.i_quant_offset=0.0;
+sdata->video_codec_context.gop_size=0;
 if((arg_video_codec!=NULL)&&(
   !strcmp(arg_video_codec, "MPEG-4") ||
   !strcmp(arg_video_codec, "MSMPEG-4")))
-  	sdata->video_codec_context.gop_size=250;
+  	sdata->video_codec_context.gop_size=12;
 if(sdata->video_codec->priv_data_size==0){
 	fprintf(stderr,"BUG: sdata->video_codec->priv_data_size==0, fixing it\n");
 	sdata->video_codec->priv_data_size=64*1024; /* 64K should be enough */
