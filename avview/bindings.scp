@@ -249,6 +249,7 @@ foreach channel [freq_get_channel_list $current_table] {
 		return
 		}
 	}
+flash_message " No channel $new_channel "
 bell
 }
 
@@ -259,8 +260,10 @@ proc input_channel { state keysym} {
 global current_ch_input current_table
 if { ($state & (1<<2)) != 0 } { return }
 if { $keysym == "Return" || $keysym == "KP_Enter" } {
+	if { $current_ch_input == "" } { return }
 	switch_to_channel $current_ch_input
 	set current_ch_input ""
+	return
 	}
 if { $keysym == "Delete" || $keysym == "KP_Delete" } {
 	global current_channel
@@ -294,16 +297,19 @@ foreach {keysym2 translation} {
 # we are only interested in single letters 
 if { [string length $keysym] > 1 } { return }
 set new_input "${current_ch_input}$keysym"
-set valid false
+set valid 0
 foreach channel [freq_get_channel_list $current_table] {
 	if { [regexp -nocase "^$new_input" $channel] } {
-		set valid true
-		break
+		incr valid
 		}
 	}
-if { $valid } {
+if { $valid > 1 } {
 	set current_ch_input $new_input
 	flash_message " $new_input "
+	} \
+elseif { $valid == 1 } {
+	switch_to_channel $new_input
+	set current_ch_input ""	
 	} {
 	bell
 	}
