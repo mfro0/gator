@@ -1,0 +1,50 @@
+
+global vbi_caption_images
+
+proc skip_args3 { a b c } {}
+
+proc vbi_event_handler { a b } {
+puts "$a $b"
+switch -exact -- $a {
+	"caption" {
+		global vbi_caption_images
+		foreach {canvas page} [array get vbi_caption_images] {
+			puts "\t$canvas $page"
+			if { $page != $b } { continue }
+			vbi_draw_cc_page primary $page $canvas.vbi_image
+			$canvas configure -width [image width $canvas.vbi_image] -height [image height $canvas.vbi_image]
+			}
+		}
+	}
+}
+
+global vbi_window_count
+set vbi_window_count 0
+
+proc new_vbi_window {} {
+global vbi_window_count vbi_caption_images
+incr vbi_window_count
+set W .vbi$vbi_window_count
+set var caption_var$vbi_window_count
+global $var
+toplevel $W
+label $W.l -text "CC"
+canvas $W.c
+image create photo $W.c.vbi_image
+$W.c create image 1 1 -image $W.c.vbi_image -anchor nw
+tk_optionMenu $W.page $var 1 2 3 4 5 6 7 8
+grid x $W.l $W.page x -sticky news
+grid $W.c - - - -sticky news
+grid columnconfig $W 0 -weight 1
+grid columnconfig $W 3 -weight 1
+grid rowconfig $W 1 -weight 1
+set vbi_caption_images($W.c) 1
+vbi_draw_cc_page primary 1 $W.c.vbi_image
+$W.c configure -width [image width $W.c.vbi_image] -height [image height $W.c.vbi_image]
+trace variable $var w "puts \"+\" ; global vbi_caption_images $var; set vbi_caption_images($W.c) \[set $var\] ; skip_args3"
+}
+
+vbi_open_device primary /dev/vbi0
+vbi_set_event_handler primary vbi_event_handler
+
+new_vbi_window

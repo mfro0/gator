@@ -300,7 +300,9 @@ if(data==NULL){
 if(data->event_command!=NULL){
 	free(data->event_command);
 	}
-data->event_command=strdup(argv[2]);
+if(!argv[2][0])data->event_command=NULL; /* disable when string is empty */
+	else
+	data->event_command=strdup(argv[2]);
 return 0;
 }
 
