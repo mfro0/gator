@@ -423,6 +423,7 @@ global current_capture_filename
 if { [ffmpeg_present] == "no" } { return }
 catch {
 	set status [ffmpeg_encoding_status]
+	puts "status=$status"
 	if { "$status" == "" } {
 		reset_video_stats $cw.video_stats
 		return
@@ -531,6 +532,7 @@ $widget.fifo_value_label configure -text "[expr $size/(1024*1024)] Mb"
 $widget.total_stream_length_value configure -text "$length Mb"
 $widget.frames_encoded_value configure -text "$frames_encoded"
 $widget.f.video_hist configure -scrollregion [list 1 1 [expr $cwidth -1] [expr $cheight-1]]
+if { $luma_top_hist == 0 } { set luma_top_hist 1 }
 for {set i 0 } { $i < 31 } { incr i } {
 	set left_luma [lindex $luma_hist $i]
 	set right_luma [lindex $luma_hist [expr $i+1]]

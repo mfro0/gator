@@ -77,7 +77,7 @@ typedef struct {
 
 FFMPEG_ENCODING_DATA *sdata=NULL;
 
-/* #define DEBUG_TIMESTAMPS */
+/* #define DEBUG_TIMESTAMPS   */
 
 int ffmpeg_present(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
 {
@@ -617,6 +617,8 @@ sdata->audio_sample_sum_left=0;
 sdata->audio_sample_sum_right=0;
 sdata->audio_sample_top_left=0;
 sdata->audio_sample_top_right=0;
+sdata->video_s=NULL;
+sdata->audio_s=NULL;
 for(i=0;i<32;i++)sdata->luma_hist[i]=0;
 pthread_mutex_init(&(sdata->format_context_mutex), NULL);
 
@@ -726,13 +728,13 @@ Tcl_ResetResult(interp);
 if((sdata==NULL)||(sdata->type!=FFMPEG_CAPTURE_KEY)){
 	return 0;
 	}
-pthread_mutex_lock(&(sdata->video_s->ctr_mutex));
-pthread_mutex_lock(&(sdata->audio_s->ctr_mutex));
-sdata->video_s->stop_stream|=STOP_PRODUCER_THREAD;
-sdata->audio_s->stop_stream|=STOP_PRODUCER_THREAD;
-pthread_mutex_unlock(&(sdata->audio_s->ctr_mutex));
-pthread_mutex_unlock(&(sdata->video_s->ctr_mutex));
-v4l_detach_output_stream(sdata->v4l_device, sdata->video_s);
+if(sdata->video_s!=NULL)pthread_mutex_lock(&(sdata->video_s->ctr_mutex));
+if(sdata->audio_s!=NULL)pthread_mutex_lock(&(sdata->audio_s->ctr_mutex));
+if(sdata->video_s!=NULL)sdata->video_s->stop_stream|=STOP_PRODUCER_THREAD;
+if(sdata->audio_s!=NULL)sdata->audio_s->stop_stream|=STOP_PRODUCER_THREAD;
+if(sdata->audio_s!=NULL)pthread_mutex_unlock(&(sdata->audio_s->ctr_mutex));
+if(sdata->video_s!=NULL)pthread_mutex_unlock(&(sdata->video_s->ctr_mutex));
+if(sdata->video_s!=NULL)v4l_detach_output_stream(sdata->v4l_device, sdata->video_s);
 return 0;
 }
 
@@ -881,6 +883,8 @@ Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-top_right_level", -1));
 Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj(((1000*sdata->audio_sample_top_right)/32768)));
 
 Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-luma_hist", -1));
+
+fprintf(stderr, "%d %d\n", sdata->audio_sample_top_left, sdata->audio_sample_top_right);
 
 list=Tcl_NewListObj(0, NULL);
 total=0;
