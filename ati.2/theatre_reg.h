@@ -312,7 +312,7 @@
 #define     RT_ADC_CNTL_DEFAULT               0x03252338
 
 /* COMB_CNTL0 FILTER SETTINGS FOR DIFFERENT STANDARDS: */
-#define     RT_NTSCM_COMB_CNTL0_COMPOSITE     0x09438090
+#define     RT_NTSCM_COMB_CNTL0_COMPOSITE     0x09438090  /* was 0x09438090 */
 #define     RT_NTSCM_COMB_CNTL0_SVIDEO        0x48540000
 
 #define     RT_PAL_COMB_CNTL0_COMPOSITE       0x09438090
@@ -384,7 +384,7 @@
 #define     RT_NTSCM_SYNCTIP_REF1              0x00000029
 #define     RT_NTSCM_CLAMP_REF                 0x0000003B
 #define     RT_NTSCM_PEAKWHITE                 0x000000FF
-#define     RT_NTSCM_VBI_PEAKWHITE             0x000000C2
+#define     RT_NTSCM_VBI_PEAKWHITE             0x000000D2  /* was 0xc2 - docs say d2 */
 
 #define     RT_NTSCM_WPA_THRESHOLD             0x00000406
 #define     RT_NTSCM_WPA_TRIGGER_LO            0x000000B3
@@ -494,7 +494,7 @@
 #define     RT_SECAM_VERT_LOCKOUT_END          0x00000012
 
 #define     RT_PAL_VS_FIELD_BLANK_END          0x2A /* instead of 0x0000002C - Ivo*/
-#define     RT_NTSCM_VS_FIELD_BLANK_END        0x0000000A
+#define     RT_NTSCM_VS_FIELD_BLANK_END        0x0000000a
 
 #define     RT_NTSCM_FIELD_IDLOCATION          0x00000105
 #define     RT_PAL_FIELD_IDLOCATION            0x00000137

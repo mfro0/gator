@@ -45,6 +45,7 @@ void RT_SetOutputVideoSize (TheatrePtr t, CARD16 wHorzSize, CARD16 wVertSize, CA
 void CalculateCrCbGain (TheatrePtr t, double *CrGain, double *CbGain, CARD16 wStandard);
 void RT_SetConnector (TheatrePtr t, CARD16 wConnector, int tunerFlag);
 
+void RageTheatreDebugGain(TheatrePtr t, Bool on, CARD32 gain);
 void ShutdownTheatre(TheatrePtr t);
 void DumpRageTheatreRegs(TheatrePtr t);
 void ResetTheatreRegsForTVout(TheatrePtr t);
@@ -84,6 +85,7 @@ void ResetTheatreRegsForTVout(TheatrePtr t);
 #define xf86_RT_SetOutputVideoSize ((void (*)(TheatrePtr, CARD16, CARD16, CARD8, CARD8))LoaderSymbol("RT_SetOutputVideoSize"))
 #define xf86_RT_SetConnector       ((void (*)(TheatrePtr, CARD16, int))LoaderSymbol("RT_SetConnector"))
 
+#define xf86_RageTheatreDebugGain       ((void (*)(TheatrePtr, Bool, CARD32))LoaderSymbol("RageTheatreDebugGain"))
 #define xf86_ShutdownTheatre       ((void (*)(TheatrePtr))LoaderSymbol("ShutdownTheatre"))
 #define xf86_DumpRageTheatreRegs       ((void (*)(TheatrePtr))LoaderSymbol("DumpRageTheatreRegs"))
 #define xf86_ResetTheatreRegsForTVout       ((void (*)(TheatrePtr))LoaderSymbol("ResetTheatreRegsForTVout"))
@@ -104,7 +106,9 @@ void ResetTheatreRegsForTVout(TheatrePtr t);
 #define xf86_RT_SetOutputVideoSize     RT_SetOutputVideoSize
 #define xf86_RT_SetConnector           RT_SetConnector
 
+#define xf86_RageTheatreDebugGain      RageTheatreDebugGain
 #define xf86_ShutdownTheatre           ShutdownTheatre
+#define xf86_DumpRageTheatreRegs       DumpRageTheatreRegs 
 
 #endif		
 

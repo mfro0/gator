@@ -45,6 +45,11 @@ typedef struct {
 	I2CDevRec  d;
 	int type;
 	
+	int afc_delta;
+	CARD32 original_frequency;
+	Bool afc_timer_installed;
+	int afc_count;
+	
 	FI1236_parameters parm;
 	
 	struct {
@@ -69,6 +74,7 @@ typedef struct {
 FI1236Ptr Detect_FI1236(I2CBusPtr b, I2CSlaveAddr addr);
 void FI1236_set_tuner_type(FI1236Ptr f, int type);
 void FI1236_tune(FI1236Ptr f, CARD32 frequency);
+int FI1236_AFC(FI1236Ptr f);
 
 #define FI1236SymbolsList  \
 		"Detect_FI1236", \
@@ -80,6 +86,7 @@ void FI1236_tune(FI1236Ptr f, CARD32 frequency);
 #define xf86_Detect_FI1236         ((FI1236Ptr (*)(I2CBusPtr, I2CSlaveAddr))LoaderSymbol("Detect_FI1236"))
 #define xf86_FI1236_set_tuner_type ((void (*)(FI1236Ptr, int))LoaderSymbol("FI1236_set_tuner_type"))
 #define xf86_FI1236_tune           ((void (*)(FI1236Ptr, CARD32))LoaderSymbol("FI1236_tune"))
+#define xf86_FI1236_AFC           ((int (*)(FI1236Ptr))LoaderSymbol("FI1236_AFC"))
 
 
 #else
@@ -87,6 +94,7 @@ void FI1236_tune(FI1236Ptr f, CARD32 frequency);
 #define xf86_Detect_FI1236         Detect_FI1236
 #define xf86_FI1236_set_tuner_type FI1236_set_tuner_type
 #define xf86_FI1236_tune           FI1236_tune
+#define xf86_FI1236_AFC            FI1236_AFC
 
 #endif
 

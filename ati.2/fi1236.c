@@ -37,6 +37,7 @@ FI1236Ptr Detect_FI1236(I2CBusPtr b, I2CSlaveAddr addr)
    f->d.AcknTimeout = b->AcknTimeout;
    f->d.ByteTimeout = b->ByteTimeout;
    f->type=TUNER_TYPE_FI1236;
+   f->afc_timer_installed=FALSE;
   
    if(!I2C_WriteRead(&(f->d), NULL, 0, &a, 1))
    {
@@ -95,12 +96,12 @@ while(1) {
 
 	data[0]=0x0e; /* register number 7, status */
 	I2C_WriteRead(&(f->d), (I2CByte *)data, 1, &value, 1);
-	xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: XOK=%d\n", value & 0x01);
+/*	xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: XOK=%d\n", value & 0x01); */
 	if(value & 1) break;
 	
 	data[0]=0x07; /* register number 7, control byte 2 */
 	I2C_WriteRead(&(f->d), (I2CByte *)data, 1, &value, 1);
-	xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: try XOGC=%d\n", (value & 0x07)-1);
+/*	xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: try XOGC=%d\n", (value & 0x07)-1); */
 	data[1]=(value & (~0x7)	) | ((value & 0x7)-1);
 	I2C_WriteRead(&(f->d), (I2CByte *)data, 2, NULL, 0);	
 	}
@@ -118,7 +119,7 @@ while(1){
 	while(1){
 		n2--;
 		f_test=f_test-m->f_lo2;
-		xf86DrvMsg(0, X_INFO, "testing f_test=%g n1=%d n2=%d f_lo1=%g f_lo2=%g f_if2=%g\n", f_test, n1, n2, m->f_lo1, m->f_lo2, m->f_if2); 
+/*		xf86DrvMsg(0, X_INFO, "testing f_test=%g n1=%d n2=%d f_lo1=%g f_lo2=%g f_if2=%g\n", f_test, n1, n2, m->f_lo1, m->f_lo2, m->f_if2);  */
 		if((fabs(fabs(f_test)-m->f_if2)*2.0)<=m->f_ifbw)return 0;
 		if(n2<=-n_max)break;
   		/* this line in the manual is bogus. I say it is faster
@@ -160,7 +161,7 @@ while(n<3){
 	m->f_lo2=m->f_lo1-f_rf-f_if2;
 	n++;
 	}
-xf86DrvMsg(0, X_INFO, "MT2032: n=%d\n", n);
+/* xf86DrvMsg(0, X_INFO, "MT2032: n=%d\n", n); */
 /* select VCO */
 
 /* m->f_lo1>1100.0 */
@@ -191,7 +192,7 @@ n=12;
 while(1){
 	data[0]=0x0e; /* register number 7, status */
 	I2C_WriteRead(&(f->d), (I2CByte *)data, 1, &value, 1);
-	xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: LO1LK=%d LO2LK=%d\n", (value & 0x04)>>2, (value & 0x02)>>1);
+/*	xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: LO1LK=%d LO2LK=%d\n", (value & 0x04)>>2, (value & 0x02)>>1); */
 	if((value & 6)==6) break;
 	usleep(1);
 	n--;
@@ -260,6 +261,25 @@ I2C_WriteRead(&(f->d), (I2CByte *)data, 2, NULL, 0);
 MT2032_wait_for_lock(f);
 }
 
+#define FI1236_TUNED   0
+#define FI1236_JUST_BELOW 1
+#define FI1236_JUST_ABOVE -1
+#define FI1236_OFF      4
+
+static int MT2032_get_afc_hint(FI1236Ptr f)
+{
+CARD8 in;
+CARD8 out[2];
+CARD8 AFC;
+in=0x0e;
+I2C_WriteRead(&(f->d), (I2CByte *)&in, 1, out, 1);
+AFC=(out[0]>>4) & 0x7;
+if(AFC==2)return FI1236_TUNED;
+if(AFC==3)return FI1236_JUST_BELOW;
+if(AFC==1)return FI1236_JUST_ABOVE;
+return FI1236_OFF;
+}
+
 static void MT2032_dump_parameters(FI1236Ptr f, MT2032_parameters *m)
 {
 xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: input f_rf=%g f_if1=%g f_if2=%g f_ref=%g f_ifbw=%g f_step=%g\n", 
@@ -294,13 +314,13 @@ xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: status: XOK=%d LO1LK=%d LO2
 	XOK, LO1LK, LO2LK, LDONrb, AFC, TAD1, TAD2);
 }
 
-static void MT2032_tune_NTSC(FI1236Ptr f, double freq)
+static void MT2032_tune_NTSC(FI1236Ptr f, double freq, double step)
 {
 MT2032_parameters m;
 CARD8 data[10];
 /* NTSC IF is 44mhz.. but 733/16=45.8125 and all TDAXXXX docs mention
      45.75, 39, 58.75 and 30. */
-MT2032_calculate_register_settings(&m, freq, 1090.0, 44.0, 5.25, 6.0, 0.0625);
+MT2032_calculate_register_settings(&m, freq, 1090.0, 44.0, 5.25, 6.0, step);
 MT2032_implement_settings(f, &m);
 MT2032_optimize_VCO(f, &m);
 MT2032_dump_parameters(f, &m);
@@ -318,9 +338,22 @@ f->type=type;
 if(type>=NUM_TUNERS)type = NUM_TUNERS-1;
 if(type<0)type = 0;
 memcpy(&(f->parm), &(tuner_parms[type]), sizeof(FI1236_parameters));
+f->original_frequency=f->parm.min_freq;
+f->afc_delta=0;
 if(type==TUNER_TYPE_MT2032){
 	MT2032_init(f);
 	return;
+	}
+}
+
+
+CARD32 AFC_TimerCallback(OsTimerPtr timer, CARD32 time, pointer data){
+FI1236Ptr f=(FI1236Ptr)data;
+if(FI1236_AFC(f))return 200;
+	else {
+	f->afc_timer_installed=FALSE;
+	f->afc_count=0;
+	return 0;
 	}
 }
 
@@ -331,9 +364,12 @@ void FI1236_tune(FI1236Ptr f, CARD32 frequency)
     if(frequency < f->parm.min_freq) frequency = f->parm.min_freq;
     if(frequency > f->parm.max_freq) frequency = f->parm.max_freq;
 
+    f->afc_delta=0;
+    f->original_frequency=frequency;
+
     if(f->type==TUNER_TYPE_MT2032){
-    	MT2032_tune_NTSC(f, (1.0*frequency)/16.0);
-	return;
+    	MT2032_tune_NTSC(f, (1.0*frequency)/16.0, 0.0625);
+	goto done;
 	}
 
     divider = (f->parm.fcar+(CARD16)frequency) & 0x7fff;
@@ -358,4 +394,32 @@ void FI1236_tune(FI1236Ptr f, CARD32 frequency)
     xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "Setting tuner frequency to %d\n", frequency);
 #endif    
     I2C_WriteRead(&(f->d), (I2CByte *)&(f->tuner_data), 4, NULL, 0);
+done:
+     if(!f->afc_timer_installed){
+     	f->afc_timer_installed=TRUE;
+        xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "set AFC: f=%p\n", f);
+/*     	RegisterBlockAndWakeupHandlers(FI1236_BlockHandler, AFCWakeup, f); */
+	TimerSet(NULL, 0, 300, AFC_TimerCallback, f);
+	}
+	
+}
+
+int FI1236_AFC(FI1236Ptr f)
+{
+    int afc_hint;
+    xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "AFC: f=%p f->count=%d f->original_frequency=%d f->afc_delta=%d\n", f, f->afc_count, f->original_frequency, f->afc_delta);
+    f->afc_count++;
+    if(f->type==TUNER_TYPE_MT2032){
+    	afc_hint=MT2032_get_afc_hint(f);
+	if(afc_hint==FI1236_TUNED)return 0;
+	if(afc_hint==FI1236_OFF){
+		f->afc_delta=0;
+		} else
+		f->afc_delta+=afc_hint;
+        xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "AFC: Setting tuner frequency to %g\n", (0.5*(2*f->original_frequency+f->afc_delta))/16.0);
+    	MT2032_tune_NTSC(f, (1.0*f->original_frequency+0.5*f->afc_delta)/16.0, 0.03125);
+	if(afc_hint==FI1236_OFF)return 0;
+	return 1; /* call me again */
+	}
+    return 0; /* done */
 }
