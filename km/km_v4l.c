@@ -324,16 +324,35 @@ static int km_vbi_ioctl(struct inode *inode, struct file *file, unsigned int cmd
 	case VIDIOCGVBIFMT:
 	{
 	 	struct vbi_format vbi_f;
-		vbi_f.sampling_rate=28636363;
+		struct video_window vwin;
+
+		spin_lock(&(kms->kms_lock));
+		if(kms->get_window_parameters==NULL) {
+			spin_unlock(&(kms->kms_lock));
+			return -EINVAL;
+		}
+		kms->get_window_parameters(kms, &(vwin));
+		spin_unlock(&(kms->kms_lock));
+
 		vbi_f.samples_per_line=kms->vbi_width;
 		vbi_f.sample_format=VIDEO_PALETTE_RAW;
-		vbi_f.start[0]=kms->vbi_start;
-		vbi_f.start[1]=kms->vbi_start;
-		vbi_f.start[0]=10;
-		vbi_f.start[1]=272;
 		vbi_f.count[0]=kms->vbi_height;
 		vbi_f.count[1]=kms->vbi_height;
 		vbi_f.flags=0;
+		switch(vwin.width) {
+		case 640: /* NTSC */
+			vbi_f.sampling_rate=28636363;
+			vbi_f.start[0]=10;
+			vbi_f.start[1]=272;
+			break;
+		case 720: /* PAL, SECAM */
+		default:
+			vbi_f.sampling_rate=35468950;
+			vbi_f.start[0]=7;
+			vbi_f.start[1]=319;
+			break;
+		}
+
 		if(copy_to_user(arg,&vbi_f,sizeof(vbi_f)))
 			return -EFAULT;
 	 	return 0;
