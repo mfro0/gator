@@ -2,7 +2,7 @@ CFLAGS = -m486 -O2 -Wall -Wstrict-prototypes -pipe -fno-strict-aliasing -fno-com
 LDFLAGS = -s -N
 CC=gcc
 
-KM_OBJS=km.o km_v4l.o km_memory.o radeon.o mach64.o
+KM_OBJS=km.o km_v4l.o km_memory.o radeon.o mach64.o rage128.o
 
 all: km_drv.o
 
@@ -23,6 +23,9 @@ radeon.o:	radeon.c
 
 mach64.o:	mach64.c
 	$(CC) $(CFLAGS) -DMODULE -D__KERNEL__ -DLINUX -I/usr/src/linux/include -c mach64.c
+
+rage128.o:	rage128.c
+	$(CC) $(CFLAGS) -DMODULE -D__KERNEL__ -DLINUX -I/usr/src/linux/include -c rage128.c
 
 test: km_drv.o
 	sync
