@@ -36,11 +36,11 @@ foreach {variable value} {
 	remember_fullscreen_state "false"
 	always_start_fullscreen "false"
 	display_setup_window_on_startup "false"
-	current_v4l_mode "single-frame"
+	current_v4l_mode "double-interpolate"
 	v4l_capture_on "false"
 	current_video_codec "MPEG-1"
 	current_audio_codec "MPEG-2"
-	current_v4l_rrate "as is"
+	current_v4l_rrate "one half"
 	current_v4l_device "none"
 	current_av_format "MPEG"
 	current_port "none"
@@ -752,6 +752,8 @@ menu .video_menu.cc_menu -type normal -tearoff false
 .video_menu add cascade -menu .video_menu.interface_menu -label "User interface"
 .video_menu add separator
 .video_menu add command -label "Exit AVview" -command exit_avview
+.video_menu add separator
+.video_menu add command -label "Snapshot" -command capture_snapshot
 .video_menu add separator
 .video_menu add command -label "Dismiss this menu"
 
