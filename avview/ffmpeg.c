@@ -1063,6 +1063,13 @@ long i;
 #if USE_FFMPEG
 av_register_all();
 avcodec_register_all();
+if((LIBAVCODEC_VERSION_INT!=avcodec_version())||(LIBAVFORMAT_VERSION_INT!=LIBAVCODEC_VERSION_INT)){
+	fprintf(stderr, "Detected mismatch between ffmpeg library headers and/or binaries. This error can only occur if somehow avview compilation used headers and/or binaries from different version of ffmpeg.\n");
+	fprintf(stderr,"avcodec.h version:0x%06x\n", LIBAVCODEC_VERSION_INT);
+	fprintf(stderr,"avformat.h version:0x%06x\n", LIBAVFORMAT_VERSION_INT);
+	fprintf(stderr,"libavcodec version:0x%06x\n", avcodec_version());
+	exit(-1);
+	}
 #endif
 
 for(i=0;ffmpeg_commands[i].name!=NULL;i++)
