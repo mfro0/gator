@@ -139,6 +139,8 @@ switch(pci_id->driver_data){
 		goto fail;
 		}
 init_km_v4l(kms);
+printk("Device %s %s (0x%04x:0x%04x) corresponds to /dev/video%d\n",
+	dev->name, dev->slot_name, dev->vendor, dev->device, kms->vd.minor);
 pci_set_master(dev);
 pci_set_drvdata(dev, kms);
 printk("kms variables: reg_aperture=0x%08x\n",

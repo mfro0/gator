@@ -3,6 +3,7 @@
 
 #define MACH64_FIFO_STAT	(0xC4*4+1024)
 #define MACH64_GUI_STAT		(0xCE*4+1024)
+#define MACH64_BUS_CNTL		(0x28*4+1024)
 
 #define MACH64_CRTC_INT_CNTL (0x06*4+1024)
 
@@ -33,7 +34,7 @@
 
 
 #define MACH64_DMA_GUI_COMMAND__BYTE_COUNT_MASK                   0x001fffff
-#define MACH64_DMA_GUI_COMMAND__INTDIS                            0x40000000
+#define MACH64_DMA_GUI_COMMAND__HOLD_VIDEO_OFFSET                 0x40000000
 #define MACH64_DMA_GUI_COMMAND__EOL                               0x80000000
 
 

@@ -66,10 +66,11 @@ printk("mach64_get_window_parameters: width=%d height=%d\n", vwin->width, vwin->
 void mach64_start_transfer(KM_STRUCT *kms)
 {
 u32 a;
-
+a=readl(kms->reg_aperture+MACH64_BUS_CNTL);
+writel(a|(1<<6), kms->reg_aperture+MACH64_BUS_CNTL);
 a=readl(kms->reg_aperture+MACH64_CRTC_INT_CNTL);
-writel(a|MACH64_CAPBUF0_INT_ACK|MACH64_CAPBUF1_INT_ACK, kms->reg_aperture+MACH64_CRTC_INT_CNTL);
-writel(a|MACH64_CAPBUF0_INT_EN|MACH64_CAPBUF1_INT_EN, kms->reg_aperture+MACH64_CRTC_INT_CNTL);
+writel(a|MACH64_CAPBUF0_INT_ACK|MACH64_CAPBUF1_INT_ACK|MACH64_BUSMASTER_INT_ACK, kms->reg_aperture+MACH64_CRTC_INT_CNTL);
+writel(a|MACH64_CAPBUF0_INT_EN|MACH64_CAPBUF1_INT_EN|MACH64_BUSMASTER_INT_EN, kms->reg_aperture+MACH64_CRTC_INT_CNTL);
 }
 
 void mach64_stop_transfer(KM_STRUCT *kms)
@@ -188,8 +189,9 @@ while(1){
 		}
 	if(!mach64_is_capture_irq_active(kms)){
 		status=readl(kms->reg_aperture+MACH64_CRTC_INT_CNTL);
-		if(!(status & MACH64_BUSMASTER_INT_ACK))return;
+		printk("mach64: status=0x%08x\n", status);
 		acknowledge_dma(kms);
+		if(!(status & MACH64_BUSMASTER_INT_ACK))return;
 		writel((status|MACH64_BUSMASTER_INT_ACK) & ~(MACH64_ACKS_MASK & ~MACH64_BUSMASTER_INT_ACK), kms->reg_aperture+MACH64_CRTC_INT_CNTL);
 		}
 	}
@@ -225,6 +227,7 @@ if(frame->dma_table==NULL){
 /* create DMA table */
 for(i=0;i<(frame->buf_size/PAGE_SIZE);i++){
 	frame->dma_table[i].to_addr=kvirt_to_pa(frame->buffer+i*PAGE_SIZE);
+	frame->dma_table[i].reserved=0;
 	}
 return 0;
 }

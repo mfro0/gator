@@ -79,7 +79,7 @@ writel((1<<8)|(1<<16), kms->reg_aperture+RAGE128_GEN_INT_STATUS);
 a=readl(kms->reg_aperture+RAGE128_CAP_INT_CNTL);
 writel(a|3, kms->reg_aperture+RAGE128_CAP_INT_CNTL);
 a=readl(kms->reg_aperture+RAGE128_GEN_INT_CNTL);
-writel(a|(1<<16)|(1<<24), kms->reg_aperture+RAGE128_GEN_INT_CNTL);
+writel(a|(1<<16), kms->reg_aperture+RAGE128_GEN_INT_CNTL);
 }
 
 void rage128_stop_transfer(KM_STRUCT *kms)
