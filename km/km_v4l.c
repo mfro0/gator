@@ -431,10 +431,10 @@ void cleanup_km_v4l(KM_STRUCT *kms)
 	if(kms->is_capture_active!=NULL)
 		video_unregister_device(kms->vd);
 	else
-		km_vd_release(kms->vd);
+		video_device_release(kms->vd);
 
 	if(kms->is_vbi_active!=NULL)
 		video_unregister_device(kms->vbi_vd);
 	else
-		km_vd_release(kms->vbi_vd);
+		video_device_release(kms->vbi_vd);
 }
