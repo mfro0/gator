@@ -88,7 +88,11 @@ do {
 	} while (!(status & 0x1f));
 /* start transfer */
 if(kms->frame.dma_active)printk("DMA overrun\n");
-if(kms->frame.buf_ptr!=kms->frame.buf_free)printk("Data overrun\n");
+if(kms->frame.buf_ptr!=kms->frame.buf_free){
+	kms->overrun++;
+	printk("Data overrun\n");
+	}
+kms->total_frames++;
 kms->frame.dma_active=1;
 writel(kvirt_to_pa(kms->frame.dma_table), kms->reg_aperture+DMA_GUI_TABLE_ADDR);
 printk("start_frame_transfer_buf0\n");
@@ -106,7 +110,11 @@ do {
 	} while (!(status & 0x1f));
 /* start transfer */
 if(kms->frame_even.dma_active)printk("DMA overrun\n");
-if(kms->frame_even.buf_ptr!=kms->frame_even.buf_free)printk("Data overrun\n");
+if(kms->frame_even.buf_ptr!=kms->frame_even.buf_free){
+	kms->overrun++;
+	printk("Data overrun\n");
+	}
+kms->total_frames++;
 kms->frame_even.dma_active=1;
 writel(kvirt_to_pa(kms->frame_even.dma_table), kms->reg_aperture+DMA_GUI_TABLE_ADDR);
 printk("start_frame_transfer_buf0_even\n");

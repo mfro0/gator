@@ -31,6 +31,8 @@ typedef struct {
 	SINGLE_FRAME frame;
 	SINGLE_FRAME frame_even;
 	wait_queue_head_t frameq;
+	long total_frames;
+	long overrun;
 	} KM_STRUCT;
 
 

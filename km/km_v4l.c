@@ -21,6 +21,8 @@ KM_STRUCT *kms=(KM_STRUCT *)dev;
 kms->frame.buf_ptr=0;
 kms->frame_even.buf_ptr=0;
 kms->buf_read_from=0;
+kms->total_frames=0;
+kms->overrun=0;
 writel(3, kms->reg_aperture+CAP_INT_STATUS);
 writel(1<<30, kms->reg_aperture+GEN_INT_STATUS);
 a=readl(kms->reg_aperture+CAP_INT_CNTL);
@@ -43,6 +45,7 @@ writel(a & ~(1<<30), kms->reg_aperture+GEN_INT_CNTL);
 kms->frame.buf_ptr=0;
 kms->frame_even.buf_ptr=0;
 kms->buf_read_from=-1; /* none */
+printk("km: total frames: %ld, overrun: %ld\n", kms->total_frames, kms->overrun);
 }
 
 static long km_write(struct video_device *v, const char *buf, unsigned long count, int nonblock)
