@@ -203,6 +203,7 @@ while(1){
 	if(!mach64_is_capture_irq_active(kms)){
 		status=readl(kms->reg_aperture+MACH64_CRTC_INT_CNTL);
 /*		KM_DEBUG("mach64: status=0x%08x\n", status); */
+		mach64_wait_for_idle(kms);
 		if((status & MACH64_BUSMASTER_INT_ACK))acknowledge_dma(kms);
 /*		writel((status|MACH64_BUSMASTER_INT_ACK) & ~(MACH64_ACKS_MASK & ~MACH64_BUSMASTER_INT_ACK), kms->reg_aperture+MACH64_CRTC_INT_CNTL); */
 		/* hack admittedly.. but so what ? */

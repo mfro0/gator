@@ -204,6 +204,7 @@ while(1){
 		status=readl(kms->reg_aperture+RADEON_GEN_INT_STATUS);
 		mask=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
 		if(!(status & mask))return;
+		radeon_wait_for_idle(kms);
 		if(status & (1<<30))acknowledge_dma(kms);
 		writel(status & mask, kms->reg_aperture+RADEON_GEN_INT_STATUS);
 		count--;

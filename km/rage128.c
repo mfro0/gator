@@ -211,6 +211,7 @@ while(1){
 		status=readl(kms->reg_aperture+RAGE128_GEN_INT_STATUS);
 		mask=readl(kms->reg_aperture+RAGE128_GEN_INT_CNTL);
 		if(!(status & mask))return;
+		rage128_wait_for_idle(kms);
 		if(status & (1<<16))acknowledge_dma(kms);
 		writel(status & mask, kms->reg_aperture+RAGE128_GEN_INT_STATUS);
 		count--;
