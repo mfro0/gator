@@ -457,7 +457,7 @@ void ATIResetVideo(ScrnInfoPtr pScrn)
     xvDeviceID = MAKE_ATOM("XV_DEVICE_ID");
     xvLocationID = MAKE_ATOM("XV_LOCATION_ID");
     
-    sprintf(tmp, "RXXX:%d.%d.%d", pATI->PCIInfo->vendor, pATI->PCIInfo->chipType, pATI->PCIInfo->chipRev);
+    sprintf(tmp, "Mach64:%d.%d.%d", pATI->PCIInfo->vendor, pATI->PCIInfo->chipType, pATI->PCIInfo->chipRev);
     pPriv->device_id = MAKE_ATOM(tmp);
     sprintf(tmp, "PCI:%02d:%02d.%d", pATI->PCIInfo->bus, pATI->PCIInfo->device, pATI->PCIInfo->func);
     pPriv->location_id = MAKE_ATOM(tmp);
