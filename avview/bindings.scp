@@ -31,7 +31,9 @@ set avview_bindings {
 set avview_bindings_layout {action default_sequence}
 
 proc assign_default_bindings {} {
-global avview_bindings avview_bindings_layout
+global avview_bindings avview_bindings_layout VIDEO_WINDOW
+
+bind . <Key> "input_channel %k %K"
 
 foreach $avview_bindings_layout $avview_bindings {
 	bind all $default_sequence $action
@@ -236,6 +238,44 @@ foreach $avview_controls_layout $avview_controls {
 		break
 		}
 	incr i
+	}
+}
+
+proc switch_to_channel { new_channel } {
+global current_channel current_table
+foreach channel [freq_get_channel_list $current_table] {
+	if { [string equal -nocase $new_channel $channel] } {
+		set current_channel $channel
+		return
+		}
+	}
+bell
+}
+
+global current_ch_input
+set current_ch_input ""
+
+proc input_channel { keycode keysym} {
+global current_ch_input current_table
+if { $keysym == "Return" || $keysym == "KP_Enter" } {
+	switch_to_channel $current_ch_input
+	set current_ch_input ""
+	}
+# we are only interested in single letters 
+if { [string length $keysym] > 1 } { return }
+set new_input "${current_ch_input}$keysym"
+set valid false
+foreach channel [freq_get_channel_list $current_table] {
+	if { [regexp -nocase "^$new_input" $channel] } {
+		set valid true
+		break
+		}
+	}
+if { $valid } {
+	set current_ch_input $new_input
+	flash_message " $new_input "
+	} {
+	bell
 	}
 }
 
