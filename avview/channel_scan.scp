@@ -72,7 +72,18 @@ set A .controlwin.channel_scan
 set CHANNEL_LIST [freq_get_channel_list $current_table]
 foreach channel $CHANNEL_LIST {
 	set current_channel "$channel"
-	set AFC [xv_getportattribute $VIDEO_WINDOW $current_port "XV_TUNER_STATUS"]
+	after 100
+	set AFC 5
+	set i 0
+	while { $AFC == 5 } {
+		set AFC [xv_getportattribute $VIDEO_WINDOW $current_port "XV_TUNER_STATUS"]
+		if { $AFC == 5 } { after 300 }
+		incr i
+		if { $i > 8 } { 
+			set AFC 4
+			break 
+			}
+		}
 	if { $AFC == 4 } {
 		$A.ch_list.sel_${ch_scan_progress} deselect
 		} {

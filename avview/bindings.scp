@@ -18,10 +18,6 @@ set avview_bindings {
 	"next_channel -1" "<Control-Key-KP_Subtract>"
 	"toggle_mute" "<Key-KP_Multiply>"
 	"toggle_mute" "<Key-XF86AudioMute>"
-	"next_control 1" "<Key-Up>"
-	"next_control -1" "<Key-Down>"
-	"change_control 1" "<Key-Right>"
-	"change_control -1" "<Key-Left>"
 	"save_settings ; exit" "<Control-Key-q>"
 	"save_settings ; exit" "<Key-Escape>"
 	"save_settings ; exit" "<Key-XF86PowerOff>"
@@ -35,6 +31,10 @@ set avview_video_window_bindings {
 	"next_control 1" <ButtonPress-1>
 	"change_control -1" <ButtonPress-5>
 	"change_control 1" <ButtonPress-4>
+	"next_control 1" "<Key-Up>"
+	"next_control -1" "<Key-Down>"
+	"change_control 1" "<Key-Right>"
+	"change_control -1" "<Key-Left>"
 	}
 
 set avview_bindings_layout {action default_sequence}
