@@ -46,6 +46,7 @@ typedef struct {
 	long frame_count;
 	long step_frames;
 	long frames_encoded;
+	int64 encoded_stream_size;
 	int fd_out;
 	AVCodec *video_codec;
 	AVCodecContext video_codec_context;
@@ -56,7 +57,8 @@ typedef struct {
 	int video_stream_num;
 	int64 last_audio_timestamp;
 	int64 last_video_timestamp;
-	
+
+		
 	pthread_mutex_t format_context_mutex;
 	PACKET_STREAM *video_s;
 	PACKET_STREAM *audio_s;
@@ -137,6 +139,7 @@ while(1){
 			/* encode frame */
 			ffmpeg_preprocess_frame(data, sdata, f, &picture);
 			ob_free=avcodec_encode_video(&(sdata->video_codec_context), output_buf, ob_size, &picture);
+			sdata->encoded_stream_size+=ob_free; 
 			/* write out data */
 			ob_written=0;
 			while(ob_written<ob_free){
@@ -177,7 +180,7 @@ while(1){
 			fprintf(stderr,"Done encoding video packet with timestamp %lld\n", f->timestamp);
 			#endif
 			}
-		sdata->frame_count++;
+		sdata->frames_encoded++;
 		/* get next one */
 		f->discard=1;
 		f=f->next;
@@ -188,11 +191,7 @@ while(1){
 			}
 		pthread_mutex_unlock(&(s->ctr_mutex));
 		}
-#if 0
-	fprintf(stderr,"frame_count=%ld  stop=%d\n", 
-		sdata->frame_count, 
-		s->stop_stream);
-#endif
+
 	pthread_mutex_lock(&(s->ctr_mutex));
 	if((s->stop_stream & STOP_PRODUCER_THREAD) && !s->producer_thread_running){
 		avcodec_close(&(sdata->video_codec_context));
@@ -232,6 +231,7 @@ while(1){
 	while((f!=NULL)&&((f->next!=NULL)||(s->stop_stream & STOP_PRODUCER_THREAD))){
 		ob_free=avcodec_encode_audio(&(sdata->audio_codec_context), out_buf, ob_size, f->buf);	
 		if(ob_free>0){
+			sdata->encoded_stream_size+=ob_free; 
 			ob_written=0;
 			while(ob_written<ob_free){
 				pthread_mutex_lock(&(sdata->format_context_mutex));
@@ -580,6 +580,7 @@ if(arg_filename==NULL){
 sdata=do_alloc(1, sizeof(FFMPEG_ENCODING_DATA));
 sdata->type=FFMPEG_CAPTURE_KEY;
 sdata->stop=0;
+sdata->encoded_stream_size=0;
 pthread_mutex_init(&(sdata->format_context_mutex), NULL);
 
 sdata->step_frames=0;
@@ -775,6 +776,83 @@ fprintf(stderr,"total=%ld sdata=%p\n", total, sdata);
 return TCL_OK;
 }
 
+int ffmpeg_encoding_status(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+{
+long total_fifo;
+Tcl_Obj *ans;
+Tcl_ResetResult(interp);
+if((sdata==NULL)||(sdata->type!=FFMPEG_CAPTURE_KEY)){
+	return TCL_OK;
+	}
+if(sdata->video_s!=NULL){
+	pthread_mutex_lock(&(sdata->video_s->ctr_mutex));
+	}
+if(sdata->audio_s!=NULL){
+	pthread_mutex_lock(&(sdata->audio_s->ctr_mutex));
+	}
+if((sdata->video_s!=NULL) && (sdata->video_s->stop_stream & STOP_PRODUCER_THREAD) && 
+	!sdata->video_s->consumer_thread_running &&
+	!sdata->video_s->producer_thread_running &&
+	(sdata->video_s->total==0)){
+	free(sdata->video_s);
+	sdata->video_s=NULL;
+	}
+if((sdata->audio_s!=NULL) && (sdata->audio_s->stop_stream & STOP_PRODUCER_THREAD) && 
+	!sdata->audio_s->consumer_thread_running &&
+	!sdata->audio_s->producer_thread_running &&
+	(sdata->audio_s->total==0)){
+	free(sdata->audio_s);
+	sdata->audio_s=NULL;
+	}
+ans=Tcl_NewListObj(0, NULL);
+total_fifo=0;
+if(sdata->video_s!=NULL){
+	Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-video_fifo", -1));
+	Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj(sdata->video_s->total));
+	Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-video_recycling_stack", -1));
+	Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj(sdata->video_s->unused_total));
+	total_fifo+=sdata->video_s->total;
+	total_fifo+=sdata->video_s->unused_total;
+	}
+if(sdata->audio_s!=NULL){
+	Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-audio_fifo", -1));
+	Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj(sdata->audio_s->total));
+	Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-audio_recycling_stack", -1));
+	Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj(sdata->audio_s->unused_total));
+	total_fifo+=sdata->audio_s->total;
+	total_fifo+=sdata->audio_s->unused_total;
+	}
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-total_fifo", -1));
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj(total_fifo));
+
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-frames_encoded", -1));
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj(sdata->frames_encoded));
+
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("-encoded_stream_size", -1));
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj((long)((sdata->encoded_stream_size+((1<<20)-1))>>20))); /* convert to megabytes */
+
+Tcl_SetObjResult(interp, ans);
+if((sdata!=NULL)&&(sdata->audio_s==NULL)&&(sdata->video_s==NULL)){
+	pthread_mutex_lock(&(sdata->format_context_mutex));
+	if(sdata->format_context.format!=NULL)
+		sdata->format_context.format->write_trailer(&(sdata->format_context));
+	pthread_mutex_unlock(&(sdata->format_context_mutex));
+	close(sdata->fd_out);
+	free(sdata);
+	sdata=NULL;
+	fprintf(stderr,"Recording finished\n");
+	return TCL_OK; 
+	}
+if(sdata->video_s!=NULL){
+	pthread_mutex_unlock(&(sdata->video_s->ctr_mutex));
+	}
+if(sdata->audio_s!=NULL){
+	pthread_mutex_unlock(&(sdata->audio_s->ctr_mutex));
+	}
+return TCL_OK;
+}
+
+
 struct {
 	char *name;
 	Tcl_CmdProc *command;
@@ -783,6 +861,7 @@ struct {
 	{"ffmpeg_encode_v4l_stream", ffmpeg_encode_v4l_stream},
 	{"ffmpeg_stop_encoding", ffmpeg_stop_encoding},
 	{"ffmpeg_incoming_fifo_size", ffmpeg_incoming_fifo_size},
+	{"ffmpeg_encoding_status", ffmpeg_encoding_status},
 	{NULL, NULL}
 	};
 

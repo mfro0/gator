@@ -156,6 +156,19 @@ if {[ffmpeg_present] == "yes"} {
 		-indicatoron false 
 	eval $cw.record_button configure [get_settings $cw.record_button Capture V4L]
 	grid x $cw.snapshot_button $cw.record_button -sticky ns -padx 5
+
+	label $cw.total_stream_length -text "Total stream length:"
+	label $cw.total_stream_length_value -text "0 Mb"
+	eval $cw.total_stream_length configure [get_settings $cw.total_stream_length Capture V4L]
+	eval $cw.total_stream_length_value configure [get_settings $cw.total_stream_length_value Capture V4L]
+	grid $cw.total_stream_length $cw.total_stream_length_value -sticky nws
+
+	label $cw.frames_encoded -text "Video frames encoded:"
+	label $cw.frames_encoded_value -text "0"
+	eval $cw.frames_encoded configure [get_settings $cw.frames_encoded Capture V4L]
+	eval $cw.frames_encoded_value configure [get_settings $cw.frames_encoded_value Capture V4L]
+	grid $cw.frames_encoded $cw.frames_encoded_value -sticky nws
+
 	label $cw.fifo_label -text "Fifo size: "
 	label $cw.fifo_value_label -text "0 Mb"
 	eval $cw.fifo_label configure [get_settings $cw.fifo_label Capture V4L]
@@ -425,8 +438,17 @@ global fifo_limit
 global v4l_capture_on
 if { [ffmpeg_present] == "no" } { return }
 catch {
-	set size [ffmpeg_incoming_fifo_size current_v4l_handle]
+	set status [ffmpeg_encoding_status]
+	if { "$status" == "" } {
+		$cw.fifo_value_label configure -text "0 Mb"
+		return
+		}
+	set size [get_value $status "-total_fifo"]
+	set length [get_value $status "-encoded_stream_size"]
+	set frames_encoded [get_value $status "-frames_encoded"]
 	$cw.fifo_value_label configure -text "[expr $size/(1024*1024)] Mb"
+	$cw.total_stream_length_value configure -text "$length Mb"
+	$cw.frames_encoded_value configure -text "$frames_encoded"
 	if { $v4l_capture_on && ($size > [expr $fifo_limit*1024*1024]) } {
 		set v4l_capture_on false
 		$cw.record_button flash
