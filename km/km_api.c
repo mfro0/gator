@@ -231,7 +231,7 @@ if(kmfpd->br_free==0){
 spin_unlock(&(kmfpd->lock));
 add_wait_queue(&(kmd->wait), &wait);
 current->state=TASK_INTERRUPTIBLE;
-while(kmfpd->br_free==0){
+while((kmfpd->br_free==0) || (kmfpd->request_flags & KM_STATUS_REQUESTED)){
 	if(file->f_flags & O_NONBLOCK){
 		retval=-EAGAIN;
 		break;
