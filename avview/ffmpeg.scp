@@ -13,8 +13,8 @@ if { [ffmpeg_present] } {
 		"Audio codec" choice {ffmpeg_audio_codec "PCM" "MPEG-2" "AC3" } \
 		"File format parameters" heading "" \
 		"File format" choice {ffmpeg_file_format "none" "AVI" "ASF" "MPEG" } \
-		"Record in chunks of (MB)" entry ffmpeg_recording_chunk_size 
-#		"Stop capture when fifo exceeds (MB)" entry ffmpeg_max_fifo_size
+		"Stop capture when fifo exceeds (MB)" entry ffmpeg_max_fifo_size
+#		"Record in chunks of (MB)" entry ffmpeg_recording_chunk_size 
 		
 	} {
 	add_description_pane "/Compression parameters" "Compression parameters" "AVview has not been compiled to include compression library"

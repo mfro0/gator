@@ -264,4 +264,33 @@ generate_attributes_window .controlwin.allattributes
 display_video
 }
 
+proc xv_pick_defaults {} {
+global current_port current_table_name current_encoding_name current_channel VIDEO_WINDOW
+set NUM_ADAPTORS [xv_numadaptors $VIDEO_WINDOW]
+if { ($current_port == "none")} {
+	for { set i 0 } { $i < $NUM_ADAPTORS } { incr i 1 } { 
+		if { ([lsearch -exact [xv_adaptor_type $VIDEO_WINDOW $i] input] != -1) } {
+			set current_port [lindex [xv_adaptor_ports $VIDEO_WINDOW $i] 0]
+			break
+			}
+		}
+	}
+if { $current_table_name == "none" } {
+	switch -glob -- "$current_encoding_name" \
+		"*pal*" {
+			set current_table_name "europe-west"
+			} \
+		"*secam*" {
+			set current_table_name "europe-west"
+			} \
+		"*ntsc*" {
+			set current_table_name "us-bcast"
+			}			
+	
+	}
+if { $current_channel == "none" } {
+	set current_channel [find_first_favorite_channel 0 1]
+	}
+}
+
 

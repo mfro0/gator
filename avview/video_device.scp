@@ -27,14 +27,5 @@ for { set i 0 } { $i < $NUM_ADAPTORS } { incr i 1 } {
 			}
 		}
 	}
-global current_port
-if { ($current_port == "none")} {
-	for { set i 0 } { $i < $NUM_ADAPTORS } { incr i 1 } { 
-		if { ([lsearch -exact [xv_adaptor_type $VIDEO_WINDOW $i] input] != -1) } {
-			set current_port [lindex [xv_adaptor_ports $VIDEO_WINDOW $i] 0]
-			break
-			}
-		}
-	}
 }
 

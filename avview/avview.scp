@@ -40,6 +40,7 @@ foreach {variable value} {
 	current_encoding_name "none"
 	current_table "none"
 	current_table_name "none"
+	current_channel "none"
 	} {
 	global $variable
 	set $variable $value
@@ -279,7 +280,6 @@ for {set i 16} { $i < $num_channels } {incr i 16 } {
 	.video_menu.channel_menu entryconfigure $i -columnbreak 1
 	}
 reflect_favorite_channels
-set current_channel [find_first_favorite_channel 0 1]
 }
 
 proc set_channel {a b c} {
@@ -337,19 +337,6 @@ if { $current_encoding > 0 } {
 			set current_video_rate 59.94
 			}			
 			
-	}
-if { $current_table_name == "none" } {
-	switch -glob -- "$current_encoding_name" \
-		"*pal*" {
-			set current_table_name "europe-west"
-			} \
-		"*secam*" {
-			set current_table_name "europe-west"
-			} \
-		"*ntsc*" {
-			set current_table_name "us-bcast"
-			}			
-	
 	}
 }
 
@@ -731,7 +718,7 @@ Tree:open .setup.tree "/User interface settings"
 replace_parameter_choices "/Video device parameters" 0 a
 regenerate_port_menu
 
-after 200 {
+after 100 {
 	assign_default_bindings
 	read_settings
 	switch_to_pane "/User interface settings"
@@ -741,5 +728,6 @@ after 200 {
 	if { $always_start_fullscreen && ! $fullscreen_mode } {
 		set fullscreen_mode true 
 		}
+	xv_pick_defaults
 	}	
 	
