@@ -591,6 +591,7 @@ global current_video_codec
 global current_audio_codec
 global current_audio_rate
 global current_video_bitrate
+global current_video_quality
 global current_audio_bitrate
 global fifo_limit
 
@@ -604,6 +605,7 @@ puts $fileid "global current_audio_codec"
 puts $fileid "global current_audio_rate"
 puts $fileid "global current_audio_bitrate"
 puts $fileid "global current_video_bitrate"
+puts $fileid "global current_video_quality"
 puts $fileid "global fifo_limit"
 
 
@@ -615,6 +617,7 @@ puts $fileid "set current_av_format \"$current_av_format\""
 puts $fileid "set current_audio_rate \"$current_audio_rate\""
 puts $fileid "set current_audio_bitrate \"$current_audio_bitrate\""
 puts $fileid "set current_video_bitrate \"$current_video_bitrate\""
+puts $fileid "set current_video_quality \"$current_video_quality\""
 puts $fileid "set fifo_limit \"$fifo_limit\""
 
 puts $fileid "#\n# End of V4L and capture settings\n#"
