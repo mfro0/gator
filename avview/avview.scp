@@ -6,16 +6,26 @@
 #
 #     avview preliminary version
 #
-#       (C) Vladimir Dergachev 2001-2002
+#       (C) Vladimir Dergachev 2001-2003
 #       
 #       GNU Public License
 #       
 
-global control_screen
-set control_screen1 ""
-regexp "control=\[^ \]+" "$argv" control_screen1
-regsub "control=" "$control_screen1" "" control_screen
-puts "control_screen=$control_screen"
+proc print_help {} {
+puts stderr {
+Usage:
+	start_avview [options]
+	
+Options:
+	--help             		print this message
+	--control-screen=display        display control windows on specified 
+					display
+	--screen-size=WxH		start TV window with size WxH
+	--geometry=geometry		specify TV window geometry, using
+					usual X11 notation
+	
+}
+}
 
 foreach {variable value} {
 	debug 0
@@ -49,10 +59,31 @@ foreach {variable value} {
 	message_visible_secs	14
 	save_settings_on_exit	"unset"
 	warn_about_missing_km	"true"
+	control_screen ""
+	startup_script ""
 	} {
 	global $variable
 	set $variable $value
 	}
+
+foreach option $argv {
+	switch -glob -- $option {
+		"--help"  { print_help ; exit}
+		"--control-screen=*" { 
+			regexp -- {--control-screen=([^ ]+)} $option {} control_screen
+			puts "control_screen=$control_screen"
+			}
+		"--screen-size=*" {
+			regexp -- {--screen-size=([0-9]+)x([0-9]+)} $option {} width height
+			append startup_script "set_video_window_size $width $height\n"
+			}
+		"--geometry=*" {
+			regexp -- {--geometry=(.+)} $option {} geometry
+			append startup_script "wm geometry . \"$geometry\"\n"
+			}
+		}
+	}
+
 
 
 global TABLE_LIST
@@ -897,5 +928,7 @@ after 100 {
 		set fullscreen_mode true 
 		}
 	xv_pick_defaults
+	global startup_script
+	eval $startup_script	
 	}	
-	
+
