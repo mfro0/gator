@@ -113,7 +113,7 @@ if(kms->frame.buffer==NULL)return;
 kms->frame.timestamp=jiffies;
 mach64_wait_for_idle(kms);
 offset=readl(kms->reg_aperture+MACH64_CAP0_BUF0_OFFSET);
-mach64_setup_single_frame_buffer(kms, &(kms->frame), offset+640*10);
+mach64_setup_single_frame_buffer(kms, &(kms->frame), offset);
 #if 0 
 /* no analog for mach64.. yet ? */
 /* wait for at least one available queue */
@@ -142,7 +142,7 @@ if(kms->frame_even.buffer==NULL)return;
 kms->frame_even.timestamp=jiffies;
 mach64_wait_for_idle(kms);
 offset=readl(kms->reg_aperture+MACH64_CAP0_BUF0_EVEN_OFFSET);
-mach64_setup_single_frame_buffer(kms, &(kms->frame_even), offset+640*10);
+mach64_setup_single_frame_buffer(kms, &(kms->frame_even), offset);
 #if 0 
 /* no analog for mach64.. yet ? */
 /* wait for at least one available queue */
