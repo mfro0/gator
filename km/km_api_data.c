@@ -247,7 +247,7 @@ if(kdu->mmap==NULL)return -ENOTSUPP;
 return kdu->mmap(file, vma);
 }
 
-static int km_fo_data_read(struct file *file, char *buf, size_t count, loff_t *ppos)
+static ssize_t km_fo_data_read(struct file *file, char *buf, size_t count, loff_t *ppos)
 {
 KDU_FILE_PRIVATE_DATA *kdufpd=file->private_data;
 KM_DATA_UNIT *kdu=kdufpd->kdu;
@@ -265,6 +265,7 @@ unsigned long offset = vma->vm_pgoff << PAGE_SHIFT;
 unsigned long size = vma->vm_end-vma->vm_start;
 unsigned long chunk_size;
 unsigned long page, start;
+unsigned long pos;
 int i,j;
 
 if(kdu->type!=KDU_TYPE_VIRTUAL_BLOCK){
@@ -277,14 +278,23 @@ for(i=0;i<dvb->n;i++)
 	for(j=0;j<dvb->size;j+=PAGE_SIZE){
 		if(chunk_size*i+PAGE_SIZE*j<offset)continue;
 		if(chunk_size*i+PAGE_SIZE*j>offset+size)return 0;
-		page=kvirt_to_pa((unsigned long)dvb->ptr[i]+j*PAGE_SIZE);
+		pos=(unsigned long)dvb->ptr[i]+j*PAGE_SIZE;
 		start=vma->vm_start+chunk_size*i+PAGE_SIZE*j-offset;
 #ifdef LINUX_2_6
-		if(remap_page_range(vma,start, page, PAGE_SIZE, PAGE_SHARED))
-#else
-		if(remap_page_range(start, page, PAGE_SIZE, PAGE_SHARED))
-#endif
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,10)
+		page=kvirt_to_pa(pos);
+		if(remap_page_range(vma, start, page, PAGE_SIZE, PAGE_SHARED))
 			return -EAGAIN;
+#else
+		page=page_to_pfn(vmalloc_to_page((void *)pos));
+		if(remap_pfn_range(vma, start, page, PAGE_SIZE, PAGE_SHARED))
+			return -EAGAIN;
+#endif
+#else
+		page=kvirt_to_pa(pos);
+		if(remap_page_range(start, page, PAGE_SIZE, PAGE_SHARED))
+			return -EAGAIN;
+#endif
 		}
 return 0;
 }

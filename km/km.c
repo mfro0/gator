@@ -713,7 +713,7 @@ static int __devinit km_probe(struct pci_dev *dev, const struct pci_device_id *p
 		pci_set_drvdata(dev, NULL);
 		return -EIO;		
 	}
-	printk("sizeof(kmfl_template)=%d sizeof(KM_FIELD)=%d\n", sizeof(kmfl_template), sizeof(KM_FIELD));
+	printk("sizeof(kmfl_template)=%ld sizeof(KM_FIELD)=%ld\n", (unsigned long)sizeof(kmfl_template), (unsigned long)sizeof(KM_FIELD));
 
 	kms->kmfl=kmalloc(sizeof(kmfl_template), GFP_KERNEL);
 	memcpy(kms->kmfl, kmfl_template, sizeof(kmfl_template));
@@ -1081,7 +1081,7 @@ static int __init km_init_module(void)
 	request_module("videodev");
 
 	printk(KERN_INFO "Kmultimedia module version %s loaded\n", KM_VERSION);
-	printk(KERN_DEBUG "Page size is %ld sizeof(bm_list_descriptor)=%d sizeof(KM_STRUCT)=%d\n", PAGE_SIZE, sizeof(bm_list_descriptor), sizeof(KM_STRUCT));
+	printk(KERN_DEBUG "Page size is %ld sizeof(bm_list_descriptor)=%ld sizeof(KM_STRUCT)=%ld\n", PAGE_SIZE, (unsigned long)sizeof(bm_list_descriptor), (unsigned long)sizeof(KM_STRUCT));
 	num_devices=0;
 	pci_module_init( &km_pci_driver );
 
