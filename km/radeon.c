@@ -44,6 +44,7 @@ long count;
 a=readl(kms->reg_aperture+RADEON_RBBM_STATUS);
 KM_DEBUG("RADEON_RBBM_STATUS=0x%08x\n", a);
 radeon_wait_for_fifo(kms,64);
+wmb();
 count=1000;
 while(((a=readl(kms->reg_aperture+RADEON_RBBM_STATUS)) & RADEON_ENGINE_ACTIVE)!=0){
 	udelay(1);
@@ -68,6 +69,7 @@ u32 a;
 vwin->x=0;
 vwin->y=0;
 radeon_wait_for_idle(kms);
+wmb();
 a=readl(kms->reg_aperture+RADEON_CAP0_BUF_PITCH);
 vwin->width=a/2;
 a=readl(kms->reg_aperture+RADEON_CAP0_V_WINDOW);
@@ -86,6 +88,7 @@ if(a & (1<<6)){
 	printk("Enabling bus mastering\n");
 	writel(a | (3<<1) | (1<<6), kms->reg_aperture+RADEON_BUS_CNTL);
 	}
+wmb();
 writel(3, kms->reg_aperture+RADEON_CAP_INT_STATUS);
 writel(1<<30, kms->reg_aperture+RADEON_GEN_INT_STATUS);
 a=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
@@ -128,6 +131,7 @@ if(kms->frame.buffer==NULL)return;
 kms->frame.timestamp=jiffies;
 offset=readl(kms->reg_aperture+RADEON_CAP0_BUF0_OFFSET);
 radeon_setup_single_frame_buffer(kms, &(kms->frame), offset);
+wmb();
 /* wait for at least one available queue */
 do {
 	status=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
@@ -141,6 +145,7 @@ if(kms->frame.buf_ptr!=kms->frame.buf_free){
 	}
 kms->total_frames++;
 kms->frame.dma_active=1;
+wmb();
 writel(kvirt_to_pa(kms->frame.dma_table), (u32)(kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR)| (0));
 KM_DEBUG("start_frame_transfer_buf0\n");
 }
@@ -152,6 +157,7 @@ if(kms->frame_even.buffer==NULL)return;
 kms->frame_even.timestamp=jiffies;
 offset=readl(kms->reg_aperture+RADEON_CAP0_BUF0_EVEN_OFFSET);
 radeon_setup_single_frame_buffer(kms, &(kms->frame_even), offset);
+wmb();
 /* wait for at least one available queue */
 do {
 	status=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
@@ -165,6 +171,7 @@ if(kms->frame_even.buf_ptr!=kms->frame_even.buf_free){
 	}
 kms->total_frames++;
 kms->frame_even.dma_active=1;
+wmb();
 writel(kvirt_to_pa(kms->frame_even.dma_table), (u32)(kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR) | (0));
 KM_DEBUG("start_frame_transfer_buf0_even\n");
 }
@@ -178,6 +185,7 @@ status=readl(kms->reg_aperture+RADEON_CAP_INT_STATUS);
 mask=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
 if(!(status & mask))return 0;
 radeon_wait_for_idle(kms);
+wmb();
 writel(status & mask, kms->reg_aperture+RADEON_CAP_INT_STATUS);
 KM_DEBUG("CAP_INT_STATUS=0x%08x\n", status);
 /* do not start dma transfer if capture is not active anymore */
@@ -206,6 +214,7 @@ while(1){
 		mask=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
 		if(!(status & mask))return;
 		radeon_wait_for_idle(kms);
+		wmb();
 		if(status & (1<<30))acknowledge_dma(kms);
 		writel(status & mask, kms->reg_aperture+RADEON_GEN_INT_STATUS);
 		count--;
