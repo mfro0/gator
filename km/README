@@ -5,7 +5,8 @@
     
 hints:
 
-    * edit Makefile 
+    * rename either Makefile-2.4 or Makefile-2.6 to Makefile depending
+      on your kernel version
     * compile
     * become root and issue "make test"
     * start X

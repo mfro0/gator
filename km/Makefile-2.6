@@ -1,6 +1,5 @@
-# to compile for linux kernel>2.6.0 rename this file to Makefile and then 
-# compile with: make -C /usr/src/linux-2.6.X SUBDIRS=$PWD modules
-CFLAGS += -DLINUX_2_6
+ifneq ($(KERNELRELEASE),)
+
 KM_OBJS=km.o km_v4l.o km_memory.o radeon.o mach64.o rage128.o
 KM_API_OBJS=km_api.o km_api_data.o km_memory.o
 
@@ -9,3 +8,40 @@ km_api_drv-objs := ${KM_API_OBJS}
 
 obj-m += km_drv.o
 obj-m += km_api_drv.o
+
+EXTRA_CFLAGS += -DLINUX_2_6
+
+else
+
+KDIR := /lib/modules/$(shell uname -r)/build
+PWD  := $(shell pwd)
+
+all:
+	$(MAKE) -C $(KDIR) M=$(PWD) modules
+
+clean:
+	$(MAKE) -C $(KDIR) M=$(PWD) clean
+
+install:
+	$(MAKE) -C $(KDIR) M=$(PWD) modules_install
+
+test: all
+	@echo "** Syncing disks"
+	sync
+	@echo "** Trying to make sure v4l module is loaded"
+	modprobe videodev || true
+	@echo "** Now loading km modules"
+	insmod ./km_api_drv.ko
+	insmod ./km_drv.ko km_debug=0 km_buffers=5
+
+test2: test2.c
+	$(CC) $(CFLAGS) test2.c -o test2
+
+tarball:
+	(cd .. ; tar cvf - km/*.[c,h] km/Makefile-* km/README km/km.*.txt km/test*.tcl | gzip - ) > km.tgz
+
+remove:
+	rmmod km_drv || true
+	rmmod km_api_drv || true
+
+endif
