@@ -17,10 +17,12 @@ foreach {variable value } {
 	ffmpeg_audio_sample_rate 48000
 	ffmpeg_audio_bitrate 64000
 	ffmpeg_audio_codec "MPEG-2"
+	ffmpeg_file_format "MPEG"
 	} {
 	global $variable
 	set $variable $value
 	}
+
 
 #
 #
@@ -71,17 +73,18 @@ if { [alsa_present] } {
 	}
 
 
-set methods [get_deinterlacing_methods]
-eval label $cw.model -text "\"Recording mode: \"" [get_settings $cw.model Capture V4L]
-set menu [tk_optionMenu $cw.mode_optionmenu current_v4l_mode None]
-$menu delete 0 end
-foreach method $methods {
-	$menu add radiobutton -label "$method" -value "$method" -variable current_v4l_mode
-	}
-eval $cw.mode_optionmenu configure [get_settings $cw.mode_optionmenu Capture V4L]
-eval $menu configure [get_settings $menu Capture V4L menu]
-grid $cw.model $cw.mode_optionmenu - -sticky news
-grid configure $cw.model -sticky nws
+#set methods [get_deinterlacing_methods]
+#eval label $cw.model -text "\"Recording mode: \"" [get_settings $cw.model Capture V4L]
+#set menu [tk_optionMenu $cw.mode_optionmenu current_v4l_mode None]
+#$menu delete 0 end
+#foreach method $methods {
+#	$menu add radiobutton -label "$method" -value "$method" -variable current_v4l_mode
+#	}
+#eval $cw.mode_optionmenu configure [get_settings $cw.mode_optionmenu Capture V4L]
+#eval $menu configure [get_settings $menu Capture V4L menu]
+#grid $cw.model $cw.mode_optionmenu - -sticky news
+#grid configure $cw.model -sticky nws
+
 
 eval label $cw.windowl -text "\"Window: \""  [get_settings $cw.windowl Capture V4L]
 eval label $cw.window -text "\"N/A\"" [get_settings $cw.window Capture V4L]
@@ -90,13 +93,27 @@ grid $cw.windowl $cw.window $cw.window_button
 grid configure $cw.windowl -sticky nws
 grid configure $cw.window_button -sticky news
 
+
+eval label $cw.encoding_themel -text "\"Encoding theme: \"" [get_settings $cw.encoding_themel Capture V4L]
+set menu [tk_optionMenu $cw.encoding_theme_optionmenu ffmpeg_encoding_theme None]
+$menu delete 0 end
+global encoding_themes_list
+foreach theme $encoding_themes_list {
+	$menu add radiobutton -label "$theme" -value "$theme" -variable ffmpeg_encoding_theme
+	}
+eval $cw.encoding_theme_optionmenu configure [get_settings $cw.encoding_theme_optionmenu Capture V4L]
+eval $menu configure [get_settings $menu Capture V4L menu]
+eval button $cw.encoding_theme_button -text "Set" -command set_encoding_theme [get_settings $cw.window_button Capture V4L]
+grid $cw.encoding_themel $cw.encoding_theme_optionmenu $cw.encoding_theme_button -sticky news
+grid configure $cw.encoding_themel $cw.encoding_theme_button -sticky nws
+
 if {[ffmpeg_present] == "yes"} {
-	eval label $cw.rratel -text "\"Recording framerate: \"" [get_settings $cw.rratel Capture V4L]
-	set menu [tk_optionMenu $cw.rrate_optionmenu current_v4l_rrate "as is" "one half" "one quarter"]
-	eval $cw.rrate_optionmenu configure [get_settings $cw.rrate_optionmenu Capture V4L]
-	eval $menu configure [get_settings $menu Capture V4L menu]
-	grid $cw.rratel $cw.rrate_optionmenu - -sticky news
-	grid configure $cw.rratel -sticky nws
+#	eval label $cw.rratel -text "\"Recording framerate: \"" [get_settings $cw.rratel Capture V4L]
+#	set menu [tk_optionMenu $cw.rrate_optionmenu current_v4l_rrate "as is" "one half" "one quarter"]
+#	eval $cw.rrate_optionmenu configure [get_settings $cw.rrate_optionmenu Capture V4L]
+#	eval $menu configure [get_settings $menu Capture V4L menu]
+#	grid $cw.rratel $cw.rrate_optionmenu - -sticky news
+#	grid configure $cw.rratel -sticky nws
 
 	eval label $cw.video_ratel -text "\"V4L device framerate:\"" [get_settings $cw.video_ratel Capture V4L]
 	entry $cw.video_rate_entry -textvariable current_video_rate

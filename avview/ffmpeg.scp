@@ -1,7 +1,115 @@
 #!./avview_shell
 
+global encoding_theme_template encoding_theme
+set encoding_theme_template {
+	name
+	short_name
+	video_bitrate 
+	quality 
+	q_control 
+	video_codec 
+	audio_bitrate 
+	audio_codec 
+	file_format
+	v4l_mode 
+	v4l_rate } 
+set encoding_themes { 
+	  "Very high quality MPEG-1"
+	  "MPEG-1 VHQ" 
+	  300000
+	  2
+	  "Fix quality"
+	  "MPEG-1"
+	  64000
+	  "MPEG-2"
+	  "MPEG" 
+	  "double-interpolate" 
+	  "one-half" 
+
+	  "High quality MPEG-1"
+	  "MPEG-1 MQ" 
+	  300000
+	  5
+	  "Fix quality"
+	  "MPEG-1"
+	  64000
+	  "MPEG-2"
+	  "MPEG" 
+	  "double-interpolate" 
+	  "one-half" 
+	  
+	  "VCR quality MPEG-1"
+	  "MPEG-1 VCR" 
+	  300000
+	  5
+	  "Fix quality"
+	  "MPEG-1"
+	  64000
+	  "MPEG-2"
+	  "MPEG" 
+	  "half-width" 
+	  "one-half" 
+
+	  "Webcam quality MPEG-1"
+	  "MPEG-1 Webcam" 
+	  300000
+	  10
+	  "Fix quality"
+	  "MPEG-1"
+	  64000
+	  "MPEG-2"
+	  "MPEG" 
+	  "half-width" 
+	  "one-quarter" 
+
+	  "Very high quality MPEG-4"
+	  "MPEG-4 VHQ" 
+	  300000
+	  2
+	  "Fix quality"
+	  "MPEG-4"
+	  64000
+	  "MPEG-2"
+	  "AVI" 
+	  "double-interpolate" 
+	  "one-half" 
+
+	  "High quality MPEG-4"
+	  "MPEG-4 HQ" 
+	  300000
+	  5
+	  "Fix quality"
+	  "MPEG-4"
+	  64000
+	  "MPEG-2"
+	  "AVI" 
+	  "double-interpolate" 
+	  "one-half" 
+	 }
+
+global encoding_themes_list encoding_themes_table
+set encoding_themes_list {}
+set i 0
+foreach $encoding_theme_template $encoding_themes {
+	lappend encoding_themes_list $short_name
+	set encoding_themes_table($short_name) $i
+	incr i
+	}
+		
+add_parameter_pane "/Configuration/Encoding settings" "Encoding settings" \
+		"Pre-configured themes" heading "" \
+		"Encoding theme" choice [concat ffmpeg_encoding_theme $encoding_themes_list] \
+		"" ro_entry ffmpeg_encoding_theme_detail \
+		"Set parameters" command set_encoding_theme 
+
+add_parameter_pane "/Configuration/Encoding settings/Capture parameters" \
+		"Capture parameters" heading "" \
+		"Deinterlacing method" choice [concat current_v4l_mode [get_deinterlacing_methods]] \
+		"V4L recording rate" choice {current_v4l_rrate "as is" "one half" "one quarter"} \
+		"Video frame rate" entry current_video_rate
+
 if { [ffmpeg_present] } {
-	add_parameter_pane "/Configuration/Compression parameters" "Compression parameters" \
+	add_parameter_pane "/Configuration/Encoding settings/Compression parameters" "Compression parameters" \
 		"Video codec parameters" heading "" \
 		"Bitrate control" choice { ffmpeg_video_bitrate_control "Fix bitrate" "Fix quality" } \
 		"Bitrate" entry ffmpeg_video_bitrate \
@@ -19,3 +127,38 @@ if { [ffmpeg_present] } {
 	} {
 	add_description_pane "/Configuration/Compression parameters" "Compression parameters" "AVview has not been compiled to include compression library"
 	}
+
+global ffmpeg_encoding_theme
+trace variable ffmpeg_encoding_theme w {
+	global ffmpeg_encoding_theme ffmpeg_encoding_theme_detail \
+		 encoding_themes_table encoding_theme_template encoding_themes
+	set ffmpeg_encoding_theme_detail [lindex $encoding_themes [expr $encoding_themes_table($ffmpeg_encoding_theme)*[llength $encoding_theme_template]]]
+	skip_args3 }
+
+set ffmpeg_encoding_theme [lindex $encoding_themes 1]
+
+proc set_encoding_theme {} {
+global ffmpeg_encoding_theme ffmpeg_encoding_theme_detail \
+	 encoding_themes_table encoding_theme_template encoding_themes
+set theme [lrange $encoding_themes [expr $encoding_themes_table($ffmpeg_encoding_theme)*[llength $encoding_theme_template]] end]
+set theme [lrange $theme 0 [expr [llength $encoding_theme_template]-1] ]
+puts "theme=$theme"
+foreach $encoding_theme_template $theme {
+	foreach {var field} {
+		ffmpeg_video_bitrate_control q_control
+		ffmpeg_video_quality quality
+		ffmpeg_video_bitrate video_bitrate
+		ffmpeg_video_codec video_codec
+		ffmpeg_audio_bitrate audio_bitrate
+		ffmpeg_audio_codec audio_codec
+		ffmpeg_file_format file_format
+		current_v4l_mode v4l_mode
+		current_v4l_rate v4l_rate
+		} {
+		global $var
+		set $var [set $field]
+		}	
+	}
+}
+
+set_encoding_theme
