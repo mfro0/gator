@@ -681,6 +681,11 @@ void generic_enable_capture(GENERIC_CARD *card)
   /* lock the card */
   down_interruptible(&card->lock);
 
+  /* clear any existing buffers */
+  card->status &= ~(STATUS_DMABUF_READY | STATUS_BUF0_READY | STATUS_BUF1_READY);
+  /* reset field count */
+  card->field_count = 0;
+
   if (card->driver_data & RAGE128CHIP) {
     rage128_enable_capture(card);
   } else {
@@ -941,7 +946,7 @@ unsigned int generic_poll(struct file *file, poll_table *wait)
   GENERIC_FH *fh = file->private_data;
   GENERIC_CARD *card = fh->card;
 
-  dprintk(2,"card(%d) Poll called\n",card->cardnum);
+  dprintk(3,"card(%d) Poll called\n",card->cardnum);
 
   poll_wait(file,&generic_wait,wait);
   if (card->status & STATUS_POLL_READY){
@@ -2050,7 +2055,7 @@ dprintk(2,"card(%d) VIDIOC_QUERYBUF\n",card->cardnum);
     case VIDIOC_QBUF:
       {
        struct v4l2_buffer *b = arg;
-dprintk(2,"card(%d) VIDIOC_QBUF called\n",card->cardnum);
+dprintk(3,"card(%d) VIDIOC_QBUF called\n",card->cardnum);
       if (b->type != V4L2_BUF_TYPE_VIDEO_CAPTURE){
         return -EINVAL;
       }
@@ -2065,7 +2070,7 @@ dprintk(2,"card(%d) VIDIOC_QBUF called\n",card->cardnum);
       {
        struct v4l2_buffer *b = arg;
 
-dprintk(2,"card(%d) VIDIOC_DQBUF called\n",card->cardnum);
+dprintk(3,"card(%d) VIDIOC_DQBUF called\n",card->cardnum);
       if (b->type != V4L2_BUF_TYPE_VIDEO_CAPTURE){
         return -EINVAL;
       }
@@ -2904,12 +2909,21 @@ static irqreturn_t generic_irq_handler(int irq, void *dev_id, struct pt_regs * r
     if (status & 1){
       handled = 1;
       card->field_count++;
-      card->status |= STATUS_BUF0_READY | STATUS_POLL_READY;
+
+      /* since we are telling it to transfer the last frame captured
+       * (even if this one is odd and odd if this one is even)
+       * Then wait till we have another frame, or anytime
+       * we change channels or capture size it will look funny */
+      if (card->field_count > 2) {
+        card->status |= STATUS_BUF1_READY | STATUS_POLL_READY;
+      }
     }  
     if (status & 2){
       handled = 1;
       card->field_count++;
-      card->status |= STATUS_BUF1_READY | STATUS_POLL_READY;
+      if (card->field_count > 2) {
+        card->status |= STATUS_BUF0_READY | STATUS_POLL_READY;
+      }
     }
     //Acknowledge that we saw the interrupt
     R128_CAP_INT_STATUS = status & mask;

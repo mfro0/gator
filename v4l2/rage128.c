@@ -176,18 +176,20 @@ void rage128_enable_capture(GENERIC_CARD *card)
 /* if interlaced then pitch is cardwidth * 4 to skip every other line 
  cap buf0 even offset is the offset of even frames 
  so the offset should be 0 if not interlaced? */
-R128_CAP0_BUF0_OFFSET = card->buffer0;
-R128_CAP0_BUF1_OFFSET = card->buffer1;
 
 if (disableinterlace || 
 	card->height <= generic_tvnorms[card->tvnorm].sheight / 2){
-  R128_CAP0_BUF_PITCH = 2*card->width; 
+  R128_CAP0_BUF0_OFFSET = card->buffer0;
+  R128_CAP0_BUF1_OFFSET = card->buffer0;
   R128_CAP0_BUF0_EVEN_OFFSET = card->buffer1;
-  R128_CAP0_BUF1_EVEN_OFFSET = card->buffer0;
+  R128_CAP0_BUF1_EVEN_OFFSET = card->buffer1;
+  R128_CAP0_BUF_PITCH = 2*card->width; 
 } else {
+  R128_CAP0_BUF0_OFFSET = card->buffer0;
+  R128_CAP0_BUF1_OFFSET = card->buffer1;
+  R128_CAP0_BUF0_EVEN_OFFSET = card->buffer1 + 2*card->width; 
+  R128_CAP0_BUF1_EVEN_OFFSET = card->buffer0 + 2*card->width;
   R128_CAP0_BUF_PITCH = 2*2*card->width; 
-  R128_CAP0_BUF0_EVEN_OFFSET = card->buffer0 + 2*card->width; 
-  R128_CAP0_BUF1_EVEN_OFFSET = card->buffer1 + 2*card->width;
 }
 
   //R128_CAP0_ONESHOT_BUF_OFFSET = card->buffer0;
@@ -271,9 +273,11 @@ BTWRITE(card,BT829_VSCALE_LO,LO(0x10000 -
 | R128_CAP0_CONFIG_START_FIELD_EVEN
 | R128_CAP0_CONFIG_START_BUF_GET
 | R128_CAP0_CONFIG_BUF_TYPE_ALT // alternates between buf0 and buf1
-//| R128_CAP0_CONFIG_BUF_TYPE_FRAME
+| R128_CAP0_CONFIG_BUF_TYPE_FRAME
 | R128_CAP0_CONFIG_BUF_MODE_DOUBLE
 | R128_CAP0_CONFIG_VBI_EN //vertical blank interrupt
+| R128_CAP0_CONFIG_ODD_ONE_MORE_LINE
+| R128_CAP0_CONFIG_HORZ_DECIMATOR
 | R128_CAP0_CONFIG_VIDEO_IN_VYUY422);
 } else {
 // 0x60 is interlace 0x40 is not
@@ -289,6 +293,9 @@ BTWRITE(card,BT829_VSCALE_LO,LO(0x10000 -
 | R128_CAP0_CONFIG_BUF_TYPE_FRAME
 | R128_CAP0_CONFIG_BUF_MODE_DOUBLE
 | R128_CAP0_CONFIG_VBI_EN //vertical blank interrupt
+//| R128_CAP0_CONFIG_EVEN_ONE_MORE_LINE
+//| R128_CAP0_CONFIG_ODD_ONE_MORE_LINE
+| R128_CAP0_CONFIG_HORZ_DECIMATOR
 | R128_CAP0_CONFIG_VIDEO_IN_VYUY422);
 }
 
