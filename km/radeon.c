@@ -155,14 +155,16 @@ if(a & (1<<6)){
 	}
 wmb();
 if(kms->gdq_usage==1){
-	writel(1<<30, kms->reg_aperture+RADEON_GEN_INT_STATUS);
+	writel(INT_BIT_GUIDMA, kms->reg_aperture+RADEON_GEN_INT_STATUS);
 	a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
-	writel(a|(1<<30), kms->reg_aperture+RADEON_GEN_INT_CNTL);
+	writel(a|INT_BIT_GUIDMA, kms->reg_aperture+RADEON_GEN_INT_CNTL);
 	}
 wmb();
-writel(0xf, kms->reg_aperture+RADEON_CAP_INT_STATUS);
+writel((CAP_INT_BIT_BUF0|CAP_INT_BIT_BUF0_EVEN|
+	CAP_INT_BIT_BUF1|CAP_INT_BIT_BUF1_EVEN), kms->reg_aperture+RADEON_CAP_INT_STATUS);
 a=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
-writel(a|0xf, kms->reg_aperture+RADEON_CAP_INT_CNTL);
+writel(a|(CAP_INT_BIT_BUF0|CAP_INT_BIT_BUF0_EVEN|
+	CAP_INT_BIT_BUF1|CAP_INT_BIT_BUF1_EVEN), kms->reg_aperture+RADEON_CAP_INT_CNTL);
 }
 
 void radeon_stop_transfer(KM_STRUCT *kms)
@@ -170,15 +172,17 @@ void radeon_stop_transfer(KM_STRUCT *kms)
 u32 a;
 /* stop interrupts */
 a=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
-writel(a & ~0xf, kms->reg_aperture+RADEON_CAP_INT_CNTL);
+writel(a & ~(CAP_INT_BIT_BUF0|CAP_INT_BIT_BUF0_EVEN|
+	     CAP_INT_BIT_BUF1|CAP_INT_BIT_BUF1_EVEN), kms->reg_aperture+RADEON_CAP_INT_CNTL);
 wmb();
-writel(0xf, kms->reg_aperture+RADEON_CAP_INT_STATUS);
+writel((CAP_INT_BIT_BUF0|CAP_INT_BIT_BUF0_EVEN|
+	CAP_INT_BIT_BUF1|CAP_INT_BIT_BUF1_EVEN), kms->reg_aperture+RADEON_CAP_INT_STATUS);
 wmb();
 if(kms->gdq_usage==1){
 	a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
-	writel(a & ~(1<<30), kms->reg_aperture+RADEON_GEN_INT_CNTL);
+	writel(a & ~INT_BIT_GUIDMA, kms->reg_aperture+RADEON_GEN_INT_CNTL);
 	wmb();
-	writel((1<<30), kms->reg_aperture+RADEON_GEN_INT_STATUS);
+	writel(INT_BIT_GUIDMA, kms->reg_aperture+RADEON_GEN_INT_STATUS);
 	/* stop outstanding DMA transfers */
 	a=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
 	if(a & RADEON_DMA_GUI_STATUS__ACTIVE){
@@ -206,14 +210,14 @@ if(a & (1<<6)){
 	}
 wmb();
 if(kms->gdq_usage==1){
-	writel(1<<30, kms->reg_aperture+RADEON_GEN_INT_STATUS);
+	writel(INT_BIT_GUIDMA, kms->reg_aperture+RADEON_GEN_INT_STATUS);
 	a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
-	writel(a|(1<<30), kms->reg_aperture+RADEON_GEN_INT_CNTL);
+	writel(a|INT_BIT_GUIDMA, kms->reg_aperture+RADEON_GEN_INT_CNTL);
 	}
 wmb();
-writel(0x30, kms->reg_aperture+RADEON_CAP_INT_STATUS);
+writel((CAP_INT_BIT_VBI0|CAP_INT_BIT_VBI1), kms->reg_aperture+RADEON_CAP_INT_STATUS);
 a=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
-writel(a|0x30, kms->reg_aperture+RADEON_CAP_INT_CNTL);
+writel(a|(CAP_INT_BIT_VBI0|CAP_INT_BIT_VBI1), kms->reg_aperture+RADEON_CAP_INT_CNTL);
 }
 
 void radeon_stop_vbi_transfer(KM_STRUCT *kms)
@@ -221,15 +225,15 @@ void radeon_stop_vbi_transfer(KM_STRUCT *kms)
 u32 a;
 /* stop interrupts */
 a=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
-writel(a & ~0x30, kms->reg_aperture+RADEON_CAP_INT_CNTL);
+writel(a & ~(CAP_INT_BIT_VBI0|CAP_INT_BIT_VBI1), kms->reg_aperture+RADEON_CAP_INT_CNTL);
 wmb();
-writel(0x30, kms->reg_aperture+RADEON_CAP_INT_STATUS);
+writel((CAP_INT_BIT_VBI0|CAP_INT_BIT_VBI1), kms->reg_aperture+RADEON_CAP_INT_STATUS);
 wmb();
 if(kms->gdq_usage==1){
 	a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
-	writel(a & ~(1<<30), kms->reg_aperture+RADEON_GEN_INT_CNTL);
+	writel(a & ~INT_BIT_GUIDMA, kms->reg_aperture+RADEON_GEN_INT_CNTL);
 	wmb();
-	writel((1<<30), kms->reg_aperture+RADEON_GEN_INT_STATUS);
+	writel(INT_BIT_GUIDMA, kms->reg_aperture+RADEON_GEN_INT_STATUS);
 	/* stop outstanding DMA transfers */
 	a=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
 	if(a & RADEON_DMA_GUI_STATUS__ACTIVE){
@@ -327,36 +331,38 @@ while(1){
 	status_cap=readl(kms->reg_aperture+RADEON_CAP_INT_STATUS);
 	mask=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
 	KM_DEBUG("CAP_INT_STATUS=0x%08x mask=0x%08x\n", status_cap, mask);
-	status_cap&=0x3f & mask; /* be nice to other users */
+	status_cap&=(CAP_INT_BIT_BUF0|CAP_INT_BIT_BUF0_EVEN|
+		     CAP_INT_BIT_BUF1|CAP_INT_BIT_BUF1_EVEN|
+		     CAP_INT_BIT_VBI0|CAP_INT_BIT_VBI1) & mask; /* be nice to other users */
 	if(status_cap){
 		/*radeon_wait_for_idle(kms); */
 		wmb();
 		writel(status_cap, kms->reg_aperture+RADEON_CAP_INT_STATUS);
 
-		if(status_cap & 1)radeon_schedule_request(kms, &(kms->capture), kms->buf0_odd_offset, KM_FI_ODD);
-		if(status_cap & 2)radeon_schedule_request(kms, &(kms->capture), kms->buf0_even_offset, 0);
-		if(status_cap & 4)radeon_schedule_request(kms, &(kms->capture), kms->buf1_odd_offset, KM_FI_ODD);
-		if(status_cap & 8)radeon_schedule_request(kms, &(kms->capture), kms->buf1_even_offset, 0);
-		if(status_cap & 0x10)radeon_schedule_request(kms, &(kms->vbi),  kms->vbi0_offset, KM_FI_ODD);
-		if(status_cap & 0x20)radeon_schedule_request(kms, &(kms->vbi),  kms->vbi1_offset, 0);		
+		if(status_cap & CAP_INT_BIT_BUF0)radeon_schedule_request(kms, &(kms->capture), kms->buf0_odd_offset, KM_FI_ODD);
+		if(status_cap & CAP_INT_BIT_BUF0_EVEN)radeon_schedule_request(kms, &(kms->capture), kms->buf0_even_offset, 0);
+		if(status_cap & CAP_INT_BIT_BUF1)radeon_schedule_request(kms, &(kms->capture), kms->buf1_odd_offset, KM_FI_ODD);
+		if(status_cap & CAP_INT_BIT_BUF1_EVEN)radeon_schedule_request(kms, &(kms->capture), kms->buf1_even_offset, 0);
+		if(status_cap & CAP_INT_BIT_VBI0)radeon_schedule_request(kms, &(kms->vbi),  kms->vbi0_offset, KM_FI_ODD);
+		if(status_cap & CAP_INT_BIT_VBI1)radeon_schedule_request(kms, &(kms->vbi),  kms->vbi1_offset, 0);		
 		}
              /* check DMA and vblank bits in GEN_INT_STATUS */
 	status=readl(kms->reg_aperture+RADEON_GEN_INT_STATUS);
 	mask=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL) & ((1<<30)|7);
 	KM_DEBUG("GEN_INT_STATUS=0x%08x mask=0x%08x\n", status, mask);
-	status &=mask & ((1<<30)|7);
+	status &=mask & (INT_BIT_GUIDMA|INT_BIT_VLINE|INT_BIT_VSYNC|INT_BIT_VBLANK);
 	if(!status && !status_cap){
 		return;
 		}
 	writel(status, kms->reg_aperture+RADEON_GEN_INT_STATUS);
-	if(status & (1<<30)){
+	if(status & INT_BIT_GUIDMA){
 		wmb();
 		acknowledge_dma(kms);
 		}
-	if(status & 7){
-		if(status & (1<<0))kms->vblank_count++;
-		if(status & (1<<1))kms->vline_count++;
-		if(status & (1<<2))kms->vsync_count++;
+	if(status & (INT_BIT_VBLANK|INT_BIT_VLINE|INT_BIT_VSYNC)){
+		if(status & INT_BIT_VBLANK)kms->vblank_count++;
+		if(status & INT_BIT_VLINE)kms->vline_count++;
+		if(status & INT_BIT_VSYNC)kms->vsync_count++;
 		kmd_signal_state_change(kms->kmd);
 		}
 	count--;
@@ -433,7 +439,7 @@ int radeon_init_hardware(KM_STRUCT *kms)
 u32 a;
 
 a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
-writel(a|(7), kms->reg_aperture+RADEON_GEN_INT_CNTL);
+writel(a|(INT_BIT_VBLANK|INT_BIT_VLINE|INT_BIT_VSYNC), kms->reg_aperture+RADEON_GEN_INT_CNTL);
 /* turn off any capture related interrupts 
    km should be the only code that uses it
    Note that there is a separate bit 30 in GEN_INT_CNTL

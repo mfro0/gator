@@ -5,8 +5,42 @@
 
 #define RADEON_GEN_INT_STATUS 0x44
 #define RADEON_GEN_INT_CNTL   0x40
+
+#define INT_BIT_VBLANK	      (1<<0)
+#define INT_BIT_VLINE	      (1<<1)
+#define INT_BIT_VSYNC	      (1<<2)
+#define INT_BIT_CAP_SNAPSHOT  (1<<3)
+#define INT_BIT_HOT_PLUG      (1<<4)
+#define INT_BIT_CAP0	      (1<<8)  /* read only */
+#define INT_BIT_DMA_VIPH0     (1<<12)
+#define INT_BIT_DMA_VIPH1     (1<<13)
+#define INT_BIT_DMA_VIPH2     (1<<14)
+#define INT_BIT_DMA_VIPH3     (1<<15)
+#define INT_BIT_I2C	      (1<<17)
+#define INT_BIT_GUI_IDLE      (1<<19)
+#define INT_BIT_VIPH	      (1<<24)
+#define INT_BIT_SOFTWARE      (1<<25)
+#define INT_BIT_SOFTWARE_SET  (1<<26)  /* trigger only, status only */
+#define INT_BIT_GUIDMA	      (1<<30)
+#define INT_BIT_VIDEODMA      (1<<31)
+
 #define RADEON_CAP_INT_CNTL   0x908
 #define RADEON_CAP_INT_STATUS 0x90C
+
+#define CAP_INT_BIT_BUF0	(1<<0)
+#define CAP_INT_BIT_BUF0_EVEN	(1<<1)
+#define CAP_INT_BIT_BUF1	(1<<2)
+#define CAP_INT_BIT_BUF1_EVEN	(1<<3)
+#define CAP_INT_BIT_VBI0	(1<<4)
+#define CAP_INT_BIT_VBI1	(1<<5)
+#define CAP_INT_BIT_ONESHOT	(1<<6)
+#define CAP_INT_BIT_ANC0	(1<<7)
+#define CAP_INT_BIT_ANC1	(1<<8)
+#define CAP_INT_BIT_VBI2	(1<<9)
+#define CAP_INT_BIT_VBI3	(1<<10)
+#define CAP_INT_BIT_ANC2	(1<<11)
+#define CAP_INT_BIT_ANC3	(1<<12)
+
 #define RADEON_RBBM_STATUS    0x1740
 #define RADEON_ENGINE_ACTIVE				   (1<<31)
 
