@@ -15,7 +15,7 @@
 #include "km_api.h"
 #include "km_api_data.h"
 
-#define KM_VERSION      "alpha-4.0"
+#define KM_VERSION      "alpha-6.0"
 
 /* already in >= 2.4.22 */
 #ifndef LINUX_2_6 

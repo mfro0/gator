@@ -66,11 +66,14 @@ if(kdu->use_count<=0){
 	return NULL;
 	}
 kdu->use_count++;
+spin_unlock(&(kdu->lock));
+
 kdufpd=kmalloc(sizeof(KDU_FILE_PRIVATE_DATA), GFP_KERNEL);
 if(kdufpd==NULL){
+	spin_lock(&(kdu->lock));
 	kdu->use_count--;
 #ifndef LINUX_2_6
-		MOD_DEC_USE_COUNT;
+	MOD_DEC_USE_COUNT;
 #endif
 	spin_unlock(&(kdu->lock));
 	return NULL;
@@ -82,7 +85,6 @@ kdufpd->buffer=0;
 kdufpd->bytes_read=0;
 kdufpd->age=0;
 
-spin_unlock(&(kdu->lock));
 return kdufpd;
 }
 

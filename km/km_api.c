@@ -194,7 +194,6 @@ KM_FILE_PRIVATE_DATA *open_km_device(int number)
 	MOD_INC_USE_COUNT;
 #endif
 
-	spin_lock(&(kmd->lock));
 	kmfpd=kmalloc(sizeof(KM_FILE_PRIVATE_DATA), GFP_KERNEL);
 	memset(kmfpd, 0, sizeof(KM_FILE_PRIVATE_DATA));
 
@@ -203,11 +202,12 @@ KM_FILE_PRIVATE_DATA *open_km_device(int number)
 	kmfpd->br_read=0;
 	kmfpd->buffer_read=kmalloc(kmfpd->br_size, GFP_KERNEL);
 
+	spin_lock(&(kmd->lock));
 	kmfpd->kmd=kmd;
-	kmfpd->field_flags=kmalloc(sizeof(*(kmfpd->field_flags))*kmd->num_fields, GFP_KERNEL);
+	kmfpd->field_flags=kmalloc(sizeof(*(kmfpd->field_flags))*kmd->num_fields, GFP_ATOMIC);
 	memset(kmfpd->field_flags, 0, sizeof(*(kmfpd->field_flags))*kmd->num_fields);
 
-	kmfpd->kfd=kmalloc(sizeof(*(kmfpd->kfd))*kmd->num_fields, GFP_KERNEL);
+	kmfpd->kfd=kmalloc(sizeof(*(kmfpd->kfd))*kmd->num_fields, GFP_ATOMIC);
 	memset(kmfpd->kfd, 0, sizeof(*(kmfpd->kfd))*kmd->num_fields);
 
 	/* initialize field values */
@@ -362,8 +362,8 @@ int km_fo_control_perform_command(KM_FILE_PRIVATE_DATA *kmfpd, const char *comma
 	u32 int_value;
 	int result=0;
 
-	spin_lock(&(kmd->lock));
 	hash=km_command_hash(command, count);
+	spin_lock(&(kmd->lock));
 	if((hash==kmd->status_hash) && !strncmp("STATUS\n", command, count)){
 		spin_lock(&(kmfpd->lock));
 		kmfpd->request_flags|=KM_STATUS_REQUESTED;
@@ -391,6 +391,7 @@ int km_fo_control_perform_command(KM_FILE_PRIVATE_DATA *kmfpd, const char *comma
 	
 			kf=&(kmd->fields[i]);
 			kfd=&(kmfpd->kfd[i]);
+			spin_unlock(&(kmd->lock));
 
 			value=&(command[kf->length]);
 			j=count-kf->length;
@@ -406,28 +407,29 @@ int km_fo_control_perform_command(KM_FILE_PRIVATE_DATA *kmfpd, const char *comma
 			printk("Processing \"%s\"=\"%s\" int_value=%d\n", kf->name, value, int_value);
 			switch(kf->type){
 			case KM_FIELD_TYPE_PROGRAMMABLE:
-				printk("Performing KM_FIELD_PROGRAMMABLE action \"%s\" is not implemented [yet]\n", kmd->fields[i].name);
+				printk("Performing KM_FIELD_PROGRAMMABLE action \"%s\" is not implemented [yet]\n", kf->name);
 				break;
 			case KM_FIELD_TYPE_LEVEL_TRIGGER:
 				if(!j || (int_value==0)){
 					/* trigger lowered */
-					if(!kfd->t.requested){ goto exit; /* redundant */ }
+					if(!kfd->t.requested){ return result; /* redundant */ }
 					kfd->t.requested=0;
 					kf->data.t.count--;
 					if(!kf->data.t.count)kf->data.t.one2zero(kf->data.t.priv);
 				} else {
 					/* trigger raised */
-					if(kfd->t.requested){ goto exit; /* redundant */ }
+					if(kfd->t.requested){ return result; /* redundant */ }
 					/* the zero2one transition checks for success before
 					   increasing count first */
 					if(!kf->data.t.count && (result=kf->data.t.zero2one(kf->data.t.priv))){
-						goto exit;
-					} 
+						return result;
+					}
 					kfd->t.requested=1;
 					kf->data.t.count++;
 				}
 				break;
 			}
+			return result;
 		}
 
  exit:

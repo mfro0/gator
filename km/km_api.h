@@ -11,7 +11,7 @@
 
 #include <linux/spinlock.h>
 
-#define KM_API_VERSION "alpha-5.0"
+#define KM_API_VERSION "alpha-6.0"
 
 #define KM_FIELD_TYPE_EOL		0      /* end of list marker */
 #define KM_FIELD_TYPE_STATIC		1	/* static string */
