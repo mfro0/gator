@@ -179,6 +179,8 @@ status=readl(kms->reg_aperture+RAGE128_CAP_INT_STATUS);
 mask=readl(kms->reg_aperture+RAGE128_CAP_INT_CNTL);
 if(!(status & mask))return 0;
 writel(status & mask, kms->reg_aperture+RAGE128_CAP_INT_STATUS);
+/* do not start dma transfer if capture is not active anymore */
+if(!rage128_is_capture_active(kms))return 1;
 if(status & 1)rage128_start_frame_transfer_buf0(kms);
 if(status & 2)rage128_start_frame_transfer_buf0_even(kms); 
 return 1;

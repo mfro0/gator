@@ -104,9 +104,9 @@ static void mach64_start_frame_transfer_buf0(KM_STRUCT *kms)
 long offset, status;
 if(kms->frame.buffer==NULL)return;
 kms->frame.timestamp=jiffies;
-offset=readl(kms->reg_aperture+MACH64_CAP0_BUF0_OFFSET);
-mach64_setup_single_frame_buffer(kms, &(kms->frame), offset);
 mach64_wait_for_idle(kms);
+offset=readl(kms->reg_aperture+MACH64_CAP0_BUF0_OFFSET);
+mach64_setup_single_frame_buffer(kms, &(kms->frame), offset+640*10);
 #if 0 
 /* no analog for mach64.. yet ? */
 /* wait for at least one available queue */
@@ -133,9 +133,9 @@ static void mach64_start_frame_transfer_buf0_even(KM_STRUCT *kms)
 long offset, status;
 if(kms->frame_even.buffer==NULL)return;
 kms->frame_even.timestamp=jiffies;
-offset=readl(kms->reg_aperture+MACH64_CAP0_BUF0_EVEN_OFFSET);
-mach64_setup_single_frame_buffer(kms, &(kms->frame_even), offset);
 mach64_wait_for_idle(kms);
+offset=readl(kms->reg_aperture+MACH64_CAP0_BUF0_EVEN_OFFSET);
+mach64_setup_single_frame_buffer(kms, &(kms->frame_even), offset+640*10);
 #if 0 
 /* no analog for mach64.. yet ? */
 /* wait for at least one available queue */
@@ -163,7 +163,7 @@ long status;
 status=readl(kms->reg_aperture+MACH64_CRTC_INT_CNTL);
 if(!(status & (MACH64_CAPBUF0_INT_ACK|MACH64_CAPBUF1_INT_ACK)))return 0;
 writel(ACK_INTERRUPT(status, MACH64_CAPBUF0_INT_ACK|MACH64_CAPBUF1_INT_ACK), kms->reg_aperture+MACH64_CRTC_INT_CNTL);
-printk("CAP_INT_STATUS=0x%08x\n", status);
+printk("CRTC_INT_CNTL=0x%08x\n", status);
 if(status & MACH64_CAPBUF0_INT_ACK)mach64_start_frame_transfer_buf0(kms);
 if(status & MACH64_CAPBUF1_INT_ACK)mach64_start_frame_transfer_buf0_even(kms); 
 return 1;
