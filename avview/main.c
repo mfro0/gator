@@ -16,6 +16,7 @@
 #include "frequencies.h"
 #include "xv.h"
 #include "xmisc.h"
+#include "v4l.h"
 
 void * do_alloc(long a, long b)
 {
@@ -42,6 +43,7 @@ if(status!=TCL_OK)return TCL_ERROR;
 init_freq(interp);
 init_xv(interp);
 init_xmisc(interp);
+init_v4l(interp);
 return TCL_OK;
 }
 

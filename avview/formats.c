@@ -1,0 +1,259 @@
+#include "global.h"
+#include "formats.h"
+
+/* Borrowed from pwc webcam driver by Nemosoft */
+
+/**
+  \brief convert YUV 4:2:0 data into RGB, BGR, RGBa or BGRa
+  \param width Width of yuv data, in pixels
+  \param height Height of yuv data, in pixels
+  \param plus Width of viewport, in pixels
+  \param src beginning of YUV data
+  \param dst beginning of RGB data, \b including the initial offset into the viewport
+  \param push The requested RGB format 
+
+  \e push can be any of PUSH_RGB24, PUSH_BGR24, PUSH_RGB32 or PUSH_BGR32
+  
+ This is a really simplistic approach. Speedups are welcomed. 
+*/
+void vcvt_420i(int width, int height, int plus, unsigned char *src, unsigned char *dst, int push)
+{
+	int line, col, linewidth;
+	int y, u, v, yy, vr = 0, ug = 0, vg = 0, ub = 0;
+	int r, g, b;
+	unsigned char *sy, *su, *sv;
+
+	linewidth = width + (width >> 1);
+	sy = src;
+	su = sy + 4;
+	sv = su + linewidth;
+
+	/* The biggest problem is the interlaced data, and the fact that odd
+	   add even lines have V and U data, resp. 
+	 */
+	for (line = 0; line < height; line++) {
+		for (col = 0; col < width; col++) {
+			y = *sy++;
+			yy = y << 8;
+			if ((col & 1) == 0) {
+				/* only at even colums we update the u/v data */
+				u = *su - 128;
+				ug =   88 * u;
+				ub =  454 * u;
+				v = *sv - 128;
+				vg =  183 * v;
+				vr =  359 * v;
+
+				su++;
+				sv++;
+			}
+			if ((col & 3) == 3) {
+				sy += 2; /* skip u/v */
+				su += 4; /* skip y */
+				sv += 4; /* skip y */
+			}
+
+			r = (yy +      vr) >> 8;
+			g = (yy - ug - vg) >> 8;
+			b = (yy + ub     ) >> 8;
+			/* At moments like this, you crave for MMX instructions with saturation */
+			if (r <   0) r =   0;
+			if (r > 255) r = 255;
+			if (g <   0) g =   0;
+			if (g > 255) g = 255;
+			if (b <   0) b =   0;
+			if (b > 255) b = 255;
+			
+			switch(push) {
+			case PUSH_RGB24:
+				*dst++ = r;
+				*dst++ = g;
+				*dst++ = b;
+				break;
+
+			case PUSH_BGR24:
+				*dst++ = b;
+				*dst++ = g;
+				*dst++ = r;
+				break;
+			
+			case PUSH_RGB32:
+				*dst++ = r;
+				*dst++ = g;
+				*dst++ = b;
+				*dst++ = 0;
+				break;
+
+			case PUSH_BGR32:
+				*dst++ = b;
+				*dst++ = g;
+				*dst++ = r;
+				*dst++ = 0;
+				break;
+			}
+		} /* ..for col */
+		if (line & 1) { // odd line: go to next band
+			su += linewidth;
+			sv += linewidth;
+		}
+		else { // rewind u/v pointers
+			su -= linewidth;
+			sv -= linewidth;
+		}
+		/* Adjust destination pointer, using viewport. We have just
+		   filled one line worth of data, so only skip the difference
+		   between the view width and the image width.
+		 */
+		if (push == PUSH_RGB24 || push == PUSH_BGR24)
+			dst += ((plus - width) * 3);
+		else
+			dst += ((plus - width) * 4);
+	} /* ..for line */
+}
+
+void vcvt_420i_rgb24(int width, int height, int plus, void *src, void *dst)
+{
+	vcvt_420i(width, height, plus, (unsigned char *)src, (unsigned char *)dst, PUSH_RGB24);
+}
+
+void vcvt_420i_bgr24(int width, int height, int plus, void *src, void *dst)
+{
+	vcvt_420i(width, height, plus, (unsigned char *)src, (unsigned char *)dst, PUSH_BGR24);
+}
+
+void vcvt_420i_rgb32(int width, int height, int plus, void *src, void *dst)
+{
+	vcvt_420i(width, height, plus, (unsigned char *)src, (unsigned char *)dst, PUSH_RGB32);
+}
+
+void vcvt_420i_bgr32(int width, int height, int plus, void *src, void *dst)
+{
+	vcvt_420i(width, height, plus, (unsigned char *)src, (unsigned char *)dst, PUSH_BGR32);
+}
+
+/**
+  \brief convert YUV 4:2:0 data into RGB, BGR, RGBa or BGRa
+  \param width Width of yuv data, in pixels
+  \param height Height of yuv data, in pixels
+  \param plus Width of viewport, in pixels
+  \param src beginning of YUV data
+  \param dst beginning of RGB data, \b including the initial offset into the viewport
+  \param push The requested RGB format 
+
+  \e push can be any of PUSH_RGB24, PUSH_BGR24, PUSH_RGB32 or PUSH_BGR32
+  
+ This is a really simplistic approach. Speedups are welcomed. 
+*/
+void vcvt_420p(int width, int height, int plus, unsigned char *src, unsigned char *dst, int push)
+{
+	int line, col, uv_linewidth;
+	int y, u, v, yy, vr = 0, ug = 0, vg = 0, ub = 0;
+	int r, g, b;
+	unsigned char *sy, *su, *sv;
+
+	uv_linewidth = (width >> 1);
+	sy = src;
+	su = sy + ((width*height));
+	sv = su + ((width*height)>>2);
+
+	/* The biggest problem is the interlaced data, and the fact that odd
+	   add even lines have V and U data, resp. 
+	 */
+	for (line = 0; line < height; line++) {
+		for (col = 0; col < width; col++) {
+			y = *sy++;
+			yy = y << 8;
+			if ((col & 1) == 0) {
+				/* only at even colums we update the u/v data */
+				u = *su - 128;
+				ug =   88 * u;
+				ub =  454 * u;
+				v = *sv - 128;
+				vg =  183 * v;
+				vr =  359 * v;
+
+				su++;
+				sv++;
+			}
+			#if 0
+			if ((col & 3) == 3) {
+				sy += 2; /* skip u/v */
+				su += 4; /* skip y */
+				sv += 4; /* skip y */
+			}
+			#endif
+			r = (yy +      vr) >> 8;
+			g = (yy - ug - vg) >> 8;
+			b = (yy + ub     ) >> 8;
+			/* At moments like this, you crave for MMX instructions with saturation */
+			if (r <   0) r =   0;
+			if (r > 255) r = 255;
+			if (g <   0) g =   0;
+			if (g > 255) g = 255;
+			if (b <   0) b =   0;
+			if (b > 255) b = 255;
+			
+			switch(push) {
+			case PUSH_RGB24:
+				*dst++ = r;
+				*dst++ = g;
+				*dst++ = b;
+				break;
+
+			case PUSH_BGR24:
+				*dst++ = b;
+				*dst++ = g;
+				*dst++ = r;
+				break;
+			
+			case PUSH_RGB32:
+				*dst++ = r;
+				*dst++ = g;
+				*dst++ = b;
+				*dst++ = 0;
+				break;
+
+			case PUSH_BGR32:
+				*dst++ = b;
+				*dst++ = g;
+				*dst++ = r;
+				*dst++ = 0;
+				break;
+			}
+		} /* ..for col */
+		if (line & 1) { // odd line: go to next band
+		}
+		else { // rewind u/v pointers
+			su -= uv_linewidth;
+			sv -= uv_linewidth;
+		}
+		/* Adjust destination pointer, using viewport. We have just
+		   filled one line worth of data, so only skip the difference
+		   between the view width and the image width.
+		 */
+		if (push == PUSH_RGB24 || push == PUSH_BGR24)
+			dst += ((plus - width) * 3);
+		else
+			dst += ((plus - width) * 4);
+	} /* ..for line */
+}
+
+void vcvt_420p_rgb24(int width, int height, int plus, void *src, void *dst)
+{
+	vcvt_420p(width, height, plus, (unsigned char *)src, (unsigned char *)dst, PUSH_RGB24);
+}
+
+void vcvt_420p_bgr24(int width, int height, int plus, void *src, void *dst)
+{
+	vcvt_420p(width, height, plus, (unsigned char *)src, (unsigned char *)dst, PUSH_BGR24);
+}
+
+void vcvt_420p_rgb32(int width, int height, int plus, void *src, void *dst)
+{
+	vcvt_420p(width, height, plus, (unsigned char *)src, (unsigned char *)dst, PUSH_RGB32);
+}
+
+void vcvt_420p_bgr32(int width, int height, int plus, void *src, void *dst)
+{
+	vcvt_420p(width, height, plus, (unsigned char *)src, (unsigned char *)dst, PUSH_BGR32);
+}
