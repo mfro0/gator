@@ -34,6 +34,9 @@
 
 #define TIMER_MASK      (OFF_TIMER | FREE_TIMER)
 
+#define CHECKPOINT {    xf86DrvMsg(0, X_INFO, "CHECKPOINT: %s:%d\n", __FUNCTION__,__LINE__); }
+
+
 extern int gRADEONEntityIndex;
 
 #ifndef XvExtension
@@ -762,6 +765,7 @@ void RADEONResetVideo(ScrnInfoPtr pScrn)
     char tmp[200];
     int i;
 
+    CHECKPOINT
     if (info->accelOn) info->accel->Sync(pScrn);
 
     /* this is done here because each time the server is reset these
@@ -1894,7 +1898,7 @@ RADEONSetupImageVideo(ScreenPtr pScreen)
     XF86VideoAdaptorPtr adapt;
     RADEONInfoPtr info = RADEONPTR(pScrn);
 
-    info->accel->Sync(pScrn);
+    if (info->accelOn) info->accel->Sync(pScrn);
     RADEONWaitForIdleMMIO(pScrn);
         
     if(info->adaptor != NULL){
@@ -2052,6 +2056,7 @@ RADEONClipVideo(
     BoxPtr extents = REGION_EXTENTS(DummyScreen, reg);
     int diff;
 
+    CHECKPOINT
     hscale = ((*xb - *xa) << 16) / (dst->x2 - dst->x1);
     vscale = ((*yb - *ya) << 16) / (dst->y2 - dst->y1);
 
@@ -2123,6 +2128,7 @@ RADEONStopVideo(ScrnInfoPtr pScrn, pointer data, Bool cleanup)
   unsigned char *RADEONMMIO = info->MMIO;
   RADEONPortPrivPtr pPriv = (RADEONPortPrivPtr)data;
 
+  CHECKPOINT
   REGION_EMPTY(pScrn->pScreen, &pPriv->clip);
 
   if(cleanup) {
@@ -2166,7 +2172,8 @@ RADEONSetPortAttribute(ScrnInfoPtr  pScrn,
     Bool		setAlpha = FALSE;
     unsigned char *RADEONMMIO = info->MMIO;
 
-    info->accel->Sync(pScrn);
+    CHECKPOINT
+    if (info->accelOn) info->accel->Sync(pScrn);
 
 #define RTFSaturation(a)   (1.0 + ((a)*1.0)/1000.0)
 #define RTFBrightness(a)   (((a)*1.0)/2000.0)
@@ -2394,6 +2401,7 @@ RADEONGetPortAttribute(ScrnInfoPtr  pScrn,
     RADEONInfoPtr	info = RADEONPTR(pScrn);
     RADEONPortPrivPtr	pPriv = (RADEONPortPrivPtr)data;
 
+    CHECKPOINT
     if (info->accelOn) info->accel->Sync(pScrn);
 
     if(attribute == xvAutopaintColorkey)
@@ -2422,59 +2430,46 @@ RADEONGetPortAttribute(ScrnInfoPtr  pScrn,
 	*value = pPriv->doubleBuffer ? 1 : 0;
     else if(attribute == xvColorKey)
 	*value = pPriv->colorKey;
-    else
-  if(attribute == xvDecBrightness) {
+    else if(attribute == xvDecBrightness) 
         *value = pPriv->dec_brightness;
-  } else
-  if((attribute == xvDecSaturation) || (attribute == xvDecColor)) {
+    else if((attribute == xvDecSaturation) || (attribute == xvDecColor))
         *value = pPriv->dec_saturation;
-  } else
-  if(attribute == xvDecContrast) {
+    else if(attribute == xvDecContrast)
         *value = pPriv->dec_contrast;
-  } else
-  if(attribute == xvDecHue) {
+    else if(attribute == xvDecHue)
         *value = pPriv->dec_hue;
-  }  else 
-  if(attribute == xvEncoding) {
+    else if(attribute == xvEncoding) 
         *value = pPriv->encoding;
-  } else 
-  if(attribute == xvFrequency) {
+    else if(attribute == xvFrequency)
         *value = pPriv->frequency;
-  } else 
-  if(attribute == xvTunerStatus) {
+    else if(attribute == xvTunerStatus) {
+    	CHECKPOINT
         if(pPriv->fi1236==NULL){
                 *value=TUNER_OFF;
                 } else
                 {
                 *value = xf86_TUNER_get_afc_hint(pPriv->fi1236);
                 }
-  } else 
-  if(attribute == xvMute) {
+    } else if(attribute == xvMute)
         *value = pPriv->mute;
-  } else 
-  if(attribute == xvSAP) {
+    else if(attribute == xvSAP)
         *value = pPriv->sap_channel;
-  } else 
-  if(attribute == xvVolume) {
+    else if(attribute == xvVolume)
         *value = pPriv->volume;
-  } else 
-  if(attribute == xvOverlayDeinterlacingMethod) {
+    else if(attribute == xvOverlayDeinterlacingMethod)
         *value = pPriv->overlay_deinterlacing_method;
-  } else 
-  if(attribute == xvDeviceID) {
+    else if(attribute == xvDeviceID)
         *value = pPriv->device_id;
-  } else 
-  if(attribute == xvLocationID) {
+    else if(attribute == xvLocationID)
         *value = pPriv->location_id;
-  } else 
-  if(attribute == xvInstanceID) {
+    else if(attribute == xvInstanceID)
         *value = pPriv->instance_id;
-  } else 
-  if(attribute == xvAdjustment) {
+    else if(attribute == xvAdjustment)
   	*value = pPriv->adjustment;
-  } else
+    else
 	return BadMatch;
 
+    CHECKPOINT
     return Success;
 }
 
@@ -2678,6 +2673,7 @@ RADEONAllocateMemory(
    ScreenPtr pScreen;
    FBLinearPtr new_linear;
 
+   CHECKPOINT
    if(linear) {
 	if(linear->size >= size)
 	   return linear;
@@ -2740,7 +2736,8 @@ RADEONDisplayVideo(
     CARD32 scale_cntl;
     double dsr;
     int tap_set;
-  
+
+    CHECKPOINT  
     is_rgb=0;
     switch(id){
         case FOURCC_RGBA32:
@@ -3016,7 +3013,8 @@ RADEONPutImage(
 		RADEON_NONSURF_AP0_SWP_32BPP) & ~RADEON_NONSURF_AP0_SWP_16BPP);
 #endif
 
-   info->accel->Sync(pScrn);
+   CHECKPOINT
+   if (info->accelOn) info->accel->Sync(pScrn);
 
    /* if capture was active shutdown it first */
    if(pPriv->video_stream_active)
@@ -3220,6 +3218,7 @@ RADEONQueryImageAttributes(
 ){
     int size, tmp;
 
+    CHECKPOINT
 #if 0
     /* Overlay scaler has buffer that is pPriv->overlay_scaler_buffer_width pixels wide */
     if(*w > pPriv->overlay_scaler_buffer_width) *w = pPriv->overlay_scaler_buffer_width;
@@ -3558,10 +3557,8 @@ switch(pPriv->encoding){
 static int
 RADEONPutVideo(
   ScrnInfoPtr pScrn,
-  short src_x, short src_y,
-  short drw_x, short drw_y,
-  short src_w, short src_h,
-  short drw_w, short drw_h,
+  short src_x, short src_y, short drw_x, short drw_y,
+  short src_w, short src_h, short drw_w, short drw_h,
   RegionPtr clipBoxes, pointer data
 ){
    RADEONInfoPtr info = RADEONPTR(pScrn);
@@ -3577,8 +3574,9 @@ RADEONPutVideo(
    int mult;
    int vbi_line_width;
 
+   CHECKPOINT
    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "PutVideo %dx%d+%d+%d\n", drw_w,drw_h,drw_x,drw_y);
-   info->accel->Sync(pScrn);
+   if (info->accelOn) info->accel->Sync(pScrn);
    /*
     * s2offset, s3offset - byte offsets into U and V plane of the
     *                      source where copying starts.  Y plane is
