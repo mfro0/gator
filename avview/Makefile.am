@@ -3,8 +3,8 @@ bin_PROGRAMS = avview_shell start_avview
 
 
 avview_shell_SOURCES = xv.c frequencies.c xmisc.c string_cache.c v4l.c formats.c ffmpeg.c \
-	alsa.c packet_stream.c linux.c main.c alsa.h config.h ffmpeg.h formats.h
-	frequencies.h global.h linux.h packet_stream.h string_cache.h v4l.h 
+	alsa.c packet_stream.c linux.c main.c alsa.h config.h ffmpeg.h formats.h \
+	frequencies.h global.h linux.h packet_stream.h string_cache.h v4l.h  \
 	xmisc.h xv.h
 
 scpdir = @datadir@/AVview
