@@ -693,3 +693,12 @@ trace variable ffmpeg_video_quality w {
 		.controlwin.capture.video_quality_value_label configure -text "$ffmpeg_video_quality (very low)"
 		}
 	skip_args3}
+
+global current_file_extension
+trace variable current_file_extension w {
+	global current_capture_filename current_file_extension
+	if { [regexp {^(.*)\.([^.]*)$} $current_capture_filename {} base ext] } {
+		set current_capture_filename "$base.$current_file_extension"
+		}
+	skip_args3 }
+

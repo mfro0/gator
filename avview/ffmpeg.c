@@ -479,6 +479,9 @@ if(arg_video_codec==NULL){
 if(!strcmp("MPEG-1", arg_video_codec)){
 	sdata->video_codec=avcodec_find_encoder(CODEC_ID_MPEG1VIDEO);
 	} else
+if(!strcmp("MPEG-2", arg_video_codec)){
+	sdata->video_codec=avcodec_find_encoder(CODEC_ID_MPEG2VIDEO);
+	} else
 if(!strcmp("MPEG-4", arg_video_codec)){
 	sdata->video_codec=avcodec_find_encoder(CODEC_ID_MPEG4);
 	} else
@@ -766,6 +769,10 @@ if(!strcasecmp("asf", arg_av_format)){
 	} else 
 if(!strcasecmp("mpg", arg_av_format)){
 	sdata->format_context.oformat=guess_format("mpeg", NULL, NULL);
+	} else
+if(!strcasecmp("vob", arg_av_format)){
+	sdata->format_context.oformat=guess_format("vob", NULL, NULL);
+	fprintf(stderr,"**VOB\n");
 	} else
 if(!strcasecmp("mpeg", arg_av_format)){
 	sdata->format_context.oformat=guess_format("mpeg", NULL, NULL);

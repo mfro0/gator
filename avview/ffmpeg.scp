@@ -12,7 +12,8 @@ set encoding_theme_template {
 	audio_codec 
 	file_format
 	v4l_mode 
-	v4l_rate } 
+	v4l_rate 
+	extension } 
 set encoding_themes { 
 	  "Very high quality MPEG-1"
 	  "MPEG-1 VHQ" 
@@ -25,6 +26,7 @@ set encoding_themes {
 	  "MPEG" 
 	  "double-interpolate" 
 	  "one-half" 
+	  "mpg"
 
 	  "High quality MPEG-1"
 	  "MPEG-1 HQ" 
@@ -37,6 +39,7 @@ set encoding_themes {
 	  "MPEG" 
 	  "double-interpolate" 
 	  "one-half" 
+	  "mpg"
 	  
 	  "VCR quality MPEG-1"
 	  "MPEG-1 VCR" 
@@ -49,6 +52,7 @@ set encoding_themes {
 	  "MPEG" 
 	  "half-width" 
 	  "one-half" 
+	  "mpg"
 
 	  "Webcam quality MPEG-1"
 	  "MPEG-1 Webcam" 
@@ -61,6 +65,7 @@ set encoding_themes {
 	  "MPEG" 
 	  "half-width" 
 	  "one-quarter" 
+	  "mpg"
 
 	  "Very high quality MPEG-4"
 	  "MPEG-4 VHQ" 
@@ -73,6 +78,7 @@ set encoding_themes {
 	  "AVI" 
 	  "double-interpolate" 
 	  "one-half" 
+	  "avi"
 
 	  "High quality MPEG-4"
 	  "MPEG-4 HQ" 
@@ -85,6 +91,33 @@ set encoding_themes {
 	  "AVI" 
 	  "double-interpolate" 
 	  "one-half" 
+	  "avi"
+	  
+	  "Very high quality DVD"
+	  "DVD VHQ" 
+	  600000
+	  2
+	  "Fix quality"
+	  "MPEG-2"
+	  64000
+	  "MPEG-2"
+	  "VOB" 
+	  "double-interpolate" 
+	  "one-half" 
+	  "vob"
+
+	  "High quality DVD"
+	  "DVD HQ" 
+	  600000
+	  5
+	  "Fix quality"
+	  "MPEG-2"
+	  64000
+	  "MPEG-2"
+	  "VOB" 
+	  "double-interpolate" 
+	  "one-half" 
+	  "vob"
 	 }
 
 global encoding_themes_list encoding_themes_table
@@ -120,7 +153,7 @@ if { [ffmpeg_present] } {
 		"Audio bitrate" choice {ffmpeg_audio_bitrate "384000" "320000" "256000" "224000" "192000" "160000" "128000" "112000" "96000" "80000" "64000" "56000" "48000" "32000" } \
 		"Audio codec" choice {ffmpeg_audio_codec "PCM" "MPEG-2" "AC3" "MPEG-3" "VORBIS"} \
 		"File format parameters" heading "" \
-		"File format" choice {ffmpeg_file_format "none" "AVI" "ASF" "MPEG" "DV" "RM"} \
+		"File format" choice {ffmpeg_file_format "none" "AVI" "ASF" "MPEG" "VOB" "DV" "RM"} \
 		"Stop capture when fifo exceeds (MB)" entry ffmpeg_max_fifo_size
 #		"Record in chunks of (MB)" entry ffmpeg_recording_chunk_size 
 		
@@ -139,7 +172,7 @@ set ffmpeg_encoding_theme [lindex $encoding_themes 1]
 
 proc set_encoding_theme {} {
 global ffmpeg_encoding_theme ffmpeg_encoding_theme_detail \
-	 encoding_themes_table encoding_theme_template encoding_themes
+	 encoding_themes_table encoding_theme_template encoding_themes 
 set theme [lrange $encoding_themes [expr $encoding_themes_table($ffmpeg_encoding_theme)*[llength $encoding_theme_template]] end]
 set theme [lrange $theme 0 [expr [llength $encoding_theme_template]-1] ]
 foreach $encoding_theme_template $theme {
@@ -153,6 +186,7 @@ foreach $encoding_theme_template $theme {
 		ffmpeg_file_format file_format
 		current_v4l_mode v4l_mode
 		current_v4l_rate v4l_rate
+		current_file_extension extension
 		} {
 		global $var
 		set $var [set $field]

@@ -436,7 +436,7 @@ foreach variable {show_control_window warn_about_missing_km current_port current
 	display_setup_window_on_startup file_save_path dpms_off_on_fullscreen_power_off
 	disable_fullscreen_switching use_physical_screen_size message_visible_secs
 	on_screen_cc_page save_settings_on_exit transparent_when_minimized mute_when_minimized
-	transparency_ratio} {
+	transparency_ratio current_file_extension} {
 	global $variable
 	puts $fileid "\nglobal $variable"
 	puts $fileid "set $variable \"[set $variable]\""
