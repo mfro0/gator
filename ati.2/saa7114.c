@@ -101,7 +101,7 @@ void ShutdownSAA7114(SAA7114Ptr t)
 
 }
 
-void DumpRageSAA7114Regs(SAA7114Ptr t)
+void DumpSAA7114Regs(SAA7114Ptr t)
 {
     int i;
     CARD32 data;
