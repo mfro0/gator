@@ -327,7 +327,7 @@ if(image==NULL){
 	return TCL_ERROR;
 	}
 Tk_PhotoGetImage(image, &pib);
-data=alloca(pib.width*pib.height*4+8);
+data=alloca((pib.width*pib.height+2)*sizeof(long));
 data[0]=pib.width;
 data[1]=pib.height;
 for(j=0;j<pib.height;j++){
