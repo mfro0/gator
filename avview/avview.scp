@@ -24,7 +24,13 @@ global VIDEO_WINDOW
 
 destroy .video
 
-frame .video -width 640 -height 480 -background #102030
+. configure -width 320 -height 240
+frame .video -background #102030
+
+place .video -relx 0.0 -rely 0.0 -relwidth 1.0 -relheight 1.0 -anchor nw
+
+frame .video.onscreen_display -background [.video cget -background]
+place .video.onscreen_display -x 20 -y 30
 
 set VIDEO_WINDOW .video
 
@@ -46,28 +52,30 @@ label $c.portl -text "Port: "
 set current_port_menu [tk_optionMenu $c.portom current_port  none]
 $current_port_menu delete 0 end
 grid $c.portl $c.portom -sticky news
-grid configure $c.portl -sticky nw
+grid configure $c.portl -sticky nws
 
 label $c.encodingl -text "Encoding: "
 set current_encoding_menu [tk_optionMenu $c.encodingom current_encoding  none]
 $current_encoding_menu delete 0 end
 grid $c.encodingl $c.encodingom -sticky news
-grid configure $c.encodingl -sticky nw
+grid configure $c.encodingl -sticky nws
 
+global current_table
+set current_table -1
 label $c.tablel -text "Channel table: "
-set current_table_menu [tk_optionMenu $c.tableom current_table none]
+set current_table_menu [tk_optionMenu $c.tableom current_table_name none]
 $current_table_menu delete 0 end
-foreach encoding $TABLE_LIST {
-	$current_table_menu add radiobutton -label "$encoding" -value [lsearch -exact $TABLE_LIST "$encoding" ] -variable current_table
+foreach table $TABLE_LIST {
+	$current_table_menu add radiobutton -label "$table" -value "$table" -variable current_table_name
 	}
 grid $c.tablel $c.tableom -sticky news
-grid configure $c.tablel -sticky nw
+grid configure $c.tablel -sticky nws
 
 label $c.channell -text "Channel: "
 set current_channel_menu [tk_optionMenu $c.channelom current_channel none]
 $current_channel_menu delete 0 end
 grid $c.channell $c.channelom -sticky news
-grid configure $c.channell -sticky nw
+grid configure $c.channell -sticky nsw
 
 button $c.fullscreen -text "Fullscreen" -command "make_fullscreen"
 button $c.half_size -text "Half size" -command "make_half_size"
@@ -77,7 +85,6 @@ grid $c.fullscreen $c.half_size
 pack $c -expand yes -fill both
 pack .controlwin.allattributes -expand yes -fill both
 
-pack $VIDEO_WINDOW -expand yes -fill both
 
 update
 
@@ -98,18 +105,32 @@ for { set i 0 } { $i < $NUM_ADAPTORS } { incr i 1 } {
 	}
 
 proc set_channel_table {name1 name2 op} {
+global TABLE_LIST
 global current_table
+global current_table_name
 global current_channel_menu
 global current_channel
+set current_table [lsearch -exact $TABLE_LIST "$current_table_name"]
 $current_channel_menu delete 0 end
 if { $current_table < 0 } { return }
 set CHANNEL_LIST [freq_get_channel_list $current_table]
 set i 0 
 foreach channel $CHANNEL_LIST {	
-	$current_channel_menu add radiobutton -label "$channel" -value [freq_get_channel_value $current_table [lsearch -exact $CHANNEL_LIST "$channel" ]] -variable current_channel
+	$current_channel_menu add radiobutton -label "$channel" -value "$channel" -variable current_channel
 	if { (($i-16) %16)==0 } { $current_channel_menu entryconfigure "$channel" -columnbreak 1}
 	incr i
 	}
+}
+
+proc set_channel {a b c} {
+global current_table
+global current_channel
+if { $current_table < 0 } { return }
+set CHANNEL_LIST [freq_get_channel_list $current_table]
+global channel_freq
+set channel_freq [freq_get_channel_value $current_table [lsearch -exact $CHANNEL_LIST "$current_channel" ]]
+on_attribute_change XV_FREQ channel_freq a b
+flash_message " Channel $current_channel "
 }
 
 proc display_video {} {
@@ -274,7 +295,7 @@ display_video
 
 proc save_settings {} {
 global current_port
-global current_table
+global current_table_name
 global current_encoding
 global current_channel
 catch {
@@ -282,7 +303,7 @@ catch {
 	}
 puts $fileid "global current_port"
 puts $fileid "global current_encoding"
-puts $fileid "global current_table"
+puts $fileid "global current_table_name"
 puts $fileid "global current_channel"
 if { $current_port != "none" } {
 	puts $fileid "set current_port $current_port"
@@ -290,8 +311,8 @@ if { $current_port != "none" } {
 		puts $fileid "set current_encoding $current_encoding"
 		}
 	}
-if { $current_table != "none" } {
-	puts $fileid "set current_table $current_table"
+if { $current_table_name != "none" } {
+	puts $fileid "set current_table_name $current_table_name"
 	if { $current_channel != "none" } {
 		puts $fileid "set current_channel $current_channel"
 		}
@@ -328,6 +349,8 @@ global VIDEO_WINDOW
 wm geometry . =[winfo screenwidth $VIDEO_WINDOW]x[winfo screenheight $VIDEO_WINDOW]+0+0
 $VIDEO_WINDOW configure -width [winfo screenwidth $VIDEO_WINDOW] \
 	-height [winfo screenheight $VIDEO_WINDOW]
+
+place $VIDEO_WINDOW.onscreen_display -x 20 -y 20
 }
 
 proc make_half_size {} {
@@ -338,14 +361,71 @@ $VIDEO_WINDOW configure -width [expr [$VIDEO_WINDOW cget -width]/2] \
 wm geometry . =[$VIDEO_WINDOW cget -width]x[$VIDEO_WINDOW cget -height]
 }
 
+global flash_counter
+set flash_counter 0
+
+proc fm_countdown {} {
+global flash_counter
+global VIDEO_WINDOW
+incr flash_counter -1
+if { $flash_counter<0} {
+	destroy $VIDEO_WINDOW.onscreen_display.message 
+	$VIDEO_WINDOW.onscreen_display configure -width 0 -height 0
+	display_video
+	} {
+	after 1000 fm_countdown
+	}
+}
+
+proc adjust_message_font {} {
+global VIDEO_WINDOW
+set x_size  [expr [$VIDEO_WINDOW cget -width]/20]
+set y_size [expr [$VIDEO_WINDOW cget -height]/8]
+
+if { $x_size > $y_size } {
+	set f_size $y_size
+	} {
+	set f_size $x_size
+	}
+font create message_font -size -$f_size -family Helvetica -slant roman -weight normal
+font delete message_font
+}
+
+proc flash_message { message } {
+global VIDEO_WINDOW
+set bg [$VIDEO_WINDOW cget -background]
+set f_size 0
+set message_font_id [font create message_font -size -$f_size -family Helvetica -slant roman -weight normal]
+
+set m $VIDEO_WINDOW.onscreen_display.message
+destroy $m
+frame $m -background $bg
+grid $m
+label $m.l -text "$message" -font message_font -background black -foreground "#FFAA88"
+grid $m.l
+
+font delete message_font
+
+global flash_counter
+set flash_counter 14
+after 1000 fm_countdown
+adjust_message_font
+}
+
+
 global current_port
 trace variable current_port w set_port
 global current_table
-trace variable current_table w set_channel_table
+trace variable current_table_name w set_channel_table
 global current_channel
-trace variable current_channel w "on_attribute_change XV_FREQ"
+trace variable current_channel w "set_channel"
 
-bind $VIDEO_WINDOW <Configure> display_video
+bind $VIDEO_WINDOW <Configure> {
+	global $VIDEO_WINDOW
+	display_video
+	place $VIDEO_WINDOW.onscreen_display -x 20 -y 30
+	adjust_message_font
+	}
 
 read_settings
 
