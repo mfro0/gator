@@ -20,6 +20,11 @@
 #include "mach64.h"
 #include "rage128.h"
 
+#ifdef MODULE_LICENSE
+MODULE_LICENSE("GPL");
+#endif
+
+MODULE_DESCRIPTION("kmultimedia");
 MODULE_PARM(km_debug, "i");
 MODULE_PARM_DESC(km_debug, "kmultimedia debugging level");
 

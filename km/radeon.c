@@ -35,6 +35,8 @@ void radeon_wait_for_idle(KM_STRUCT *kms)
 {
 u32 a;
 long count;
+a=readl(kms->reg_aperture+RADEON_RBBM_STATUS);
+KM_DEBUG("RADEON_RBBM_STATUS=0x%08x\n", a);
 radeon_wait_for_fifo(kms,64);
 count=1000;
 while(((a=readl(kms->reg_aperture+RADEON_RBBM_STATUS)) & RADEON_ENGINE_ACTIVE)!=0){
@@ -132,7 +134,7 @@ if(kms->frame.buf_ptr!=kms->frame.buf_free){
 	}
 kms->total_frames++;
 kms->frame.dma_active=1;
-writel(kvirt_to_pa(kms->frame.dma_table), kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR);
+writel(kvirt_to_pa(kms->frame.dma_table), (u32)(kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR)| (0));
 KM_DEBUG("start_frame_transfer_buf0\n");
 }
 
@@ -156,7 +158,7 @@ if(kms->frame_even.buf_ptr!=kms->frame_even.buf_free){
 	}
 kms->total_frames++;
 kms->frame_even.dma_active=1;
-writel(kvirt_to_pa(kms->frame_even.dma_table), kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR);
+writel(kvirt_to_pa(kms->frame_even.dma_table), (u32)(kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR) | (0));
 KM_DEBUG("start_frame_transfer_buf0_even\n");
 }
 
