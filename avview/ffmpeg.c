@@ -469,13 +469,15 @@ if(sdata->video_codec_context.bit_rate< (sdata->video_codec_context.frame_rate/F
 fprintf(stderr,"video: using bitrate=%d, frame_rate=%d\n", sdata->video_codec_context.bit_rate, sdata->video_codec_context.frame_rate);
 sdata->video_codec_context.pix_fmt=PIX_FMT_YUV422;
 sdata->video_codec_context.flags=CODEC_FLAG_QSCALE;
-sdata->video_codec_context.quality=2;
 sdata->video_codec_context.qmin=qmin;
 sdata->video_codec_context.quality=qmin;
 sdata->video_codec_context.qmax=15;
 sdata->video_codec_context.max_qdiff=3;
 sdata->video_codec_context.aspect_ratio_info=FF_ASPECT_4_3_625;
 sdata->video_codec_context.me_method=4;
+sdata->video_codec_context.qblur=0.5;
+sdata->video_codec_context.qcompress=0.5;
+sdata->video_codec_context.b_quant_factor=2.0;
 if(sdata->video_codec->priv_data_size==0){
 	fprintf(stderr,"BUG: sdata->video_codec->priv_data_size==0, fixing it\n");
 	sdata->video_codec->priv_data_size=64*1024; /* 64K should be enough */
