@@ -167,6 +167,72 @@ if(kms->frame_info[FRAME_EVEN].dma_active){
 return 0;
 }
 
+KM_TRANSFER_QUEUE * km_make_transfer_queue(int size)
+{
+int i;
+KM_TRANSFER_QUEUE *kmtq;
+kmtq=kmalloc(sizeof(KM_TRANSFER_QUEUE)+size*sizeof(KM_TRANSFER_REQUEST), GFP_KERNEL);
+if(kmtq==NULL)return NULL;
+kmtq->request=((u8 *)kmtq)+sizeof(KM_TRANSFER_QUEUE);
+kmtq->size=size;
+kmtq->last=0;
+kmtq->last=0;
+spin_lock_init(&(kmtq->lock));
+for(i=0;i<kmtq->size;i++)
+	kmtq->request[i].flag=KM_TRANSFER_NOP;
+return kmtq;
+}
+
+int km_add_transfer_request(KM_TRANSFER_QUEUE *kmtq, 
+	KM_STREAM_BUFFER_INFO *kmsbi, KM_DATA_VIRTUAL_BLOCK *dvb, int buffer, int flag,
+	int (*start_transfer)(KM_TRANSFER_REQUEST *kmtr), void *user_data)
+{
+int last;
+spin_lock(&(kmtq->lock));
+last=kmtq->last;
+if(kmtq->request[last].flag!=KM_TRANSFER_NOP){
+	spin_unlock(&(kmtq->lock));
+	return -1;
+	}
+
+kmtq->request[last].kmsbi=kmsbi;
+kmtq->request[last].dvb=dvb;
+kmtq->request[last].buffer=buffer;
+kmtq->request[last].flag=flag;
+kmtq->request[last].start_transfer=start_transfer;
+kmtq->request[last].user_data=user_data;
+
+kmtq->last++;
+if(kmtq->last>=kmtq->size)kmtq->last=0;
+
+if(!(kmtq->request[kmtq->last].flag & KM_TRANSFER_IN_PROGRESS)){
+	kmtq->last=last;
+	kmtq->request[last].flag|=KM_TRANSFER_IN_PROGRESS;
+	spin_unlock(&(kmtq->lock));
+	kmtq->request[last].start_transfer(&(kmtq->request[last]));
+	return 0;
+	}
+spin_unlock(&(kmtq->lock));
+return 0;
+}
+
+void km_signal_transfer_completion(KM_TRANSFER_QUEUE *kmtq)
+{
+spin_lock(&(kmtq->lock));
+kmtq->request[kmtq->last].flag=KM_TRANSFER_NOP;
+while(kmtq->last!=kmtq->last){
+	kmtq->last++;
+	if(kmtq->last>=kmtq->size)kmtq->last=0;
+	if(kmtq->request[kmtq->last].flag!=KM_TRANSFER_NOP){
+		kmtq->request[kmtq->last].flag|=KM_TRANSFER_IN_PROGRESS;
+		spin_unlock(&(kmtq->lock));
+		kmtq->request[kmtq->last].start_transfer(&(kmtq->request[kmtq->last]));
+		return;		
+		}
+	}
+spin_unlock(&(kmtq->lock));
+}
+
 int install_irq_handler(KM_STRUCT *kms, void *handler, char *tag)
 {
 int result;

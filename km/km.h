@@ -32,6 +32,33 @@ typedef struct {
 	long timestamp_end;
 	} FIELD_INFO;
 
+/* DMA request struct */
+typedef struct S_KM_TRANSFER_REQUEST {
+	KM_STREAM_BUFFER_INFO *kmsbi;   /* stream meta info */
+	KM_DATA_VIRTUAL_BLOCK *dvb;     /* buffers and waitqueue */
+	int buffer;			/* subunit of dvb that this transfer uses */
+	unsigned int flag;              /* see below: */
+	#define KM_TRANSFER_NOP			0
+	#define KM_TRANSFER_TO_SYSTEM_RAM	1
+	#define KM_TRANSFER_FROM_SYSTEM_RAM	2
+	#define KM_TRANSFER_IN_PROGRESS		(1<<31)
+	int (*start_transfer)(struct S_KM_TRANSFER_REQUEST *kmtr);
+	void * user_data;		/* whatever the code that submitted the request
+					has use for */	
+	} KM_TRANSFER_REQUEST;
+
+typedef struct {
+	KM_TRANSFER_REQUEST *request;  /* points to the memory area holding requests 
+					 A good idea is to allocate more memory for
+					 KM_TRANSFER_QUEUE and point at the end of it */
+					 
+	int size;			/* maximum number of requests the queue can hold */
+	int first;			/* request we are processing now */
+	int last;                       /* empty request slot */
+	spinlock_t lock;		/* acquire this when modifying any of the fields,
+					  including data pointed to by requests */
+	} KM_TRANSFER_QUEUE;
+
 typedef struct S_KM_STRUCT {
 	struct video_device vd;
 	struct video_window vwin;
