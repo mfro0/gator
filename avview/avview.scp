@@ -13,6 +13,7 @@ set debug 0
 source themes.scp
 source alsa.scp
 source v4l.scp
+source xv.scp
 
 global control_screen
 
@@ -131,7 +132,8 @@ grid $c.fullscreen_checkbutton $c.half_size_button $c.inteface_menubutton -padx 
 # pack .controlwin.capture -after .controlwin.allattributes -expand yes -fill both -pady 5 -side right
 
 grid $c - - -sticky nw
-grid .controlwin.allattributes .controlwin.capture -sticky new -pady 2 
+grid .controlwin.allattributes -column 0 -row 1 -rowspan 2 -sticky news -pady 2 
+grid .controlwin.capture -column 1 -row 1 -rowspan 1 -sticky new -pady 2 
 grid columnconfigure .controlwin 0 -weight 0
 grid columnconfigure .controlwin 1 -weight 0
 grid columnconfigure .controlwin 2 -weight 0
@@ -249,197 +251,6 @@ xv_setportattribute $VIDEO_WINDOW $current_port "XV_COLORKEY" [xv_getwindowbackg
 xv_putvideo $VIDEO_WINDOW $current_port 0 0 [expr [lindex $port_size 0]-1] [expr [lindex $port_size 1]-1]
 }
 
-proc find_attribute_widget {video_window port attribute} {
-set type1  [xv_port_attribute_type $video_window $port $attribute]
-set range [xv_port_attribute_range $video_window $port $attribute]
-set name [xv_port_attribute_name $video_window $port $attribute]
-if {$name == "XV_ENCODING" } { return "none" }
-if {$name == "XV_AUTOPAINT_COLORKEY" } { return "none" }
-if {$name == "XV_SET_DEFAULTS" } { return "button" }
-if {$name == "XV_COLORKEY" } { return "none" }
-if { [lsearch $type1 "gettable"] < 0 } { return "unreadable" }
-if { [lsearch $type1 "settable"] < 0 } { return "label" }
-if { "$range" == "0 1" } { return "toggle" }
-if { [lindex $range 1] > 1000000 } { return "entry" }
-if { [lindex $range 1] < [lindex $range 0] } { return "entry" }
-return "slider"
-}
-
-proc translate_attribute_name { name } {
-if { $name == "XV_SET_DEFAULTS" } { return "Set defaults" }
-if { $name == "XV_AUTOPAINT_COLORKEY" } { return "Autopaint colorkey" }
-if { $name == "XV_DEC_BRIGHTNESS" } { return "Capture brightness"}
-if { $name == "XV_DEC_CONTRAST" } { return "Capture contrast"}
-if { $name == "XV_DEC_SATURATION" } { return "Capture saturation"}
-if { $name == "XV_DEC_HUE" } { return "Capture hue"}
-regsub "XV_" "$name" "" name1
-regsub "_" "$name1" " " name1
-set name2 [string tolower $name1 1 end]
-set name3 [string toupper $name2 0 0]
-return $name3
-}
-
-proc find_attribute_variable {video_window port attribute} {
-return "ATTRIBUTE.$port.$attribute"
-}
-
-proc on_attribute_change { attr_name variable a b } {
-global $variable
-global VIDEO_WINDOW
-global current_port
-if { $current_port == "none" } { return }
-xv_setportattribute $VIDEO_WINDOW $current_port $attr_name [set $variable]
-#puts "$attr_name=[set $variable]"
-#
-# The following is a hack.. 
-# do this properly after XvNotify support is complete
-#
-update_attribute_variables
-}
-
-proc create_attribute_widget {widget video_window port attribute} {
-set range [xv_port_attribute_range $video_window $port $attribute]
-set name [xv_port_attribute_name $video_window $port $attribute]
-set attr_var [find_attribute_variable $video_window $port $attribute]
-set type [find_attribute_widget $video_window $port $attribute]
-set suffix "${port}_$attribute"
-global $attr_var
-
-global attr_count
-
-puts "$name $range $type"
-switch  $type {
-	"none" {
-		return
-		}
-	"entry" {     
-		label $widget.label$suffix -text [translate_attribute_name $name]
-		entry $widget.entry$suffix -textvariable $attr_var
-		eval $widget.label$suffix configure [get_settings $widget.label$suffix AVview XVideo $port $attribute $attr_count]
-		eval $widget.entry$suffix configure [get_settings $widget.entry$suffix AVview XVideo $port $attribute $attr_count]
-		grid $widget.label$suffix $widget.entry$suffix -sticky news
-		grid configure $widget.label$suffix -sticky news 
-		}	
-	"toggle" {
-		label $widget.label$suffix -text [translate_attribute_name $name]
-		checkbutton $widget.checkbutton$suffix -variable $attr_var \
-			-onvalue 1 -offvalue 0
-		eval $widget.label$suffix configure [get_settings $widget.label$suffix AVview XVideo $port $attribute $attr_count]
-		eval $widget.checkbutton$suffix configure [get_settings $widget.checkbutton$suffix AVview XVideo $port $attribute $attr_count]
-		grid $widget.label$suffix $widget.checkbutton$suffix -sticky news
-		grid configure $widget.label$suffix -sticky news
-		}
-	"button" {
-		label $widget.label$suffix -text [translate_attribute_name $name]
-		button $widget.button$suffix -command "xv_setportattribute $video_window $port $name 1; update_attribute_variables"\
-			-text "perform now"
-		eval $widget.label$suffix configure [get_settings $widget.label$suffix AVview XVideo $port $attribute $attr_count]
-		eval $widget.button$suffix configure [get_settings $widget.button$suffix AVview XVideo $port $attribute $attr_count]
-		grid $widget.label$suffix $widget.button$suffix -sticky news 
-		grid configure $widget.label$suffix -sticky news
-		}
-	"slider" {
-		label $widget.label$suffix -text [translate_attribute_name $name]
-		scale $widget.scale$suffix -from [lindex $range 0] -to [lindex $range 1] \
-			-variable $attr_var -orient horizontal
-		eval $widget.label$suffix configure [get_settings $widget.label$suffix AVview XVideo $port $attribute $attr_count]
-		eval $widget.scale$suffix configure [get_settings $widget.scale$suffix AVview XVideo $port $attribute $attr_count]
-		grid $widget.label$suffix $widget.scale$suffix -sticky news
-		grid configure $widget.label$suffix -sticky news
-		}
-	}
-incr attr_count
-if { $type != "button" } {
-	trace vdelete $attr_var w "on_attribute_change $name"
-	set $attr_var [xv_getportattribute $video_window $port "$name"]
-	trace variable $attr_var w "on_attribute_change $name"
-	}
-}
-
-proc update_attribute_variables {} {
-global VIDEO_WINDOW
-global current_port
-if { $current_port == "none" } { return }
-set num_attributes [xv_num_port_attributes $VIDEO_WINDOW $current_port]
-for {set i 0 } { $i < $num_attributes} { incr i } {
-	set range [xv_port_attribute_range $VIDEO_WINDOW $current_port $i]
-	set name [xv_port_attribute_name $VIDEO_WINDOW $current_port $i]
-	set attr_var [find_attribute_variable $VIDEO_WINDOW $current_port $i]
-	set type [find_attribute_widget $VIDEO_WINDOW $current_port $i]
-	global $attr_var
-	if { ($type != "button") && ($type != "none") } {
-		catch "
-			set $attr_var
-			trace vdelete $attr_var w \"on_attribute_change $name\"
-			set $attr_var [xv_getportattribute $VIDEO_WINDOW $current_port $name]
-			trace variable $attr_var w \"on_attribute_change $name\"
-			"
-		}
-	}
-}
-
-proc generate_attributes_window { af } {
-global VIDEO_WINDOW
-global current_port
-global attributes_window
-
-foreach win [grid slaves $af] { destroy $win }
-
-if { $current_port == "none" } { return }
-if { !$attributes_window } { 
-	canvas $af.l -width 0 -height 0 -background red
-	grid columnconfigure .controlwin 0 -weight 0
-	grid $af.l
-	return 
-	}
-
-grid columnconfigure .controlwin 0 -weight 1
-
-label $af.title -text "Attributes" -background black -foreground white
-grid $af.title - -sticky news -pady 2 -padx 2
-
-set NUM_ATTRIBUTES [xv_num_port_attributes $VIDEO_WINDOW $current_port]
-global attr_count
-set attr_count 0
-for { set i 0 } {$i < $NUM_ATTRIBUTES } { incr i } {
-	create_attribute_widget $af $VIDEO_WINDOW $current_port $i
-	}
-grid columnconfigure $af 1 -weight 1
-}
-
-proc set_port {name1 name2 op} {
-global current_port_menu
-global current_port
-global VIDEO_WINDOW
-global current_encoding_menu
-global current_encoding
-global attributes_window
-
-#
-# check that the port is valid
-#
-
-if { [find_port_adaptor $current_port] < 0 } { 
-	set current_port "none"
-	return 	
-	}
-
-set NUM_ENCODINGS [xv_num_port_encodings $VIDEO_WINDOW $current_port]
-
-$current_encoding_menu delete 0 end
-for {set i 0 } {$i < $NUM_ENCODINGS} {incr i} {
-	$current_encoding_menu add radiobutton -label "[xv_port_encoding_name $VIDEO_WINDOW $current_port $i]" -value "[xv_port_encoding_name $VIDEO_WINDOW $current_port $i]" -variable current_encoding_name
-	}
-
-set current_encoding [xv_getportattribute $VIDEO_WINDOW $current_port "XV_ENCODING"]
-if { $current_encoding >= 0 } {
-	set current_encoding_name [lindex [xv_port_encodings $VIDEO_WINDOW $current_port] $current_encoding]
-	}
-
-generate_attributes_window .controlwin.allattributes
-
-display_video
-}
 
 proc set_encoding {name1 name2 op} {
 global current_encoding_name 

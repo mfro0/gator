@@ -146,48 +146,48 @@ switch -glob -- "$widget $args1" \
 			return "-background #FFAAAA";
 			}
 		} \
-	*.allattributes.*checkbutton*XVideo* {  \
-		set i [lindex $args1 4]
+	*.allattributes.*checkbutton*XVideo*attribute* {  \
+		set i [lindex $args1 5]
 		if { [expr $i % 2] } {
 			return "-background #FFCCCC -activebackground #FFDDDD -selectcolor #FF4444 -highlightbackground #FFCCCC";
 			} {
 			return "-background #FFAAAA -activebackground #FFDDDD -selectcolor #FF4444 -highlightbackground #FFAAAA";
 			}
 		} \
-	*.allattributes.*button*XVideo* {  \
-		set i [lindex $args1 4]
+	*.allattributes.*button*XVideo*attribute* {  \
+		set i [lindex $args1 5]
 		if { [expr $i % 2] } {
 			return "-background #FFCCCC -activebackground #FFDDDD -highlightbackground #FFCCCC";
 			} {
 			return "-background #FFAAAA -activebackground #FFDDDD -highlightbackground #FFAAAA";
 			}
 		} \
-	*.allattributes.*scale*XVideo* {  \
-		set i [lindex $args1 4]
+	*.allattributes.*scale*XVideo*attribute* {  \
+		set i [lindex $args1 5]
 		if { [expr $i % 2] } {
 			return "-background #FFCCCC -troughcolor #FF8888 -activebackground #FFDDDD -highlightbackground #FFCCCC";
 			} {
 			return "-background #FFAAAA -troughcolor #FFAAAA -activebackground #FFDDDD -highlightbackground #FFAAAA";
 			}
 		} \
-	*.allattributes.*optionmenu*XVideo*menu* {  \
-		set i [lindex $args1 4]
+	*.allattributes.*optionmenu*XVideo*attribute*menu* {  \
+		set i [lindex $args1 5]
 		if { [expr $i % 2] } {
 			return "-background #FFCCCC -activebackground #FFDDDD -highlightbackground #FFCCCC";
 			} {
 			return "-background #FFAAAA -activebackground #FFDDDD -highlightbackground #FFAAAA";
 			}
 		} \
-	*.allattributes.*optionmenu*XVideo* {  \
-		set i [lindex $args1 4]
+	*.allattributes.*optionmenu*XVideo*attribute* {  \
+		set i [lindex $args1 5]
 		if { [expr $i % 2] } {
 			return "-background #FFCCCC -activebackground #FFDDDD";
 			} {
 			return "-background #FFAAAA -activebackground #FFDDDD";
 			}
 		} \
-	*.allattributes.*XVideo* {  \
-		set i [lindex $args1 4]
+	*.allattributes.*XVideo*attribute* {  \
+		set i [lindex $args1 5]
 		if { [expr $i % 2] } {
 			return "-background #FFCCCC";
 			} {
@@ -264,40 +264,40 @@ switch -glob -- "$widget $args1" \
 			return "-background #BBBBBB";
 			}
 		} \
-	*.allattributes.*button*XVideo* {  \
-		set i [lindex $args1 4]
+	*.allattributes.*button*XVideo*attribute* {  \
+		set i [lindex $args1 5]
 		if { [expr $i % 2] } {
 			return "-background #DDDDDD -activebackground #EEEEEE -highlightbackground #DDDDDD";
 			} {
 			return "-background #BBBBBB -activebackground #EEEEEE -highlightbackground #BBBBBB";
 			}
 		} \
-	*.allattributes.*scale*XVideo* {  \
-		set i [lindex $args1 4]
+	*.allattributes.*scale*XVideo*attribute* {  \
+		set i [lindex $args1 5]
 		if { [expr $i % 2] } {
 			return "-background #DDDDDD -activebackground #EEEEEE -highlightbackground #DDDDDD";
 			} {
 			return "-background #BBBBBB -activebackground #EEEEEE -highlightbackground #BBBBBB";
 			}
 		} \
-	*.allattributes.*optionmenu*XVideo*menu* {  \
-		set i [lindex $args1 4]
+	*.allattributes.*optionmenu*XVideo*attribute*menu* {  \
+		set i [lindex $args1 5]
 		if { [expr $i % 2] } {
 			return "-background #DDDDDD -activebackground #EEEEEE -highlightbackground #DDDDDD";
 			} {
 			return "-background #BBBBBB -activebackground #EEEEEE -highlightbackground #BBBBBB";
 			}
 		} \
-	*.allattributes.*optionmenu*XVideo* {  \
-		set i [lindex $args1 4]
+	*.allattributes.*optionmenu*XVideo*attribute* {  \
+		set i [lindex $args1 5]
 		if { [expr $i % 2] } {
 			return "-background #DDDDDD -activebackground #EEEEEE";
 			} {
 			return "-background #BBBBBB -activebackground #EEEEEE";
 			}
 		} \
-	*.allattributes.*XVideo* {  \
-		set i [lindex $args1 4]
+	*.allattributes.*XVideo*attribute* {  \
+		set i [lindex $args1 5]
 		if { [expr $i % 2] } {
 			return "-background #DDDDDD";
 			} {
