@@ -676,8 +676,8 @@ switch "$current_v4l_mode" \
 proc set_v4l_device {cw name1 name2 op } {
 global current_v4l_device
 global v4l_capture_on
+v4l_close_device current_v4l_handle
 if { "$current_v4l_device" == "none" } { 
-	v4l_close_device current_v4l_handle
 	set v4l_capture_on false
 	catch {
 		$cw.recordb configure -state disabled

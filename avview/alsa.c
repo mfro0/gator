@@ -268,7 +268,7 @@ for(elem=snd_hctl_first_elem(ad->hctl);elem!=NULL;elem=snd_hctl_elem_next(elem))
 			list2=Tcl_NewListObj(0, NULL);
 			for(k=0;k<items;k++){
 				snd_ctl_elem_info_set_item(ad->einfo[j], k);
-				Tcl_ListObjAppendElement(interp, list, Tcl_NewStringObj(snd_ctl_elem_info_get_item_name(ad->einfo[j]), -1));
+				Tcl_ListObjAppendElement(interp, list2, Tcl_NewStringObj(snd_ctl_elem_info_get_item_name(ad->einfo[j]), -1));
 				}
 			Tcl_ListObjAppendElement(interp,list,list2);
 			break;
@@ -290,31 +290,31 @@ snd_ctl_elem_value_t *value;
 Tcl_Obj *ans;
 Tcl_ResetResult(interp);
 if(argc<3){
-	Tcl_AppendResult(interp,"ERROR: alsa_ctl_get_element_value requires two arguments", NULL);
+	Tcl_AppendResult(interp,"ERROR: alsa_hctl_get_element_value requires two arguments", NULL);
 	return TCL_ERROR;
 	}
 i=lookup_string(alsa_sc, argv[1]);
 if((i<0)||((ad=(ALSA_DATA *)alsa_sc->data[i])==NULL)){
-	Tcl_AppendResult(interp,"ERROR: alsa_ctl_get_element_value: no such control open", NULL);
+	Tcl_AppendResult(interp,"ERROR: alsa_hctl_get_element_value: no such control open", NULL);
 	return TCL_ERROR;
 	}
 if((ad->elem==NULL)||(ad->einfo==NULL)||(ad->etype==NULL)){
-	Tcl_AppendResult(interp,"ERROR: alsa_ctl_get_element_value: you must call alsa_ctl_get_elements_info first", NULL);
+	Tcl_AppendResult(interp,"ERROR: alsa_hctl_get_element_value: you must call alsa_ctl_get_elements_info first", NULL);
 	return TCL_ERROR;
 	}
 e=atoi(argv[2]);
 if((e<0)||(e>=ad->elem_count)){
-	Tcl_AppendResult(interp,"ERROR: alsa_ctl_get_element_value: no such element", NULL);
+	Tcl_AppendResult(interp,"ERROR: alsa_hctl_get_element_value: no such element", NULL);
 	return TCL_ERROR;
 	}
  
 if((a=snd_ctl_elem_value_malloc(&value))<0){
-	Tcl_AppendResult(interp,"ERROR: alsa_ctl_get_element_value: ", NULL);
+	Tcl_AppendResult(interp,"ERROR: alsa_hctl_get_element_value: ", NULL);
 	Tcl_AppendResult(interp, snd_strerror(a), NULL);
 	return TCL_ERROR;
 	}
 if((a=snd_hctl_elem_read(ad->elem[e], value))<0){
-	Tcl_AppendResult(interp,"ERROR: alsa_ctl_get_element_value: ", NULL);
+	Tcl_AppendResult(interp,"ERROR: alsa_hctl_get_element_value: ", NULL);
 	Tcl_AppendResult(interp, snd_strerror(a), NULL);
 	free(value);
 	return TCL_ERROR;
@@ -341,6 +341,78 @@ Tcl_SetObjResult(interp, ans);
 return TCL_OK;
 }
 
+int alsa_hctl_set_element_value(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+{
+long i,e;
+int a,k;
+ALSA_DATA *ad;
+snd_ctl_elem_value_t *value;
+Tcl_Obj *ans;
+Tcl_ResetResult(interp);
+if(argc<5){
+	Tcl_AppendResult(interp,"ERROR: alsa_hctl_set_element_value requires four arguments", NULL);
+	return TCL_ERROR;
+	}
+i=lookup_string(alsa_sc, argv[1]);
+if((i<0)||((ad=(ALSA_DATA *)alsa_sc->data[i])==NULL)){
+	Tcl_AppendResult(interp,"ERROR: alsa_hctl_set_element_value: no such control open", NULL);
+	return TCL_ERROR;
+	}
+if((ad->elem==NULL)||(ad->einfo==NULL)||(ad->etype==NULL)){
+	Tcl_AppendResult(interp,"ERROR: alsa_hctl_set_element_value: you must call alsa_ctl_set_elements_info first", NULL);
+	return TCL_ERROR;
+	}
+e=atoi(argv[2]);
+if((e<0)||(e>=ad->elem_count)){
+	Tcl_AppendResult(interp,"ERROR: alsa_hctl_set_element_value: no such element", NULL);
+	return TCL_ERROR;
+	}
+ 
+if((a=snd_ctl_elem_value_malloc(&value))<0){
+	Tcl_AppendResult(interp,"ERROR: alsa_hctl_set_element_value: ", NULL);
+	Tcl_AppendResult(interp, snd_strerror(a), NULL);
+	return TCL_ERROR;
+	}
+if((a=snd_hctl_elem_read(ad->elem[e], value))<0){
+	Tcl_AppendResult(interp,"ERROR: alsa_hctl_set_element_value: ", NULL);
+	Tcl_AppendResult(interp, snd_strerror(a), NULL);
+	free(value);
+	return TCL_ERROR;
+	}
+k=atoi(argv[3]);
+if((k<0)||(k>=snd_ctl_elem_info_get_count(ad->einfo[e]))){
+	Tcl_AppendResult(interp,"ERROR: alsa_hctl_set_element_value: no such value in this element", NULL);
+	snd_ctl_elem_value_free(value);
+	return TCL_ERROR;
+	}
+switch(ad->etype[e]){
+	case SND_CTL_ELEM_TYPE_INTEGER:
+		snd_ctl_elem_value_set_integer(value,k, atoi(argv[4]));
+		break;
+	case SND_CTL_ELEM_TYPE_BOOLEAN:
+		snd_ctl_elem_value_set_boolean(value,k, atoi(argv[4]));
+		break;
+	case SND_CTL_ELEM_TYPE_ENUMERATED:
+		/*
+		snd_ctl_elem_info_set_item(ad->einfo[e], snd_ctl_elem_value_get_enumerated(value,k));
+		Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj(snd_ctl_elem_info_get_item_name(ad->einfo[e]),-1));			
+		*/
+		break;
+	default:
+		Tcl_AppendResult(interp,"ERROR: alsa_hctl_set_element_value: don't know how to set value for element of this type", NULL);
+		snd_ctl_elem_value_free(value);
+		return TCL_ERROR;
+	}
+if((a=snd_hctl_elem_write(ad->elem[e], value))<0){
+	Tcl_AppendResult(interp,"ERROR: alsa_hctl_set_element_value: ", NULL);
+	Tcl_AppendResult(interp, snd_strerror(a), NULL);
+	snd_ctl_elem_value_free(value);
+	return TCL_ERROR;
+	}
+snd_ctl_elem_value_free(value);
+return TCL_OK;
+}
+
 int alsa_present(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
 {
 Tcl_ResetResult(interp);
@@ -361,6 +433,7 @@ struct {
 	{"alsa_hctl_close", alsa_hctl_close},
 	{"alsa_hctl_get_elements_info", alsa_hctl_get_elements_info},
 	{"alsa_hctl_get_element_value", alsa_hctl_get_element_value},
+	{"alsa_hctl_set_element_value", alsa_hctl_set_element_value},
 	{NULL, NULL}
 	};
 

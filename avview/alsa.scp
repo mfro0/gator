@@ -1,0 +1,199 @@
+#!avview_shell
+
+set CARD 0
+
+#puts "[alsa_hctl_open "hw:CARD=$CARD" he]"
+#set A [alsa_hctl_get_elements_info hw:CARD=0]
+#puts "$A"
+#puts "count=[llength $A]"
+#set count [llength $A]
+#for { set i 0 } { $i < $count } { incr i } {
+#	puts "element $i: [alsa_hctl_get_element_value "hw:CARD=$CARD" $i]"
+#	}
+
+proc skip_args3 { a b c } {
+}
+
+proc get_value { value_list value_key } {
+set i [lsearch -exact $value_list "$value_key"]
+incr i
+return [lindex $value_list $i]
+}
+
+proc set_element_value { name values_count i j} {
+global current_alsa_device
+global $name.v$j
+puts "changed $name value $j to [set $name.v$j]"
+alsa_hctl_set_element_value "$current_alsa_device" $i $j [set $name.v$j]
+}
+
+proc generate_element { mw i element } {
+global current_alsa_device
+if { [get_value $element "-interface"] != "MIXER" } {
+		return 
+		}
+puts "$element"
+set values_count [get_value $element "-values_count"]
+set name [get_value $element "-name"]
+grid columnconfig $mw 1 -weight 1
+switch "[get_value $element "-type"]" \
+	"BOOLEAN" {
+		label $mw.l$i -text "$name"
+		frame $mw.f$i
+		grid $mw.l$i $mw.f$i - -sticky news
+		grid configure $mw.l$i -sticky nws
+		set value [alsa_hctl_get_element_value "$current_alsa_device" $i]
+		puts "value=$value"
+		grid columnconfig $mw.f$i 0 -weight 1
+		for { set j 0 } { $j < $values_count } { incr j } {
+			global $name.v$j
+			checkbutton $mw.f$i.cb$j -variable $name.v$j
+			grid $mw.f$i.cb$j -row 0 -column $j -sticky news
+			set $name.v$j [lindex $value $j]
+			trace variable $name.v$j w "set_element_value \"$name\" $values_count $i $j ; skip_args3"
+			}
+		} \
+	"INTEGER" {
+		label $mw.l$i -text "$name"
+		frame $mw.f$i 
+		grid $mw.l$i $mw.f$i - -sticky news
+		grid configure $mw.l$i -sticky nws
+		set value [alsa_hctl_get_element_value "$current_alsa_device" $i]
+		set min [get_value $element "-min"]
+		set max [get_value $element "-max"]
+		set step [get_value $element "-step"]
+		if { "$step" == "0" } { set step 1 }
+		puts "value=$value"
+		grid columnconfig $mw.f$i 0 -weight 1
+		for { set j 0 } { $j < $values_count } { incr j } {
+			global $name.v$j
+			scale $mw.f$i.s$j -variable $name.v$j \
+				-from $min -to $max -resolution $step \
+				-orient horizontal -showvalue false
+			grid $mw.f$i.s$j -row $j -column 0 -sticky news
+			set $name.v$j [lindex $value $j]
+			trace variable $name.v$j w "set_element_value \"$name\" $values_count $i $j ; skip_args3"
+			}
+		} \
+	"ENUMERATED" {
+		label $mw.l$i -text "$name"
+		frame $mw.f$i 
+		grid $mw.l$i $mw.f$i - -sticky news
+		grid configure $mw.l$i -sticky nws
+		set value [alsa_hctl_get_element_value "$current_alsa_device" $i]
+		set min [get_value $element "-min"]
+		set max [get_value $element "-max"]
+		set step [get_value $element "-step"]
+		if { "$step" == "0" } { set step 1 }
+		puts "value=$value"
+		grid columnconfig $mw.f$i 0 -weight 1
+		set items [get_value $element "-items"]
+		puts "items=$items"
+		for { set j 0 } { $j < $values_count } { incr j } {
+			global $name.v$j
+			set "element.$i.$j.menu" [tk_optionMenu $mw.f$i.om$j $name.v$j none]
+			[set element.$i.$j.menu] delete 0 end
+			foreach item $items {
+				[set element.$i.$j.menu] add radiobutton -label "$item" -value "$item" -variable $name.v$j
+				}
+			grid $mw.f$i.om$j -row $j -column 0 -sticky news
+			set $name.v$j [lindex $value $j]
+			trace variable $name.v$j w "set_element_value \"$name\" $values_count $i $j ; skip_args3"
+			}
+		}
+		
+}
+
+proc generate_mixer_window { mw } {
+global current_alsa_device
+global current_alsa_info
+
+foreach win [grid slaves $mw] { destroy $win }
+
+if { "$current_alsa_device" == "none" } {
+	canvas $mw.l -width 0 -height 0 -background red
+	grid $mw.l
+	return
+	}
+label $mw.title -text "Mixer (ALSA)" -background black -foreground white
+grid $mw.title - - -sticky news -pady 2 -padx 2
+grid columnconfigure $mw 1 -weight 1
+set i 0
+foreach element $current_alsa_info {
+	generate_element $mw $i $element
+	incr i
+	}
+}
+	
+proc generate_alsa_window { cw } {
+global alsa_window
+global current_alsa_device
+foreach win [grid slaves $cw] { destroy $win }
+
+if { !$alsa_window || ([alsa_present] == "no") } { 
+	grid columnconfigure .controlwin 1 -weight 0
+	canvas $cw.f -width 0 -height 0 -background red
+	grid $cw.f
+	return 
+	}
+#grid columnconfigure .controlwin 2 -weight 1
+
+label $cw.title -text "Audio (ALSA)" -background black -foreground white
+grid $cw.title - - -sticky news -pady 2 -padx 2
+grid columnconfigure $cw 1 -weight 1
+label $cw.devicel -text "ALSA Audio device: "
+global alsa_device_menu
+set alsa_device_menu [tk_optionMenu $cw.deviceom current_alsa_device1 none]
+button $cw.rescanb -text "Rescan" -command rescan_alsa_devices
+grid $cw.devicel $cw.deviceom $cw.rescanb -sticky news
+grid configure $cw.devicel -sticky nws
+
+frame $cw.f
+grid $cw.f - - -sticky news
+
+if { "$current_alsa_device" != "none" } {
+	generate_mixer_window $cw.f	
+	}
+
+rescan_alsa_devices
+}
+	
+proc rescan_alsa_devices {} {
+global alsa_device_menu
+global current_alsa_device
+set current_alsa_device none
+$alsa_device_menu delete 0 end
+$alsa_device_menu add radiobutton -label "none"\
+				-value "none" -variable current_alsa_device1
+for {set i [alsa_card_next -1]} {$i >= 0 } { set i [alsa_card_next $i] } {
+	set alsa_handle  "hw:CARD=$i"
+	alsa_card_load $alsa_handle
+	$alsa_device_menu add radiobutton -label "hw:CARD=$i [alsa_card_get_name $alsa_handle]"\
+				-value $alsa_handle -variable current_alsa_device1
+	}
+}
+
+proc set_alsa_device {cw} {
+global current_alsa_device
+global current_alsa_device1
+global current_alsa_info
+if { "$current_alsa_device" != "none" } {
+	alsa_hctl_close "$current_alsa_device"
+	}
+set current_alsa_device "$current_alsa_device1"
+if { "$current_alsa_device" != "none" } {
+	alsa_hctl_open "$current_alsa_device" he
+	set current_alsa_info [alsa_hctl_get_elements_info "$current_alsa_device"]
+	}	
+generate_mixer_window $cw.f
+}
+
+global alsa_window
+set alsa_window 1
+global current_alsa_device
+set current_alsa_device "none"
+frame .f
+pack .f -expand yes -fill both
+generate_alsa_window .f
+
+trace variable current_alsa_device1 w "set_alsa_device .f ; skip_args3"
