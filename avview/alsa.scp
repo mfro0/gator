@@ -249,7 +249,7 @@ rescan_alsa_devices
 global current_alsa_device1
 set current_alsa_device1 "$save_alsa_device"
 
-frame $cw.f1
+frame $cw.f1 -relief groove -borderwidth 2
 
 grid $cw.f1 - - -sticky news
 
@@ -257,8 +257,8 @@ set c_info [grid info $cw.f1]
 
 grid rowconfig $cw [get_value $c_info "-row"] -weight 1
 
-canvas $cw.f1.c -yscrollcommand "$cw.f1.vscroll set" -relief flat -bd 0 -borderwidth 0\
-	-highlightthickness 0 -confine "yes"
+canvas $cw.f1.c -yscrollcommand "$cw.f1.vscroll set" -bd 0 -borderwidth 0\
+	-highlightthickness 0 -confine "yes" -relief flat
 scrollbar $cw.f1.vscroll -command "$cw.f1.c yview" -orient vertical 
 grid $cw.f1.c - $cw.f1.vscroll -sticky news
 grid rowconfig $cw.f1 0 -weight 1

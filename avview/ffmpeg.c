@@ -348,9 +348,6 @@ if(arg_video_codec==NULL){
 if(!strcmp("MPEG-1", arg_video_codec)){
 	sdata->video_codec=avcodec_find_encoder(CODEC_ID_MPEG1VIDEO);
 	} else
-if(!strcmp("MPEG-2", arg_video_codec)){
-	sdata->video_codec=avcodec_find_encoder(CODEC_ID_MP2);
-	} else
 if(!strcmp("MPEG-4", arg_video_codec)){
 	sdata->video_codec=avcodec_find_encoder(CODEC_ID_MPEG4);
 	} else
