@@ -263,6 +263,155 @@ void RADEONEnterVT_Video(ScrnInfoPtr pScrn)
     RADEONResetVideo(pScrn);
 }
 
+/* Reference color space transform data */
+typedef struct tagREF_TRANSFORM
+{
+	float RefLuma;
+	float RefRCb;
+	float RefRCr;
+	float RefGCb;
+	float RefGCr;
+	float RefBCb;
+	float RefBCr;
+} REF_TRANSFORM;
+
+/* Parameters for ITU-R BT.601 and ITU-R BT.709 colour spaces */
+REF_TRANSFORM trans[2] =
+{
+	{1.1678, 0.0, 1.6007, -0.3929, -0.8154, 2.0232, 0.0}, /* BT.601 */
+	{1.1678, 0.0, 1.7980, -0.2139, -0.5345, 2.1186, 0.0}  /* BT.709 */
+};
+
+
+/* Gamma curve definition */
+typedef struct 
+{
+	unsigned int gammaReg;
+	unsigned int gammaSlope;
+	unsigned int gammaOffset;
+}GAMMA_SETTINGS;
+
+/* Recommended gamma curve parameters */
+GAMMA_SETTINGS def_gamma[18] = 
+{
+	{RADEON_OV0_GAMMA_0_F, 0x100, 0x0000},
+	{RADEON_OV0_GAMMA_10_1F, 0x100, 0x0020},
+	{RADEON_OV0_GAMMA_20_3F, 0x100, 0x0040},
+	{RADEON_OV0_GAMMA_40_7F, 0x100, 0x0080},
+	{RADEON_OV0_GAMMA_80_BF, 0x100, 0x0100},
+	{RADEON_OV0_GAMMA_C0_FF, 0x100, 0x0100},
+    {RADEON_OV0_GAMMA_100_13F, 0x100, 0x0200},
+	{RADEON_OV0_GAMMA_140_17F, 0x100, 0x0200},
+	{RADEON_OV0_GAMMA_180_1BF, 0x100, 0x0300},
+	{RADEON_OV0_GAMMA_1C0_1FF, 0x100, 0x0300},
+	{RADEON_OV0_GAMMA_200_23F, 0x100, 0x0400},
+	{RADEON_OV0_GAMMA_240_27F, 0x100, 0x0400},
+	{RADEON_OV0_GAMMA_280_2BF, 0x100, 0x0500},
+	{RADEON_OV0_GAMMA_2C0_2FF, 0x100, 0x0500},
+	{RADEON_OV0_GAMMA_300_33F, 0x100, 0x0600},
+	{RADEON_OV0_GAMMA_340_37F, 0x100, 0x0600},
+	{RADEON_OV0_GAMMA_380_3BF, 0x100, 0x0700},
+	{RADEON_OV0_GAMMA_3C0_3FF, 0x100, 0x0700}
+};
+
+/****************************************************************************
+ * SetTransform                                                             *
+ *  Function: Calculates and sets color space transform from supplied       *
+ *            reference transform, gamma, brightness, contrast, hue and     *
+ *            saturation.                                                   *
+ *    Inputs: bright - brightness                                           *
+ *            cont - contrast                                               *
+ *            sat - saturation                                              *
+ *            hue - hue                                                     *
+ *            ref - index to the table of refernce transforms               *
+ *   Outputs: NONE                                                          *
+ ****************************************************************************/
+
+static void RADEONSetTransform(  ScrnInfoPtr pScrn,
+							   float bright, float cont, float sat, 
+							   float hue, CARD32 ref)
+{
+	RADEONInfoPtr info = RADEONPTR(pScrn);
+	unsigned char *RADEONMMIO = info->MMIO;
+	float OvHueSin, OvHueCos;
+	float CAdjLuma, CAdjOff;
+	float CAdjRCb, CAdjRCr;
+	float CAdjGCb, CAdjGCr;
+	float CAdjBCb, CAdjBCr;
+	float OvLuma, OvROff, OvGOff, OvBOff;
+	float OvRCb, OvRCr;
+	float OvGCb, OvGCr;
+	float OvBCb, OvBCr;
+	float Loff = 64.0;
+	float Coff = 512.0f;
+
+	CARD32 dwOvLuma, dwOvROff, dwOvGOff, dwOvBOff;
+	CARD32 dwOvRCb, dwOvRCr;
+	CARD32 dwOvGCb, dwOvGCr;
+	CARD32 dwOvBCb, dwOvBCr;
+
+	if (ref >= 2) return;
+
+	OvHueSin = sin(hue);
+	OvHueCos = cos(hue);
+
+	CAdjLuma = cont * trans[ref].RefLuma;
+	CAdjOff = cont * trans[ref].RefLuma * bright * 1023.0;
+	CAdjRCb = sat * -OvHueSin * trans[ref].RefRCr;
+	CAdjRCr = sat * OvHueCos * trans[ref].RefRCr;
+	CAdjGCb = sat * (OvHueCos * trans[ref].RefGCb - OvHueSin * trans[ref].RefGCr);
+	CAdjGCr = sat * (OvHueSin * trans[ref].RefGCb + OvHueCos * trans[ref].RefGCr);
+	CAdjBCb = sat * OvHueCos * trans[ref].RefBCb;
+	CAdjBCr = sat * OvHueSin * trans[ref].RefBCb;
+
+	OvLuma = CAdjLuma;
+	OvRCb = CAdjRCb;
+	OvRCr = CAdjRCr;
+	OvGCb = CAdjGCb;
+	OvGCr = CAdjGCr;
+	OvBCb = CAdjBCb;
+	OvBCr = CAdjBCr;
+	OvROff = CAdjOff -
+		OvLuma * Loff - (OvRCb + OvRCr) * Coff;
+	OvGOff = CAdjOff - 
+		OvLuma * Loff - (OvGCb + OvGCr) * Coff;
+	OvBOff = CAdjOff - 
+		OvLuma * Loff - (OvBCb + OvBCr) * Coff;
+
+	dwOvROff = (CARD32)(OvROff * 2.0);
+	dwOvGOff = (CARD32)(OvGOff * 2.0);
+	dwOvBOff = (CARD32)(OvBOff * 2.0);
+	if(!info->IsR200)
+	{
+		dwOvLuma = ((CARD32)(OvLuma * 2048.0))<<1;
+		dwOvRCb = ((CARD32)(OvRCb * 2048.0))<<17;
+		dwOvRCr = ((CARD32)(OvRCr * 2048.0))<<17;
+		dwOvGCb = ((CARD32)(OvGCb * 2048.0))<<17;
+		dwOvGCr = ((CARD32)(OvGCr * 2048.0))<<17;
+		dwOvBCb = ((CARD32)(OvBCb * 2048.0))<<17;
+		dwOvBCr = ((CARD32)(OvBCr * 2048.0))<<17;
+	}
+	else
+	{
+		dwOvLuma = ((CARD32)(OvLuma * 256.0))<<4;
+		dwOvRCb = ((CARD32)(OvRCb * 256.0))<<20;
+		dwOvRCr = ((CARD32)(OvRCr * 256.0))<<20;
+		dwOvGCb = ((CARD32)(OvGCb * 256.0))<<20;
+		dwOvGCr = ((CARD32)(OvGCr * 256.0))<<20;
+		dwOvBCb = ((CARD32)(OvBCb * 256.0))<<20;
+		dwOvBCr = ((CARD32)(OvBCr * 256.0))<<20;
+	}
+
+	OUTREG(RADEON_OV0_LIN_TRANS_A, dwOvRCb | dwOvLuma);
+	OUTREG(RADEON_OV0_LIN_TRANS_B, dwOvROff | dwOvRCr);
+	OUTREG(RADEON_OV0_LIN_TRANS_C, dwOvGCb | dwOvLuma);
+	OUTREG(RADEON_OV0_LIN_TRANS_D, dwOvGOff | dwOvGCr);
+	OUTREG(RADEON_OV0_LIN_TRANS_E, dwOvBCb | dwOvLuma);
+	OUTREG(RADEON_OV0_LIN_TRANS_F, dwOvBOff | dwOvBCr);
+
+}
+
+
 void RADEONShutdownVideo(ScrnInfoPtr pScrn)
 {
     RADEONInfoPtr   info      = RADEONPTR(pScrn);
@@ -297,6 +446,7 @@ void RADEONResetVideo(ScrnInfoPtr pScrn)
     RADEONInfoPtr   info      = RADEONPTR(pScrn);
     unsigned char *RADEONMMIO = info->MMIO;
     RADEONPortPrivPtr pPriv = info->adaptor->pPortPrivates[0].ptr;
+    int i;
 
     /* this is done here because each time the server is reset these
        could change.. Otherwise they remain constant */
@@ -328,6 +478,37 @@ void RADEONResetVideo(ScrnInfoPtr pScrn)
     OUTREG(RADEON_CAP0_TRIG_CNTL, 0);
     RADEONSetColorKey(pScrn, pPriv->colorKey);
     
+    if(!info->IsR200)
+	{
+		OUTREG(RADEON_OV0_LIN_TRANS_A, 0x12a20000);
+		OUTREG(RADEON_OV0_LIN_TRANS_B, 0x198a190e);
+		OUTREG(RADEON_OV0_LIN_TRANS_C, 0x12a2f9da);
+		OUTREG(RADEON_OV0_LIN_TRANS_D, 0xf2fe0442);
+		OUTREG(RADEON_OV0_LIN_TRANS_E, 0x12a22046);
+		OUTREG(RADEON_OV0_LIN_TRANS_F, 0x175f);
+	}
+	else 
+	{
+		OUTREG(RADEON_OV0_LIN_TRANS_A, 0x12a00000);
+		OUTREG(RADEON_OV0_LIN_TRANS_B, 0x1990190e);
+		OUTREG(RADEON_OV0_LIN_TRANS_C, 0x12a0f9c0);
+		OUTREG(RADEON_OV0_LIN_TRANS_D, 0xf3000442);
+		OUTREG(RADEON_OV0_LIN_TRANS_E, 0x12a02040);
+		OUTREG(RADEON_OV0_LIN_TRANS_F, 0x175f);
+
+		/* Default Gamma, 
+		   Of 18 segments for gamma cure, all segments in R200 are programmable, 
+		   while only lower 4 and upper 2 segments are programmable in Radeon*/
+		if(info->IsR200)
+		{
+			for(i=0; i<18; i++)
+			{
+				OUTREG(def_gamma[i].gammaReg,
+					   (def_gamma[i].gammaSlope<<16) | def_gamma[i].gammaOffset);
+			}
+		}
+	}
+
     if(pPriv->VIP!=NULL){
     	RADEONVIP_reset(pScrn,pPriv);
 	}
@@ -443,8 +624,8 @@ static Bool RADEONI2CWriteRead(I2CDevPtr d, I2CByte *WriteBuffer, int nWrite,
 
     status=I2C_DONE;
 
+    RADEONWaitForIdle(pScrn);
     if(nWrite>0){
-       RADEONWaitForIdle(pScrn);
 /*       RADEONWaitForFifo(pScrn, 4+nWrite); */
 
        /* Clear the status bits of the I2C Controller */
@@ -459,12 +640,12 @@ static Bool RADEONI2CWriteRead(I2CDevPtr d, I2CByte *WriteBuffer, int nWrite,
           OUTREG8(RADEON_I2C_DATA, WriteBuffer[loop]);
        }
 
-       i2c_cntl_1 = (pPriv->radeon_i2c_timing << 24) | I2C_EN |
+       i2c_cntl_1 = (pPriv->radeon_i2c_timing << 24) | I2C_EN | I2C_SEL |
     			nWrite | 0x100;
        OUTREG(RADEON_I2C_CNTL_1, i2c_cntl_1);
     
        i2c_cntl_0 = (pPriv->radeon_N << 24) | (pPriv->radeon_M << 16) | 
-    			I2C_GO | (1<<8) | (((nRead >0)?0:1) << 9) | I2C_DRIVE_EN;
+    			I2C_GO | I2C_START | ((nRead >0)?0:I2C_STOP) | I2C_DRIVE_EN;
        OUTREG(RADEON_I2C_CNTL_0, i2c_cntl_0);
     
        while(INREG8(RADEON_I2C_CNTL_0+1) & (I2C_GO >> 8));
@@ -491,7 +672,98 @@ static Bool RADEONI2CWriteRead(I2CDevPtr d, I2CByte *WriteBuffer, int nWrite,
        OUTREG(RADEON_I2C_CNTL_1, i2c_cntl_1);
     
        i2c_cntl_0 = (pPriv->radeon_N << 24) | (pPriv->radeon_M << 16) | 
-    			I2C_GO | (1<<8) | ((1) << 9) | I2C_DRIVE_EN | I2C_RECEIVE;
+    			I2C_GO | I2C_START | I2C_STOP | I2C_DRIVE_EN | I2C_RECEIVE;
+       OUTREG(RADEON_I2C_CNTL_0, i2c_cntl_0);
+    
+       RADEONWaitForIdle(pScrn);
+       while(INREG8(RADEON_I2C_CNTL_0+1) & (I2C_GO >> 8));
+
+       status=RADEON_I2C_WaitForAck(pScrn,pPriv);
+  
+       usleep(1);
+
+       /* Write Value into the buffer */
+       for (loop = 0; loop < nRead; loop++)
+       {
+          RADEONWaitForFifo(pScrn, 1);
+	  if((status == I2C_HALT) || (status == I2C_NACK))
+	  {
+	  ReadBuffer[loop]=0xff;
+	  } else {
+          RADEONWaitForIdle(pScrn);
+          ReadBuffer[loop]=INREG8(RADEON_I2C_DATA) & 0xff;
+	  }
+       }
+    }
+    
+    if(status!=I2C_DONE){
+       RADEON_I2C_Halt(pScrn);
+       return FALSE;
+       }
+    return TRUE;
+}
+
+static Bool R200_I2CWriteRead(I2CDevPtr d, I2CByte *WriteBuffer, int nWrite,
+                            I2CByte *ReadBuffer, int nRead)
+{
+    int loop, status;
+    CARD32 i2c_cntl_0, i2c_cntl_1;
+    RADEONPortPrivPtr pPriv = (RADEONPortPrivPtr)(d->pI2CBus->DriverPrivate.ptr);
+    ScrnInfoPtr pScrn = xf86Screens[d->pI2CBus->scrnIndex];
+    RADEONInfoPtr info = RADEONPTR(pScrn);
+    unsigned char *RADEONMMIO = info->MMIO;
+
+    status=I2C_DONE;
+
+    RADEONWaitForIdle(pScrn);
+    if(nWrite>0){
+/*       RADEONWaitForFifo(pScrn, 4+nWrite); */
+
+       /* Clear the status bits of the I2C Controller */
+       OUTREG(RADEON_I2C_CNTL_0, I2C_DONE | I2C_NACK | I2C_HALT | I2C_SOFT_RST);
+
+       /* Write the address into the buffer first */
+       OUTREG(RADEON_I2C_DATA, (CARD32) (d->SlaveAddr) & ~(1));
+
+       /* Write Value into the buffer */
+       for (loop = 0; loop < nWrite; loop++)
+       {
+          OUTREG8(RADEON_I2C_DATA, WriteBuffer[loop]);
+       }
+
+       i2c_cntl_1 = (pPriv->radeon_i2c_timing << 24) | I2C_EN | I2C_SEL |
+    			nWrite | 0x010;
+       OUTREG(RADEON_I2C_CNTL_1, i2c_cntl_1);
+    
+       i2c_cntl_0 = (pPriv->radeon_N << 24) | (pPriv->radeon_M << 16) | 
+    			I2C_GO | I2C_START | ((nRead >0)?0:I2C_STOP) | I2C_DRIVE_EN;
+       OUTREG(RADEON_I2C_CNTL_0, i2c_cntl_0);
+    
+       while(INREG8(RADEON_I2C_CNTL_0+1) & (I2C_GO >> 8));
+
+       status=RADEON_I2C_WaitForAck(pScrn,pPriv);
+
+       if(status!=I2C_DONE){
+       	  RADEON_I2C_Halt(pScrn);
+       	  return FALSE;
+	  }
+    }
+    
+    
+    if(nRead > 0) {
+       RADEONWaitForFifo(pScrn, 4+nRead);
+    
+       OUTREG(RADEON_I2C_CNTL_0, I2C_DONE | I2C_NACK | I2C_HALT | I2C_SOFT_RST); 
+
+       /* Write the address into the buffer first */
+       OUTREG(RADEON_I2C_DATA, (CARD32) (d->SlaveAddr) | (1));
+
+       i2c_cntl_1 = (pPriv->radeon_i2c_timing << 24) | I2C_EN | I2C_SEL | 
+    			nRead | 0x010;
+       OUTREG(RADEON_I2C_CNTL_1, i2c_cntl_1);
+    
+       i2c_cntl_0 = (pPriv->radeon_N << 24) | (pPriv->radeon_M << 16) | 
+    			I2C_GO | I2C_START | I2C_STOP | I2C_DRIVE_EN | I2C_RECEIVE;
        OUTREG(RADEON_I2C_CNTL_0, i2c_cntl_0);
     
        RADEONWaitForIdle(pScrn);
@@ -575,7 +847,7 @@ const struct
 	{"UNKNOWN-26"		, -1},
 	{"UNKNOWN-27"		, -1},
 	{"UNKNOWN-28"		, -1},
-	{"UNKNOWN-29"		, -1},
+	{"Silicon tuner"		, TUNER_TYPE_FI1236},
         {"UNKNOWN-30"		, -1},
 	{"UNKNOWN-31"		, -1}
     };
@@ -587,7 +859,7 @@ static void RADEONResetI2C(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
     unsigned char *RADEONMMIO = info->MMIO;
 
     RADEONWaitForFifo(pScrn, 2);
-    OUTREG8(RADEON_I2C_CNTL_1+2, ((0 | I2C_EN)>>16));
+    OUTREG8(RADEON_I2C_CNTL_1+2, ((I2C_SEL | I2C_EN)>>16));
     OUTREG8(RADEON_I2C_CNTL_0+0, (I2C_DONE | I2C_NACK | I2C_HALT | I2C_SOFT_RST | I2C_DRIVE_EN | I2C_DRIVE_SEL));
 }
 
@@ -596,6 +868,7 @@ static void RADEONInitI2C(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
     double nm;
     RADEONInfoPtr info = RADEONPTR(pScrn);
     RADEONPLLPtr  pll = &(info->pll);
+    int i;
 
     pPriv->fi1236 = NULL;
     pPriv->msp3430 = NULL;
@@ -619,7 +892,10 @@ static void RADEONInitI2C(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
     pPriv->i2c->scrnIndex=pScrn->scrnIndex;
     pPriv->i2c->BusName="Radeon multimedia bus";
     pPriv->i2c->DriverPrivate.ptr=(pointer)pPriv;
-    pPriv->i2c->I2CWriteRead=RADEONI2CWriteRead;
+    if(info->IsR200)
+	    pPriv->i2c->I2CWriteRead=R200_I2CWriteRead;
+	    else
+	    pPriv->i2c->I2CWriteRead=RADEONI2CWriteRead;
     if(!I2CBusInit(pPriv->i2c))
     {
     	xf86DrvMsg(pScrn->scrnIndex,X_ERROR,"Failed to register i2c bus\n");
@@ -709,7 +985,7 @@ static void RADEONInitI2C(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
     }
     
     if(pPriv->i2c != NULL)RADEON_board_setmisc(pPriv);
-    #if 0
+    #if 1
     xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Scanning I2C Bus\n");
     for(i=0;i<255;i+=2)
     	if(RADEONProbeAddress(pPriv->i2c, i))
