@@ -1457,7 +1457,9 @@ ATIStopVideo(ScrnInfoPtr pScrn, pointer data, Bool cleanup)
 
   REGION_EMPTY(pScrn->pScreen, &pPriv->clip);
 
+#if 0
   xf86DrvMsg(pScrn->scrnIndex, X_INFO, "StopVideo %s\n", cleanup ? "cleanup": "");
+#endif
 
   if(cleanup) {
      ATIMach64WaitForFIFO(pATI, 2); 
@@ -1791,7 +1793,7 @@ ATIDisplayVideo(
     v_inc = ((src_h) << (12
 		+((pScrn->currentMode->Flags & V_INTERLACE)?1:0)
 		-((pScrn->currentMode->Flags & V_DBLSCAN)?1:0)));
-	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "%p\n", pScrn->currentMode);
+
     v_inc = v_inc * pScrn->currentMode->VDisplay;
     if(pATI->LCDPanelID>=0)
 	v_inc = v_inc/(drw_h*pATI->LCDVertical);
@@ -2329,7 +2331,6 @@ ATIPutVideo(
    CARD32 id;
    int width, height;
 
-   xf86DrvMsg(pScrn->scrnIndex, X_INFO, "PutVideo\n");
    /*
     * s2offset, s3offset - byte offsets into U and V plane of the
     *                      source where copying starts.  Y plane is
@@ -2372,7 +2373,6 @@ ATIPutVideo(
    } else 
       return FALSE;
         
-   xf86DrvMsg(pScrn->scrnIndex, X_INFO, "PutVideo %d %d\n", width,height);
 
    if(!ATIClipVideo(&dstBox, &xa, &xb, &ya, &yb, clipBoxes, width, height))
 	return Success;
