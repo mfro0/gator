@@ -908,9 +908,11 @@ if {[alsa_present] == "yes" } {
 	}
 
 
-foreach var {show_control_window attributes_window capture_window alsa_window theme_name} {
+foreach var {attributes_window capture_window alsa_window theme_name} {
 	set $var [set $var]
 	}
+update
+set show_control_window $show_control_window
 }
 
 after idle {
