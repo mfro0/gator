@@ -24,7 +24,7 @@ typedef struct S_V4L_DATA{
 	void (*transfer_callback)(struct S_V4L_DATA *);
 	int mode;
 	int frame_count; /* to keep track of odd/even fields */
-	void *priv;
+	void *priv;	
 	} V4L_DATA;
 
 

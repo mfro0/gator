@@ -356,34 +356,36 @@ if(data==NULL){
 	return TCL_ERROR;
 	}
 if(data->priv!=NULL){
-	Tcl_AppendResult(interp,"ERROR: v4l_set_current_window: v4l device busy", NULL);
-	return TCL_ERROR;
-	}
-if(ioctl(data->fd, VIDIOCGWIN, &vwin)<0){
-	Tcl_AppendResult(interp,"ERROR: v4l_capture_snapshot: error getting window parameters", NULL);
-	return TCL_ERROR;
-	}
-if(ioctl(data->fd, VIDIOCGPICT, &vpic)<0){
-	Tcl_AppendResult(interp,"ERROR: v4l_capture_snapshot: error getting picture parameters", NULL);
-	return TCL_ERROR;
-	}
-vpic.palette=VIDEO_PALETTE_YUV422;
-if(ioctl(data->fd, VIDIOCSPICT, &vpic)<0){
 	if(argc>=6)Tcl_Eval(interp, argv[5]);	
 	return 0;
+	} else {
+	/* setup device for transfer */
+	if(ioctl(data->fd, VIDIOCGWIN, &vwin)<0){
+		Tcl_AppendResult(interp,"ERROR: v4l_capture_snapshot: error getting window parameters", NULL);
+		return TCL_ERROR;
+		}
+	if(ioctl(data->fd, VIDIOCGPICT, &vpic)<0){
+		Tcl_AppendResult(interp,"ERROR: v4l_capture_snapshot: error getting picture parameters", NULL);
+		return TCL_ERROR;
 	}
-data->mode=MODE_SINGLE_FRAME;
-if(!strcmp("deinterlace-bob", argv[3])){
-	data->mode=MODE_DEINTERLACE_BOB;
-	} else
-if(!strcmp("deinterlace-weave", argv[3])){
-	data->mode=MODE_DEINTERLACE_WEAVE;
-	} else
-if(!strcmp("double-interpolate", argv[3])){
-	data->mode=MODE_DOUBLE_INTERPOLATE;
-	} else
-if(!strcmp("half-width", argv[3])){
-	data->mode=MODE_DEINTERLACE_HALF_WIDTH;
+	vpic.palette=VIDEO_PALETTE_YUV422;
+	if(ioctl(data->fd, VIDIOCSPICT, &vpic)<0){
+		if(argc>=6)Tcl_Eval(interp, argv[5]);	
+		return 0;
+		}
+	data->mode=MODE_SINGLE_FRAME;
+	if(!strcmp("deinterlace-bob", argv[3])){
+		data->mode=MODE_DEINTERLACE_BOB;
+		} else
+	if(!strcmp("deinterlace-weave", argv[3])){
+		data->mode=MODE_DEINTERLACE_WEAVE;
+		} else
+	if(!strcmp("double-interpolate", argv[3])){
+		data->mode=MODE_DOUBLE_INTERPOLATE;
+		} else
+	if(!strcmp("half-width", argv[3])){
+		data->mode=MODE_DEINTERLACE_HALF_WIDTH;
+		}
 	}
 sdata=do_alloc(1, sizeof(V4L_SNAPSHOT_DATA));
 sdata->ph=Tk_FindPhoto(interp, argv[2]);

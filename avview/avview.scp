@@ -426,11 +426,13 @@ if { $fullscreen_mode } {
 	wm withdraw .
 	wm overrideredirect . true
 	wm deiconify .
+	update
+	update idletasks
 	xmisc_setfullscreen .
 	wm geometry . =${screen_width}x${screen_height}+0+0
 
-	. configure -width $screen_width \
-		-height $screen_height  -background red
+#	. configure -width $screen_width \
+#		-height $screen_height  -background red
 	$VIDEO_WINDOW configure -width ${screen_width} \
 		-height ${screen_height}
 	xmisc_setscreensaver $VIDEO_WINDOW 0 0 DontPreferBlanking AllowExposures \

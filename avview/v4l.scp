@@ -224,6 +224,9 @@ switch "$current_v4l_mode" \
 	"deinterlace-bob" {
 		$cw.window configure -text "[lindex $window 2]x[expr [lindex $window 3]*2]+[lindex $window 0]+[expr [lindex $window 1]*2]"
 		}\
+	"double-interpolate" {
+		$cw.window configure -text "[lindex $window 2]x[expr [lindex $window 3]*2]+[lindex $window 0]+[expr [lindex $window 1]*2]"
+		}\
 	"deinterlace-weave" {
 		$cw.window configure -text "[lindex $window 2]x[expr [lindex $window 3]*2]+[lindex $window 0]+[expr [lindex $window 1]*2]"
 		}\
