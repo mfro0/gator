@@ -1803,7 +1803,6 @@ R128DMA(
     /* Copy parts of the block into buffers and fire them */ 
     dstpassbytes = hpass*dstPitch;
     dstPitch /= 8;
-    xf86DrvMsg(0, X_INFO, "passes=%d dstpassbytes=%d\n", passes, dstpassbytes);
     for (i=0, offset=dst-info->FB; i<passes; i++, offset+=dstpassbytes) {
         if (i == (passes-1) && (h % hpass) != 0) {
 	    hpass = h % hpass;
