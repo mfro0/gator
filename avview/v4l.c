@@ -286,7 +286,6 @@ if((snapshot_data->stm->total<snapshot_data->transfer_size)){
 v4l_detach_output_stream(data, snapshot_data->stm);
 snapshot_data->pib.pixelPtr=do_alloc(snapshot_data->pib.pitch*snapshot_data->pib.height, 1);
 pthread_mutex_lock(&(snapshot_data->stm->ctr_mutex));
-	fprintf(stderr,"Hello 3\n");
 f1=get_packet(snapshot_data->stm);
 f2=get_packet(snapshot_data->stm);
 switch(data->mode){
@@ -348,7 +347,6 @@ snapshot_data->stm->consumer_thread_running=0;
 pthread_mutex_unlock(&(snapshot_data->stm->ctr_mutex));
 free(snapshot_data);
 snapshot_data=NULL;
-	fprintf(stderr,"Hello 4\n");
 }
 
 int v4l_capture_snapshot(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
@@ -379,7 +377,6 @@ if(snapshot_data!=NULL){
 	}
 if(data->priv!=NULL){
 	} else {
-	fprintf(stderr,"Hello 2\n");
 	/* setup device for transfer */
 	if(ioctl(data->fd, VIDIOCGWIN, &data->vwin)<0){
 		Tcl_AppendResult(interp,"ERROR: v4l_capture_snapshot: error getting window parameters", NULL);
