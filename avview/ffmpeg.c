@@ -703,7 +703,11 @@ if((sdata->fd_out<0)||(errno!=0)){
 	sdata=NULL;
 	return TCL_OK;
 	}
+#ifdef FRAME_RATE_BASE
+/* ffmpeg 0.4.6 */
 motion_estimation_method=ME_FULL;
+#endif
+
 memset(&(sdata->format_context), 0, sizeof(AVFormatContext));
 
 sdata->format_context.nb_streams=0;
