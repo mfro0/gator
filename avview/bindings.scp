@@ -369,6 +369,30 @@ if { $fullscreen_mode && $dpms_off_on_fullscreen_power_off } {
 	}
 }
 
+proc change_connector { new_connector } {
+global current_encoding_name VIDEO_WINDOW current_port current_connector
+if { $current_port == "none" } { return -1 }
+switch -glob -- $current_encoding_name {
+	"*tuner*"   { set old_part "tuner" }
+	"*composite*"   { set old_part "composite" }
+	"*svideo*"   { set old_part "svideo" }
+	default {
+		return -1
+		}
+	}
+set new_enc_name [string map [list $old_part $new_connector] $current_encoding_name]
+
+set ENCODINGS [xv_port_encodings $VIDEO_WINDOW $current_port]
+set current_encoding [lsearch $ENCODINGS $new_enc_name]
+if { $current_encoding >= 0 } {
+	set current_encoding_name $new_enc_name
+	set_encoding a b c
+	return $current_encoding
+	}
+return -1
+}
+
+
 #
 #  Attempt to load AVview modmap
 #

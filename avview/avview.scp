@@ -39,6 +39,7 @@ foreach {variable value} {
 	current_table "none"
 	current_table_name "none"
 	current_channel "none"
+	current_connector "none"
 	use_physical_screen_size true
 	aspect_ratio {4 3}
 	port_grabbed false
@@ -367,7 +368,7 @@ xv_stopvideo $VIDEO_WINDOW $current_port
 
 proc set_encoding {name1 name2 op} {
 global current_encoding_name current_encoding current_port current_video_rate
-global current_table_name current_table VIDEO_WINDOW
+global current_table_name current_table VIDEO_WINDOW current_connector
 
 
 if { $current_port == "none" } { return }
@@ -376,7 +377,7 @@ set ENCODINGS [xv_port_encodings $VIDEO_WINDOW $current_port]
 set current_encoding [lsearch $ENCODINGS $current_encoding_name]
 if { ($current_encoding >= 0) } {
 	on_attribute_change XV_ENCODING current_encoding a b
-	switch -glob -- "$current_encoding_name" \
+	switch -glob -- $current_encoding_name \
 		"*pal*" {
 			set current_video_rate 50.00
 			} \
@@ -386,6 +387,12 @@ if { ($current_encoding >= 0) } {
 		"*ntsc*" {
 			set current_video_rate 59.94
 			}			
+	switch -glob -- $current_encoding_name {
+		"*tuner*"   { set current_connector "tuner" }
+		"*composite*"   { set current_connector "composite" }
+		"*svideo*"   { set current_connector "svideo" }
+		default    { set current_connector "none" }
+		}
 			
 	}
 
@@ -689,11 +696,13 @@ set flash_counter 14
 menu .video_menu -type normal -tearoff false
 menu .video_menu.size_menu -type normal -tearoff false
 menu .video_menu.channel_menu -type normal -tearoff false
+menu .video_menu.connector_menu -type normal -tearoff false
 menu .video_menu.interface_menu -type normal -tearoff false
 menu .video_menu.interface_menu.theme_menu -type normal -tearoff false
 
 .video_menu add command -label "Toggle mute" -command { toggle_mute }
 .video_menu add cascade -menu .video_menu.channel_menu -label "Channel"
+.video_menu add cascade -menu .video_menu.connector_menu -label "Connector"
 .video_menu add cascade -menu .video_menu.size_menu -label "Size"
 .video_menu add separator
 .video_menu add cascade -menu .video_menu.interface_menu -label "User interface"
@@ -701,6 +710,10 @@ menu .video_menu.interface_menu.theme_menu -type normal -tearoff false
 .video_menu add command -label "Exit AVview" -command { save_settings; exit }
 .video_menu add separator
 .video_menu add command -label "Dismiss this menu"
+
+.video_menu.connector_menu add radiobutton -label "Tuner" -variable current_connector -command "change_connector tuner" -value "tuner"
+.video_menu.connector_menu add radiobutton -label "Composite" -variable current_connector  -command "change_connector composite" -value "composite"
+.video_menu.connector_menu add radiobutton -label "SVideo" -variable current_connector  -command "change_connector svideo" -value "svideo"
 
 .video_menu.size_menu add checkbutton -variable fullscreen_mode -label "Fullscreen" -onvalue true -offvalue false
 .video_menu.size_menu add command -label "Half size" -command "make_half_size"
