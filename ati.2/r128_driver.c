@@ -1620,7 +1620,7 @@ static Bool R128PreInitInt10(ScrnInfoPtr pScrn, xf86Int10InfoPtr *ppInt10)
     /* int10 is broken on some Alphas */
     if (xf86LoadSubModule(pScrn, "int10")) {
 	xf86LoaderReqSymLists(int10Symbols, NULL);
-	xf86DrvMsg(pScrn->scrnIndex,X_INFO,"initializing int10\n");
+	xf86DrvMsg(pScrn->scrnIndex,X_INFO,"initializing int10 %p\n", *ppInt10);
 	*ppInt10 = xf86InitInt10(info->pEnt->index);
     }
 #endif

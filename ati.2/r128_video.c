@@ -251,6 +251,7 @@ static XF86ImageRec Images[NUM_IMAGES] =
 
 static void R128MuteAudio(R128PortPrivPtr pPriv, Bool mute)
 {
+  pPriv->mute=mute;
   if (pPriv->msp3430 != NULL) xf86_MSP3430SetVolume(pPriv->msp3430, mute ? MSP3430_FAST_MUTE : pPriv->volume);
   if (pPriv->tda9850 != NULL) xf86_tda9850_mute(pPriv->tda9850, mute);
   if (pPriv->tda8425 != NULL) xf86_tda8425_mute(pPriv->tda8425, mute);
