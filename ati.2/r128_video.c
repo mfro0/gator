@@ -73,7 +73,7 @@ typedef struct
     BYTE audio_chip;
     BYTE product_id;
     BYTE tuner_voltage_teletext_fm;
-    BYTE i2c_config;
+    BYTE i2s_config; /* configuration of the sound chip */
     BYTE video_decoder_type;
     BYTE video_decoder_host_config;
     BYTE input[5];
@@ -1103,7 +1103,7 @@ static void R128ReadMM_TABLE(ScrnInfoPtr pScrn, R128PortPrivPtr pPriv)
     	     pPriv->MM_TABLE.audio_chip,
 	     pPriv->MM_TABLE.product_id,
     	     pPriv->MM_TABLE.tuner_voltage_teletext_fm,
-	     pPriv->MM_TABLE.i2c_config,
+	     pPriv->MM_TABLE.i2s_config,
 	     pPriv->MM_TABLE.video_decoder_type,
     	     pPriv->MM_TABLE.video_decoder_host_config,
 	     pPriv->MM_TABLE.input[0],
