@@ -1025,6 +1025,22 @@ void R128EngineInit(ScrnInfoPtr pScrn)
 
 #ifdef XF86DRI
 
+static void R128CCEBubblePacket(ScrnInfoPtr pScrn,
+				     int order)
+{
+    R128InfoPtr   info = R128PTR(pScrn);
+    int i;
+    RING_LOCALS;
+
+    BEGIN_RING(order);
+    
+    for(i=2;i<=order;i++)
+	    OUT_RING(CCE_PACKET3(R128_CCE_PACKET3_NOP, order-i));
+    OUT_RING(0);
+
+    ADVANCE_RING();    
+}
+
 /* Setup for XAA SolidFill. */
 static void R128CCESetupForSolidFill(ScrnInfoPtr pScrn,
 				     int color, int rop,

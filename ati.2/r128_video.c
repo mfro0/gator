@@ -1757,7 +1757,7 @@ R128DMA(
     drmDMAReq req;
 
     /* Verify conditions and bail out as early as possible */
-    if (!info->directRenderingEnabled)
+    if (0 && !info->directRenderingEnabled)     /* Disable this for now. As it is not working right */
         return FALSE;
 
     if ((hpass = min(h,(BUFSIZE/w))) == 0)
@@ -1791,7 +1791,7 @@ R128DMA(
     /* Copy parts of the block into buffers and fire them */ 
     dstpassbytes = hpass*dstPitch;
     dstPitch /= 8;
-
+    xf86DrvMsg(0, X_INFO, "passes=%d dstpassbytes=%d\n", passes, dstpassbytes);
     for (i=0, offset=dst-info->FB; i<passes; i++, offset+=dstpassbytes) {
         if (i == (passes-1) && (h % hpass) != 0) {
 	    hpass = h % hpass;
@@ -1966,6 +1966,7 @@ R128DisplayVideo422(
     int v_inc, h_inc, step_by, tmp;
     int p1_h_accum_init, p23_h_accum_init;
     int p1_v_accum_init;
+    long counter;
 
     /* Choose ecp_div setting. As the user may have switched resolution
       we better do it again. */
@@ -2009,7 +2010,9 @@ R128DisplayVideo422(
     R128WaitForFifo(pScrn,2);
     OUTREG(R128_OV0_REG_LOAD_CNTL, R128_REG_LD_CTL_LOCK);
     R128WaitForIdle(pScrn);
-    while(!(INREG(R128_OV0_REG_LOAD_CNTL) & R128_REG_LD_CTL_LOCK_READBACK));
+    counter=10000;
+    while(!(INREG(R128_OV0_REG_LOAD_CNTL) & R128_REG_LD_CTL_LOCK_READBACK) && (counter>=0))counter--;
+    if(counter<0)xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "Cannot lock overlay registers\n");
 
     OUTREG(R128_OV0_H_INC, h_inc | ((h_inc >> 1) << 16));
     OUTREG(R128_OV0_STEP_BY, step_by | (step_by << 8));
@@ -2077,6 +2080,7 @@ R128DisplayVideo420(
     int v_inc, h_inc, step_by, tmp, leftUV;
     int p1_h_accum_init, p23_h_accum_init;
     int p1_v_accum_init, p23_v_accum_init;
+    long counter;
 
     /* Choose ecp_div setting. As the user may have switched resolution
       we better do it again. */
@@ -2125,7 +2129,9 @@ R128DisplayVideo420(
     R128WaitForFifo(pScrn, 2);
     OUTREG(R128_OV0_REG_LOAD_CNTL, R128_REG_LD_CTL_LOCK);
     R128WaitForIdle(pScrn);
-    while(!(INREG(R128_OV0_REG_LOAD_CNTL) & R128_REG_LD_CTL_LOCK_READBACK));
+    counter=10000;
+    while(!(INREG(R128_OV0_REG_LOAD_CNTL) & R128_REG_LD_CTL_LOCK_READBACK) && (counter>=0))counter--;
+    if(counter<0)xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "Cannot lock overlay registers\n");
 
     OUTREG(R128_OV0_H_INC, h_inc | ((h_inc >> 1) << 16));
     OUTREG(R128_OV0_STEP_BY, step_by | (step_by << 8));
@@ -2290,6 +2296,7 @@ R128PutImage(
 	offset += pPriv->currentBuffer * new_size * bpp;
 
    
+   info->accel->Sync(pScrn);
    switch(id) {
     case FOURCC_YV12:
     case FOURCC_I420:
