@@ -174,11 +174,14 @@ grid $c.channell $c.channel_optionmenu -sticky news
 grid configure $c.channell -sticky nsw
 
 eval checkbutton $c.xv_attr -variable attributes_window -text {{Xv Attributes}} -indicatoron false -onvalue true -offvalue false
-grid $c.xv_attr -row 0 -column 2 -padx 2 -pady 2
+grid $c.xv_attr -row 0 -column 2 -padx 2 -pady 2 -sticky ew
 eval checkbutton $c.capture_attr -variable capture_window -text {{Capture controls}} -indicatoron false -onvalue true -offvalue false
 grid $c.capture_attr -row 0 -column 3 -padx 2 -pady 2
 eval checkbutton $c.alsa_attr -variable alsa_window -text {{ALSA mixer}} -indicatoron false -onvalue true -offvalue false
 grid $c.alsa_attr -row 0 -column 4 -padx 2 -pady 2
+
+eval button $c.setup_window -text {{Setup window}} -command create_setup_window
+grid $c.setup_window -row 1 -column 2 -padx 2 -pady 2
 
 #eval checkbutton $c.fullscreen_checkbutton -text "Fullscreen"  \
 #	-indicatoron false -variable fullscreen_mode [get_settings $c.fullscreen_checkbutton]
