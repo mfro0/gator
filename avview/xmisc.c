@@ -211,6 +211,7 @@ int xmisc_setfullscreen(ClientData client_data,Tcl_Interp* interp,int argc,char 
 Tk_Window tkwin;
 Window win;
 Display *d;
+Screen *s;
 
 Tcl_ResetResult(interp);
 
@@ -229,8 +230,8 @@ if(tkwin==NULL){
 
 d=Tk_Display(tkwin);
 win=Tk_WindowId(tkwin);
-
-if((d==NULL)||(win==(Window)NULL)){
+s=Tk_Screen(tkwin);
+if((d==NULL)||(win==(Window)NULL)||(s==NULL)){
 	Tcl_AppendResult(interp,"ERROR: xmisc_setfullscreen: first argument must be a mapped toplevel or frame window", NULL);
 	return TCL_ERROR;
 	}
@@ -238,6 +239,8 @@ XUnmapWindow(d, win);
 XFlush(d);
 XMapRaised(d, win);
 XFlush(d);
+Tk_MoveWindow(tkwin, 0,0);
+Tk_ResizeWindow(tkwin, WidthOfScreen(s), HeightOfScreen(s));
 return TCL_OK;
 }
 struct {

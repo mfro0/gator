@@ -775,7 +775,6 @@ xgcv.clip_y_origin=0;
 Tk_CreateEventHandler(tkwin, XvVideoNotify, xv_notify_handler, NULL);
 */
 gc=Tk_GetGC(tkwin, GCSubwindowMode, &xgcv);
-
 XvPutVideo(d, port, win, gc, x, y, w, h, 0, 0, Tk_Width(tkwin), Tk_Height(tkwin));
 Tk_FreeGC(d, gc);
 return 0;
