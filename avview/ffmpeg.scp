@@ -27,7 +27,7 @@ set encoding_themes {
 	  "one-half" 
 
 	  "High quality MPEG-1"
-	  "MPEG-1 MQ" 
+	  "MPEG-1 HQ" 
 	  300000
 	  5
 	  "Fix quality"
@@ -102,11 +102,14 @@ add_parameter_pane "/Configuration/Encoding settings" "Encoding settings" \
 		"" ro_entry ffmpeg_encoding_theme_detail \
 		"Set parameters" command set_encoding_theme 
 
-add_parameter_pane "/Configuration/Encoding settings/Capture parameters" \
-		"Capture parameters" heading "" \
+catch {
+add_parameter_pane "/Configuration/Encoding settings/Capture parameters" "Capture parameters" \
+		"V4L parameters" heading "" \
 		"Deinterlacing method" choice [concat current_v4l_mode [get_deinterlacing_methods]] \
 		"V4L recording rate" choice {current_v4l_rrate "as is" "one half" "one quarter"} \
 		"Video frame rate" entry current_video_rate
+} err
+puts "err2=$err"
 
 if { [ffmpeg_present] } {
 	add_parameter_pane "/Configuration/Encoding settings/Compression parameters" "Compression parameters" \

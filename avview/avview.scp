@@ -922,6 +922,20 @@ Tree:open .setup.tree "/Configuration/User interface settings"
 replace_parameter_choices "/Configuration/Video device parameters" 0 a
 regenerate_port_menu
 
+proc set_default_settings {} {
+foreach {var value} {
+	capture_window   	"true"
+	alsa_window		"true"	
+	show_control_window	"true"
+	ffmpeg_encoding_theme   "MPEG-1 HQ"
+	} {
+	global $var
+	set $var $value
+	}
+set_encoding_theme
+}
+
+
 after idle {
 	avview_set_icon . "avview-16x16.ppm"
 	avview_set_icon .controlwin "avview-control-16x16.ppm"
@@ -929,6 +943,7 @@ after idle {
 
 after 100 {
 	assign_default_bindings
+	set_default_settings
 	read_settings
 	switch_to_pane "/User interface settings"
 	if { $display_setup_window_on_startup } {
