@@ -138,7 +138,7 @@ static void rage128_start_request_transfer(KM_TRANSFER_REQUEST *kmtr)
 {
 long status;
 KM_STRUCT *kms=kmtr->user_data;
-mach128_wait_for_idle(kms);
+rage128_wait_for_idle(kms);
 wmb();
 writel(kvirt_to_pa(kms->dma_table[kmtr->buffer])|RAGE128_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM, 
 	kms->reg_aperture+RAGE128_BM_VIDCAP_BUF0);
