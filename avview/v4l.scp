@@ -18,6 +18,7 @@ foreach {variable value } {
 	ffmpeg_audio_bitrate 64000
 	ffmpeg_audio_codec "MPEG-2"
 	ffmpeg_file_format "MPEG"
+	current_alsa_capture_device "none"
 	} {
 	global $variable
 	set $variable $value
