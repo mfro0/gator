@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/r128_driver.c,v 1.46 2001/11/06 15:53:10 alanh Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/r128_driver.c,v 1.53 2001/12/28 17:31:44 dawes Exp $ */
 /*
  * Copyright 1999, 2000 ATI Technologies Inc., Markham, Ontario,
  *                      Precision Insight, Inc., Cedar Park, Texas, and
@@ -116,8 +116,6 @@ static void R128Restore(ScrnInfoPtr pScrn);
 static Bool R128ModeInit(ScrnInfoPtr pScrn, DisplayModePtr mode);
 static void R128DisplayPowerManagementSet(ScrnInfoPtr pScrn,
 					  int PowerManagementMode, int flags);
-static Bool R128EnterVTFBDev(int scrnIndex, int flags);
-static void R128LeaveVTFBDev(int scrnIndex, int flags);
 
 typedef enum {
   OPTION_NOACCEL,
@@ -906,8 +904,9 @@ static Bool R128PreInitConfig(ScrnInfoPtr pScrn)
 	case PCI_CHIP_RAGE128TL:
 	case PCI_CHIP_RAGE128TR: info->isPro2 = TRUE; 
 	case PCI_CHIP_RAGE128PD:
-	case PCI_CHIP_RAGE128PR:
-	case PCI_CHIP_RAGE128PF: info->isDFP = TRUE; break;
+	case PCI_CHIP_RAGE128PF:
+	case PCI_CHIP_RAGE128PP:
+	case PCI_CHIP_RAGE128PR: info->isDFP = TRUE; break;
 
 	case PCI_CHIP_RAGE128LE:
 	case PCI_CHIP_RAGE128LF:
@@ -1052,6 +1051,7 @@ static Bool R128PreInitConfig(ScrnInfoPtr pScrn)
 	case PCI_CHIP_RAGE128LE:
 	case PCI_CHIP_RAGE128RE:
 	case PCI_CHIP_RAGE128RK:
+	case PCI_CHIP_RAGE128PP:
 	case PCI_CHIP_RAGE128PR:
 	case PCI_CHIP_RAGE128PD: info->IsPCI = TRUE;  break;
 	case PCI_CHIP_RAGE128LF:
@@ -1130,7 +1130,7 @@ R128I2CPutBits(I2CBusPtr b, int Clock, int data)
     unsigned char *R128MMIO = info->MMIO;
 
     val = INREG(info->DDCReg)  
-              & ~R128_GPIO_MONID_EN_0 & ~R128_GPIO_MONID_EN_3;
+              & ~(CARD32)(R128_GPIO_MONID_EN_0 | R128_GPIO_MONID_EN_3);
     val |= (Clock ? 0:R128_GPIO_MONID_EN_3);
     val |= (data ? 0:R128_GPIO_MONID_EN_0);
     OUTREG(info->DDCReg, val);
@@ -1183,7 +1183,7 @@ static Bool R128GetDFPInfo(ScrnInfoPtr pScrn)
            | R128_GPIO_MONID_MASK_0 | R128_GPIO_MONID_MASK_3));
 
     OUTREG(info->DDCReg, INREG(info->DDCReg)
-           & ~R128_GPIO_MONID_A_0 & ~R128_GPIO_MONID_A_3);
+           & ~(CARD32)(R128_GPIO_MONID_A_0 | R128_GPIO_MONID_A_3));
 
     MonInfo = xf86DoEDID_DDC2(pScrn->scrnIndex, info->pI2CBus);
     if(!MonInfo) {
@@ -1531,7 +1531,7 @@ static Bool R128PreInitModes(ScrnInfoPtr pScrn)
 				   NULL,        /* linePitches */
 				   8 * 64,      /* minPitch */
 				   8 * 1024,    /* maxPitch */
-				   64 * pScrn->bitsPerPixel, /* pitchInc */
+				   8 * 64,      /* pitchInc */
 				   128,         /* minHeight */
 				   2048,        /* maxHeight */
 				   pScrn->display->virtualX,
@@ -1541,7 +1541,7 @@ static Bool R128PreInitModes(ScrnInfoPtr pScrn)
 
         if (modesFound < 1 && info->FBDev) {
 	        fbdevHWUseBuildinMode(pScrn);
-	        pScrn->displayWidth = pScrn->virtualX; /* FIXME: might be wrong */
+	        pScrn->displayWidth = fbdevHWGetLineLength(pScrn)/(pScrn->bitsPerPixel/8);
 	        modesFound = 1;
         }
 
@@ -1853,8 +1853,6 @@ Bool R128PreInit(ScrnInfoPtr pScrn, int flags)
 	if (!fbdevHWInit(pScrn, info->PciInfo, NULL)) return FALSE;
 	pScrn->SwitchMode    = fbdevHWSwitchMode;
 	pScrn->AdjustFrame   = fbdevHWAdjustFrame;
-	pScrn->EnterVT       = R128EnterVTFBDev;
-	pScrn->LeaveVT       = R128LeaveVTFBDev;
 	pScrn->ValidMode     = fbdevHWValidMode;
     }
 
@@ -1891,6 +1889,10 @@ Bool R128PreInit(ScrnInfoPtr pScrn, int flags)
 				/* Free int10 info */
     if (pInt10)
 	xf86FreeInt10(pInt10);
+
+    xf86DrvMsg(pScrn->scrnIndex, X_NOTICE,
+	"For information on using the multimedia capabilities\n of this"
+	" adapter, please see http://www.linuxvideo.org/gatos.\n");
 
     return TRUE;
 
@@ -2505,7 +2507,7 @@ static void R128RestoreFPRegisters(ScrnInfoPtr pScrn, R128SavePtr restore)
     OUTREG(R128_FP_V_SYNC_STRT_WID,   restore->fp_v_sync_strt_wid);
     OUTREG(R128_TMDS_CRC,             restore->tmds_crc);
     OUTREG(R128_FP_PANEL_CNTL,        restore->fp_panel_cntl);
-    OUTREG(R128_FP_GEN_CNTL, restore->fp_gen_cntl & ~R128_FP_BLANK_DIS);
+    OUTREG(R128_FP_GEN_CNTL, restore->fp_gen_cntl & ~(CARD32)R128_FP_BLANK_DIS);
 
     if(info->isDFP) return;
 
@@ -3059,7 +3061,7 @@ static void R128InitFPRegisters(R128SavePtr orig, R128SavePtr save,
         save->fp_gen_cntl    |= (R128_FP_FPON | R128_FP_TDMS_EN |
              R128_FP_CRTC_DONT_SHADOW_VPAR | R128_FP_CRTC_DONT_SHADOW_HEND);
         save->tmds_transmitter_cntl = (orig->tmds_transmitter_cntl
-            & ~R128_TMDS_PLLRST) | R128_TMDS_PLLEN;
+            & ~(CARD32)R128_TMDS_PLLRST) | R128_TMDS_PLLEN;
     }
     else
         save->lvds_gen_cntl  |= (R128_LVDS_ON | R128_LVDS_BLON);
@@ -3192,12 +3194,14 @@ static Bool R128InitDDARegisters(ScrnInfoPtr pScrn, R128SavePtr save,
 }
 
 
+#if 0
 /* Define initial palette for requested video mode.  This doesn't do
    anything for XFree86 4.0. */
 static void R128InitPalette(R128SavePtr save)
 {
     save->palette_valid = FALSE;
 }
+#endif
 
 /* Define registers for a requested video mode. */
 static Bool R128Init(ScrnInfoPtr pScrn, DisplayModePtr mode, R128SavePtr save)
@@ -3414,15 +3418,19 @@ Bool R128EnterVT(int scrnIndex, int flags)
     R128InfoPtr info  = R128PTR(pScrn);
 
     R128TRACE(("R128EnterVT\n"));
+    if (info->FBDev) {
+        if (!fbdevHWEnterVT(scrnIndex,flags)) return FALSE;
+    } else
+        if (!R128ModeInit(pScrn, pScrn->currentMode)) return FALSE;
+    if (info->accelOn)
+	R128EngineInit(pScrn);
+
 #ifdef XF86DRI
-    if (R128PTR(pScrn)->directRenderingEnabled) {
+    if (info->directRenderingEnabled) {
 	R128CCE_START(pScrn, info);
 	DRIUnlock(pScrn->pScreen);
     }
 #endif
-    if (!R128ModeInit(pScrn, pScrn->currentMode)) return FALSE;
-    if (info->accelOn)
-	R128EngineInit(pScrn);
 
     info->PaletteSavedOnVT = FALSE;
     pScrn->AdjustFrame(scrnIndex, pScrn->frameX0, pScrn->frameY0, 0);
@@ -3451,29 +3459,12 @@ void R128LeaveVT(int scrnIndex, int flags)
 #endif
     R128SavePalette(pScrn, save);
     info->PaletteSavedOnVT = TRUE;
-    R128Restore(pScrn);
+    if (info->FBDev)
+        fbdevHWLeaveVT(scrnIndex,flags);
+    else
+        R128Restore(pScrn);
 }
 
-static Bool
-R128EnterVTFBDev(int scrnIndex, int flags)
-{
-    ScrnInfoPtr pScrn = xf86Screens[scrnIndex];
-    R128InfoPtr info = R128PTR(pScrn);
-    R128SavePtr restore = &info->SavedReg;
-    fbdevHWEnterVT(scrnIndex,flags);
-    R128RestorePalette(pScrn,restore);
-    R128EngineInit(pScrn);
-    return TRUE;
-}
-
-static void R128LeaveVTFBDev(int scrnIndex, int flags)
-{
-    ScrnInfoPtr pScrn = xf86Screens[scrnIndex];
-    R128InfoPtr info = R128PTR(pScrn);
-    R128SavePtr save = &info->SavedReg;
-    R128SavePalette(pScrn,save);
-    fbdevHWLeaveVT(scrnIndex,flags);
-}
 
 /* Called at the end of each server generation.  Restore the original text
    mode, unmap video memory, and unwrap and call the saved CloseScreen

@@ -1,6 +1,6 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/ativersion.h,v 1.46 2001/11/25 21:09:42 tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atirgb514.h,v 1.1 2001/11/25 13:42:31 tsi Exp $ */
 /*
- * Copyright 1997 through 2001 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
+ * Copyright 2001 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
  * documentation for any purpose is hereby granted without fee, provided that
@@ -21,19 +21,18 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef ___ATIVERSION_H___
-#define ___ATIVERSION_H___ 1
+#ifndef ___ATIRGB514_H___
+#define ___ATIRGB514_H___ 1
 
-#define ATI_NAME          "ATI"
-#define ATI_DRIVER_NAME   "ati"
+#include "atipriv.h"
+#include "atiproto.h"
 
-#define ATI_VERSION_NAME  "6.4.7"
+#include "xf86str.h"
 
-#define ATI_VERSION_MAJOR 6
-#define ATI_VERSION_MINOR 4
-#define ATI_VERSION_PATCH 7
+extern void ATIRGB514PreInit   FunctionPrototype((ATIPtr, ATIHWPtr));
+extern void ATIRGB514Save      FunctionPrototype((ATIPtr, ATIHWPtr));
+extern void ATIRGB514Calculate FunctionPrototype((ATIPtr, ATIHWPtr,
+                                                  DisplayModePtr));
+extern void ATIRGB514Set       FunctionPrototype((ATIPtr, ATIHWPtr));
 
-#define ATI_VERSION_CURRENT \
-    ((ATI_VERSION_MAJOR << 20) | (ATI_VERSION_MINOR << 10) | ATI_VERSION_PATCH)
-
-#endif /* ___ATIVERSION_H___ */
+#endif /* ___ATIRGB514_H___ */

@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atistruct.h,v 1.28 2001/10/28 03:33:25 tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atistruct.h,v 1.29 2001/11/25 13:42:31 tsi Exp $ */
 /*
  * Copyright 1999 through 2001 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
  *
@@ -79,6 +79,9 @@ typedef struct _ATIHWRec
 
     /* Generic DAC registers */
     CARD8 dac_read, dac_write, dac_mask;
+
+    /* IBM RGB 514 registers */
+    CARD8 ibmrgb514[0x0092U];   /* All that's needed for now */
 
     /* Mach64 PLL registers */
     CARD8 pll_vclk_cntl, pll_vclk_post_div,
@@ -292,7 +295,7 @@ typedef struct _ATIRec
      * Clock-related definitions.
      */
     int ClockNumberToProgramme, ReferenceNumerator, ReferenceDenominator;
-    int ProgrammableClock;
+    int ProgrammableClock, maxClock;
     ClockRec ClockDescriptor;
     CARD16 BIOSClocks[16];
     CARD8 Clock;

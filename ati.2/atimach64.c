@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atimach64.c,v 1.43 2001/11/08 04:15:30 tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atimach64.c,v 1.44 2001/11/25 13:42:30 tsi Exp $ */
 /*
  * Copyright 1997 through 2001 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
  *
@@ -47,9 +47,10 @@
 #include "ati.h"
 #include "atibus.h"
 #include "atichip.h"
-#include "aticrtc.h"
+#include "atidac.h"
 #include "atimach64.h"
 #include "atimach64io.h"
+#include "atirgb514.h"
 
 #include "miline.h"
 
@@ -152,6 +153,8 @@ ATIMach64PreInit
         pATIHW->dac_cntl |= DAC_8BIT_EN;
 
     pATIHW->gen_test_cntl = pATI->LockData.gen_test_cntl & ~GEN_CUR_EN;
+    if (pATI->DAC == ATI_DAC_IBMRGB514)
+        pATIHW->gen_test_cntl |= GEN_OVR_OUTPUT_EN;
 
     pATIHW->config_cntl = config_cntl = inr(CONFIG_CNTL);
 
@@ -631,6 +634,9 @@ ATIMach64Set
     if ((pATIHW->FeedbackDivider > 0) &&
         (pATI->ProgrammableClock != ATI_CLOCK_NONE))
         ATIClockSet(pATI, pATIHW);              /* Programme clock */
+
+    if (pATI->DAC == ATI_DAC_IBMRGB514)
+        ATIRGB514Set(pATI, pATIHW);
 
     /* Load Mach64 CRTC registers */
     outr(CRTC_H_TOTAL_DISP, pATIHW->crtc_h_total_disp);

@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/radeon_driver.c,v 1.42 2001/11/14 16:50:44 alanh Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/radeon_driver.c,v 1.47 2001/12/28 17:31:44 dawes Exp $ */
 /*
  * Copyright 2000 ATI Technologies Inc., Markham, Ontario, and
  *                VA Linux Systems Inc., Fremont, California.
@@ -114,8 +114,6 @@ static Bool RADEONModeInit(ScrnInfoPtr pScrn, DisplayModePtr mode);
 static void RADEONDisplayPowerManagementSet(ScrnInfoPtr pScrn,
 					    int PowerManagementMode,
 					    int flags);
-static Bool RADEONEnterVTFBDev(int scrnIndex, int flags);
-static void RADEONLeaveVTFBDev(int scrnIndex, int flags);
 
 typedef enum {
     OPTION_NOACCEL,
@@ -156,7 +154,7 @@ const OptionInfoRec RADEONOptions[] = {
     { OPTION_BUFFER_SIZE,  "BufferSize",       OPTV_INTEGER, {0}, FALSE },
     { OPTION_DEPTH_MOVE,   "EnableDepthMoves", OPTV_BOOLEAN, {0}, FALSE },
 #endif
-    { OPTION_CRT_SCREEN,   "crt_screen",       OPTV_BOOLEAN, {0}, FALSE},
+    { OPTION_CRT_SCREEN,   "CrtScreen",        OPTV_BOOLEAN, {0}, FALSE},
     { OPTION_PANEL_SIZE,   "PanelSize",        OPTV_ANYSTR,  {0}, FALSE },
 #ifdef XvExtension
     { OPTION_VIDEO_KEY, "VideoKey",      OPTV_INTEGER, {0}, FALSE },
@@ -1140,7 +1138,7 @@ static Bool RADEONPreInitConfig(ScrnInfoPtr pScrn)
             info->HasCRTC2 = TRUE;  
             break;
    	case PCI_CHIP_R200_QL:
-	case PCI_CHIP_RV200_BB:
+	case PCI_CHIP_R200_BB:
             /*R200 has secondary CRTC*/
             info->HasCRTC2 = TRUE;  
             info->IsR200 = TRUE;
@@ -1284,8 +1282,8 @@ static Bool RADEONPreInitConfig(ScrnInfoPtr pScrn)
 	case PCI_CHIP_RADEON_QF:
 	case PCI_CHIP_RADEON_QG:
 	case PCI_CHIP_R200_QL:
+	case PCI_CHIP_R200_BB:
 	case PCI_CHIP_RV200_QW:
-	case PCI_CHIP_RV200_BB:
 	default:                 info->IsPCI = FALSE; break;
 	}
     }
@@ -1801,6 +1799,10 @@ static Bool RADEONPreInitModes(ScrnInfoPtr pScrn)
         {
             xf86DrvMsg(pScrn->scrnIndex, X_ERROR, 
                  "No valid mode found for this DFP/LCD\n");
+            xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+                 "If you have an analog monitor attached but no DFP/LCD try"
+                 "specifying\n\t'Option \"CrtScreen\"' in your X server"
+                 "config file.\n");
             return FALSE;
         }
     }
@@ -2277,8 +2279,6 @@ Bool RADEONPreInit(ScrnInfoPtr pScrn, int flags)
 	if (!fbdevHWInit(pScrn, info->PciInfo, NULL)) return FALSE;
 	pScrn->SwitchMode    = fbdevHWSwitchMode;
 	pScrn->AdjustFrame   = fbdevHWAdjustFrame;
-	pScrn->EnterVT       = RADEONEnterVTFBDev;
-	pScrn->LeaveVT       = RADEONLeaveVTFBDev;
 	pScrn->ValidMode     = fbdevHWValidMode;
     }
 
@@ -2331,6 +2331,10 @@ Bool RADEONPreInit(ScrnInfoPtr pScrn, int flags)
 				/* Free int10 info */
     if (pInt10)
 	xf86FreeInt10(pInt10);
+
+    xf86DrvMsg(pScrn->scrnIndex, X_NOTICE,
+	"For information on using the multimedia capabilities\n of this"
+	" adapter, please see http://www.linuxvideo.org/gatos.\n");
 
     return TRUE;
 
@@ -2471,7 +2475,9 @@ Bool RADEONScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 
     RADEONSave(pScrn);
     if (info->FBDev) {
+	unsigned char *RADEONMMIO = info->MMIO;
 	if (!fbdevHWModeInit(pScrn, pScrn->currentMode)) return FALSE;
+	info->ModeReg.surface_cntl = INREG(RADEON_SURFACE_CNTL);
     } else {
 	if (!RADEONModeInit(pScrn, pScrn->currentMode)) return FALSE;
     }
@@ -3235,6 +3241,7 @@ static void RADEONRestoreDDARegisters(ScrnInfoPtr pScrn, RADEONSavePtr restore)
     OUTREG(RADEON_DDA_ON_OFF, restore->dda_on_off);
 }
 
+#if 0
 /* Write palette data. */
 static void RADEONRestorePalette(ScrnInfoPtr pScrn, RADEONSavePtr restore)
 {
@@ -3258,6 +3265,7 @@ static void RADEONRestorePalette(ScrnInfoPtr pScrn, RADEONSavePtr restore)
 	OUTPAL_NEXT_CARD32(restore->palette[i]);
     }
 }
+#endif
 
 /* Write out state to define a new video mode.  */
 static void
@@ -3356,7 +3364,9 @@ RADEONRestoreMode(ScrnInfoPtr pScrn, RADEONSavePtr restore)
     }
     */
 
-    /*RADEONRestorePalette(pScrn, &info->SavedReg);*/
+#if 0
+    RADEONRestorePalette(pScrn, &info->SavedReg);
+#endif
 }
 
 /* Read common registers. */
@@ -3833,7 +3843,7 @@ static Bool RADEONInitCrtc2Registers(ScrnInfoPtr pScrn, RADEONSavePtr save,
 
     if(info->IsR200)
         save->disp_output_cntl = 
-            ((info->SavedReg.disp_output_cntl & ~RADEON_DISP_DAC_SOURCE_MASK)
+            ((info->SavedReg.disp_output_cntl & ~(CARD32)RADEON_DISP_DAC_SOURCE_MASK)
             | RADEON_DISP_DAC_SOURCE_CRTC2);
     else
         save->dac2_cntl = info->SavedReg.dac2_cntl 
@@ -4403,18 +4413,25 @@ Bool RADEONEnterVT(int scrnIndex, int flags)
     RADEONInfoPtr info  = RADEONPTR(pScrn);
 
     RADEONTRACE(("RADEONEnterVT\n"));
+
+    if (info->FBDev) {
+	unsigned char *RADEONMMIO = info->MMIO;
+        if (!fbdevHWEnterVT(scrnIndex,flags)) return FALSE;
+        info->PaletteSavedOnVT = FALSE;
+        info->ModeReg.surface_cntl = INREG(RADEON_SURFACE_CNTL);
+    } else
+        if (!RADEONModeInit(pScrn, pScrn->currentMode)) return FALSE;
+
+    if (info->accelOn)
+	RADEONEngineRestore(pScrn);
+
 #ifdef XF86DRI
     if (RADEONPTR(pScrn)->directRenderingEnabled) {
 	RADEONCP_START(pScrn, info);
 	DRIUnlock(pScrn->pScreen);
     }
 #endif
-    if (!RADEONModeInit(pScrn, pScrn->currentMode)) return FALSE;
 
-    if (info->accelOn)
-	RADEONEngineRestore(pScrn);
-
-    /*info->PaletteSavedOnVT = FALSE;*/
     RADEONAdjustFrame(scrnIndex, pScrn->frameX0, pScrn->frameY0, 0);
     return TRUE;
 }
@@ -4425,7 +4442,7 @@ void RADEONLeaveVT(int scrnIndex, int flags)
 {
     ScrnInfoPtr pScrn = xf86Screens[scrnIndex];
     RADEONInfoPtr info  = RADEONPTR(pScrn);
-    /*RADEONSavePtr save  = &info->ModeReg;*/
+    RADEONSavePtr save  = &info->ModeReg;
 
     RADEONTRACE(("RADEONLeaveVT\n"));
 #ifdef XvExtension
@@ -4438,34 +4455,13 @@ void RADEONLeaveVT(int scrnIndex, int flags)
 	RADEONCP_STOP(pScrn, info);
     }
 #endif
-    /* not used at present */
-    /*
-    RADEONSavePalette(pScrn, save);
-    info->PaletteSavedOnVT = TRUE;*/
 
-    RADEONRestore(pScrn);
-}
-
-static Bool
-RADEONEnterVTFBDev(int scrnIndex, int flags)
-{
-    ScrnInfoPtr pScrn = xf86Screens[scrnIndex];
-    RADEONInfoPtr info = RADEONPTR(pScrn);
-    RADEONSavePtr restore = &info->SavedReg;
-    fbdevHWEnterVT(scrnIndex,flags);
-    RADEONRestorePalette(pScrn,restore);
-    if (info->accelOn)
-	RADEONEngineRestore(pScrn);
-    return TRUE;
-}
-
-static void RADEONLeaveVTFBDev(int scrnIndex, int flags)
-{
-    ScrnInfoPtr pScrn = xf86Screens[scrnIndex];
-    RADEONInfoPtr info = RADEONPTR(pScrn);
-    RADEONSavePtr save = &info->SavedReg;
-    RADEONSavePalette(pScrn,save);
-    fbdevHWLeaveVT(scrnIndex,flags);
+    if (info->FBDev) {
+        RADEONSavePalette(pScrn, save);
+        info->PaletteSavedOnVT = TRUE;
+        fbdevHWLeaveVT(scrnIndex,flags);
+    } else
+        RADEONRestore(pScrn);
 }
 
 /* Called at the end of each server generation.  Restore the original text

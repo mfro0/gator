@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/radeon_accel.c,v 1.22 2001/11/08 23:18:28 alanh Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/radeon_accel.c,v 1.23 2001/11/24 14:38:19 tsi Exp $ */
 /*
  * Copyright 2000 ATI Technologies Inc., Markham, Ontario, and
  *                VA Linux Systems Inc., Fremont, California.
@@ -1083,7 +1083,7 @@ RADEONDisableClipping(ScrnInfoPtr pScrn)
 	RADEONInfoPtr   info        = RADEONPTR(pScrn);
 	unsigned char *RADEONMMIO = info->MMIO;
 
-	OUTREG(RADEON_DP_GUI_MASTER_CNTL, (info->dp_gui_master_cntl & ~RADEON_GMC_DST_CLIPPING));
+	OUTREG(RADEON_DP_GUI_MASTER_CNTL, (info->dp_gui_master_cntl & ~(CARD32)RADEON_GMC_DST_CLIPPING));
 
 	OUTREG(RADEON_SC_TOP_LEFT, 0);
 	OUTREG(RADEON_SC_BOTTOM_RIGHT, INREG(RADEON_DEFAULT_SC_BOTTOM_RIGHT));
@@ -1405,7 +1405,7 @@ RADEONCPDisableClipping(ScrnInfoPtr pScrn)
     RING_LOCALS;
     BEGIN_RING( 3 );
     OUT_RING_REG(RADEON_DP_GUI_MASTER_CNTL, 
-					 (info->dp_gui_master_cntl & ~RADEON_GMC_DST_CLIPPING));
+					 (info->dp_gui_master_cntl & ~(CARD32)(RADEON_GMC_DST_CLIPPING)));
 	OUT_RING_REG(RADEON_SC_TOP_LEFT, 0);
     OUT_RING_REG(RADEON_SC_BOTTOM_RIGHT, (RADEON_DEFAULT_SC_RIGHT_MAX
 					    | RADEON_DEFAULT_SC_BOTTOM_MAX));

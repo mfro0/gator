@@ -3,6 +3,9 @@
 
 #include "xf86i2c.h"
 
+/* why someone has defined NUM someplace else is beyoung me.. */
+#undef NUM
+
 typedef struct {
 	CARD32 fcar;           /* 16 * fcar_Mhz */
 	CARD32 min_freq;       /* 16 * min_freq_Mhz */

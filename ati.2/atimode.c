@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atimode.c,v 1.7 2001/08/15 11:54:26 tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atimode.c,v 1.8 2001/11/25 13:42:30 tsi Exp $ */
 /*
  * Copyright 2000 through 2001 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
  *
@@ -30,6 +30,7 @@
 #include "atimach64io.h"
 #include "atimode.h"
 #include "atiprint.h"
+#include "atirgb514.h"
 #include "ativga.h"
 #include "atiwonder.h"
 #include "atiwonderio.h"
@@ -332,6 +333,8 @@ ATIModePreInit
                 }
             }
         }
+        else if (pATI->DAC == ATI_DAC_IBMRGB514)
+            ATIRGB514PreInit(pATI, pATIHW);
     }
 
     /* Set RAMDAC data */
@@ -479,6 +482,8 @@ ATIModeSave
                 }
             }
         }
+        else if (pATI->DAC == ATI_DAC_IBMRGB514)
+            ATIRGB514Save(pATI, pATIHW);
     }
 
 #ifndef AVOID_CPIO
@@ -848,6 +853,8 @@ ATIModeCalculate
             ECPClock >>= 1;
         pATIHW->pll_vclk_cntl |= SetBits(Index, PLL_ECP_DIV);
     }
+    else if (pATI->DAC == ATI_DAC_IBMRGB514)
+        ATIRGB514Calculate(pATI, pATIHW, pMode);
 
     return TRUE;
 }
@@ -950,6 +957,10 @@ ATIModeSet
             if ((pATIHW->FeedbackDivider > 0) &&
                 (pATI->ProgrammableClock > ATI_CLOCK_FIXED))
                 ATIClockSet(pATI, pATIHW);
+
+            /* Set up RAMDAC */
+            if (pATI->DAC == ATI_DAC_IBMRGB514)
+                ATIRGB514Set(pATI, pATIHW);
 
             /* Load VGA Wonder */
             if (pATI->CPIO_VGAWonder)

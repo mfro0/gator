@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atiprint.c,v 1.21 2001/10/28 03:33:24 tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atiprint.c,v 1.22 2001/11/25 13:42:31 tsi Exp $ */
 /*
  * Copyright 1997 through 2001 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
  *
@@ -274,6 +274,72 @@ FoundLimit:
 }
 
 /*
+ * ATIPrintRGB514Registers --
+ *
+ * Display IBM RGB 514 registers when the server is invoked with -verbose.
+ */
+static void
+ATIPrintRGB514Registers
+(
+    ATIPtr pATI
+)
+{
+    CARD32 crtc_gen_cntl, dac_cntl;
+    CARD8  index_lo, index_hi, index_ctl;
+    int    Index;
+
+    /* Temporarily switch to Mach64 CRTC */
+    crtc_gen_cntl = inr(CRTC_GEN_CNTL);
+    if (!(crtc_gen_cntl & CRTC_EXT_DISP_EN))
+        outr(CRTC_GEN_CNTL, crtc_gen_cntl | CRTC_EXT_DISP_EN);
+
+    /* Temporarily switch to IBM RGB 514 registers */
+    dac_cntl = inr(DAC_CNTL);
+    outr(DAC_CNTL, (dac_cntl & ~DAC_EXT_SEL_RS3) | DAC_EXT_SEL_RS2);
+
+    index_lo = in8(M64_DAC_WRITE);
+    index_hi = in8(M64_DAC_DATA);
+    index_ctl = in8(M64_DAC_READ);
+
+    out8(M64_DAC_WRITE, 0x00U);
+    out8(M64_DAC_DATA, 0x00U);
+    out8(M64_DAC_READ, 0x01U);  /* Auto-increment */
+
+    xf86ErrorFVerb(4, "\n IBM RGB 514 registers:");
+    for (Index = 0;  Index < 0x0800;  Index++)
+    {
+        if (!(Index & 3))
+        {
+            if (!(Index & 15))
+            {
+                xf86ErrorFVerb(4, "\n 0x%04X: ", Index);
+
+                /* Need to rewrite index every so often... */
+                if ((Index == 0x0100) || (Index == 0x0500))
+                {
+                    out8(M64_DAC_WRITE, 0x00U);
+                    out8(M64_DAC_DATA, Index >> 8);
+                }
+            }
+
+            xf86ErrorFVerb(4, " ");
+        }
+
+        xf86ErrorFVerb(4, "%02X", in8(M64_DAC_MASK));
+    }
+
+    /* Restore registers */
+    out8(M64_DAC_WRITE, index_lo);
+    out8(M64_DAC_DATA, index_hi);
+    out8(M64_DAC_READ, index_ctl);
+    outr(DAC_CNTL, dac_cntl);
+    if (!(crtc_gen_cntl & CRTC_EXT_DISP_EN))
+        outr(CRTC_GEN_CNTL, crtc_gen_cntl);
+
+    xf86ErrorFVerb(4, "\n");
+}
+
+/*
  * ATIPrintRegisters --
  *
  * Display various registers when the server is invoked with -verbose.
@@ -339,8 +405,11 @@ ATIPrintRegisters
                 outr(LCD_INDEX, lcd_index);
             }
             else
+            {
                 ATIPrintIndexedRegisters(CRTX(ColourIOBase), 0, 64,
                     "Colour CRT controller", 0);
+            }
+
             ATIPrintIndexedRegisters(ATTRX, 0, 32, "Attribute controller",
                 GENS1(ColourIOBase));
         }
@@ -381,8 +450,11 @@ ATIPrintRegisters
                 outr(LCD_INDEX, lcd_index);
             }
             else
+            {
                 ATIPrintIndexedRegisters(CRTX(MonochromeIOBase), 0, 64,
                     "Monochrome CRT controller", 0);
+            }
+
             ATIPrintIndexedRegisters(ATTRX, 0, 32, "Attribute controller",
                 GENS1(MonochromeIOBase));
         }
@@ -454,8 +526,11 @@ ATIPrintRegisters
             (lcd_gen_ctrl & ~CRTC_RW_SELECT) | (SHADOW_EN | SHADOW_RW_EN));
         ATIPrintMach64Registers(pATI, &crtc, "shadow");
 
-        ATIPutMach64LCDReg(LCD_GEN_CNTL, lcd_gen_ctrl | CRTC_RW_SELECT);
-        ATIPrintMach64Registers(pATI, &crtc, "secondary");
+        if (pATI->Chip != ATI_CHIP_264XL)
+        {
+            ATIPutMach64LCDReg(LCD_GEN_CNTL, lcd_gen_ctrl | CRTC_RW_SELECT);
+            ATIPrintMach64Registers(pATI, &crtc, "secondary");
+        }
 
         ATIPutMach64LCDReg(LCD_GEN_CNTL, lcd_gen_ctrl);
 
@@ -508,6 +583,9 @@ ATIPrintRegisters
 
         if (pATI->Chip >= ATI_CHIP_264CT)
             ATIPrintMach64PLLRegisters(pATI);
+
+        if (pATI->DAC == ATI_DAC_IBMRGB514)
+            ATIPrintRGB514Registers(pATI);
     }
 
 #ifdef AVOID_CPIO

@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atiprobe.c,v 1.49 2001/10/28 03:33:24 tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atiprobe.c,v 1.50 2001/11/24 14:38:18 tsi Exp $ */
 /*
  * Copyright 1997 through 2001 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
  *
@@ -1312,7 +1312,7 @@ ATIProbe
                 continue;
             }
 
-            sprintf(Identifier, "Unshared Mach64 at sparse PIO base 0x%04X",
+            sprintf(Identifier, "Unshared Mach64 at sparse PIO base 0x%04lX",
                 Mach64SparseIOBases[i]);
             xf86MsgVerb(X_INFO, 3, ATI_NAME ":  %s detected.\n", Identifier);
 

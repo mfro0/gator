@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/radeon_dga.c,v 1.6 2001/05/25 02:44:36 tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/radeon_dga.c,v 1.8 2001/12/04 17:30:46 tsi Exp $ */
 /*
  * Copyright 2000 ATI Technologies Inc., Markham, Ontario, and
  *                VA Linux Systems Inc., Fremont, California.
@@ -76,74 +76,68 @@ static DGAModePtr RADEONSetupDGAMode(ScrnInfoPtr pScrn,
     RADEONInfoPtr  info            = RADEONPTR(pScrn);
     DGAModePtr     newmodes        = NULL, currentMode;
     DisplayModePtr pMode, firstMode;
-    int            otherPitch, Bpp = bitsPerPixel >> 3;
-    Bool           oneMore;
-
-    pMode = firstMode = pScrn->modes;
-
-    while (pMode) {
-	otherPitch = secondPitch ? secondPitch : pMode->HDisplay;
-
-	if (pMode->HDisplay != otherPitch) {
-	    newmodes = xrealloc(modes, (*num + 2) * sizeof(DGAModeRec));
-	    oneMore  = TRUE;
-	} else {
-	    newmodes = xrealloc(modes, (*num + 1) * sizeof(DGAModeRec));
-	    oneMore  = FALSE;
-	}
-
-	if (!newmodes) {
-	    xfree(modes);
-	    return NULL;
-	}
-	modes = newmodes;
+    unsigned int   size;
+    int            pitch, Bpp = bitsPerPixel >> 3;
 
 SECOND_PASS:
 
-	currentMode = modes + *num;
-	(*num)++;
+    pMode = firstMode = pScrn->modes;
 
-	currentMode->mode           = pMode;
-	currentMode->flags          = DGA_CONCURRENT_ACCESS;
-	if (pixmap)
-	    currentMode->flags     |= DGA_PIXMAP_AVAILABLE;
-	if (info->accel) {
-	  if (info->accel->SetupForSolidFill &&
-	      info->accel->SubsequentSolidFillRect)
-	    currentMode->flags     |= DGA_FILL_RECT;
-	  if (info->accel->SetupForScreenToScreenCopy &&
-	      info->accel->SubsequentScreenToScreenCopy)
-	    currentMode->flags     |= DGA_BLIT_RECT | DGA_BLIT_RECT_TRANS;
+    while (1) {
+	pitch = pScrn->displayWidth;
+	size = pitch * Bpp * pMode->VDisplay;
 
-	  if (currentMode->flags &
-	      (DGA_PIXMAP_AVAILABLE | DGA_FILL_RECT |
-	       DGA_BLIT_RECT | DGA_BLIT_RECT_TRANS))
-		currentMode->flags &= ~DGA_CONCURRENT_ACCESS;
-	}
-	if (pMode->Flags & V_DBLSCAN)
-	    currentMode->flags     |= DGA_DOUBLESCAN;
-	if (pMode->Flags & V_INTERLACE)
-	    currentMode->flags     |= DGA_INTERLACED;
-	currentMode->byteOrder      = pScrn->imageByteOrder;
-	currentMode->depth          = depth;
-	currentMode->bitsPerPixel   = bitsPerPixel;
-	currentMode->red_mask       = red;
-	currentMode->green_mask     = green;
-	currentMode->blue_mask      = blue;
-	currentMode->visualClass    = visualClass;
-	currentMode->viewportWidth  = pMode->HDisplay;
-	currentMode->viewportHeight = pMode->VDisplay;
-	currentMode->xViewportStep  = 8;
-	currentMode->yViewportStep  = 1;
-	currentMode->viewportFlags  = DGA_FLIP_RETRACE;
-	currentMode->offset         = 0;
-	currentMode->address        = (unsigned char*)info->LinearAddr;
+	if ((!secondPitch || (pitch != secondPitch)) &&
+	    (size <= info->FbMapSize)) {
 
-	if (oneMore) { /* first one is narrow width */
-	    currentMode->bytesPerScanline = (((pMode->HDisplay * Bpp) + 3)
-					     & ~3L);
-	    currentMode->imageWidth   = pMode->HDisplay;
-	    currentMode->imageHeight  = pMode->VDisplay;
+	    if (secondPitch)
+		pitch = secondPitch;
+
+	    if (!(newmodes = xrealloc(modes, (*num + 1) * sizeof(DGAModeRec))))
+	        break;
+	   
+	    modes = newmodes;
+	    currentMode = modes + *num;
+
+	    currentMode->mode           = pMode;
+	    currentMode->flags          = DGA_CONCURRENT_ACCESS;
+
+	    if (pixmap)
+	        currentMode->flags     |= DGA_PIXMAP_AVAILABLE;
+
+	    if (info->accel) {
+	      if (info->accel->SetupForSolidFill &&
+		  info->accel->SubsequentSolidFillRect)
+		 currentMode->flags     |= DGA_FILL_RECT;
+	      if (info->accel->SetupForScreenToScreenCopy &&
+		  info->accel->SubsequentScreenToScreenCopy)
+		 currentMode->flags     |= DGA_BLIT_RECT | DGA_BLIT_RECT_TRANS;
+	      if (currentMode->flags &
+		  (DGA_PIXMAP_AVAILABLE | DGA_FILL_RECT |
+		   DGA_BLIT_RECT | DGA_BLIT_RECT_TRANS))
+		  currentMode->flags &= ~DGA_CONCURRENT_ACCESS;
+	    }
+	    if (pMode->Flags & V_DBLSCAN)
+		currentMode->flags     |= DGA_DOUBLESCAN;
+	    if (pMode->Flags & V_INTERLACE)
+	        currentMode->flags     |= DGA_INTERLACED;
+	    currentMode->byteOrder      = pScrn->imageByteOrder;
+	    currentMode->depth          = depth;
+	    currentMode->bitsPerPixel   = bitsPerPixel;
+	    currentMode->red_mask       = red;
+	    currentMode->green_mask     = green;
+	    currentMode->blue_mask      = blue;
+	    currentMode->visualClass    = visualClass;
+	    currentMode->viewportWidth  = pMode->HDisplay;
+	    currentMode->viewportHeight = pMode->VDisplay;
+	    currentMode->xViewportStep  = 8;
+	    currentMode->yViewportStep  = 1;
+	    currentMode->viewportFlags  = DGA_FLIP_RETRACE;
+	    currentMode->offset         = 0;
+	    currentMode->address        = (unsigned char*)info->LinearAddr;
+	    currentMode->bytesPerScanline = pitch * Bpp;
+	    currentMode->imageWidth   = pitch;
+	    currentMode->imageHeight  = info->FbMapSize / currentMode->bytesPerScanline;
 	    currentMode->pixmapWidth  = currentMode->imageWidth;
 	    currentMode->pixmapHeight = currentMode->imageHeight;
 	    currentMode->maxViewportX = currentMode->imageWidth -
@@ -151,24 +145,17 @@ SECOND_PASS:
 	    /* this might need to get clamped to some maximum */
 	    currentMode->maxViewportY = (currentMode->imageHeight -
 					 currentMode->viewportHeight);
-	    oneMore = FALSE;
-	    goto SECOND_PASS;
-	} else {
-	    currentMode->bytesPerScanline = ((otherPitch * Bpp) + 3) & ~3L;
-	    currentMode->imageWidth       = otherPitch;
-	    currentMode->imageHeight      = pMode->VDisplay;
-	    currentMode->pixmapWidth      = currentMode->imageWidth;
-	    currentMode->pixmapHeight     = currentMode->imageHeight;
-	    currentMode->maxViewportX     = (currentMode->imageWidth -
-					     currentMode->viewportWidth);
-	    /* this might need to get clamped to some maximum */
-	    currentMode->maxViewportY     = (currentMode->imageHeight -
-					     currentMode->viewportHeight);
+	    (*num)++;
 	}
 
 	pMode = pMode->next;
 	if (pMode == firstMode)
 	    break;
+    }
+
+    if (secondPitch) {
+	secondPitch = 0;
+	goto SECOND_PASS;
     }
 
     return modes;
