@@ -1769,7 +1769,7 @@ R128DMA(
     drmDMAReq req;
 
     /* Verify conditions and bail out as early as possible */
-    if (0 && !info->directRenderingEnabled)     /* Disable this for now. As it is not working right */
+    if (1 || !info->directRenderingEnabled)     /* Disable this for now. As it is not working right */
         return FALSE;
 
     if ((hpass = min(h,(BUFSIZE/w))) == 0)
