@@ -1958,10 +1958,24 @@ ATIPutImage(
 	   s3offset = tmp;
 	}
 	nlines = ((((yb + 0xffff) >> 16) + 1) & ~1) - top;
-	(*pATI->pXAAInfo->Sync)(pScrn);
+	(*pATI->pXAAInfo->Sync)(pScrn);	
+#if X_BYTE_ORDER == X_BIG_ENDIAN
+	{
+	   CARD32 mem_cntl;
+
+	   /* We need to disable byte swapping, or the data gets mangled */
+	   mem_cntl = inr(R128_MEM_CNTL);
+	   outr(R128_CONFIG_CNTL, mem_cntl &
+		 ~(CTL_MEM_LOWER_APER_ENDIAN|CTL_MEM_UPPER_APER_ENDIAN));
+#endif
 	ATICopyMungedData(buf + (top * srcPitch) + left, buf + s2offset,
 			   buf + s3offset, dst_start, srcPitch, srcPitch2,
 			   dstPitch, nlines, npixels);
+#if X_BYTE_ORDER == X_BIG_ENDIAN
+	   /* restore byte swapping */
+	   outr(R128_CONFIG_CNTL, mem_cntl);
+	   }
+#endif
 	break;
     case FOURCC_UYVY:
     case FOURCC_YUY2:

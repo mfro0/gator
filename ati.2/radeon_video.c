@@ -1427,7 +1427,13 @@ static void RADEON_read_eeprom(RADEONPortPrivPtr pPriv)
 
 }
 
+/* Radeon AIW 7500 has i2c_config 2b not 29 as Radeon AIW */
+/* Radeon AIW 7500:
 
+(--) RADEON(0): Chipset: "ATI Radeon 7500 QW (AGP)" (ChipID = 0x5157)
+(II) RADEON(0): VIDEO BIOS TABLE OFFSETS: bios_header=0x011c mm_table=0x04ae
+(II) RADEON(0): MM_TABLE: 01-0c-06-18-06-80-2b-66-02-05-00-06-00-07
+*/
 
 static void RADEONReadMM_TABLE(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
 {
