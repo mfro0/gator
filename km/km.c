@@ -144,7 +144,7 @@ return 1;
 int generic_deallocate_dvb(KM_STREAM *stream)
 {
 int k;
-spin_lock_irq(&(stream->lock));
+spin_lock(&(stream->lock));
 for(k=0;k<stream->num_buffers;k++){
 	rvfree(stream->dma_table[k], 4096);
 	}
@@ -155,7 +155,7 @@ stream->du=-1;
 km_deallocate_data(stream->info_du);
 stream->info_du=-1;
 stream->num_buffers=-1;
-spin_unlock_irq(&(stream->lock));
+spin_unlock(&(stream->lock));
 printk("km: closed stream, %ld buffers captured\n", stream->total_frames);
 return 0;
 }
@@ -243,11 +243,11 @@ if(km_fire_transfer_request(kmtq)){
 void km_purge_queue(KM_TRANSFER_QUEUE *kmtq)
 {
 printk("Purging transfer queue\n");
-spin_lock_irq(&(kmtq->lock));
+spin_lock(&(kmtq->lock));
 memset(kmtq->request, 0, kmtq->size*sizeof(*(kmtq->request)));
 kmtq->first=0;
 kmtq->last=0;
-spin_unlock_irq(&(kmtq->lock));
+spin_unlock(&(kmtq->lock));
 }
 
 int acknowledge_dma(KM_STRUCT *kms)
@@ -285,6 +285,9 @@ int start_video_capture(KM_STRUCT *kms)
 int result;
 u32 buf_size;
 spin_lock(&(kms->kms_lock));
+if(kms->gdq_usage==0){
+	km_purge_queue(&(kms->gui_dma_queue));
+	}
 kms->gdq_usage++;
 if((kms->is_capture_active==NULL)||(kms->get_window_parameters==NULL)||(kms->allocate_dvb==NULL)){
 	result=-ENOTSUPP;
@@ -346,6 +349,9 @@ int start_vbi_capture(KM_STRUCT *kms)
 int result;
 long buf_size;
 spin_lock(&(kms->kms_lock));
+if(kms->gdq_usage==0){
+	km_purge_queue(&(kms->gui_dma_queue));
+	}
 kms->gdq_usage++;
 if((kms->is_vbi_active==NULL)||(kms->get_vbi_buf_size==NULL)||(kms->allocate_dvb==NULL)){
 	result=-ENOTSUPP;
@@ -538,6 +544,7 @@ kms->gui_dma_queue.first=0;
 spin_lock_init(&(kms->gui_dma_queue.lock));
 memset(kms->gui_dma_request, 0, kms->gui_dma_queue.size*sizeof(KM_TRANSFER_REQUEST));
 
+atomic_set(&(kms->recursion_count),0);
 kms->interrupt_count=0;
 kms->irq_handler=NULL;
 if(km_buffers<2)km_buffers=2;

@@ -157,12 +157,14 @@ wmb();
 if(kms->gdq_usage==1){
 	printk("Starting GUIDMA queue\n");
 	writel(INT_BIT_GUIDMA, kms->reg_aperture+RADEON_GEN_INT_STATUS);
+	wmb();
 	a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
 	writel(a|INT_BIT_GUIDMA, kms->reg_aperture+RADEON_GEN_INT_CNTL);
 	}
 wmb();
 writel((CAP_INT_BIT_BUF0|CAP_INT_BIT_BUF0_EVEN|
 	CAP_INT_BIT_BUF1|CAP_INT_BIT_BUF1_EVEN), kms->reg_aperture+RADEON_CAP_INT_STATUS);
+wmb();
 a=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
 writel(a|(CAP_INT_BIT_BUF0|CAP_INT_BIT_BUF0_EVEN|
 	CAP_INT_BIT_BUF1|CAP_INT_BIT_BUF1_EVEN), kms->reg_aperture+RADEON_CAP_INT_CNTL);
@@ -220,11 +222,13 @@ wmb();
 if(kms->gdq_usage==1){
 	printk("Starting GUIDMA queue\n");
 	writel(INT_BIT_GUIDMA, kms->reg_aperture+RADEON_GEN_INT_STATUS);
+	wmb();
 	a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
 	writel(a|INT_BIT_GUIDMA, kms->reg_aperture+RADEON_GEN_INT_CNTL);
 	}
 wmb();
 writel((CAP_INT_BIT_VBI0|CAP_INT_BIT_VBI1), kms->reg_aperture+RADEON_CAP_INT_STATUS);
+wmb();
 a=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
 writel(a|(CAP_INT_BIT_VBI0|CAP_INT_BIT_VBI1), kms->reg_aperture+RADEON_CAP_INT_CNTL);
 }
@@ -349,7 +353,15 @@ kms->interrupt_count++;
 /* we should only get tens per second, no more */
 count=10000;
 
-while(1){
+atomic_inc(&(kms->recursion_count));
+/* bug - recursion count could have changed in between these instructions..
+   very unlikely.. We need the ability to check whether recursion_count is
+   greater than 1.. */
+if(atomic_read(&(kms->recursion_count))>1){
+	printk("km: irq handler double entry\n");
+	return; /* another interrupt handler is active */
+	}
+while(atomic_read(&(kms->recursion_count))){
 /*	KM_DEBUG("beep %ld\n", kms->interrupt_count); */
 
 		/* Check interrupt status */
@@ -365,7 +377,8 @@ while(1){
 		INT_BIT_CAP0;
 	if(!status){
 		/* INT_BIT_CAP0 will tell us if any interrupt bits are high */
-		return;
+		if(atomic_dec_and_test(&(kms->recursion_count)))return;
+		continue;
 		}
 	status_cap=0;
 	if(status & INT_BIT_CAP0){

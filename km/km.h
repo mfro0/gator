@@ -89,6 +89,8 @@ typedef struct S_KM_STRUCT {
 	
 	int v4l_buf_parity;
 	int vbi_buf_parity;
+	
+	atomic_t recursion_count;
 
 	
 	KDU_FILE_PRIVATE_DATA *v4l_kdufpd;
