@@ -411,6 +411,14 @@ if { [file exists "~/.avview_state"] } {
 	}
 }
 
+proc check_mapped_state {} {
+puts "4. state=[wm state .] mapped=[winfo ismapped .]"
+after 300 check_mapped_state
+}
+
+# For debugging
+#check_mapped_state
+
 proc set_fullscreen {name1 name2 op} {
 global VIDEO_WINDOW
 global fullscreen_mode
@@ -431,9 +439,10 @@ if { $fullscreen_mode } {
 	
 	wm withdraw .
 	wm overrideredirect . true
-	after idle {
+	update
+#	after idle {
 		while { [wm state .] != "normal" } {
-			wm deiconify .
+			wm state . normal
 			update
 			update idletasks
 			}
@@ -445,8 +454,8 @@ if { $fullscreen_mode } {
 		
 		update
 		update idletasks
-		xmisc_setfullscreen .
-	#	wm geometry . =${screen_width}x${screen_height}+0+0
+#		xmisc_setfullscreen .
+		wm geometry . =${screen_width}x${screen_height}+0+0
 
 	#	. configure -width $screen_width \
 	#		-height $screen_height  -background red
@@ -455,14 +464,19 @@ if { $fullscreen_mode } {
 		xmisc_setscreensaver $VIDEO_WINDOW 0 0 DontPreferBlanking AllowExposures \
 			0 0 0 0 off
 		display_video
-#		after idle "raise ."
-		puts "state=[wm state .]"
+		update
+		puts "1. state=[wm state .]"
 		while { [wm state .] != "normal" } {
-			wm deiconify .
+			puts "2. state=[wm state .]"
+			wm state . normal
 			update
 			update idletasks
 			}
-		}
+		puts "3. state=[wm state .] mapped=[winfo ismapped .]"
+		$VIDEO_WINDOW configure -width ${screen_width} \
+			-height ${screen_height}
+		wm geometry . =${screen_width}x${screen_height}+0+0
+#		}
 	} {
 	$VIDEO_WINDOW configure -width $saved_vw_width -height $saved_vw_height
 	place $VIDEO_WINDOW.onscreen_display -relx 0.05 -rely 0.05 -anchor nw

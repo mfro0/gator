@@ -18,6 +18,8 @@ global ffmpeg_video_quality
 set ffmpeg_video_quality 2
 global ffmpeg_video_bitrate_control
 set ffmpeg_video_bitrate_control "Fix quality"
+global ffmpeg_video_codec
+set ffmpeg_video_codec "MPEG-1"
 
 
 #

@@ -212,6 +212,8 @@ Tk_Window tkwin;
 Window win;
 Display *d;
 Screen *s;
+XWindowAttributes xwa;
+XSetWindowAttributes xswa;
 
 Tcl_ResetResult(interp);
 
@@ -236,9 +238,27 @@ if((d==NULL)||(win==(Window)NULL)||(s==NULL)){
 	return TCL_ERROR;
 	}
 XUnmapWindow(d, win);
-XFlush(d);
+XSync(d, False);
+XGetWindowAttributes(d, win, &xwa);
+while(xwa.map_state != IsUnmapped){
+	XSync(d, False);
+	XGetWindowAttributes(d, win, &xwa);
+	}
+xswa.override_redirect=True;
+XChangeWindowAttributes(d, win, CWOverrideRedirect, &xswa);
+XSync(d, False);
+XGetWindowAttributes(d, win, &xwa);
+while(!xwa.override_redirect){
+	XSync(d, False);
+	XGetWindowAttributes(d, win, &xwa);
+	}
 XMapRaised(d, win);
-XFlush(d);
+XSync(d, False);
+XGetWindowAttributes(d, win, &xwa);
+while((xwa.map_state == IsUnmapped)){
+	XSync(d, False);
+	XGetWindowAttributes(d, win, &xwa);
+	}
 Tk_MoveWindow(tkwin, 0,0);
 Tk_ResizeWindow(tkwin, WidthOfScreen(s), HeightOfScreen(s));
 return TCL_OK;
