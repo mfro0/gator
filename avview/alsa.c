@@ -515,6 +515,8 @@ snd_pcm_sw_params_t *swparams;
 char *arg_audio_device;
 char *arg_audio_rate;
 long rate;
+unsigned int buffer_time;
+int dir;
 
 snd_pcm_hw_params_alloca(&hwparams);
 snd_pcm_sw_params_alloca(&swparams);
@@ -580,14 +582,14 @@ if(a>40960)ad->recording_chunk_size=(a*ad->frame_size)/10;
 param->chunk_size=ad->recording_chunk_size; /* suggest chunk size.. */
 ad->param=param;
 fprintf(stderr,"Using sample rate %ld Hz frame_size=%ld\n", param->sample_rate, ad->frame_size);
-#if 0 /* don't know what to do with this */
         /* set buffer time */
-a=snd_pcm_hw_params_set_buffer_time_near(ad->recording_handle, hwparams, buffer_time, &dir);
+buffer_time=5000;
+dir=0;
+a=snd_pcm_hw_params_set_buffer_time_min(ad->recording_handle, hwparams, &buffer_time, &dir);
 if(a<0){
        fprintf(stderr,"Unable to set buffer time %i for recording: %s\n", buffer_time, snd_strerror(a));
        return -1;
        }
-#endif
 
 a=snd_pcm_hw_params(ad->recording_handle, hwparams);
 if(a<0){
@@ -603,7 +605,9 @@ fprintf(stderr,"stop_threshhold:%d pid:%d\n",
 	snd_pcm_sw_params_get_stop_threshold(swparams),
         getpid());
 
-a=snd_pcm_sw_params_set_stop_threshold(ad->recording_handle, swparams, 32768);
+a=0;
+if(snd_pcm_sw_params_get_stop_threshold(swparams)<32768)
+	a=snd_pcm_sw_params_set_stop_threshold(ad->recording_handle, swparams, 32768);
 if(a<0){
      	fprintf(stderr, "Unable to set stop threshold: %s\n", snd_strerror(a));
      	return -1;
