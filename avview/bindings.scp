@@ -8,18 +8,25 @@
 global avview_bindings avview_bindings_layout
 set avview_bindings {
 	"toggle_fullscreen" "<Control-KeyPress-f>"
+	"toggle_fullscreen" "<Key-Insert>"
 	"next_fav_channel 1" "<Key-KP_Add>"
 	"next_fav_channel -1" "<Key-KP_Subtract>"
+	"next_fav_channel 1" "<Key-Next>"
+	"next_fav_channel -1" "<Key-Prior>"
 	"next_channel 1" "<Control-Key-KP_Add>"
 	"next_channel -1" "<Control-Key-KP_Subtract>"
 	"toggle_mute" "<Key-KP_Multiply>"
+	"toggle_mute" "<Key-XF86AudioMute>"
 	"next_control 1" "<Key-Up>"
 	"next_control -1" "<Key-Down>"
 	"change_control 1" "<Key-Right>"
 	"change_control -1" "<Key-Left>"
 	"save_settings ; exit" "<Control-Key-q>"
 	"save_settings ; exit" "<Key-Escape>"
+	"save_settings ; exit" "<Key-XF86PowerOff>"
 	"next_encoding 1" "<Key-i>"
+	"switch_to_control XV_VOLUME; change_control 1" "<Key-XF86AudioRaiseVolume>"
+	"switch_to_control XV_VOLUME; change_control -1" "<Key-XF86AudioLowerVolume>"
 	}
 set avview_bindings_layout {action default_sequence}
 
@@ -218,3 +225,23 @@ for {set i 0 } { $i < $num_attributes} { incr i } {
 display_control " unsupported " 0 0 1
 set change_control_in_progress false
 }
+
+proc switch_to_control {attr} {
+global avview_current_control avview_controls avview_controls_layout
+set i 0
+foreach $avview_controls_layout $avview_controls {
+	if { $attribute==$attr } {
+		set avview_current_control $i
+		change_control 0
+		break
+		}
+	incr i
+	}
+}
+
+#
+#  Attempt to load AVview modmap
+#
+catch {
+	exec xmodmap avview.modmap
+	}
