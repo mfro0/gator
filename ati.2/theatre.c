@@ -1569,6 +1569,7 @@ void RT_SetOutputVideoSize (TheatrePtr t, CARD16 wHorzSize, CARD16 wVertSize, CA
     if (fVBICap_On)
     {
         WriteRT_fld (fld_VBI_CAPTURE_ENABLE, 1);
+	WriteRT_fld (fld_VBI_SCALING_RATIO, fld_VBI_SCALING_RATIO_def);
         switch (t->wStandard & 0x00FF)
         {
             case (DEC_NTSC):

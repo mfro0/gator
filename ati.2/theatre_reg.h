@@ -513,8 +513,8 @@
 #define     RT_PAL_V_ACTIVE_END                0x269 /* instead of 0x00000262 - Ivo */
 
 /* VBI */
-#define     RT_NTSCM_H_VBI_WIND_START          0x00000049
-#define     RT_NTSCM_H_VBI_WIND_END            0x00000366
+#define     RT_NTSCM_H_VBI_WIND_START          0x32    /* instead of 0x00000049 - V.D. */
+#define     RT_NTSCM_H_VBI_WIND_END            0x367   /* instead of 0x00000366 - V.D. */
 
 #define     RT_PAL_H_VBI_WIND_START            0x00000084
 #define     RT_PAL_H_VBI_WIND_END              0x0000041F
@@ -626,7 +626,7 @@
 #define     fld_H_VBI_WIND_START_def    (CARD32) 0x00000041
 #define     fld_H_VBI_WIND_END_def      (CARD32) 0x00000366
 
-#define     fld_V_VBI_WIND_START_def    (CARD32) 0x0D
+#define     fld_V_VBI_WIND_START_def    (CARD32) 0x0B  /* instead of 0x0D - V.D. */
 #define     fld_V_VBI_WIND_END_def      (CARD32) 0x24
 
 #define     fld_VBI_20BIT_DATA0_def     (CARD32) 0x00000000

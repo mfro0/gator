@@ -3484,6 +3484,7 @@ RADEONPutVideo(
    vbi_line_width = 2048;
    vbi_line_width = 0x618;
    vbi_line_width = 798*2;
+   vbi_line_width = 0x640;
         
    if(!RADEONClipVideo(&dstBox, &xa, &xb, &ya, &yb, clipBoxes, width, height))
         return Success;
@@ -3589,7 +3590,8 @@ RADEONPutVideo(
         OUTREG(RADEON_CAP0_VBI1_OFFSET, vbi_offset1+display_base);
         OUTREG(RADEON_CAP0_VBI2_OFFSET, 0);
         OUTREG(RADEON_CAP0_VBI3_OFFSET, 0);
-        OUTREG(RADEON_CAP0_VBI_V_WINDOW, 19 | ((pPriv->v-1)<<16));
+        OUTREG(RADEON_CAP0_VBI_V_WINDOW, 8 | ((pPriv->v-1)<<16));
+        OUTREG(RADEON_CAP0_VBI_V_WINDOW, 8 | ((20)<<16));
         OUTREG(RADEON_CAP0_VBI_H_WINDOW, 0 | (vbi_line_width)<<16);
         }
    
@@ -3626,7 +3628,7 @@ RADEONPutVideo(
       {
          RADEON_RT_SetEncoding(pScrn, pPriv); 
          xf86_RT_SetInterlace(pPriv->theatre, 1);
-         xf86_RT_SetOutputVideoSize(pPriv->theatre, width, height*2, 0, 0);   
+         xf86_RT_SetOutputVideoSize(pPriv->theatre, width, height*2, 0, pPriv->capture_vbi_data);   
       }
       if(pPriv->msp3430 != NULL) RADEON_MSP_SetEncoding(pPriv);
       if(pPriv->tda9885 != NULL) RADEON_TDA9885_SetEncoding(pPriv);
