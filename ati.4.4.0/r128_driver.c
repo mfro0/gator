@@ -70,7 +70,20 @@
 #include "r128_sarea.h"
 #endif
 
+#define USE_FB                  /* not until overlays */
+#ifdef USE_FB
 #include "fb.h"
+#else
+
+				/* CFB support */
+#define PSZ 8
+#include "cfb.h"
+#undef PSZ
+#include "cfb16.h"
+#include "cfb24.h"
+#include "cfb32.h"
+#include "cfb24_32.h"
+#endif
 
 				/* colormap initialization */
 #include "micmap.h"
@@ -244,11 +257,22 @@ static const char *i2cSymbols[] = {
     NULL
 };
 
+#ifdef USE_FB
 static const char *fbSymbols[] = {
     "fbPictureInit",
     "fbScreenInit",
     NULL
 };
+#else
+static const char *cfbSymbols[] = {
+    "cfbScreenInit",
+    "cfb16ScreenInit",
+    "cfb24ScreenInit",
+    "cfb32ScreenInit",
+    "cfb24_32ScreenInit",
+    NULL
+};
+#endif
 
 static const char *xaaSymbols[] = {
     "XAACreateInfoRec",
@@ -343,7 +367,11 @@ void R128LoaderRefSymLists(void)
      * refer to.
      */
     xf86LoaderRefSymLists(vgahwSymbols,
+#ifdef USE_FB
 		      fbSymbols,
+#else
+		      cfbSymbols,
+#endif
 		      xaaSymbols,
 		      ramdacSymbols,
 #ifdef XF86DRI
@@ -745,7 +773,7 @@ static Bool R128PreInitVisual(ScrnInfoPtr pScrn)
 {
     R128InfoPtr info          = R128PTR(pScrn);
 
-    if (!xf86SetDepthBpp(pScrn, 0, 0, 0, (Support24bppFb
+    if (!xf86SetDepthBpp(pScrn, 8, 8, 8, (Support24bppFb
 					  | Support32bppFb
 					  | SupportConvert32to24
 					  )))
@@ -1586,6 +1614,10 @@ static Bool R128PreInitModes(ScrnInfoPtr pScrn)
     R128InfoPtr   info = R128PTR(pScrn);
     ClockRangePtr clockRanges;
     int           modesFound;
+    char          *mod = NULL;
+#ifndef USE_FB
+    const char    *Sym = NULL;
+#endif
 
     if(info->isDFP) {
         R128MapMem(pScrn);
@@ -1676,8 +1708,28 @@ static Bool R128PreInitModes(ScrnInfoPtr pScrn)
     xf86SetDpi(pScrn, 0, 0);
 
 				/* Get ScreenInit function */
-    if (!xf86LoadSubModule(pScrn, "fb")) return FALSE;
+#ifdef USE_FB
+    mod = "fb";
+#else
+    switch (pScrn->bitsPerPixel) {
+    case  8: mod = "cfb";   Sym = "cfbScreenInit";   break;
+    case 16: mod = "cfb16"; Sym = "cfb16ScreenInit"; break;
+    case 24:
+	if (info->pix24bpp == 24) {
+	    mod = "cfb24";      Sym = "cfb24ScreenInit";
+	} else {
+	    mod = "xf24_32bpp"; Sym = "cfb24_32ScreenInit";
+	}
+	break;
+    case 32: mod = "cfb32"; Sym = "cfb32ScreenInit"; break;
+    }
+#endif
+    if (mod && !xf86LoadSubModule(pScrn, mod)) return FALSE;
+#ifdef USE_FB
     xf86LoaderReqSymLists(fbSymbols, NULL);
+#else
+    xf86LoaderReqSymbols(Sym, NULL);
+#endif
 
     info->CurrentLayout.displayWidth = pScrn->displayWidth;
     info->CurrentLayout.mode = pScrn->currentMode;
@@ -2033,11 +2085,11 @@ Bool R128PreInit(ScrnInfoPtr pScrn, int flags)
     if (!R128PreInitDRI(pScrn))                goto fail;
 #endif
 
-				/* Free the video bios (if applicable) */
-    if (info->VBIOS) {
+    /* we will need it later */				/* Free the video bios (if applicable) */
+/*    if (info->VBIOS) {
 	xfree(info->VBIOS);
 	info->VBIOS = NULL;
-    }
+    } */
 
 				/* Free int10 info */
     if (pInt10)
@@ -2214,12 +2266,53 @@ Bool R128ScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
     }
 #endif
 
+#ifdef USE_FB
     if (!fbScreenInit (pScreen, info->FB,
 		       pScrn->virtualX, pScrn->virtualY,
 		       pScrn->xDpi, pScrn->yDpi, pScrn->displayWidth,
 		       pScrn->bitsPerPixel))
 	return FALSE;
-
+#else
+    switch (pScrn->bitsPerPixel) {
+    case 8:
+	if (!cfbScreenInit(pScreen, info->FB,
+			   pScrn->virtualX, pScrn->virtualY,
+			   pScrn->xDpi, pScrn->yDpi, pScrn->displayWidth))
+	    return FALSE;
+	break;
+    case 16:
+	if (!cfb16ScreenInit(pScreen, info->FB,
+			     pScrn->virtualX, pScrn->virtualY,
+			     pScrn->xDpi, pScrn->yDpi, pScrn->displayWidth))
+	    return FALSE;
+	break;
+    case 24:
+	if (info->pix24bpp == 24) {
+	    if (!cfb24ScreenInit(pScreen, info->FB,
+				 pScrn->virtualX, pScrn->virtualY,
+				 pScrn->xDpi, pScrn->yDpi,
+				 pScrn->displayWidth))
+		return FALSE;
+	} else {
+	    if (!cfb24_32ScreenInit(pScreen, info->FB,
+				 pScrn->virtualX, pScrn->virtualY,
+				 pScrn->xDpi, pScrn->yDpi,
+				 pScrn->displayWidth))
+		return FALSE;
+	}
+	break;
+    case 32:
+	if (!cfb32ScreenInit(pScreen, info->FB,
+			     pScrn->virtualX, pScrn->virtualY,
+			     pScrn->xDpi, pScrn->yDpi, pScrn->displayWidth))
+	    return FALSE;
+	break;
+    default:
+	xf86DrvMsg(scrnIndex, X_ERROR,
+		   "Invalid bpp (%d)\n", pScrn->bitsPerPixel);
+	return FALSE;
+    }
+#endif
     xf86SetBlackWhitePixels(pScreen);
 
     if (pScrn->bitsPerPixel > 8) {
@@ -2238,9 +2331,10 @@ Bool R128ScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	}
     }
 
+#ifdef USE_FB    
     /* must be after RGB order fixed */
     fbPictureInit (pScreen, 0, 0);
-
+#endif
 				/* Memory manager setup */
 #ifdef XF86DRI
     if (info->directRenderingEnabled) {
@@ -2961,6 +3055,7 @@ static Bool R128InitCrtcRegisters(ScrnInfoPtr pScrn, R128SavePtr save,
     int    hsync_wid;
     int    hsync_fudge;
     int    vsync_wid;
+    int    bytpp;
     int    hsync_fudge_default[] = { 0x00, 0x12, 0x09, 0x09, 0x06, 0x05 };
     int    hsync_fudge_fp[]      = { 0x12, 0x11, 0x09, 0x09, 0x05, 0x05 };
     int    hsync_fudge_fp_crt[]  = { 0x12, 0x10, 0x08, 0x08, 0x04, 0x04 };
@@ -3644,11 +3739,14 @@ static Bool R128CloseScreen(int scrnIndex, ScreenPtr pScreen)
     if (info->DGAModes)          xfree(info->DGAModes);
     info->DGAModes               = NULL;
 
+#if 0
     if (info->adaptor) {
+    	R128ShutdownVideo(pScrn, info->adaptor->pPortPrivates[0].ptr);
         xfree(info->adaptor->pPortPrivates[0].ptr);
 	xf86XVFreeVideoAdaptorRec(info->adaptor);
 	info->adaptor = NULL;
     }
+#endif
 
     pScrn->vtSema = FALSE;
 

@@ -248,7 +248,10 @@ void R128CCEWaitForIdle(ScrnInfoPtr pScrn)
 		       "%s: CCE idle %d\n", __FUNCTION__, ret);
 	}
 
-	if (ret == 0) return;
+	if (ret == 0){
+		 R128WaitForIdle(pScrn);
+		 return;
+		 }
 
 	xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
 		   "Idle timed out, resetting engine...\n");
@@ -1084,6 +1087,22 @@ void R128EngineInit(ScrnInfoPtr pScrn)
 }
 
 #ifdef XF86DRI
+
+static void R128CCEBubblePacket(ScrnInfoPtr pScrn,
+				     int order)
+{
+    R128InfoPtr   info = R128PTR(pScrn);
+    int i;
+    RING_LOCALS;
+
+    BEGIN_RING(order);
+    
+    for(i=2;i<=order;i++)
+	    OUT_RING(CCE_PACKET3(R128_CCE_PACKET3_NOP, order-i));
+    OUT_RING(0);
+
+    ADVANCE_RING();    
+}
 
 /* Setup for XAA SolidFill. */
 static void R128CCESetupForSolidFill(ScrnInfoPtr pScrn,

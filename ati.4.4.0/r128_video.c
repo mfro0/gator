@@ -2830,18 +2830,14 @@ if(pPriv->tda9850!=NULL){
 			| R128_CAP0_CONFIG_HORZ_DECIMATOR \
 			| R128_CAP0_CONFIG_VIDEO_IN_VYUY422)
 
-#if 0 /* XXX */
 static int
-R128PutImage(
-	ScrnInfoPtr pScrn,
-	short src_x, short src_y,
-	short drw_x, short drw_y,
-	short src_w, short src_h,
-	short drw_w, short drw_h,
-	int id, unsigned char* buf,
-	short width, short height,
-	Bool Sync,
-	RegionPtr clipBoxes, pointer data
+R128PutVideo(
+  ScrnInfoPtr pScrn,
+  short src_x, short src_y,
+  short drw_x, short drw_y,
+  short src_w, short src_h,
+  short drw_w, short drw_h,
+  RegionPtr clipBoxes, pointer data
 ){
    R128InfoPtr info = R128PTR(pScrn);
    R128PortPrivPtr pPriv = (R128PortPrivPtr)data;
@@ -3002,7 +2998,7 @@ R128PutImage(
    }
     /* update cliplist */
     if(!RegionsEqual(&pPriv->clip, clipBoxes)) {
-	REGION_COPY(pScreen, &pPriv->clip, clipBoxes);
+	REGION_COPY(pScrn->pScreen, &pPriv->clip, clipBoxes);
 	/* draw these */
 	if(pPriv->autopaint_colorkey)(*info->accel->FillSolidRects)(pScrn, pPriv->colorKey, GXcopy, ~0,
 					REGION_NUM_RECTS(clipBoxes),
@@ -3034,7 +3030,6 @@ R128PutImage(
 
     return Success;
 }
-#endif
 
 static void
 R128VideoTimerCallback(ScrnInfoPtr pScrn, Time now)
