@@ -20,7 +20,7 @@
 
 		diff -u --unidirectional-new-file ati.2.orig ati.2 > ati.2.patch
 
-        - ati.2 is based on XFree86 CVS of February 06 2003 - 4.2.901+
+        - ati.2 is based on XFree86 4.3.0 source
 	  Your mileage with later trees may vary
 
 ** Hint from Marko Skofljanec:  
