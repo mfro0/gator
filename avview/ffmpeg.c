@@ -129,12 +129,8 @@ while(1){
 	pthread_mutex_lock(&(s->ctr_mutex));
 	f=s->first;
 	if(!(s->stop_stream & STOP_PRODUCER_THREAD) &&((f==NULL)||(f->next==NULL))){
-		/* no data to encode - terminate thread instead of spinning */
-		do_free(picture.data[0]);
-		do_free(output_buf);
-		s->consumer_thread_running=0;
-		pthread_mutex_unlock(&(s->ctr_mutex));
-		pthread_exit(NULL);
+		/* no data to encode - pause thread instead of spinning */
+		pthread_cond_wait(&(s->suspend_consumer_thread), &(s->ctr_mutex));
 		}
 	pthread_mutex_unlock(&(s->ctr_mutex));
 	while((f!=NULL)&&((f->next!=NULL)||(s->stop_stream & STOP_PRODUCER_THREAD))){
@@ -168,17 +164,10 @@ while(1){
 					if((sdata->audio_s!=NULL) && (sdata->audio_stream_num>=0)){
 						pthread_mutex_lock(&(sdata->audio_s->ctr_mutex));
 						sdata->audio_s->stop_stream &= ~STOP_CONSUMER_THREAD;
-						if(!sdata->audio_s->consumer_thread_running &&
-							!sdata->audio_s->producer_thread_running){
-							if(pthread_create(&(sdata->audio_s->consumer_thread_id), NULL, sdata->audio_s->consume_func, sdata->audio_s)!=0){
-								sdata->audio_s->consumer_thread_running=1;
-								} else {
-								perror("pthread");
-								}
+						pthread_cond_broadcast(&(sdata->audio_s->suspend_consumer_thread));
 							#ifdef DEBUG_TIMESTAMPS
 							fprintf(stderr,"+ Restarting audio thread\n");
 							#endif
-							}
 						pthread_mutex_unlock(&(sdata->audio_s->ctr_mutex));
 						}
 					}
@@ -196,12 +185,7 @@ while(1){
 		pthread_mutex_lock(&(s->ctr_mutex));
 		discard_packets(s); 
 		if(s->stop_stream & STOP_CONSUMER_THREAD){
-			do_free(picture.data[0]);
-			do_free(output_buf);
-			s->consumer_thread_running=0;
-			pthread_mutex_unlock(&(s->ctr_mutex));
-			pthread_exit(NULL);
-			break;
+			pthread_cond_wait(&(s->suspend_consumer_thread), &(s->ctr_mutex));
 			}
 		pthread_mutex_unlock(&(s->ctr_mutex));
 		}
@@ -242,11 +226,8 @@ while(1){
 	pthread_mutex_lock(&(s->ctr_mutex));
 	f=s->first;
 	if(!(s->stop_stream & STOP_PRODUCER_THREAD) &&((f==NULL)||(f->next==NULL))){
-		/* no data to encode - terminate thread instead of spinning */
-		do_free(out_buf);
-		s->consumer_thread_running=0;
-		pthread_mutex_unlock(&(s->ctr_mutex));
-		pthread_exit(NULL);
+		/* no data to encode - pause thread instead of spinning */
+		pthread_cond_wait(&(s->suspend_consumer_thread), &(s->ctr_mutex));
 		}
 	pthread_mutex_unlock(&(s->ctr_mutex));
 	while((f!=NULL)&&((f->next!=NULL)||(s->stop_stream & STOP_PRODUCER_THREAD))){
@@ -282,11 +263,7 @@ while(1){
 		pthread_mutex_lock(&(s->ctr_mutex));
 		discard_packets(s); 
 		if(s->stop_stream & STOP_CONSUMER_THREAD){
-			s->consumer_thread_running=0;
-			do_free(out_buf);
-			pthread_mutex_unlock(&(s->ctr_mutex));
-			pthread_exit(NULL);
-			break;
+			pthread_cond_wait(&(s->suspend_consumer_thread), &(s->ctr_mutex));
 			}
 		pthread_mutex_unlock(&(s->ctr_mutex));
 		}

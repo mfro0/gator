@@ -39,6 +39,7 @@ typedef struct S_PACKET_STREAM {
 	int  stop_stream;
 	pthread_t consumer_thread_id;  /* cti */
 	pthread_mutex_t ctr_mutex;  /* protects ctr , cti and total values */
+	pthread_cond_t  suspend_consumer_thread; 
 	void (*consume_func)(struct S_PACKET_STREAM *);
 	void *priv;   
 	} PACKET_STREAM;

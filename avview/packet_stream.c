@@ -22,6 +22,7 @@ s->stop_stream=0;
 s->consume_func=NULL;
 s->priv=NULL;
 pthread_mutex_init(&(s->ctr_mutex), NULL);
+pthread_cond_init(&(s->suspend_consumer_thread), NULL);
 return s;
 }
 
@@ -98,18 +99,19 @@ if(s->first==NULL)s->first=p;
 /* update total count and see if we need to spawn consumer thread*/
 s->total+=p->free;
 if((s->total>s->threshold) && 
-	!s->consumer_thread_running &&
-	!(s->stop_stream & STOP_CONSUMER_THREAD) &&
-	(s->consume_func!=NULL)){
+	!(s->stop_stream & STOP_CONSUMER_THREAD)){
 	/* start consumer thread */
-	if(pthread_create(&(s->consumer_thread_id), NULL, s->consume_func, s)!=0){
-		fprintf(stderr, "packet_stream: cannot create thread (s=%p s->consume_func=%p s->total=%d): ",
-			s, s->consume_func, s->total);
-		perror("");
-		} else {
-		s->consumer_thread_running=1;
+	if(!s->consumer_thread_running && (s->consume_func!=NULL)) {
+		if(pthread_create(&(s->consumer_thread_id), NULL, s->consume_func, s)!=0){
+			fprintf(stderr, "packet_stream: cannot create thread (s=%p s->consume_func=%p s->total=%d): ",
+				s, s->consume_func, s->total);
+			perror("");
+			} else {
+			s->consumer_thread_running=1;
+			}
 		}
-		
+	/* wake up anything that may be waiting on us */
+	pthread_cond_broadcast(&(s->suspend_consumer_thread));
 	}
 }
 
