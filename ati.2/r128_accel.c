@@ -231,6 +231,10 @@ void R128CCEWaitForIdle(ScrnInfoPtr pScrn)
     R128InfoPtr info = R128PTR(pScrn);
     int         ret, i;
 
+    if(!info->CCEInUse){
+         R128WaitForIdle(pScrn);
+         return; 
+         }
     FLUSH_RING();
 
     for (;;) {
