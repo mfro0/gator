@@ -583,14 +583,14 @@ param->chunk_size=ad->recording_chunk_size; /* suggest chunk size.. */
 ad->param=param;
 fprintf(stderr,"Using sample rate %ld Hz frame_size=%ld\n", param->sample_rate, ad->frame_size);
         /* set buffer time */
-buffer_time=5000;
+buffer_time=100000;
 dir=0;
 a=snd_pcm_hw_params_set_buffer_time_min(ad->recording_handle, hwparams, &buffer_time, &dir);
 if(a<0){
-       fprintf(stderr,"Unable to set buffer time %i for recording: %s\n", buffer_time, snd_strerror(a));
+       fprintf(stderr,"Unable to set buffer time %u for recording: %s\n", buffer_time, snd_strerror(a));
        return -1;
        }
-
+fprintf(stderr,"buffer_time=%u dir=%d\n", buffer_time, dir);
 a=snd_pcm_hw_params(ad->recording_handle, hwparams);
 if(a<0){
 	fprintf(stderr,"Unable to set hw params for recording: %s\n", snd_strerror(a));
