@@ -18,8 +18,8 @@ set avview_bindings {
 	"next_channel -1" "<Control-Key-KP_Subtract>"
 	"toggle_mute" "<Key-KP_Multiply>"
 	"toggle_mute" "<Key-XF86AudioMute>"
-	"save_settings ; exit" "<Control-Key-q>"
-	"save_settings ; exit" "<Key-Escape>"
+	"exit_avview" "<Control-Key-q>"
+	"exit_avview" "<Key-Escape>"
 	"remote_power_off" "<Key-XF86PowerOff>"
 	"next_encoding 1" "<Control-Key-i>"
 	"switch_to_control XV_VOLUME; change_control 1" "<Key-XF86AudioRaiseVolume>"
@@ -367,8 +367,7 @@ global fullscreen_mode dpms_off_on_fullscreen_power_off
 if { $fullscreen_mode && $dpms_off_on_fullscreen_power_off } {
 	toggle_screensaver
 	} {
-	save_settings
-	exit
+	exit_avview
 	}
 }
 
