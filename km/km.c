@@ -235,6 +235,8 @@ switch(pci_id->driver_data){
 		kms->get_window_parameters=mach64_get_window_parameters;
 		kms->start_transfer=mach64_start_transfer;
 		kms->stop_transfer=mach64_stop_transfer;
+		kms->allocate_v4l_dvb=mach64_allocate_v4l_dvb;
+		kms->deallocate_v4l_dvb=mach64_deallocate_v4l_dvb;
 		kms->allocate_single_frame_buffer=mach64_allocate_single_frame_buffer;
 		kms->deallocate_single_frame_buffer=generic_deallocate_single_frame_buffer;
 		kms->irq_handler=mach64_km_irq;
@@ -244,6 +246,8 @@ switch(pci_id->driver_data){
 		kms->get_window_parameters=rage128_get_window_parameters;
 		kms->start_transfer=rage128_start_transfer;
 		kms->stop_transfer=rage128_stop_transfer;
+		kms->allocate_v4l_dvb=rage128_allocate_v4l_dvb;
+		kms->deallocate_v4l_dvb=rage128_deallocate_v4l_dvb;
 		kms->allocate_single_frame_buffer=rage128_allocate_single_frame_buffer;
 		kms->deallocate_single_frame_buffer=generic_deallocate_single_frame_buffer;
 		kms->irq_handler=rage128_km_irq;

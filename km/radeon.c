@@ -406,6 +406,7 @@ km_deallocate_data(kms->v4l_info_du);
 kms->v4l_info_du=-1;
 km_deallocate_data(kms->v4l_du);
 kms->v4l_du=-1;
+return 0;
 }
 
 int radeon_allocate_single_frame_buffer(KM_STRUCT *kms, SINGLE_FRAME *frame, long size)

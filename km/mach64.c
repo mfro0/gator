@@ -222,6 +222,69 @@ while(1){
 	}
 }
 
+int mach64_allocate_v4l_dvb(KM_STRUCT *kms, long size)
+{
+int i,k;
+if(size>(4096*4096/sizeof(bm_list_descriptor))){
+	printk("Too large buffer allocation requested: %ld bytes\n", size);
+	return -1;
+	}
+/* allocate data unit to hold video data */
+kms->v4l_dvb.size=((size+PAGE_SIZE-1)/PAGE_SIZE)*PAGE_SIZE;
+kms->v4l_dvb.n=kms->num_buffers;
+kms->v4l_dvb.free=kms->v4l_free;
+kms->v4l_dvb.ptr=kms->v4l_ptr;
+kms->v4l_du=km_allocate_data_virtual_block(&(kms->v4l_dvb), S_IFREG | S_IRUGO);
+/* allocate data unit to hold field info */
+kms->v4l_dvb_info.size=kms->num_buffers*sizeof(FIELD_INFO);
+kms->v4l_dvb_info.n=1;
+kms->v4l_dvb_info.free=&(kms->info_free);
+kms->info_free=kms->num_buffers*sizeof(FIELD_INFO);
+kms->v4l_dvb_info.ptr=&(kms->info_ptr);
+kms->v4l_info_du=km_allocate_data_virtual_block(&(kms->v4l_dvb_info), S_IFREG | S_IRUGO);
+if(kms->v4l_du<0)return -1;
+for(k=0;k<kms->num_buffers;k++){
+	kms->v4l_dvb.free[k]=size;
+	kms->frame_info[k].buf_free=size;
+	kms->frame_info[k].buf_ptr=size;
+	kms->frame_info[k].buf_size=kms->v4l_dvb.size;
+	kms->frame_info[k].buffer=kms->v4l_dvb.ptr[k];
+	kms->frame_info[k].dma_active=0;
+	kms->frame_info[k].dma_table=rvmalloc(4096);
+	memset(kms->frame_info[k].dma_table, 0, 4096);
+	/* create DMA table */
+	for(i=0;i<(kms->frame_info[k].buf_size/PAGE_SIZE);i++){
+		kms->frame_info[k].dma_table[i].to_addr=kvirt_to_pa(kms->frame_info[k].buffer+i*PAGE_SIZE);
+		#if 0
+		printk("entry virt %p phys %p %s\n", kms->frame_info[k].buffer+i*PAGE_SIZE, kms->frame_info[k].dma_table[i].to_addr,
+		((unsigned long)kms->frame_info[k].dma_table[i].to_addr)<64*1024*1024?"*":"");
+		#endif
+		if(kvirt_to_pa(kms->frame_info[k].buffer+i*PAGE_SIZE)!=kvirt_to_bus(kms->frame_info[k].buffer+i*PAGE_SIZE)){
+			printk(KERN_ERR "pa!=bus for entry %d frame %d\n", i, k);
+			}
+		}
+	}
+return 0;
+}
+
+int mach64_deallocate_v4l_dvb(KM_STRUCT *kms)
+{
+int k;
+for(k=0;k<kms->num_buffers;k++){
+	kms->frame_info[k].buf_free=0;
+	kms->frame_info[k].buf_ptr=0;
+	kms->frame_info[k].buf_size=0;
+	kms->frame_info[k].buffer=NULL;
+	kms->frame_info[k].dma_active=0;
+	rvfree(kms->frame_info[k].dma_table, 4096);
+	kms->frame_info[k].dma_table=NULL;
+	}
+km_deallocate_data(kms->v4l_info_du);
+kms->v4l_info_du=-1;
+km_deallocate_data(kms->v4l_du);
+kms->v4l_du=-1;
+return 0;
+}
 
 int mach64_allocate_single_frame_buffer(KM_STRUCT *kms, SINGLE_FRAME *frame, long size)
 {
