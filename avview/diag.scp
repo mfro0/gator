@@ -7,11 +7,17 @@ add_parameter_pane "/Diagnostics" "Diagnostics" \
 	"Tk version" entry "tk_version" \
 	"Additional diagnostics" heading "" \
 	"Show XVideo information" command {switch_to_pane "/Diagnostics/xvinfo"
+		Tree:open .setup.tree "/Diagnostics"
 		set xvinfo_pane [get_pane_frame "/Diagnostics/xvinfo"]
 		$xvinfo_pane.f.refresh invoke} \
 	"Show kernel debug messages" command {switch_to_pane "/Diagnostics/dmesg"
+		Tree:open .setup.tree "/Diagnostics"
 		set dmesg_pane [get_pane_frame "/Diagnostics/dmesg"]
-		$dmesg_pane.f.refresh invoke} 
+		$dmesg_pane.f.refresh invoke} \
+	"Show loaded kernel modules" command {switch_to_pane "/Diagnostics/modules"
+		Tree:open .setup.tree "/Diagnostics"
+		set dmesg_pane [get_pane_frame "/Diagnostics/modules"]
+		$dmesg_pane.f.refresh invoke}
 	
 
 add_pane "/Diagnostics/xvinfo" "XVideo extension information" 
