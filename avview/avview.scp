@@ -564,7 +564,6 @@ global alsa_window
 
 if {[alsa_present] == "yes" } {
 	trace variable alsa_window w "generate_alsa_window .controlwin.alsamixer ; skip_args3"
-	trace variable current_alsa_device1 w "set_alsa_device .controlwin.alsamixer ; skip_args3"
 	}
 
 bind $VIDEO_WINDOW <Configure> {

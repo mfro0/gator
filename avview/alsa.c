@@ -41,6 +41,8 @@ snd_pcm_info_t *pcminfo;
 snd_rawmidi_info_t *rawmidiinfo;
 
 typedef struct {
+	long use_count;
+	long index;
 	snd_hctl_t *hctl;
 	long elem_count;
 	snd_hctl_elem_t **elem;
@@ -140,8 +142,10 @@ if(argc<3){
 	}
 i=add_string(alsa_sc, argv[1]);
 if(alsa_sc->data[i]!=NULL){
-	Tcl_AppendResult(interp,"ERROR: alsa_hctl_open: this control is already open", NULL);
-	return TCL_ERROR;
+	ad=(ALSA_DATA*)alsa_sc->data[i];
+	ad->use_count++;
+/*	Tcl_AppendResult(interp,"ERROR: alsa_hctl_open: this control is already open", NULL); */
+	return TCL_OK;
 	}
 alsa_sc->data[i]=do_alloc(1, sizeof(ALSA_DATA));
 mode=0;
@@ -165,7 +169,33 @@ ad->elem=NULL;
 ad->einfo=NULL;
 ad->etype=NULL;
 ad->elem_count=-1;
+ad->use_count=1;
+ad->index=i;
 return TCL_OK;
+}
+
+void close_alsa_connection(long i)
+{
+long k;
+ALSA_DATA *ad;
+if((i<0)||((ad=(ALSA_DATA *)alsa_sc->data[i])==NULL))return;
+ad->use_count--;
+if(ad->use_count>0)return;
+if(ad->elem_count>0){
+	for(k=0;k<ad->elem_count;k++){
+		snd_ctl_elem_info_free(ad->einfo[k]);
+		}
+	free(ad->einfo);
+	free(ad->elem);
+	free(ad->etype);
+	ad->elem_count=0;
+	ad->einfo=NULL;
+	ad->etype=NULL;
+	}
+snd_hctl_close(ad->hctl);
+free(ad);
+alsa_sc->data[i]=NULL;
+fprintf(stderr,"Closed ALSA device %s index %d\n", alsa_sc->string[i], i);
 }
 
 int alsa_hctl_close(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
@@ -183,23 +213,7 @@ if(argc<2){
 	return TCL_ERROR;
 	}
 i=lookup_string(alsa_sc, argv[1]);
-if((i<0)||((ad=(ALSA_DATA *)alsa_sc->data[i])==NULL)){
-	return TCL_OK;
-	}
-if(ad->elem_count>0){
-	for(k=0;k<ad->elem_count;k++){
-		snd_ctl_elem_info_free(ad->einfo[k]);
-		}
-	free(ad->einfo);
-	free(ad->elem);
-	free(ad->etype);
-	ad->elem_count=0;
-	ad->einfo=NULL;
-	ad->etype=NULL;
-	}
-snd_hctl_close(ad->hctl);
-free(ad);
-alsa_sc->data[i]=NULL;
+close_alsa_connection(i);
 return TCL_OK;
 }
 
@@ -445,6 +459,7 @@ int a;
 int frames_to_read;
 struct timeval tv;
 /* lock mutex before testing s->stop_stream */
+data->use_count++;
 data->recording_chunk_size=data->param->chunk_size;
 p=new_generic_packet(s, data->recording_chunk_size); 
 pthread_mutex_lock(&(s->ctr_mutex));
@@ -492,6 +507,7 @@ s->producer_thread_running=0;
 /* process what is left.. */
 start_consumer_thread(s);
 pthread_mutex_unlock(&(s->ctr_mutex));
+close_alsa_connection(data->index);
 pthread_exit(NULL);
 }
 
