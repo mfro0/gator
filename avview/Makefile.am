@@ -23,8 +23,8 @@ dist_scp_DATA = alsa.scp bindings.scp ffmpeg.scp themes.scp video_device.scp \
 nodist_start_avview_SOURCES = start_avview.c
 dist_start_avview_SOURCES = start_avview.in
 
-avview_shell_LDADD = @X_PRE_LIBS@ @X_LIBS@ @X_EXTRA_LIBS@
-avview_shell_CFLAGS = -DAVVIEW_VERSION=\"@PACKAGE_VERSION@\"
+avview_shell_LDADD = @X_PRE_LIBS@ @X_LIBS@ @X_EXTRA_LIBS@ @FFMPEG_LIBS@
+avview_shell_CFLAGS = -DAVVIEW_VERSION=\"@PACKAGE_VERSION@\" @FFMPEG_CFLAGS@
 
 start_avview$(EXEEXT): start_avview.in
 	echo '#!$(bindir)/avview_shell' > start_avview

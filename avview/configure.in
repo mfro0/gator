@@ -30,8 +30,8 @@ AC_CHECK_LIB([asound], [snd_card_get_name])
 #
 # Default values
 #
-AC_DEFINE(USE_FFMPEG, 0, [use ffmpeg libraries])
-AC_DEFINE(USE_ALSA, 0, [use alsa libraries])
+#AC_DEFINE(USE_FFMPEG, 1, [use ffmpeg libraries])
+#AC_DEFINE(USE_ALSA, 1, [use alsa libraries])
 #
 # paths
 #
@@ -47,7 +47,7 @@ if ! test "$enable_alsa" = "no" ; then
   AC_TRY_LINK([#include <alsa/asoundlib.h> 
 	     #if (SND_LIB_MAJOR != 0) || (SND_LIB_MINOR < 9)  
 	     #error "Avview requires ALSA version 0.9.x" 
-	     #endif], ,AC_DEFINE(USE_ALSA) ALSA_PRESENT=yes,)
+	     #endif], ,AC_DEFINE(USE_ALSA,1,[use alsa libraries]) ALSA_PRESENT=yes,)
   fi
 
   if test "$ALSA_PRESENT" = "no" ; then
@@ -90,7 +90,7 @@ AC_SUBST(X_PRE_LIBS)
 AC_SUBST(LIBS)
 
 if ! test "$with_ffmpeg" = "" ; then
-AC_DEFINE(USE_FFMPEG, 1)
+AC_DEFINE(USE_FFMPEG, 1, [use ffmpeg libraries])
 FFMPEG_LIBS="-L$with_ffmpeg/libav -L$with_ffmpeg/libavcodec -lavformat -lavcodec -lpthread"
 FFMPEG_CFLAGS="-I$with_ffmpeg/libav -I$with_ffmpeg/libavcodec"
 else
