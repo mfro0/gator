@@ -48,17 +48,17 @@ frame->dma_table=NULL;
 
 int acknowledge_dma(KM_STRUCT *kms)
 {
-if(kms->frame.dma_active){
-	kms->frame.dma_active=0;
-	if(kms->frame.buf_ptr==kms->frame.buf_free){
-		kms->frame.buf_ptr=0;
+if(kms->frame_info[FRAME_ODD].dma_active){
+	kms->frame_info[FRAME_ODD].dma_active=0;
+	if(kms->frame_info[FRAME_ODD].buf_ptr==kms->frame_info[FRAME_ODD].buf_free){
+		kms->frame_info[FRAME_ODD].buf_ptr=0;
 		if(kms->buf_read_from==0)wake_up_interruptible(&(kms->frameq));
 		}
 	}
-if(kms->frame_even.dma_active){
-	kms->frame_even.dma_active=0;
-	if(kms->frame_even.buf_ptr==kms->frame.buf_free){
-		kms->frame_even.buf_ptr=0;
+if(kms->frame_info[FRAME_EVEN].dma_active){
+	kms->frame_info[FRAME_EVEN].dma_active=0;
+	if(kms->frame_info[FRAME_EVEN].buf_ptr==kms->frame_info[FRAME_EVEN].buf_free){
+		kms->frame_info[FRAME_EVEN].buf_ptr=0;
 		if(kms->buf_read_from==1)wake_up_interruptible(&(kms->frameq));
 		}
 	}
@@ -175,10 +175,10 @@ kms=&(km_devices[num_devices]);
 memset(kms, 0, sizeof(KM_STRUCT));
 kms->dev=dev;
 kms->irq=dev->irq;
-kms->frame.buffer=NULL;
-kms->frame.dma_table=NULL;
-kms->frame_even.buffer=NULL;
-kms->frame_even.dma_table=NULL;
+kms->frame_info[FRAME_ODD].buffer=NULL;
+kms->frame_info[FRAME_ODD].dma_table=NULL;
+kms->frame_info[FRAME_EVEN].buffer=NULL;
+kms->frame_info[FRAME_EVEN].dma_table=NULL;
 kms->interrupt_count=0;
 kms->irq_handler=NULL;
 spin_lock_init(&(kms->kms_lock));
@@ -291,8 +291,8 @@ if(kms->uninit_hardware!=NULL)kms->uninit_hardware(kms);
 remove_km_device(kms->kmd);
 cleanup_km_v4l(kms);
 free_irq(kms->irq, kms);
-kms->deallocate_single_frame_buffer(kms, &(kms->frame));
-kms->deallocate_single_frame_buffer(kms, &(kms->frame_even));
+kms->deallocate_single_frame_buffer(kms, &(kms->frame_info[FRAME_ODD]));
+kms->deallocate_single_frame_buffer(kms, &(kms->frame_info[FRAME_EVEN]));
 iounmap(kms->reg_aperture);
 kfree(kms->kmfl[0].data.c.string);
 kfree(kms->kmfl[1].data.c.string);

@@ -109,11 +109,11 @@ return 0;
 static void mach64_start_frame_transfer_buf0(KM_STRUCT *kms)
 {
 long offset, status;
-if(kms->frame.buffer==NULL)return;
-kms->frame.timestamp=jiffies;
+if(kms->frame_info[FRAME_ODD].buffer==NULL)return;
+kms->frame_info[FRAME_ODD].timestamp=jiffies;
 mach64_wait_for_idle(kms);
 offset=readl(kms->reg_aperture+MACH64_CAP0_BUF0_OFFSET);
-mach64_setup_single_frame_buffer(kms, &(kms->frame), offset);
+mach64_setup_single_frame_buffer(kms, &(kms->frame_info[FRAME_ODD]), offset);
 #if 0 
 /* no analog for mach64.. yet ? */
 /* wait for at least one available queue */
@@ -123,14 +123,14 @@ do {
 	} while (!(status & 0x1f));
 #endif
 /* start transfer */
-if(kms->frame.dma_active)KM_DEBUG("DMA overrun\n");
-if(kms->frame.buf_ptr!=kms->frame.buf_free){
+if(kms->frame_info[FRAME_ODD].dma_active)KM_DEBUG("DMA overrun\n");
+if(kms->frame_info[FRAME_ODD].buf_ptr!=kms->frame_info[FRAME_ODD].buf_free){
 	kms->overrun++;
 	KM_DEBUG("Data overrun\n");
 	}
 kms->total_frames++;
-kms->frame.dma_active=1;
-writel(kvirt_to_pa(kms->frame.dma_table)|MACH64_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM, 
+kms->frame_info[FRAME_ODD].dma_active=1;
+writel(kvirt_to_pa(kms->frame_info[FRAME_ODD].dma_table)|MACH64_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM, 
 	kms->reg_aperture+MACH64_BM_SYSTEM_TABLE);
 KM_DEBUG("start_frame_transfer_buf0\n");
 }
@@ -138,11 +138,11 @@ KM_DEBUG("start_frame_transfer_buf0\n");
 static void mach64_start_frame_transfer_buf0_even(KM_STRUCT *kms)
 {
 long offset, status;
-if(kms->frame_even.buffer==NULL)return;
-kms->frame_even.timestamp=jiffies;
+if(kms->frame_info[FRAME_EVEN].buffer==NULL)return;
+kms->frame_info[FRAME_EVEN].timestamp=jiffies;
 mach64_wait_for_idle(kms);
 offset=readl(kms->reg_aperture+MACH64_CAP0_BUF0_EVEN_OFFSET);
-mach64_setup_single_frame_buffer(kms, &(kms->frame_even), offset);
+mach64_setup_single_frame_buffer(kms, &(kms->frame_info[FRAME_EVEN]), offset);
 #if 0 
 /* no analog for mach64.. yet ? */
 /* wait for at least one available queue */
@@ -152,14 +152,14 @@ do {
 	} while (!(status & 0x1f));
 #endif
 /* start transfer */
-if(kms->frame_even.dma_active)KM_DEBUG("DMA overrun\n");
-if(kms->frame_even.buf_ptr!=kms->frame_even.buf_free){
+if(kms->frame_info[FRAME_EVEN].dma_active)KM_DEBUG("DMA overrun\n");
+if(kms->frame_info[FRAME_EVEN].buf_ptr!=kms->frame_info[FRAME_EVEN].buf_free){
 	kms->overrun++;
 	KM_DEBUG("Data overrun\n");
 	}
 kms->total_frames++;
-kms->frame_even.dma_active=1;
-writel(kvirt_to_pa(kms->frame_even.dma_table)|MACH64_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM, 
+kms->frame_info[FRAME_EVEN].dma_active=1;
+writel(kvirt_to_pa(kms->frame_info[FRAME_EVEN].dma_table)|MACH64_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM, 
 	kms->reg_aperture+MACH64_BM_SYSTEM_TABLE);
 KM_DEBUG("start_frame_transfer_buf0_even\n");
 }

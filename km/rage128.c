@@ -121,10 +121,10 @@ static void rage128_start_frame_transfer_buf0(KM_STRUCT *kms)
 {
 long offset, status;
 u32 a;
-if(kms->frame.buffer==NULL)return;
-kms->frame.timestamp=jiffies;
+if(kms->frame_info[FRAME_ODD].buffer==NULL)return;
+kms->frame_info[FRAME_ODD].timestamp=jiffies;
 offset=readl(kms->reg_aperture+RAGE128_CAP0_BUF0_OFFSET);
-rage128_setup_single_frame_buffer(kms, &(kms->frame), offset);
+rage128_setup_single_frame_buffer(kms, &(kms->frame_info[FRAME_ODD]), offset);
 rage128_wait_for_idle(kms);
 #if 0 
 /* no analog for rage128.. yet ? */
@@ -135,14 +135,14 @@ do {
 	} while (!(status & 0x1f));
 #endif
 /* start transfer */
-if(kms->frame.dma_active)KM_DEBUG("DMA overrun\n");
-if(kms->frame.buf_ptr!=kms->frame.buf_free){
+if(kms->frame_info[FRAME_ODD].dma_active)KM_DEBUG("DMA overrun\n");
+if(kms->frame_info[FRAME_ODD].buf_ptr!=kms->frame_info[FRAME_ODD].buf_free){
 	kms->overrun++;
 	KM_DEBUG("Data overrun\n");
 	}
 kms->total_frames++;
-kms->frame.dma_active=1;
-writel(kvirt_to_pa(kms->frame.dma_table)|RAGE128_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM, 
+kms->frame_info[FRAME_ODD].dma_active=1;
+writel(kvirt_to_pa(kms->frame_info[FRAME_ODD].dma_table)|RAGE128_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM, 
 	kms->reg_aperture+RAGE128_BM_VIDCAP_BUF0);
 KM_DEBUG("start_frame_transfer_buf0\n");
 }
@@ -151,10 +151,10 @@ static void rage128_start_frame_transfer_buf0_even(KM_STRUCT *kms)
 {
 long offset, status;
 u32 a;
-if(kms->frame_even.buffer==NULL)return;
-kms->frame_even.timestamp=jiffies;
+if(kms->frame_info[FRAME_EVEN].buffer==NULL)return;
+kms->frame_info[FRAME_EVEN].timestamp=jiffies;
 offset=readl(kms->reg_aperture+RAGE128_CAP0_BUF0_EVEN_OFFSET);
-rage128_setup_single_frame_buffer(kms, &(kms->frame_even), offset);
+rage128_setup_single_frame_buffer(kms, &(kms->frame_info[FRAME_EVEN]), offset);
 rage128_wait_for_idle(kms);
 #if 0 
 /* no analog for rage128.. yet ? */
@@ -165,14 +165,14 @@ do {
 	} while (!(status & 0x1f));
 #endif
 /* start transfer */
-if(kms->frame_even.dma_active)KM_DEBUG("DMA overrun\n");
-if(kms->frame_even.buf_ptr!=kms->frame_even.buf_free){
+if(kms->frame_info[FRAME_EVEN].dma_active)KM_DEBUG("DMA overrun\n");
+if(kms->frame_info[FRAME_EVEN].buf_ptr!=kms->frame_info[FRAME_EVEN].buf_free){
 	kms->overrun++;
 	KM_DEBUG("Data overrun\n");
 	}
 kms->total_frames++;
-kms->frame_even.dma_active=1;
-writel(kvirt_to_pa(kms->frame_even.dma_table)|RAGE128_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM, 
+kms->frame_info[FRAME_EVEN].dma_active=1;
+writel(kvirt_to_pa(kms->frame_info[FRAME_EVEN].dma_table)|RAGE128_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM, 
 	kms->reg_aperture+RAGE128_BM_VIDCAP_BUF0);
 KM_DEBUG("start_frame_transfer_buf0_even\n");
 }

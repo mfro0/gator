@@ -39,8 +39,10 @@ typedef struct S_KM_STRUCT{
 	long overrun;
 	unsigned char * reg_aperture;
 	int buf_read_from;
-	SINGLE_FRAME frame;
-	SINGLE_FRAME frame_even;
+#define FRAME_ODD 	0
+#define FRAME_EVEN 	1
+#define FRAME_BUFF_NUM 	2
+	SINGLE_FRAME frame_info[FRAME_BUFF_NUM];
 	int capture_active;
 	long kmd;
 	KM_FIELD *kmfl;

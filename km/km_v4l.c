@@ -33,8 +33,8 @@ if(!kms->is_capture_active(kms)){
 	goto fail;
 	}
 
-kms->frame.buf_ptr=0;
-kms->frame_even.buf_ptr=0;
+kms->frame_info[FRAME_ODD].buf_ptr=0;
+kms->frame_info[FRAME_EVEN].buf_ptr=0;
 kms->buf_read_from=0;
 kms->total_frames=0;
 kms->overrun=0;
@@ -43,15 +43,15 @@ kms->get_window_parameters(kms, &(kms->vwin));
 
 buf_size=kms->vwin.width*kms->vwin.height*2;
 
-kms->deallocate_single_frame_buffer(kms, &(kms->frame));
-kms->deallocate_single_frame_buffer(kms, &(kms->frame_even));
+kms->deallocate_single_frame_buffer(kms, &(kms->frame_info[FRAME_ODD]));
+kms->deallocate_single_frame_buffer(kms, &(kms->frame_info[FRAME_EVEN]));
 
-if(kms->allocate_single_frame_buffer(kms, &(kms->frame), buf_size)<0){
+if(kms->allocate_single_frame_buffer(kms, &(kms->frame_info[FRAME_ODD]), buf_size)<0){
 	result=-ENOMEM;
 	goto fail;
 	}
 
-if(kms->allocate_single_frame_buffer(kms, &(kms->frame_even), buf_size)<0){
+if(kms->allocate_single_frame_buffer(kms, &(kms->frame_info[FRAME_EVEN]), buf_size)<0){
 	result=-ENOMEM;
 	goto fail;
 	}
@@ -62,8 +62,8 @@ return 0;
 
 fail:
 
-  kms->deallocate_single_frame_buffer(kms, &(kms->frame));
-  kms->deallocate_single_frame_buffer(kms, &(kms->frame_even));
+  kms->deallocate_single_frame_buffer(kms, &(kms->frame_info[FRAME_ODD]));
+  kms->deallocate_single_frame_buffer(kms, &(kms->frame_info[FRAME_EVEN]));
   spin_unlock(&(kms->kms_lock));
   return result;
 
@@ -75,11 +75,11 @@ static void km_close(struct video_device *dev)
 KM_STRUCT *kms=(KM_STRUCT *)dev;
 spin_lock(&(kms->kms_lock));
 kms->stop_transfer(kms);
-kms->frame.buf_ptr=0;
-kms->frame_even.buf_ptr=0;
+kms->frame_info[FRAME_ODD].buf_ptr=0;
+kms->frame_info[FRAME_EVEN].buf_ptr=0;
 kms->buf_read_from=-1; /* none */
-kms->deallocate_single_frame_buffer(kms, &(kms->frame));
-kms->deallocate_single_frame_buffer(kms, &(kms->frame_even));
+kms->deallocate_single_frame_buffer(kms, &(kms->frame_info[FRAME_ODD]));
+kms->deallocate_single_frame_buffer(kms, &(kms->frame_info[FRAME_EVEN]));
 printk("km: total frames: %ld, overrun: %ld\n", kms->total_frames, kms->overrun);
 spin_unlock(&(kms->kms_lock));
 }
@@ -103,8 +103,8 @@ if(kms->buf_read_from<0){
 	spin_unlock(&(kms->kms_lock));
 	return -EIO;
 	}
-if(kms->buf_read_from==1)frame=&(kms->frame_even);
-	else frame=&(kms->frame);
+if(kms->buf_read_from==1)frame=&(kms->frame_info[FRAME_EVEN]);
+	else frame=&(kms->frame_info[FRAME_ODD]);
 #if 0
 printk("frame->buf_ptr=%d frame->buf_free=%d\n", frame->buf_ptr, frame->buf_free);
 #endif
@@ -229,13 +229,13 @@ SINGLE_FRAME *frame;
 unsigned long start=(unsigned long) adr;
 unsigned long page,pos;
 
-if (size>(kms->frame.buf_size+kms->frame_even.buf_size))
+if (size>(kms->frame_info[FRAME_ODD].buf_size+kms->frame_info[FRAME_EVEN].buf_size))
         return -EINVAL;
-if (!kms->frame.buffer || !kms->frame_even.buffer) {
+if (!kms->frame_info[FRAME_ODD].buffer || !kms->frame_info[FRAME_EVEN].buffer) {
 /*	if(fbuffer_alloc(kms)) */
         return -EINVAL;
         }
-frame=&(kms->frame);
+frame=&(kms->frame_info[FRAME_ODD]);
 pos=(unsigned long) frame->buffer;
 while(size>0){
 	page = kvirt_to_pa(pos);
@@ -245,7 +245,7 @@ while(size>0){
                 pos+=PAGE_SIZE;
                 size-=PAGE_SIZE;
 	if((pos-(unsigned long)frame->buffer)>frame->buf_size){
-		frame=&(kms->frame_even);
+		frame=&(kms->frame_info[FRAME_EVEN]);
 		pos=(unsigned long)frame->buffer;
 		}
         }
@@ -265,8 +265,8 @@ if(kms->buf_read_from<0){
 	spin_unlock(&(kms->kms_lock));
 	return 0;
 	}
-if(kms->buf_read_from==0)frame=&(kms->frame);
-	else frame=&(kms->frame_even);
+if(kms->buf_read_from==0)frame=&(kms->frame_info[FRAME_ODD]);
+	else frame=&(kms->frame_info[FRAME_EVEN]);
 
 if(frame->buf_ptr==frame->buf_free){
 	spin_unlock(&(kms->kms_lock));
@@ -277,8 +277,8 @@ if(frame->buf_ptr==frame->buf_free){
 #if 0
 	if (btv->vbip < VBIBUF_SIZE)
 #endif
-if(kms->buf_read_from==0)frame=&(kms->frame);
-	else frame=&(kms->frame_even);
+if(kms->buf_read_from==0)frame=&(kms->frame_info[FRAME_ODD]);
+	else frame=&(kms->frame_info[FRAME_EVEN]);
 
 if(frame->buf_ptr<frame->buf_free)
 	/* Now we have more data.. */
