@@ -130,14 +130,16 @@ KM_STRUCT *kms=(KM_STRUCT *)dev;
 switch(cmd){
 	case VIDIOCGCAP:{
 		struct video_capability b;
+		struct video_window vwin;
 		strcpy(b.name,kms->vd.name);
 		b.type = VID_TYPE_CAPTURE;
+		kms->get_window_parameters(kms, &(vwin));
 		b.channels = 1;
 		b.audios = 0;
-		b.maxwidth = 640;
-		b.maxheight = 240;
-		b.minwidth = 640;
-		b.minheight = 240;
+		b.maxwidth = vwin.width;
+		b.maxheight = vwin.height;
+		b.minwidth = vwin.width;
+		b.minheight = vwin.height;
 		if(copy_to_user(arg,&b,sizeof(b)))
 			return -EFAULT;
 		return 0;
