@@ -27,6 +27,7 @@
 #include "linux.h"
 #include "alsa.h"
 #include "vbi.h"
+#include "lirc.h"
 #include <pthread.h>
 
 pthread_mutex_t  memory_mutex;
@@ -79,6 +80,7 @@ return TCL_OK;
 int Tcl_AppInit(Tcl_Interp * interp)
 {
 int status=TCL_OK;
+ClientData data;
 
 status=Tcl_Init(interp);
 if(status!=TCL_OK)return TCL_ERROR;
@@ -93,6 +95,8 @@ init_ffmpeg(interp);
 init_alsa(interp);
 init_linux(interp);
 init_vbi(interp);
+data=init_lirc(interp);
+Tcl_CreateExitHandler(deinit_lirc, data);
 return TCL_OK;
 }
 

@@ -10,7 +10,7 @@ INCLUDES = -I@TCL_INC_DIR@ -I@TK_INC_DIR@
 avview_shell_SOURCES = xv.c frequencies.c xmisc.c string_cache.c v4l.c formats.c ffmpeg.c \
 	alsa.c packet_stream.c linux.c main.c alsa.h config.h ffmpeg.h formats.h \
 	frequencies.h global.h linux.h packet_stream.h string_cache.h v4l.h  \
-	xmisc.h xv.h vbi.c vbi.h
+	xmisc.h xv.h vbi.c vbi.h lirc.c lirc.h
 avview_shell_LDFLAGS = @TCL_LIB_SPEC@ @TK_LIB_SPEC@ @TK_XLIBSW@
 
 scpdir = @datadir@/AVview
@@ -20,10 +20,10 @@ scp_DATA = start_avview.desktop
 nodist_scp_DATA = start_avview.desktop
 
 dist_scp_DATA = alsa.scp bindings.scp ffmpeg.scp themes.scp video_device.scp \
-	alsa_mixer.scp channel_scan.scp  km.scp tree.scp xv.scp	vbi.scp \
-	avview.scp diag.scp setup.scp v4l.scp xmisc.scp avview.modmap \
-	avview-16x16.ppm avview-control-16x16.ppm avview-48x48.png start_avview.desktop.in \
-	README INSTALL
+	alsa_mixer.scp channel_scan.scp  km.scp tree.scp xv.scp	vbi.scp	\
+	avview.scp diag.scp setup.scp v4l.scp xmisc.scp lirc.scp \
+	avview.modmap avview-16x16.ppm avview-control-16x16.ppm \
+	avview-48x48.png start_avview.desktop.in README INSTALL
 
 #
 # Whoever said that the suffix is .c ?

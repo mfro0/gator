@@ -4,7 +4,7 @@ AC_PREREQ(2.57)
 # Note to self: always bump version number when there are changes
 # in setup window or avview_shell
 #
-AC_INIT([AVview], [0.80.3], [gatos-devel@lists.sf.net])
+AC_INIT([AVview], [0.80.5], [gatos-devel@lists.sf.net])
 #
 # For now I'll be happier without NEWS and Changelog files.
 #
@@ -38,6 +38,7 @@ AC_CHECK_FUNCS([gettimeofday memmove memset rint select strcasecmp strdup strerr
 
 AC_ARG_WITH(ffmpeg, [  --with-ffmpeg=path      Path to compiled ffmpeg source tree])
 AC_ARG_ENABLE(alsa, [  --disable-alsa          Do not use ALSA sound library])
+AC_ARG_ENABLE(lirc, [  --disable-lirc          Disable LIRC support])
 
 AC_CHECK_LIB([dl], [dlopen])
 AC_CHECK_LIB([z], [uncompress])
@@ -45,6 +46,7 @@ AC_CHECK_LIB([m], [sin])
 AC_CHECK_LIB([pthread], [pthread_create])
 AC_CHECK_LIB([zvbi], [vbi_capture_v4l_new])
 AC_CHECK_LIB([asound], [snd_card_get_name])
+AC_CHECK_LIB([lirc_client], [lirc_init])
 
 echo "The libraries mp3lame, ogg, vorbis and vorbisenc might be required by ffmpeg"
 AC_CHECK_LIB([mp3lame], [lame_encode_buffer])
@@ -84,6 +86,21 @@ if ! test "$enable_alsa" = "no" ; then
 else
 
 ALSA_PRESENT=disabled
+
+fi
+
+LIRC_PRESENT=no
+
+if ! test "$enable_lirc" = "no" ; then
+
+  if test "$ac_cv_lib_lirc_client_lirc_init" = "yes" ; then
+    AC_DEFINE(USE_LIRC, 1, [use lirc libraries])
+    LIRC_PRESENT=yes
+  fi
+
+else
+
+  LIRC_PRESENT=disabled
 
 fi
 
