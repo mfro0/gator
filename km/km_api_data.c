@@ -97,7 +97,8 @@ if(kdufpd->buffer<0){
 	return -EIO;
 	}
 q=kmsbi[kdufpd->buffer].next;
-while((kdufpd->bytes_read==dvb->free[kdufpd->buffer])||(q<0)||((kmsbi[q].user_flag & user_flag_mask)!=user_flag)){
+while((kdufpd->bytes_read==dvb->free[kdufpd->buffer])||(kdufpd->age>kmsbi[kdufpd->buffer].age)||
+	(q<0)||((kmsbi[q].user_flag & user_flag_mask)!=user_flag)){
 	q=kmsbi[kdufpd->buffer].next;
 	if((q>=0) && (kdufpd->age<kmsbi[q].age) && !(kmsbi[q].flag & KM_STREAM_BUF_BUSY)){
 		kdufpd->buffer=q;
