@@ -268,8 +268,12 @@ for(elem=snd_hctl_first_elem(ad->hctl);elem!=NULL;elem=snd_hctl_elem_next(elem))
 			list2=Tcl_NewListObj(0, NULL);
 			for(k=0;k<items;k++){
 				snd_ctl_elem_info_set_item(ad->einfo[j], k);
-				fprintf(stderr,"item %d %s\n", k, snd_ctl_elem_info_get_item_name(ad->einfo[j]));
-				Tcl_ListObjAppendElement(interp, list2, Tcl_NewStringObj(snd_ctl_elem_info_get_item_name(ad->einfo[j]), -1));
+				if((a=snd_hctl_elem_info(elem, ad->einfo[j]))<0){
+					fprintf(stderr,"Alsa error %s\n", snd_strerror(a));
+					} else {
+					fprintf(stderr,"item %d %s\n", k, snd_ctl_elem_info_get_item_name(ad->einfo[j]));
+					Tcl_ListObjAppendElement(interp, list2, Tcl_NewStringObj(snd_ctl_elem_info_get_item_name(ad->einfo[j]), -1));
+					}
 				}
 			Tcl_ListObjAppendElement(interp,list,list2);
 			break;
@@ -331,7 +335,11 @@ for(k=0;k<snd_ctl_elem_info_get_count(ad->einfo[e]);k++){
 			break;
 		case SND_CTL_ELEM_TYPE_ENUMERATED:
 			snd_ctl_elem_info_set_item(ad->einfo[e], snd_ctl_elem_value_get_enumerated(value,k));
-			Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj(snd_ctl_elem_info_get_item_name(ad->einfo[e]),-1));			
+			if((a=snd_hctl_elem_info(ad->elem[e], ad->einfo[e]))<0){
+				fprintf(stderr,"Alsa error %s\n", snd_strerror(a));
+				} else {
+				Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj(snd_ctl_elem_info_get_item_name(ad->einfo[e]),-1));			
+				}
 			break;
 		default:
 			Tcl_ListObjAppendElement(interp, ans, Tcl_NewStringObj("undecipherable",-1));			
@@ -396,6 +404,9 @@ switch(ad->etype[e]){
 	case SND_CTL_ELEM_TYPE_ENUMERATED:
 		for(j=0;j<snd_ctl_elem_info_get_items(ad->einfo[e]);j++){
 			snd_ctl_elem_info_set_item(ad->einfo[e], j);
+			if((a=snd_hctl_elem_info(ad->elem[e], ad->einfo[e]))<0){
+				fprintf(stderr,"Alsa error %s\n", snd_strerror(a));
+				} else 
 			if(!strcmp(argv[4],snd_ctl_elem_info_get_item_name(ad->einfo[e]))){
 				snd_ctl_elem_value_set_enumerated(value,k,j);				
 				}
