@@ -326,11 +326,11 @@ static XF86AttributeRec Attributes[NUM_ATTRIBUTES+1] =
    {XvSettable | XvGettable, 0, -1, "XV_FREQ"},
    {XvSettable | XvGettable, 0, 1, "XV_MUTE"},
    {XvSettable | XvGettable, 0x01, 0x7F, "XV_VOLUME"},
-   {XvSettable | XvGettable, -1000, 1000, "XV_HUE"},
    {XvSettable | XvGettable, -1000, 1000, "XV_BRIGHTNESS"},
+   {XvSettable | XvGettable, -1000, 1000, "XV_CONTRAST"},
    {XvSettable | XvGettable, -1000, 1000, "XV_SATURATION"},
    {XvSettable | XvGettable, -1000, 1000, "XV_COLOR"},
-   {XvSettable | XvGettable, -1000, 1000, "XV_CONTRAST"},
+   {XvSettable | XvGettable, -1000, 1000, "XV_HUE"},
    { 0, 0, 0, NULL}  /* just a place holder so I don't have to be fancy with commas */
 };
 

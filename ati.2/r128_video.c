@@ -229,12 +229,12 @@ static XF86AttributeRec Attributes[NUM_ATTRIBUTES+1] =
    {XvSettable | XvGettable, 0, 1, "XV_DOUBLE_BUFFER"},
    {XvSettable | XvGettable, 0, 12, "XV_ENCODING"},
    {XvSettable | XvGettable, 0, -1, "XV_FREQ"},
-   {XvSettable | XvGettable, 0, 1, "XV_MUTE"},
-   {XvSettable | XvGettable, -1000, 1000, "XV_HUE"},
    {XvSettable | XvGettable, -1000, 1000, "XV_BRIGHTNESS"},
+   {XvSettable | XvGettable, -1000, 1000, "XV_CONTRAST"},
    {XvSettable | XvGettable, -1000, 1000, "XV_SATURATION"},
    {XvSettable | XvGettable, -1000, 1000, "XV_COLOR"},
-   {XvSettable | XvGettable, -1000, 1000, "XV_CONTRAST"},
+   {XvSettable | XvGettable, -1000, 1000, "XV_HUE"},
+   {XvSettable | XvGettable, 0, 1, "XV_MUTE"},
    {XvSettable | XvGettable, 0x01, 0x7F, "XV_VOLUME"},
    { 0, 0, 0, NULL}  /* just a place holder so I don't have to be fancy with commas */
 };
@@ -1335,7 +1335,12 @@ R128SetupImageVideo(ScreenPtr pScreen)
        adapt->nFormats = NUM_FORMATS;
        adapt->pFormats = Formats;
        adapt->nPorts = 1;
-       adapt->nAttributes = NUM_ATTRIBUTES;
+       if(pPriv->msp3430!=NULL)
+	       adapt->nAttributes = NUM_ATTRIBUTES;
+	       else 
+       if((pPriv->theatre!=NULL)||(pPriv->bt829!=NULL))
+	       adapt->nAttributes = NUM_ATTRIBUTES-1;
+	       else adapt->nAttributes =  NUM_ATTRIBUTES-2;
        adapt->pAttributes = Attributes;
        adapt->nImages = NUM_IMAGES;
        adapt->pImages = Images;

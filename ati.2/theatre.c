@@ -1596,6 +1596,7 @@ void RT_SetOutputVideoSize (TheatrePtr t, CARD16 wHorzSize, CARD16 wVertSize, CA
         case (DEC_NTSC):
             dwHwinStart = RT_NTSCM_H_IN_START;
             dwXin = (ReadRT_fld (fld_H_ACTIVE_END) - ReadRT_fld (fld_H_ACTIVE_START)); /*tempscaler*/
+            dwXin = RT_NTSC_H_ACTIVE_SIZE;
             dwHScaleRatio = (CARD32) ((long) dwXin * 65536L / wHorzSize);
             dwHScaleRatio = dwHScaleRatio & 0x001FFFFF; /*21 bit number;*/
             dwHActiveLength = wHorzSize;
@@ -1623,7 +1624,8 @@ void RT_SetOutputVideoSize (TheatrePtr t, CARD16 wHorzSize, CARD16 wVertSize, CA
     {
         case (DEC_NTSC):
             dwVwinStart = RT_NTSCM_V_IN_START;
-            dwYin = (ReadRT_fld (fld_V_ACTIVE_END) - ReadRT_fld (fld_V_ACTIVE_START)); /*tempscaler*/
+            /* dwYin = (ReadRT_fld (fld_V_ACTIVE_END) - ReadRT_fld (fld_V_ACTIVE_START)); */ /*tempscaler*/
+	    dwYin = RT_NTSCM_V_ACTIVE_SIZE;
             dwTempRatio = (CARD32)((long) wVertSize / dwYin);
             dwVScaleRatio = (CARD32)((long)wVertSize * 2048L / dwYin);
             dwVScaleRatio = dwVScaleRatio & 0x00000FFF;
