@@ -83,7 +83,7 @@ set h [winfo height .]
 set w [winfo width .]
 set rw 1.0
 set rh 1.0
-#catch {
+catch {
 	if { $use_physical_screen_size } {
 		set a_x [expr ([lindex $aspect_ratio 0]*[winfo screenwidth .]*1.0)/[winfo screenmmwidth .]]
 		set a_y [expr ([lindex $aspect_ratio 1]*[winfo screenheight .]*1.0)/[winfo screenmmheight .]]
@@ -98,7 +98,7 @@ set rh 1.0
 		set rw [expr (1.0*$a_x*$h)/($a_y*$w)]
 		set rh 1.0
 		}
-#	}
+	}
 place configure .video -relx [expr (1.0-$rw)/2.0] -rely [expr (1.0-$rh)/2.0] \
 	-relw $rw -relh $rh -anchor nw
 }
@@ -363,6 +363,8 @@ if { $current_encoding > 0 } {
 			}			
 			
 	}
+
+display_video
 }
 
 proc save_settings {} {

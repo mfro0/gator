@@ -147,7 +147,7 @@ while(1){
 			/* encode frame */
 			ffmpeg_preprocess_frame(data, sdata, f, &picture);
 			ob_free=avcodec_encode_video(&(sdata->video_codec_context), output_buf, ob_size, &picture);
-			sdata->encoded_stream_size+=ob_free; 
+			if(ob_free>0)sdata->encoded_stream_size+=ob_free; 
 			/* write out data */
 			ob_written=0;
 			while(ob_written<ob_free){
@@ -698,6 +698,11 @@ if(sdata->format_context.oformat!=NULL){
 	sdata->format_context.oformat->flags=AVFMT_NOFILE;
 	sdata->format_context.flags=AVFMT_NOFILE;
 	strcpy(sdata->format_context.title, arg_filename);
+	/* no way to extract these from TV signal */
+	sdata->format_context.title[0]=0;
+	sdata->format_context.copyright[0]=0;
+	sdata->format_context.author[0]=0;
+	sdata->format_context.comment[0]=0;
 	av_write_header(&(sdata->format_context));
 	} else {
 	fprintf(stderr,"Warning: sdata->format_context.oformat==NULL, report to volodya@mindspring.com if you did choose a valid file format\n");
