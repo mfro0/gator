@@ -68,6 +68,84 @@ int find_next_buffer(KM_STRUCT *kms, int buf)
 
 }
 
+int generic_allocate_dvb(KM_STRUCT *kms, long size)
+{
+int i,k;
+KM_CHECKPOINT
+if(size>(4096*4096/sizeof(bm_list_descriptor))){
+	printk("Too large buffer allocation requested: %ld bytes\n", size);
+	return -1;
+	}
+/* allocate data unit to hold video data */
+kms->v4l_dvb.size=((size+PAGE_SIZE-1)/PAGE_SIZE)*PAGE_SIZE;
+kms->v4l_dvb.n=kms->num_buffers;
+kms->v4l_dvb.free=kms->v4l_free;
+kms->v4l_dvb.ptr=kms->buffer;
+kms->v4l_du=km_allocate_data_virtual_block(&(kms->v4l_dvb), S_IFREG | S_IRUGO);
+if(kms->v4l_du<0)return -1;
+KM_CHECKPOINT
+/* allocate data unit to hold field info */
+kms->v4l_dvb_info.size=kms->num_buffers*sizeof(FIELD_INFO);
+kms->v4l_dvb_info.n=1;
+kms->v4l_dvb_info.free=&(kms->info_free);
+kms->info_free=kms->num_buffers*sizeof(FIELD_INFO);
+kms->v4l_dvb_info.ptr=&(kms->fi);
+kms->v4l_info_du=km_allocate_data_virtual_block(&(kms->v4l_dvb_info), S_IFREG | S_IRUGO);
+if(kms->v4l_info_du<0){
+	km_deallocate_data(kms->v4l_du);
+	kms->v4l_du=-1;
+	return -1;
+	}
+/*
+  dma_table allocation and initialization is the only hardware dependent part of this function
+
+  However it is common for all ATI chipsets and should be very similar for other PCI cards.
+  
+  Note: only the buffer offsets (which are computed here) are common, flags do differ between mach64, rage128 and 
+  radeon cards.
+*/
+
+kms->dma_table=kmalloc(sizeof(*(kms->dma_table))*kms->num_buffers, GFP_KERNEL);
+memset(kms->fi, 0 , sizeof(*(kms->fi))*kms->num_buffers);
+for(k=0;k<kms->num_buffers;k++){
+	kms->v4l_dvb.free[k]=size;
+	kms->fi[k].flag=0;
+	kms->fi[k].next=k+1;
+	kms->fi[k].prev=k-1;
+	kms->dma_table[k]=rvmalloc(4096);
+	kms->v4l_free[k]=size;
+	memset(kms->dma_table[k], 0, 4096);
+	/* create DMA table */
+	for(i=0;i<(kms->v4l_dvb.size/PAGE_SIZE);i++){
+		kms->dma_table[k][i].to_addr=kvirt_to_pa(kms->buffer[k]+i*PAGE_SIZE);
+		if(kvirt_to_pa(kms->buffer[k]+i*PAGE_SIZE)!=kvirt_to_bus(kms->buffer[k]+i*PAGE_SIZE)){
+			printk(KERN_ERR "pa!=bus for entry %d frame %d\n", i, k);
+			}
+		}
+	}
+kms->fi[0].prev=kms->num_buffers-1;
+kms->fi[kms->num_buffers-1].next=0;
+kms->next_cap_buf=0;
+KM_CHECKPOINT
+return 0;
+}
+
+
+int generic_deallocate_dvb(KM_STRUCT *kms)
+{
+int k;
+for(k=0;k<kms->num_buffers;k++){
+	rvfree(kms->dma_table[k], 4096);
+	}
+kfree(kms->dma_table);
+kms->dma_table=NULL;
+km_deallocate_data(kms->v4l_info_du);
+kms->v4l_info_du=-1;
+km_deallocate_data(kms->v4l_du);
+kms->v4l_du=-1;
+return 0;
+}
+
 int acknowledge_dma(KM_STRUCT *kms)
 {
 int i;
@@ -254,8 +332,8 @@ switch(pci_id->driver_data){
 		kms->get_window_parameters=radeon_get_window_parameters;
 		kms->start_transfer=radeon_start_transfer;
 		kms->stop_transfer=radeon_stop_transfer;
-		kms->allocate_v4l_dvb=radeon_allocate_v4l_dvb;
-		kms->deallocate_v4l_dvb=radeon_deallocate_v4l_dvb;
+		kms->allocate_v4l_dvb=generic_allocate_dvb;
+		kms->deallocate_v4l_dvb=generic_deallocate_dvb;
 		kms->irq_handler=radeon_km_irq;
 		kms->init_hardware=radeon_init_hardware;
 		kms->uninit_hardware=radeon_uninit_hardware;
@@ -267,8 +345,8 @@ switch(pci_id->driver_data){
 		kms->get_window_parameters=mach64_get_window_parameters;
 		kms->start_transfer=mach64_start_transfer;
 		kms->stop_transfer=mach64_stop_transfer;
-		kms->allocate_v4l_dvb=mach64_allocate_v4l_dvb;
-		kms->deallocate_v4l_dvb=mach64_deallocate_v4l_dvb;
+		kms->allocate_v4l_dvb=generic_allocate_dvb;
+		kms->deallocate_v4l_dvb=generic_deallocate_dvb;
 		kms->irq_handler=mach64_km_irq;
 		break;
 #endif
@@ -278,8 +356,8 @@ switch(pci_id->driver_data){
 		kms->get_window_parameters=rage128_get_window_parameters;
 		kms->start_transfer=rage128_start_transfer;
 		kms->stop_transfer=rage128_stop_transfer;
-		kms->allocate_v4l_dvb=rage128_allocate_v4l_dvb;
-		kms->deallocate_v4l_dvb=rage128_deallocate_v4l_dvb;
+		kms->allocate_v4l_dvb=generic_allocate_dvb;
+		kms->deallocate_v4l_dvb=generic_deallocate_dvb;
 		kms->irq_handler=rage128_km_irq;
 		break;
 #endif
