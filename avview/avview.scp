@@ -432,7 +432,9 @@ if { [catch {
 
 global avview_version
 puts $fileid "\n# AVview version this file was saved with\n"
-puts $fileid "set saved_avview_version \"$avview_version\""
+puts $fileid "set saved_avview_version \"$avview_version\"\n"
+
+save_station_names $fileid
 
 puts $fileid "\n# General settings"
 
@@ -463,7 +465,6 @@ puts $fileid "set current_alsa_device1 \"$current_alsa_device\""
 puts $fileid ""
 save_v4l_capture $fileid
 puts $fileid ""
-save_station_names $fileid
 save_favorite_channels $fileid
 
 global fullscreen_mode

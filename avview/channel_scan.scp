@@ -17,7 +17,12 @@ global current_channel LOCATION_ID current_table station_names
 global all_favorites unselected_channels unselected_names 
 global favorite_names
 
-set station_names(${LOCATION_ID}_${current_table}_${current_channel}) $newname
+if {$newname == ""} {
+	array unset station_names ${LOCATION_ID}_${current_table}_${current_channel}
+	set newname $current_channel
+	} else {
+	set station_names(${LOCATION_ID}_${current_table}_${current_channel}) $newname
+	}
 
 # Update favorite channel editor listboxes
 set i [lsearch -exact $all_favorites(${LOCATION_ID}_${current_table}) $current_channel]
