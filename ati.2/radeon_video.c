@@ -17,6 +17,7 @@
 #include "theatre_reg.h"
 #include "theatre.h"
 #include "i2c_def.h"
+#include "tda9885.h"
 
 #define OFF_DELAY       250  /* milliseconds */
 #define FREE_DELAY      15000
@@ -76,6 +77,7 @@ typedef struct {
    
    FI1236Ptr     fi1236;
    MSP3430Ptr    msp3430;
+   TDA9885Ptr    tda9885;
    
    GENERIC_BUS_Ptr  VIP;
    TheatrePtr       theatre;
@@ -459,6 +461,10 @@ void RADEONShutdownVideo(ScrnInfoPtr pScrn)
 		xfree(pPriv->msp3430);
 		pPriv->msp3430=NULL;
 		}
+	if(pPriv->tda9885!=NULL){
+		xfree(pPriv->tda9885);
+		pPriv->tda9885=NULL;
+		}
 	if(pPriv->fi1236!=NULL){
 		xfree(pPriv->fi1236);
 		pPriv->fi1236=NULL;
@@ -558,7 +564,7 @@ void RADEONResetVideo(ScrnInfoPtr pScrn)
     
     if(pPriv->theatre != NULL) {
         xf86_InitTheatre(pPriv->theatre);
-	xf86_ResetTheatreRegsForNoTVout(pPriv->theatre);
+/*	xf86_ResetTheatreRegsForNoTVout(pPriv->theatre); */
 	}
     
     if(pPriv->i2c != NULL){
@@ -916,6 +922,7 @@ static void RADEONInitI2C(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
 
     pPriv->fi1236 = NULL;
     pPriv->msp3430 = NULL;
+    pPriv->tda9885 = NULL;
     
     if(pPriv->i2c!=NULL) return;
     if(!xf86LoadSubModule(pScrn,"i2c")) 
@@ -993,6 +1000,23 @@ static void RADEONInitI2C(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
 		   xf86DrvMsg(pScrn->scrnIndex, X_INFO, "MM_TABLE not found (standalone board ?), forcing tuner type to NTSC\n");
 		    xf86_FI1236_set_tuner_type(pPriv->fi1236, TUNER_TYPE_FI1236);
 		}
+    }
+    
+    if(!xf86LoadSubModule(pScrn,"tda9885"))
+    {
+       xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "Unable to initialize tda9885 driver\n");
+    }
+    else
+    {
+    xf86LoaderReqSymbols(TDA9885SymbolsList, NULL);
+    if(pPriv->tda9885 == NULL)
+    {
+    	pPriv->tda9885 = xf86_Detect_tda9885(pPriv->i2c, TDA9885_ADDR_1);
+    }
+    if(pPriv->tda9885 == NULL)
+    {
+    	pPriv->tda9885 = xf86_Detect_tda9885(pPriv->i2c, TDA9885_ADDR_2);
+    }
     }
     
     if(!xf86LoadSubModule(pScrn,"msp3430"))
@@ -1803,6 +1827,7 @@ RADEONSetPortAttribute(
 	{
 	   if(pPriv->theatre != NULL) RADEON_RT_SetEncoding(pPriv);
 	   if(pPriv->msp3430 != NULL) RADEON_MSP_SetEncoding(pPriv);
+	   if(pPriv->tda9885 != NULL) RADEON_TDA9885_SetEncoding(pPriv);
 	   if(pPriv->i2c != NULL) RADEON_board_setmisc(pPriv);
 	/* put more here to actually change it */
 	}
@@ -2507,6 +2532,55 @@ switch(pPriv->encoding){
 xf86DrvMsg(0, X_INFO, "test--\n");
 xf86_InitMSP3430(pPriv->msp3430);
 xf86_MSP3430SetVolume(pPriv->msp3430, pPriv->mute ? MSP3430_FAST_MUTE : pPriv->volume);
+}
+
+void RADEON_TDA9885_SetEncoding(RADEONPortPrivPtr pPriv)
+{
+TDA9885Ptr t=pPriv->tda9885;
+t->sound_trap=0;
+t->auto_mute_fm=0; /* ? */
+t->carrier_mode=1; /* ??? */
+t->modulation=2; /* negative FM */
+t->forced_mute_audio=0;
+t->port1=1;
+t->port2=1;
+t->top_adjustment=0x10; /* ? */
+t->deemphasis=1; /* ? */
+t->audio_gain=0;
+t->minimum_gain=0;
+t->gating=0; /* ? */
+t->vif_agc=1;
+switch(pPriv->encoding){
+		/* PAL */
+	case 1:
+	case 2:
+	case 3:
+		t->standard_video_if=0;
+		t->standard_sound_carrier=3;
+		break;
+		/* NTSC */
+	case 4:
+	case 5:
+	case 6:
+		t->standard_video_if=1;
+		t->standard_sound_carrier=0;
+		break;
+		/* SECAM */
+	case 7:
+	case 8:
+	case 9:
+	case 10:
+	case 11:
+	case 12:
+		t->standard_video_if=0;
+		t->standard_sound_carrier=3;
+		break;
+	default:
+		return;
+	}	
+xf86_tda9885_setparameters(pPriv->tda9885); 
+xf86_tda9885_getstatus(pPriv->tda9885);
+xf86_tda9885_dumpstatus(pPriv->tda9885);
 }
 
 /* capture config constants */

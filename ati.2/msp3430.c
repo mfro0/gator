@@ -173,6 +173,7 @@ MSP3430Ptr DetectMSP3430(I2CBusPtr b, I2CSlaveAddr addr)
    case 4:	/* 34xxD */
       switch (product_code) {
 	  case 0x05: /* 3405D */
+	  case 0x0A: /* 3410D */
 	  case 0x0F: /* 3415D */
 	  	m->chip_family=MSPFAMILY_34x5D;
 		m->recheck=TRUE;
