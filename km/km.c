@@ -191,7 +191,55 @@ fail:
 }
 
 
+int start_video_capture(KM_STRUCT *kms)
+{
+int result;
+u32 buf_size;
+spin_lock(&(kms->kms_lock));
+if(!kms->is_capture_active(kms)){
+	printk("km: no data is available until AVview or xawtv is started\n");
+	result=-ENODATA;
+	spin_unlock(&(kms->kms_lock));
+	goto fail;
+	}
 
+kms->total_frames=0;
+kms->overrun=0;
+kms->get_window_parameters(kms, &(kms->vwin));
+
+
+buf_size=kms->vwin.width*kms->vwin.height*2;
+
+if(kms->allocate_dvb!=NULL){
+	if(kms->allocate_dvb(kms, buf_size)<0){
+		result=-ENOMEM;
+		goto fail;
+		}
+	kmd_signal_state_change(kms->kmd);
+	} else {
+	goto fail;
+	}
+spin_unlock(&(kms->kms_lock));
+kms->start_transfer(kms);
+return 0;
+
+fail:
+  spin_unlock(&(kms->kms_lock));
+  return result;
+}
+
+void stop_video_capture(KM_STRUCT *kms)
+{
+spin_lock(&(kms->kms_lock));
+kms->stop_transfer(kms);
+if(kms->deallocate_dvb!=NULL){
+	kms->deallocate_dvb(kms);
+	kmd_signal_state_change(kms->kmd);
+	} else {
+	}
+printk("km: total frames: %ld, overrun: %ld\n", kms->total_frames, kms->overrun);
+spin_unlock(&(kms->kms_lock));
+}
 
 /* you shouldn't be having more than 3 actually.. - 1 agp and 2 pci - 
     number of slots + bandwidth issues */

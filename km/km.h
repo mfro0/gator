@@ -89,6 +89,8 @@ typedef struct S_KM_STRUCT {
 
 int acknowledge_dma(KM_STRUCT *kms);
 int find_free_buffer(KM_STRUCT *kms);
+int start_video_capture(KM_STRUCT *kms);
+void stop_video_capture(KM_STRUCT *kms);
 
 #define HARDWARE_MACH64		0
 #define HARDWARE_RAGE128	1

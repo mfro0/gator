@@ -27,71 +27,38 @@
 #include "km.h"
 #include "km_memory.h"
 
-static int km_open(struct video_device *dev, int flags)
+static int km_v4l_open(struct video_device *dev, int flags)
 {
-u32 buf_size;
-int result;
 KM_STRUCT *kms=(KM_STRUCT *)dev;
+int result;
 
-spin_lock(&(kms->kms_lock));
-if(!kms->is_capture_active(kms)){
-	printk("km: no data is available until AVview or xawtv is started\n");
-	result=-ENODATA;
-	spin_unlock(&(kms->kms_lock));
-	goto fail;
-	}
+if((result=start_video_capture(kms))<0)return result;
 
 kms->v4l_buf_parity=0;
-kms->total_frames=0;
-kms->overrun=0;
-kms->get_window_parameters(kms, &(kms->vwin));
-
-
-buf_size=kms->vwin.width*kms->vwin.height*2;
-
-if(kms->allocate_dvb!=NULL){
-	if(kms->allocate_dvb(kms, buf_size)<0){
-		result=-ENOMEM;
-		goto fail;
-		}
-	kmd_signal_state_change(kms->kmd);
-	} else {
-	goto fail;
-	}
 kms->v4l_kdufpd=km_data_create_kdufpd(kms->capture_du);
-spin_unlock(&(kms->kms_lock));
-kms->start_transfer(kms);
+if(kms->v4l_kdufpd==NULL){
+	stop_video_capture(kms);
+	return -EINVAL;
+	}
 return 0;
-
-fail:
-  spin_unlock(&(kms->kms_lock));
-  return result;
 }
 
 
-static void km_close(struct video_device *dev)
+static void km_v4l_close(struct video_device *dev)
 {
 KM_STRUCT *kms=(KM_STRUCT *)dev;
-DECLARE_WAITQUEUE(wait, current);
 
-spin_lock(&(kms->kms_lock));
 km_data_destroy_kdufpd(kms->v4l_kdufpd);
-kms->stop_transfer(kms);
-if(kms->deallocate_dvb!=NULL){
-	kms->deallocate_dvb(kms);
-	kmd_signal_state_change(kms->kmd);
-	} else {
-	}
-printk("km: total frames: %ld, overrun: %ld\n", kms->total_frames, kms->overrun);
-spin_unlock(&(kms->kms_lock));
+kms->v4l_kdufpd=NULL;
+stop_video_capture(kms);
 }
 
-static long km_write(struct video_device *v, const char *buf, unsigned long count, int nonblock)
+static long km_v4l_write(struct video_device *v, const char *buf, unsigned long count, int nonblock)
 {
 return -EINVAL;
 }
 
-static long km_read(struct video_device *v, char *buf, unsigned long count, int nonblock)
+static long km_v4l_read(struct video_device *v, char *buf, unsigned long count, int nonblock)
 {
 KM_STRUCT *kms=(KM_STRUCT *)v;
 int done;
@@ -108,7 +75,7 @@ if((done > 0) && (kdufpd->bytes_read>=kms->dvb.free[kdufpd->buffer])){
 return done;
 }
 
-static int km_ioctl(struct video_device *dev, unsigned int cmd, void *arg)
+static int km_v4l_ioctl(struct video_device *dev, unsigned int cmd, void *arg)
 {
 KM_STRUCT *kms=(KM_STRUCT *)dev;
 spin_lock(&(kms->kms_lock));
@@ -186,13 +153,13 @@ return -EINVAL;
 }
 
 /* ignore this - it is bogus */
-static int km_mmap(struct video_device *dev, const char *adr, unsigned long size)
+static int km_v4l_mmap(struct video_device *dev, const char *adr, unsigned long size)
 {
 KM_STRUCT *kms=(KM_STRUCT *)dev;
 unsigned long start=(unsigned long) adr;
 unsigned long page,pos;
 KDU_FILE_PRIVATE_DATA *kdufpd=kms->v4l_kdufpd;
-
+return -ENOMEM;
 #if 0
 if (size>(kms->frame_info[FRAME_ODD].buf_size+kms->frame_info[FRAME_EVEN].buf_size))
         return -EINVAL;
@@ -218,7 +185,7 @@ while(size>0){
 return 0;
 }
 
-static unsigned int km_poll(struct video_device *dev, struct file *file,
+static unsigned int km_v4l_poll(struct video_device *dev, struct file *file,
 	poll_table *wait)
 {
 KM_STRUCT *kms=(KM_STRUCT *)dev;
@@ -230,25 +197,25 @@ return km_data_generic_stream_poll(kms->v4l_kdufpd, kms->kmsbi, &(kms->dvb), fil
 #define VID_HARDWARE_KM 100
 #endif
 
-static struct video_device km_template=
+static struct video_device km_v4l_template=
 {
 	owner:		THIS_MODULE,
 	name:		"Km",
 	type:		VID_TYPE_CAPTURE|VID_TYPE_TELETEXT,
 	hardware:	VID_HARDWARE_KM,
-	open:		km_open,
-	close:		km_close,
-	read:		km_read,
-	write:		km_write,
-	ioctl:		km_ioctl,
-	poll:		km_poll,
-	mmap:		km_mmap,
+	open:		km_v4l_open,
+	close:		km_v4l_close,
+	read:		km_v4l_read,
+	write:		km_v4l_write,
+	ioctl:		km_v4l_ioctl,
+	poll:		km_v4l_poll,
+	mmap:		km_v4l_mmap,
 	minor:		-1,
 };
 
 void init_km_v4l(KM_STRUCT *kms)
 {
-memcpy(&(kms->vd), &km_template, sizeof(km_template));
+memcpy(&(kms->vd), &km_v4l_template, sizeof(km_v4l_template));
 video_register_device(&(kms->vd), VFL_TYPE_GRABBER, -1);
 }
 
