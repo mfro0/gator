@@ -1,7 +1,7 @@
 # Process this file with autoconf to produce a configure script.
 AC_PREREQ(2.52)
 
-AC_INIT([AV viewer], [0.10.3], [gatos-devel@lists.sf.net])
+AC_INIT([AV viewer], [0.10.4], [gatos-devel@lists.sf.net])
 AC_CONFIG_SRCDIR([frequencies.c])
 AC_CONFIG_HEADER([config.h])
 
@@ -88,7 +88,7 @@ AC_C_CONST
 AC_PROG_GCC_TRADITIONAL
 AC_CHECK_FUNCS([memset strdup strerror])
 
-AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([Makefile version.scp])
 AC_OUTPUT
 
 if test "no_x" = "yes" ; then

@@ -10,8 +10,7 @@
 #
 # AVview version   Note to self: always bump it when setup window changes
 #
-global avview_version
-set avview_version "0.10.3"
+source version.scp
 
 global control_screen
 set control_screen1 ""
