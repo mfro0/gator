@@ -1,0 +1,11 @@
+#!./avview_shell
+
+proc avview_set_icon {window iconfile} {
+global avview_directory
+
+set icon [image create photo -file "$avview_directory/$iconfile"]
+foreach {var value} [xmisc_querytree $window] {
+	set $var $value
+	}
+xmisc_seticon $window $icon $parent
+}

@@ -48,9 +48,9 @@ foreach {variable value} {
 global TABLE_LIST
 set TABLE_LIST [freq_get_table_list]
 
-foreach file {tree.scp setup.scp themes.scp alsa.scp
+foreach file {xmisc.scp tree.scp setup.scp themes.scp alsa.scp
 	v4l.scp xv.scp channel_scan.scp ffmpeg.scp 
-	video_device.scp diag.scp bindings.scp } {
+	video_device.scp diag.scp bindings.scp} {
 	source $avview_directory/$file
 	}
 
@@ -672,6 +672,7 @@ wm protocol .controlwin WM_DELETE_WINDOW {
 
 wm title . "AVview"
 wm title .controlwin "AV Control"
+
 #
 # Generate theme menu
 #
@@ -710,6 +711,11 @@ Tree:open .setup.tree "/User interface settings"
 
 replace_parameter_choices "/Video device parameters" 0 a
 regenerate_port_menu
+
+after idle {
+	avview_set_icon . "avview-16x16.ppm"
+	avview_set_icon .controlwin "avview-control-16x16.ppm"
+	}
 
 after 100 {
 	assign_default_bindings
