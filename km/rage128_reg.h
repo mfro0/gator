@@ -2,6 +2,7 @@
 #define __RAGE128_REG_H__
 
 #define RAGE128_BUS_CNTL      0x30
+#define RAGE128_BUS_CNTL__BM_RESET	(1<<1)
 
 #define RAGE128_GEN_INT_STATUS 0x44
 #define RAGE128_GEN_INT_CNTL   0x40

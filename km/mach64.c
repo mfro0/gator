@@ -97,8 +97,13 @@ void mach64_stop_transfer(KM_STRUCT *kms)
 {
 u32 a;
 
+/* stop interrupts */
 a=readl(kms->reg_aperture+MACH64_CRTC_INT_CNTL);
 writel(a& ~(MACH64_CAPBUF0_INT_EN|MACH64_CAPBUF1_INT_EN), kms->reg_aperture+MACH64_CRTC_INT_CNTL);
+wmb();
+/* stop outstanding DMA transfers */
+a=readl(kms->reg_aperture+MACH64_BUS_CNTL);
+writel(a|MACH64_BUS_CNTL__BM_RESET, kms->reg_aperture+MACH64_BUS_CNTL);
 }
 
 static int mach64_setup_dma_table(KM_STRUCT *kms, bm_list_descriptor *dma_table, long offset, long free)

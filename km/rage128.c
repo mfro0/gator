@@ -105,10 +105,15 @@ void rage128_stop_transfer(KM_STRUCT *kms)
 {
 u32 a;
 
+/* stop interrupts */
 a=readl(kms->reg_aperture+RAGE128_CAP_INT_CNTL);
 writel(a & ~3, kms->reg_aperture+RAGE128_CAP_INT_CNTL);
 a=readl(kms->reg_aperture+RAGE128_GEN_INT_CNTL);
 writel(a & ~((1<<16)|(1<<24)), kms->reg_aperture+RAGE128_GEN_INT_CNTL);
+wmb();
+/* stop outstanding DMA transfers */
+a=readl(kms->reg_aperture+RAGE128_BUS_CNTL);
+writel(a|RAGE128_BUS_CNTL__BM_RESET, kms->reg_aperture+RAGE128_BUS_CNTL);
 }
 
 static int rage128_setup_dma_table(KM_STRUCT *kms, bm_list_descriptor *dma_table, long offset, long free)
