@@ -100,6 +100,12 @@ typedef struct {
    int           v;
    int           ecp_div;
 
+#define METHOD_BOB	0
+#define METHOD_WEAVE	1
+#define METHOD_ADAPTIVE	2
+
+   int		 overlay_deinterlacing_method;
+
    Bool          MM_TABLE_valid;
    _MM_TABLE     MM_TABLE;
 
@@ -147,7 +153,7 @@ static Atom xvBrightness, xvColorKey, xvSaturation, xvDoubleBuffer,
              xvEncoding, xvVolume, xvMute, xvFrequency, xvContrast, xvHue, xvColor,
 	     xv_autopaint_colorkey, xv_set_defaults,
 	     xvDecBrightness, xvDecContrast, xvDecHue, xvDecColor, xvDecSaturation,
-	     xvTunerStatus, xvSAP;
+	     xvTunerStatus, xvSAP, xvOverlayDeinterlacingMethod;
 
 
 
@@ -229,7 +235,7 @@ static XF86VideoFormatRec Formats[NUM_FORMATS] =
 };
 
 
-#define NUM_DEC_ATTRIBUTES 18+4
+#define NUM_DEC_ATTRIBUTES 19+4
 #define NUM_ATTRIBUTES 9+4
 
 static XF86AttributeRec Attributes[NUM_DEC_ATTRIBUTES+1] =
@@ -250,6 +256,7 @@ static XF86AttributeRec Attributes[NUM_DEC_ATTRIBUTES+1] =
    {XvSettable | XvGettable, -1000, 1000, "XV_DEC_CONTRAST"},
    {XvSettable | XvGettable, -1000, 1000, "XV_DEC_SATURATION"},
    {XvSettable | XvGettable, -1000, 1000, "XV_DEC_HUE"},
+   {XvSettable | XvGettable, 0, 1, "XV_OVERLAY_DEINTERLACING_METHOD"},
    {XvSettable | XvGettable, 0, 12, "XV_ENCODING"},
    {XvSettable | XvGettable, 0, -1, "XV_FREQ"},
    {XvGettable, -1000, 1000, "XV_TUNER_STATUS"},
@@ -653,6 +660,8 @@ void RADEONResetVideo(ScrnInfoPtr pScrn)
     xvDecContrast     = MAKE_ATOM("XV_DEC_CONTRAST");
     xvDecHue          = MAKE_ATOM("XV_DEC_HUE");
 
+    xvOverlayDeinterlacingMethod = MAKE_ATOM("XV_OVERLAY_DEINTERLACING_METHOD");
+    
     xv_autopaint_colorkey = MAKE_ATOM("XV_AUTOPAINT_COLORKEY");
     xv_set_defaults = MAKE_ATOM("XV_SET_DEFAULTS");
 
@@ -1664,6 +1673,8 @@ RADEONAllocAdaptor(ScrnInfoPtr pScrn)
     pPriv->volume = -1000;
     pPriv->mute = TRUE;
     pPriv->v=0;
+    
+    pPriv->overlay_deinterlacing_method = METHOD_BOB;
 
     pPriv->autopaint_colorkey = TRUE;
 
@@ -2124,6 +2135,11 @@ RADEONSetPortAttribute(
         if(pPriv->msp3430 != NULL) xf86_MSP3430SetVolume(pPriv->msp3430, MSP3430_VOLUME(value));
 	if(pPriv->i2c != NULL) RADEON_board_setmisc(pPriv);
   } else 
+  if(attribute == xvOverlayDeinterlacingMethod) {
+  	if(value<0)value = 0;
+	if(value>1)value = 1;
+        pPriv->overlay_deinterlacing_method = value;	
+  } else 
      return BadMatch;
 
   return Success;
@@ -2205,6 +2221,9 @@ RADEONGetPortAttribute(
   } else 
   if(attribute == xvVolume) {
         *value = pPriv->volume;
+  } else 
+  if(attribute == xvOverlayDeinterlacingMethod) {
+        *value = pPriv->overlay_deinterlacing_method;
   } else 
      return BadMatch;
 
@@ -2397,6 +2416,7 @@ RADEONDisplayVideo(
     RADEONPortPrivPtr pPriv, 
     int id,
     int offset1, int offset2,
+    int offset3, int offset4,
     short width, short height,
     int pitch,
     int left, int right, int top,
@@ -2422,7 +2442,8 @@ RADEONDisplayVideo(
 
     v_inc = (1 << (20
 		+ ((pScrn->currentMode->Flags & V_INTERLACE)?1:0)
-		- ((pScrn->currentMode->Flags & V_DBLSCAN)?1:0)));
+		- ((pScrn->currentMode->Flags & V_DBLSCAN)?1:0)
+		+((pPriv->overlay_deinterlacing_method==METHOD_WEAVE)?1:0)));
 
     v_inc_d = src_h * pScrn->currentMode->VDisplay;
     if(info->DisplayType==MT_LCD)
@@ -2445,6 +2466,8 @@ RADEONDisplayVideo(
 
     offset1 += ((left >> 16) & ~7) << 1;
     offset2 += ((left >> 16) & ~7) << 1;
+    offset3 += ((left >> 16) & ~7) << 1;
+    offset4 += ((left >> 16) & ~7) << 1;
 
     tmp = (left & 0x0003ffff) + 0x00028000 + (h_inc << 3);
     p1_h_accum_init = ((tmp <<  4) & 0x000f8000) |
@@ -2496,10 +2519,10 @@ RADEONDisplayVideo(
     OUTREG(RADEON_OV0_P3_X_START_END, (src_w + left - 1) | (left << 16));
     OUTREG(RADEON_OV0_VID_BUF0_BASE_ADRS, offset1 & 0xfffffff0);
     OUTREG(RADEON_OV0_VID_BUF1_BASE_ADRS, offset2 & 0xfffffff0);
-    OUTREG(RADEON_OV0_VID_BUF2_BASE_ADRS, offset1 & 0xfffffff0);
+    OUTREG(RADEON_OV0_VID_BUF2_BASE_ADRS, offset3 & 0xfffffff0);
 
     RADEONWaitForFifo(pScrn, 9);
-    OUTREG(RADEON_OV0_VID_BUF3_BASE_ADRS, offset2 & 0xfffffff0);
+    OUTREG(RADEON_OV0_VID_BUF3_BASE_ADRS, offset4 & 0xfffffff0);
     OUTREG(RADEON_OV0_VID_BUF4_BASE_ADRS, offset1 & 0xfffffff0);
     OUTREG(RADEON_OV0_VID_BUF5_BASE_ADRS, offset2 & 0xfffffff0);
     OUTREG(RADEON_OV0_P1_V_ACCUM_INIT, p1_v_accum_init);
@@ -2748,7 +2771,7 @@ RADEONPutImage(
 					REGION_RECTS(clipBoxes));
     }
 
-    RADEONDisplayVideo(pScrn, pPriv, id, offset, offset, width, height, dstPitch,
+    RADEONDisplayVideo(pScrn, pPriv, id, offset, offset, offset, offset, width, height, dstPitch,
 		     xa, xb, ya, &dstBox, src_w, src_h, drw_w, drw_h);
 
     pPriv->videoStatus = CLIENT_VIDEO_ON;
@@ -3035,7 +3058,7 @@ xf86_tda9885_dumpstatus(pPriv->tda9885);
 #define FORMAT_TRANSPORT	4
 
 #define ENABLE_RADEON_CAPTURE_WEAVE (RADEON_CAP0_CONFIG_CONTINUOS \
-			| (BUF_MODE_SINGLE <<7) \
+			| (BUF_MODE_DOUBLE <<7) \
 			| (BUF_TYPE_FRAME << 4) \
 			| ( (pPriv->theatre !=NULL)?(FORMAT_CCIR656<<23):(FORMAT_BROOKTREE<<23)) \
 			| RADEON_CAP0_CONFIG_HORZ_DECIMATOR \
@@ -3061,12 +3084,13 @@ RADEONPutVideo(
    RADEONPortPrivPtr pPriv = (RADEONPortPrivPtr)data;
    unsigned char *RADEONMMIO = info->MMIO;
    INT32 xa, xb, ya, yb, top;
-   int pitch, new_size, offset1, offset2, s2offset, s3offset;
+   int pitch, new_size, offset1, offset2, offset3, offset4, s2offset, s3offset;
    int srcPitch, srcPitch2, dstPitch;
    int bpp;
    BoxRec dstBox;
    CARD32 id, display_base;
    int width, height;
+   int mult;
 
    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "PutVideo %dx%d+%d+%d\n", drw_w,drw_h,drw_x,drw_y);
    info->accel->Sync(pScrn);
@@ -3114,6 +3138,19 @@ RADEONPutVideo(
    bpp = pScrn->bitsPerPixel >> 3;
    pitch = bpp * pScrn->displayWidth;
 
+   switch(pPriv->overlay_deinterlacing_method){
+   	case METHOD_BOB:
+		mult=2;
+		break;
+	case METHOD_WEAVE:
+	case METHOD_ADAPTIVE:
+		mult=4;
+		break;
+	default:
+		xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Internal error: PutVideo\n");
+		mult=4;
+	}
+
    id = FOURCC_YUY2;
    
    top = ya>>16;
@@ -3132,15 +3169,14 @@ RADEONPutVideo(
    case FOURCC_UYVY:
    case FOURCC_YUY2:
    default:
-	dstPitch = ((width << 1) + 15) & ~15;
+	dstPitch = ((width<<1) + 15) & ~15;
 	new_size = ((dstPitch * height) + bpp - 1) / bpp;
-	srcPitch = (width << 1);
+	srcPitch = (width<<1);
 	break;
    }
 
    new_size = new_size + 0x1f; /* for aligning */
-
-   if(!(pPriv->linear = RADEONAllocateMemory(pScrn, pPriv->linear, new_size*2)))
+   if(!(pPriv->linear = RADEONAllocateMemory(pScrn, pPriv->linear, new_size*mult)))
    {
 	return BadAlloc;
    }
@@ -3158,21 +3194,42 @@ RADEONPutVideo(
 
 /*   RADEONWaitForFifo(pScrn, 15); */
 
-   offset1 = (pPriv->linear->offset*bpp+0xf) & (~0xf);
-   offset2 = ((pPriv->linear->offset+new_size)*bpp + 0x1f) & (~0xf);
+   switch(pPriv->overlay_deinterlacing_method){
+   	case METHOD_BOB:
+	   offset1 = (pPriv->linear->offset*bpp+0xf) & (~0xf);
+	   offset2 = ((pPriv->linear->offset+new_size)*bpp + 0x1f) & (~0xf);
+	   offset3 = offset1;
+	   offset4 = offset2;
+	   break;
+	case METHOD_WEAVE:
+	   offset1 = (pPriv->linear->offset*bpp+0xf) & (~0xf);
+	   offset2 = offset1 + width*2;
+	   offset3 = ((pPriv->linear->offset+2*new_size)*bpp + 0x1f) & (~0xf);
+	   offset4 = offset3 + width*2;
+	   break;
+	default:
+	   offset1 = (pPriv->linear->offset*bpp+0xf) & (~0xf);
+	   offset2 = ((pPriv->linear->offset+new_size)*bpp + 0x1f) & (~0xf);
+	   offset3 = offset1;
+	   offset4 = offset2;
+	}
 
    OUTREG(RADEON_CAP0_BUF0_OFFSET, offset1+display_base);
    OUTREG(RADEON_CAP0_BUF0_EVEN_OFFSET, offset2+display_base);
    OUTREG(RADEON_CAP0_ONESHOT_BUF_OFFSET, offset1+display_base);
-   OUTREG(RADEON_CAP0_BUF1_OFFSET, offset1+display_base);
-   OUTREG(RADEON_CAP0_BUF1_EVEN_OFFSET, offset2+display_base);
+   OUTREG(RADEON_CAP0_BUF1_OFFSET, offset3+display_base);
+   OUTREG(RADEON_CAP0_BUF1_EVEN_OFFSET, offset4+display_base);
    
    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "PutVideo Checkpoint 3\n");
 
-   OUTREG(RADEON_CAP0_BUF_PITCH, width*2);
+   OUTREG(RADEON_CAP0_BUF_PITCH, width*mult);
    OUTREG(RADEON_CAP0_H_WINDOW, (2*width)<<16);
    OUTREG(RADEON_CAP0_V_WINDOW, (((height)+pPriv->v-1)<<16)|(pPriv->v));
-   OUTREG(RADEON_CAP0_CONFIG, ENABLE_RADEON_CAPTURE_BOB);
+   if(mult==2){
+	   OUTREG(RADEON_CAP0_CONFIG, ENABLE_RADEON_CAPTURE_BOB);
+	   } else {
+	   OUTREG(RADEON_CAP0_CONFIG, ENABLE_RADEON_CAPTURE_WEAVE);
+	   }
    OUTREG(RADEON_CAP0_DEBUG, 0);
    
    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "PutVideo Checkpoint 4\n");
@@ -3220,8 +3277,8 @@ RADEONPutVideo(
 
    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "PutVideo Checkpoint 6\n");
 
-   RADEONDisplayVideo(pScrn, pPriv, id, offset1+top*srcPitch, offset2+top*srcPitch, width, height, dstPitch,
-		     xa, xb, ya, &dstBox, src_w, src_h, drw_w, drw_h);
+   RADEONDisplayVideo(pScrn, pPriv, id, offset1+top*srcPitch, offset2+top*srcPitch, offset3+top*srcPitch, offset4+top*srcPitch, width, height, dstPitch*mult/2,
+		     xa, xb, ya, &dstBox, src_w, src_h*mult/2, drw_w, drw_h*mult/2);
 
    RADEONWaitForFifo(pScrn, 1);
    OUTREG(RADEON_OV0_REG_LOAD_CNTL,  RADEON_REG_LD_CTL_LOCK);
@@ -3230,7 +3287,17 @@ RADEONPutVideo(
 
    OUTREG(RADEON_OV0_AUTO_FLIP_CNTL, RADEON_OV0_AUTO_FLIP_CNTL_SOFT_BUF_ODD);
 
-   OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0xAAAAA);
+   switch(pPriv->overlay_deinterlacing_method){
+   	case METHOD_BOB:
+	   OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0xAAAAA);
+	   break;
+	case METHOD_WEAVE:
+	   OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0x0);
+	   break;
+	default:
+	   OUTREG(RADEON_OV0_DEINTERLACE_PATTERN, 0xAAAAA);
+	}
+		
    
    RADEONWaitForIdle(pScrn);
    OUTREG (RADEON_OV0_AUTO_FLIP_CNTL, (INREG (RADEON_OV0_AUTO_FLIP_CNTL) ^ RADEON_OV0_AUTO_FLIP_CNTL_SOFT_EOF_TOGGLE ));
