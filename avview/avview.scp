@@ -627,7 +627,9 @@ if { $fullscreen_mode } {
 		$VIDEO_WINDOW configure -width $width \
 			-height $height
 		wm geometry . =$geometry
-		grab -global .
+		if { ! [xmisc_xinerama_active $VIDEO_WINDOW] } {
+			grab -global .
+			}
 		focus -force .
 #		}
 	} {
@@ -653,7 +655,9 @@ if { $fullscreen_mode } {
 	update 
 	update idletasks
 	wm geometry . =$saved_main_window_geometry
-	grab release .
+	if { ! [xmisc_xinerama_active $VIDEO_WINDOW] } {
+		grab release .
+		}
 	focus -force .
 	}
 set in_set_fullscreen false
