@@ -89,7 +89,7 @@ for(i=0;kmd->fields[i].type!=KM_FIELD_TYPE_EOL;i++){
 			kmfpd->kfd[i].i.old_value=*(f->data.i.field);
 			field_length=strlen(f->name)+20;
 			if(kmfpd->br_free+field_length>=kmfpd->br_size)expand_buffer(kmfpd, field_length);
-			kmfpd->br_free+=sprintf(kmfpd->buffer_read+kmfpd->br_free, "%s=%d\n", f->name, kmfpd->kfd[i].i.old_value);
+			kmfpd->br_free+=sprintf(kmfpd->buffer_read+kmfpd->br_free, "%s=%u\n", f->name, kmfpd->kfd[i].i.old_value);
 			break;
 		case KM_FIELD_TYPE_DYNAMIC_STRING:
 			kmfpd->kfd[i].s.old_string=*(f->data.s.string);
@@ -125,7 +125,7 @@ for(i=0;kmd->fields[i].type!=KM_FIELD_TYPE_EOL;i++){
 			if(kmfpd->br_free+field_length>=kmfpd->br_size)expand_buffer(kmfpd, field_length);
 			kmfpd->buffer_read[kmfpd->br_free]=':';
 			kmfpd->br_free++;
-			kmfpd->br_free+=sprintf(kmfpd->buffer_read+kmfpd->br_free, "%s=%d\n", f->name, a);
+			kmfpd->br_free+=sprintf(kmfpd->buffer_read+kmfpd->br_free, "%s=%u\n", f->name, a);
 			break;
 		case KM_FIELD_TYPE_DYNAMIC_STRING:
 			b=*(f->data.s.string);

@@ -20,6 +20,22 @@ typedef struct {
 	u32 *field;
 	} KM_FIELD_DYNAMIC_INT;
 
+/*       **************** NOTE ********************
+
+          DYNAMIC_STRING variables are *NOT* meant for transfer of arbitrary string 
+	  data to userspace. Rather, they are meant as a kind of "enumerated" type, with
+	  string values tied to their addresses.
+	  
+	  In particular the following restrictions should be followed:
+	  
+	  1. The sizes of all possible string values should be known to the developer at the
+	     design time. This makes sure that userspace programs cannot trick kernel into
+	     gobbling up enormous chunks of memory.
+	  2. Different values should *imply* different addresses they are located at.
+	     (static constants like "YES" "NO" "MAYBE" satisfy this)
+	    
+*/	    
+
 typedef struct {
 	char **string;
 	} KM_FIELD_DYNAMIC_STRING;
@@ -30,9 +46,12 @@ typedef struct {
 /* memory area attribute values */	
 #define KM_MEMORY_READABLE		1
 #define KM_MEMORY_WRITABLE		2
+#define KM_MEMORY_ATTACHED		3
 
 typedef struct {
 	int attribute;
+	int updated;
+	int use_count;
 	void *address;
 	long size;
 	} KM_FIELD_MEMORY_AREA;
