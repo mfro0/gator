@@ -242,9 +242,14 @@ set tuner_freq_present_$current_port false
 
 set NUM_ENCODINGS [xv_num_port_encodings $VIDEO_WINDOW $current_port]
 
+set vd_param [get_pane_frame "/Video device parameters"]
+set vdp_encoding_menu [$vd_param.f.canvas.f.optionmenu1 cget -menu]
+
 $current_encoding_menu delete 0 end
+$vdp_encoding_menu delete 0 end
 for {set i 0 } {$i < $NUM_ENCODINGS} {incr i} {
 	$current_encoding_menu add radiobutton -label "[xv_port_encoding_name $VIDEO_WINDOW $current_port $i]" -value "[xv_port_encoding_name $VIDEO_WINDOW $current_port $i]" -variable current_encoding_name
+	$vdp_encoding_menu add radiobutton -label "[xv_port_encoding_name $VIDEO_WINDOW $current_port $i]" -value "[xv_port_encoding_name $VIDEO_WINDOW $current_port $i]" -variable current_encoding_name
 	}
 
 set current_encoding [xv_getportattribute $VIDEO_WINDOW $current_port "XV_ENCODING"]
