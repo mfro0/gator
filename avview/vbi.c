@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <unistd.h>
 
 
 #include <X11/X.h>
@@ -45,6 +46,7 @@ void vbi_pipe_handler(ClientData clientData, int mask)
 VBI_DATA *data=(VBI_DATA *)clientData;
 DATAGRAM d;
 int r,a;
+char str[20];
 r=0;
 do{
 	a=read(data->fd[0], ((unsigned char *)&d)+r, sizeof(d)-r);
@@ -55,6 +57,7 @@ if(r<0){
 	fprintf(stderr, "Exiting\n");
 	return;
 	}
+if(data->event_command==NULL)return; /* no handler specified, return */
 switch(d.type){
 	case TYPE_CC1:
 		printf("%c", d.c1 & 0x7f);
@@ -64,13 +67,20 @@ switch(d.type){
 	case TYPE_EVENT:
 		switch(d.ev.type){
 			case VBI_EVENT_CAPTION:
-				printf("CC page %d changed\n", d.ev.ev.caption.pgno);
+				sprintf(str, "%d", d.ev.ev.caption.pgno);
+				Tcl_VarEval(data->interp, data->event_command, " caption ", str, NULL);
 				break;
 			case VBI_EVENT_PROG_INFO:
-				printf("Program info: \"%s\" rating %d\n" , d.ev.ev.prog_info->title, d.ev.ev.prog_info->rating_id);
+				Tcl_VarEval(data->interp, data->event_command, " program_info {}", NULL);
 				break;
-				
-				
+			case VBI_EVENT_TTX_PAGE:
+				sprintf(str, "%d", d.ev.ev.ttx_page.pgno);
+				Tcl_VarEval(data->interp, data->event_command, " ttx_page ", str, NULL);
+				break;
+			case VBI_EVENT_ASPECT:
+				Tcl_VarEval(data->interp, data->event_command, " aspect {}", NULL);
+				break;
+			
 			default:
 			}
 		break;
@@ -105,22 +115,6 @@ while(1){
 	pthread_mutex_lock(&(data->mutex));
 	vbi_decode(data->dec, buf_sliced, lines, timestamp);
 	pthread_mutex_unlock(&(data->mutex));
-	#if 0
-	for(i=0;i<lines;i++){
-		if(buf_sliced[i].id & VBI_SLICED_CAPTION_525){
-			d.type=TYPE_CC1;
-			d.c1=buf_sliced[i].data[0];
-			d.c2=buf_sliced[i].data[1];
-			write(data->fd[1], &d, sizeof(d));
-			}
-		if(buf_sliced[i].id & VBI_SLICED_CAPTION_625){
-			d.type=TYPE_CC1;
-			d.c1=buf_sliced[i].data[0];
-			d.c2=buf_sliced[i].data[1];
-			write(data->fd[1], &d, sizeof(d));
-			}
-		}
-	#endif
 	}
 }
 
@@ -161,6 +155,7 @@ if(vbi_sc->data[i]!=NULL){
 	close(data->fd[1]);
 	vbi_capture_delete(data->cap);
 	vbi_decoder_delete(data->dec);
+	if(data->event_command!=NULL)free(data->event_command);
 	} else {
 	vbi_sc->data[i]=do_alloc(1, sizeof(VBI_DATA));
 	}
@@ -168,6 +163,7 @@ data=(VBI_DATA*) vbi_sc->data[i];
 memset(data, 0, sizeof(*data));
 
 pthread_mutex_init(&(data->mutex), NULL);
+data->interp=interp;
 
 services = VBI_SLICED_VBI_525 | VBI_SLICED_VBI_625
 		| VBI_SLICED_TELETEXT_B | VBI_SLICED_CAPTION_525
@@ -276,6 +272,35 @@ if(data==NULL){
 pthread_mutex_lock(&(data->mutex));
 vbi_channel_switched(data->dec, 0);
 pthread_mutex_unlock(&(data->mutex));
+return 0;
+}
+
+int vbi_set_event_handler(ClientData client_data,Tcl_Interp* interp,int argc,const char *argv[])
+{
+long i;
+VBI_DATA *data;
+
+Tcl_ResetResult(interp);
+
+if(argc<3){
+	Tcl_AppendResult(interp,"ERROR: vbi_new_channel requires two arguments", NULL);
+	return TCL_ERROR;
+	}
+
+i=lookup_string(vbi_sc, argv[1]);
+if(i<0){
+	Tcl_AppendResult(interp,"ERROR: vbi_draw_CC_page no such handle", NULL);
+	return TCL_ERROR;
+	}
+data=(VBI_DATA *)vbi_sc->data[i];	
+if(data==NULL){
+	Tcl_AppendResult(interp,"ERROR: vbi_draw_CC_page no such handle", NULL);
+	return TCL_ERROR;
+	}
+if(data->event_command!=NULL){
+	free(data->event_command);
+	}
+data->event_command=strdup(argv[2]);
 return 0;
 }
 
@@ -483,6 +508,7 @@ close(data->fd[0]);
 close(data->fd[1]);
 vbi_capture_delete(data->cap);
 vbi_decoder_delete(data->dec);
+if(data->event_command!=NULL)free(data->event_command);
 free(data);
 vbi_sc->data[i]=NULL;
 return 0;
@@ -495,6 +521,7 @@ struct {
 	} vbi_commands[]={
 	{"vbi_open_device", vbi_open_device},
 	{"vbi_new_channel", vbi_new_channel},
+	{"vbi_set_event_handler", vbi_set_event_handler},
 	{"vbi_draw_cc_page", vbi_draw_cc_page2},
 	{"vbi_draw_cc_page_scaled", vbi_draw_cc_page_scaled},
 	{"vbi_close_device", vbi_close_device},
@@ -504,8 +531,17 @@ struct {
 void init_vbi(Tcl_Interp *interp)
 {
 long i;
+vbi_export_info *vbi_ei;
 
 vbi_sc=new_string_cache();
+
+fprintf(stderr,"libzvbi available export modules:\n");
+for(i=0;;i++){
+	vbi_ei=vbi_export_info_enum(i);
+	if(vbi_ei==NULL)break;
+	fprintf(stderr,"\t%s:keyword \"%s\" mimetype \"%s\" extension \"%s\"\n", 
+		vbi_ei->label, vbi_ei->keyword, vbi_ei->mime_type, vbi_ei->extension);
+	}
 
 for(i=0;vbi_commands[i].name!=NULL;i++)
 	Tcl_CreateCommand(interp, vbi_commands[i].name, vbi_commands[i].command, (ClientData)0, NULL);

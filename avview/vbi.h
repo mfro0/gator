@@ -18,6 +18,8 @@ typedef struct {
 	vbi_raw_decoder * par;
 	vbi_decoder *dec;
 	int fd[2];  /* pipe - this is used to signal Tcl/Tk */
+	char *event_command;
+	Tcl_Interp *interp;
 	} VBI_DATA;
 
 void init_vbi(Tcl_Interp *interp);
