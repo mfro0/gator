@@ -69,6 +69,10 @@ $current_channel_menu delete 0 end
 grid $c.channell $c.channelom -sticky news
 grid configure $c.channell -sticky nw
 
+button $c.fullscreen -text "Fullscreen" -command "make_fullscreen"
+button $c.half_size -text "Half size" -command "make_half_size"
+
+grid $c.fullscreen $c.half_size
 
 pack $c -expand yes -fill both
 pack .controlwin.allattributes -expand yes -fill both
@@ -312,6 +316,22 @@ if { [file exists "~/.avview"] } {
 		close $fileid
 		}
 	}
+}
+
+proc make_fullscreen {} {
+global VIDEO_WINDOW
+
+wm geometry . =[winfo screenwidth $VIDEO_WINDOW]x[winfo screenheight $VIDEO_WINDOW]+0+0
+$VIDEO_WINDOW configure -width [winfo screenwidth $VIDEO_WINDOW] \
+	-height [winfo screenheight $VIDEO_WINDOW]
+}
+
+proc make_half_size {} {
+global VIDEO_WINDOW
+
+$VIDEO_WINDOW configure -width [expr [$VIDEO_WINDOW cget -width]/2] \
+			-height [expr [$VIDEO_WINDOW cget -height]/2]
+wm geometry . =[$VIDEO_WINDOW cget -width]x[$VIDEO_WINDOW cget -height]
 }
 
 global current_port
