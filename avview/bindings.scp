@@ -284,6 +284,9 @@ if { $keysym == "Delete" || $keysym == "KP_Delete" } {
 	return
 	}
 if { $keysym == "BackSpace" } {
+	if { $current_ch_input == "" } { 
+		return 
+		}
 	set current_ch_input [string range $current_ch_input 0 end-1]
 	flash_message " $current_ch_input "
 	return
