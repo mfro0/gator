@@ -5848,7 +5848,27 @@ static void RADEONDisplayPowerManagementSet(ScrnInfoPtr pScrn,
 				     RADEON_CRTC2_VSYNC_DIS |
 				     RADEON_CRTC2_HSYNC_DIS);
 
-	/* TODO: additional handling for LCD ? */
+	/* Additional handling for LCD: */
+
+	if(info->DisplayType==MT_DFP){
+		if(PowerManagementMode==DPMSModeOn){
+			if(info->IsSecondary || info->Clone)
+				OUTREG(RADEON_FP2_GEN_CNTL, (INREG(RADEON_FP2_GEN_CNTL) | RADEON_FP2_ON) & (~RADEON_FP2_BLANK_EN));
+			if(!info->IsSecondary)
+				OUTREG(RADEON_FP_GEN_CNTL, (INREG(RADEON_FP_GEN_CNTL) | RADEON_FP_FPON) & (~RADEON_FP_BLANK_EN));
+			} else {
+			if(info->IsSecondary || info->Clone){
+				OUTREG(RADEON_FP2_GEN_CNTL, INREG(RADEON_FP2_GEN_CNTL) | RADEON_FP2_BLANK_EN);
+				usleep(20000);
+				OUTREG(RADEON_FP2_GEN_CNTL, INREG(RADEON_FP2_GEN_CNTL) & ~(RADEON_FP2_ON));
+				}
+			if(!info->IsSecondary){
+				OUTREG(RADEON_FP_GEN_CNTL, INREG(RADEON_FP_GEN_CNTL) | RADEON_FP_BLANK_EN);
+				usleep(20000);
+				OUTREG(RADEON_FP_GEN_CNTL, INREG(RADEON_FP_GEN_CNTL) & ~(RADEON_FP_FPON));
+				}
+			}
+		}
 
 	switch (PowerManagementMode) {
 	case DPMSModeOn:

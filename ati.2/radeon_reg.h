@@ -631,6 +631,7 @@ do {									\
 #       define RADEON_FP_V_SYNC_WID_SHIFT       0x00000010
 #define RADEON_FP_GEN_CNTL                  0x0284
 #       define RADEON_FP_FPON                  (1 <<  0)
+#       define RADEON_FP_BLANK_EN	       (1 <<  1)
 #       define RADEON_FP_TMDS_EN               (1 <<  2)
 #       define RADEON_FP_EN_TMDS               (1 <<  7)
 #       define RADEON_FP_DETECT_SENSE          (1 <<  8)
