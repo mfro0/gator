@@ -205,7 +205,10 @@ InputVideoEncodings[] =
     { 9, "secam-svideo",		720, 240, { 1, 50 }},
     { 10,"pal_60-composite",		768, 288, { 1, 50 }},
     { 11,"pal_60-tuner",		768, 288, { 1, 50 }},
-    { 12,"pal_60-svideo",		768, 288, { 1, 50 }}
+    { 12,"pal_60-svideo",		768, 288, { 1, 50 }},
+    { 13, "pal_m-composite",           640, 240, { 1001, 60000 }},
+    { 14, "pal_m-tuner",               640, 240, { 1001, 60000 }},
+    { 15, "pal_m-svideo",              640, 240, { 1001, 60000 }}
 };
 
 #define NUM_FORMATS 12
@@ -1338,7 +1341,7 @@ R128SetupImageVideo(ScreenPtr pScreen)
        if(pPriv->bt829 != NULL)
        {
           adapt->type = XvWindowMask | XvInputMask | XvImageMask | XvVideoMask;
-          adapt->nEncodings = 13;
+          adapt->nEncodings = 16;
 	  adapt->pEncodings = InputVideoEncodings;
        } else
        {
@@ -2685,6 +2688,21 @@ switch(pPriv->encoding){
 		pPriv->v=25;
 	        xf86_bt829_SetFormat(pPriv->bt829, BT829_SECAM);
 		break;
+       case 13:
+                xf86_bt829_SetMux(pPriv->bt829, BT829_MUX2);
+                pPriv->v=23;
+                xf86_bt829_SetFormat(pPriv->bt829, BT829_PAL_M);
+                break;
+       case 14:
+                xf86_bt829_SetMux(pPriv->bt829, BT829_MUX0);
+                pPriv->v=23;
+                xf86_bt829_SetFormat(pPriv->bt829, BT829_PAL_M);
+                break;
+       case 15:
+                xf86_bt829_SetMux(pPriv->bt829, BT829_MUX1);
+                pPriv->v=23;
+                xf86_bt829_SetFormat(pPriv->bt829, BT829_PAL_M);
+                break;
 	default:
                 xf86_bt829_SetMux(pPriv->bt829, BT829_MUX2);
 		pPriv->v=23;
