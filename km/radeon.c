@@ -161,6 +161,26 @@ wmb();
 writel(a & ~ RADEON_DMA_GUI_STATUS__ABORT, kms->reg_aperture+RADEON_DMA_GUI_STATUS);
 }
 
+int radeon_start_gui_dma_queue(KM_STRUCT *kms)
+{
+u32 a;
+
+a=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
+a=a& ~(3<<22); /* set swap control to no swap */
+if(a & RADEON_DMA_GUI_STATUS__ABORT){
+	if(a & RADEON_DMA_GUI_STATUS__ACTIVE){
+		printk("km: DMA_GUI_QUEUE stalled after abort\n");
+		return 0;
+		}
+	wmb();
+	
+	writel(a & ~ RADEON_DMA_GUI_STATUS__ABORT, kms->reg_aperture+RADEON_DMA_GUI_STATUS);	
+	}
+return 1;
+}
+
+
+
 void radeon_start_transfer(KM_STRUCT *kms)
 {
 u32 a;
@@ -177,6 +197,7 @@ if(a & (1<<6)){
 wmb();
 if(kms->gdq_usage==1){
 	printk("Starting GUIDMA queue\n");
+	if(!radeon_start_gui_dma_queue(kms))return;
 	writel(INT_BIT_GUIDMA, kms->reg_aperture+RADEON_GEN_INT_STATUS);
 	wmb();
 	a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
@@ -233,6 +254,7 @@ if(a & (1<<6)){
 wmb();
 if(kms->gdq_usage==1){
 	printk("Starting GUIDMA queue\n");
+	if(!radeon_start_gui_dma_queue(kms))return;
 	writel(INT_BIT_GUIDMA, kms->reg_aperture+RADEON_GEN_INT_STATUS);
 	wmb();
 	a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
