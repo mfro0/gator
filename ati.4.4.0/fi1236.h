@@ -69,6 +69,7 @@ typedef struct {
 #define TUNER_TYPE_MT2032	       3
 #define TUNER_TYPE_FI1246              4
 #define TUNER_TYPE_FI1256              5
+#define TUNER_TYPE_FI1236W             6
 
 #define FI1236_ADDR(a)        ((a)->d.SlaveAddr)
 
