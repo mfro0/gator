@@ -64,7 +64,7 @@ p->next=NULL;
 p->prev=NULL;
 p->size=size;
 p->free=0;
-p->recycle=1;
+p->recycle=0;
 if(size>0){
 	p->buf=do_alloc(size,1);
 	while(p->buf==NULL){
@@ -141,10 +141,11 @@ if((s->first!=NULL) && (s->first->discard) && (s->first==s->last)){
 		} else
 	if(p->free_func!=NULL)p->free_func(p);
 	}
-while((s->unused_total>=2*(s->total+s->threshold))
+while((s->unused_total>2*(s->total+s->threshold))
       ||((s->stop_stream & STOP_PRODUCER_THREAD) && (s->unused!=NULL))){
 	if(s->unused==NULL){
-		fprintf(stderr,"INTERNAL ERROR: unused_total non-zero while unused==NULL\n");
+		fprintf(stderr,"INTERNAL ERROR: unused_total non-zero (%d) while unused==NULL\n",
+			s->unused_total);
 		break;
 		}
 	p=s->unused;

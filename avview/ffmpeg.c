@@ -103,7 +103,6 @@ V4L_DATA *data;
 AVPicture picture;
 char *output_buf;
 long ob_size, ob_free, ob_written;
-long incoming_frames_count=0;
 
 /* encode in the background */
 nice(1);
@@ -124,12 +123,13 @@ while(1){
 	if(!(s->stop_stream & STOP_PRODUCER_THREAD) &&((f==NULL)||(f->next==NULL))){
 		/* no data to encode - terminate thread instead of spinning */
 		do_free(picture.data[0]);
+		do_free(output_buf);
 		s->consumer_thread_running=0;
 		pthread_mutex_unlock(&(s->ctr_mutex));
 		pthread_exit(NULL);
 		}
 	pthread_mutex_unlock(&(s->ctr_mutex));
-	while((f!=NULL)&&(f->next!=NULL)){
+	while((f!=NULL)&&((f->next!=NULL)||(s->stop_stream & STOP_PRODUCER_THREAD))){
 		if(1){
 			/* encode frame */
 			ffmpeg_preprocess_frame(data, sdata, f, &picture);
@@ -151,16 +151,20 @@ while(1){
 						pthread_mutex_lock(&(sdata->audio_s->ctr_mutex));
 						sdata->audio_s->stop_stream |= STOP_CONSUMER_THREAD;
 						pthread_mutex_unlock(&(sdata->audio_s->ctr_mutex));
+						#ifdef DEBUG_TIMESTAMPS
 						fprintf(stderr,"- Stopping audio thread\n");
+						#endif
 						}
 					} else {
 					/* we caught up with audio encoding */
-					if(sdata->audio_s!=NULL){
+					if((sdata->audio_s!=NULL) && (sdata->audio_stream_num>=0)){
 						pthread_mutex_lock(&(sdata->audio_s->ctr_mutex));
 						sdata->audio_s->stop_stream &= ~STOP_CONSUMER_THREAD;
 						if(!sdata->audio_s->consumer_thread_running){
 							pthread_create(&(sdata->audio_s->consumer_thread_id), NULL, sdata->audio_s->consume_func, sdata->audio_s);
+							#ifdef DEBUG_TIMESTAMPS
 							fprintf(stderr,"+ Restarting audio thread\n");
+							#endif
 							}
 						pthread_mutex_unlock(&(sdata->audio_s->ctr_mutex));
 						}
@@ -168,29 +172,38 @@ while(1){
 				pthread_mutex_unlock(&(sdata->format_context_mutex));
 				if(i>=0)ob_written+=i;
 				}
+			#ifdef DEBUG_TIMESTAMPS
 			fprintf(stderr,"Done encoding video packet with timestamp %lld\n", f->timestamp);
+			#endif
 			}
-		incoming_frames_count++;
+		sdata->frame_count++;
 		/* get next one */
 		f->discard=1;
 		f=f->next;
 		pthread_mutex_lock(&(s->ctr_mutex));
 		discard_packets(s); 
 		if(s->stop_stream & STOP_CONSUMER_THREAD){
+			do_free(picture.data[0]);
+			do_free(output_buf);
+			s->consumer_thread_running=0;
 			pthread_mutex_unlock(&(s->ctr_mutex));
+			pthread_exit(NULL);
 			break;
 			}
 		pthread_mutex_unlock(&(s->ctr_mutex));
 		}
-#if 0
-	fprintf(stderr,"frame_count=%d  stop=%d\n", sdata->frame_count, sdata->stop);
+#if 1
+	fprintf(stderr,"frame_count=%d  stop=%d\n", 
+		sdata->frame_count, 
+		s->stop_stream);
 #endif
 	pthread_mutex_lock(&(s->ctr_mutex));
 	if((s->stop_stream & STOP_PRODUCER_THREAD) && !s->producer_thread_running){
 		avcodec_close(&(sdata->video_codec_context));
 		for(f=s->first;f!=NULL;f=f->next)f->discard=1;
 		discard_packets(s);
-		free(picture.data[0]);
+		do_free(picture.data[0]);
+		do_free(output_buf);
 		s->consumer_thread_running=0;
 		pthread_mutex_unlock(&(s->ctr_mutex));
 		fprintf(stderr,"Video encoding finished\n");
@@ -222,7 +235,7 @@ while(1){
 		pthread_exit(NULL);
 		}
 	pthread_mutex_unlock(&(s->ctr_mutex));
-	while((f!=NULL)&&(f->next!=NULL)){
+	while((f!=NULL)&&((f->next!=NULL)||(s->stop_stream & STOP_PRODUCER_THREAD)){
 		ob_free=avcodec_encode_audio(&(sdata->audio_codec_context), out_buf, ob_size, f->buf);	
 		if(ob_free>0){
 			ob_written=0;
@@ -239,12 +252,16 @@ while(1){
 					pthread_mutex_lock(&(s->ctr_mutex));
 					s->stop_stream|=STOP_CONSUMER_THREAD;
 					pthread_mutex_unlock(&(s->ctr_mutex));
+					#ifdef DEBUG_TIMESTAMPS
 					fprintf(stderr,"* Stopping audio thread (self)\n");					
+					#endif
 					}
 				pthread_mutex_unlock(&(sdata->format_context_mutex));
 				if(i>=0)ob_written+=i;
 				}
+			#ifdef DEBUG_TIMESTAMPS
 			fprintf(stderr,"Done encoding audio packet with timestamp %lld\n", f->timestamp);
+			#endif
 			}
 		f->discard=1;
 		f=f->next;
@@ -252,8 +269,8 @@ while(1){
 		discard_packets(s); 
 		if(s->stop_stream & STOP_CONSUMER_THREAD){
 			s->consumer_thread_running=0;
+			do_free(out_buf);
 			pthread_mutex_unlock(&(s->ctr_mutex));
-			free(out_buf);
 			pthread_exit(NULL);
 			break;
 			}
@@ -266,7 +283,7 @@ while(1){
 		discard_packets(sdata->audio_s);
 		s->consumer_thread_running=0;
 		pthread_mutex_unlock(&(s->ctr_mutex));
-		free(out_buf);
+		do_free(out_buf);
 		fprintf(stderr,"Audio encoding finished\n");
 		pthread_exit(NULL);
 		}
@@ -465,6 +482,10 @@ fprintf(stderr,"Using bitrate=%d, frame_rate=%d a=%g b=%g\n", sdata->video_codec
 sdata->video_codec_context.pix_fmt=PIX_FMT_YUV422;
 sdata->video_codec_context.flags=CODEC_FLAG_QSCALE;
 sdata->video_codec_context.quality=2;
+if(sdata->video_codec->priv_data_size==0){
+	fprintf(stderr,"BUG: sdata->video_codec->priv_data_size==0, fixing it\n");
+	sdata->video_codec->priv_data_size=64*1024; /* 64K should be enough */
+	}
 if(avcodec_open(&(sdata->video_codec_context), sdata->video_codec)<0){
 	return 0;
 	}
@@ -501,6 +522,10 @@ sdata->audio_codec_context.channels=sdata->alsa_param.channels;
 sdata->audio_codec_context.codec_id=sdata->audio_codec->id;
 sdata->audio_codec_context.sample_fmt=SAMPLE_FMT_S16;
 sdata->audio_codec_context.codec_type=sdata->audio_codec->type;
+if(sdata->audio_codec->priv_data_size==0){
+	fprintf(stderr,"BUG: sdata->audio_codec->priv_data_size==0, fixing it\n");
+	sdata->audio_codec->priv_data_size=2*1024*1024; /* 1meg should be enough */
+	}
 if(avcodec_open(&(sdata->audio_codec_context), sdata->audio_codec)<0){
 	return 0;
 	}
@@ -547,7 +572,7 @@ if(!strcmp("one quarter", arg_step_frames))sdata->step_frames=4;
 
 sdata->fd_out=open(arg_filename, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
 if(sdata->fd_out<0){
-	free(sdata);
+	do_free(sdata);
 	Tcl_AppendResult(interp, "failed: ", NULL);
 	Tcl_AppendResult(interp, strerror(errno), NULL);
 	return 0;
