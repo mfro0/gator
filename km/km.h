@@ -2,6 +2,7 @@
 #define __KM_H__
 
 #include <linux/videodev.h>
+#include "km_api.h"
 
 #define KM_VERSION      "alpha-2.0"
 
@@ -25,6 +26,8 @@ typedef struct {
 typedef struct S_KM_STRUCT{
 	struct video_device vd;
 	struct video_window vwin;
+	long kmd;
+	KM_FIELD *kmfl;
 	long irq;
 	struct pci_dev *dev;
 	long interrupt_count;

@@ -32,19 +32,24 @@ typedef struct S_KM_FIELD {
 	int changed;
 	spinlock_t *lock;
 	void *priv;
-	void (*read_complete)(S_KM_FIELD *kmf);
+	void (*read_complete)(struct S_KM_FIELD *kmf);
 	union {
 		KM_FIELD_STATIC 	c;
 		KM_FIELD_DYNAMIC_INT 	i;
-		KM_FIELD_DYNAMIC_STIRNG s;
+		KM_FIELD_DYNAMIC_STRING s;
 		KM_FIELD_PROGRAMMABLE	p;
 		} data;
 	} KM_FIELD;
 
 typedef struct {
-	char *name;
-	
+	long number; /* set to the device number if active, to -1 if inactive */
+	struct proc_dir_entry *control;
+	struct proc_dir_entry *data;
 	KM_FIELD *fields;
+	void *priv;
 	} KM_DEVICE;
+
+int add_km_device(KM_FIELD *kmfl, void *priv);
+int remove_km_device(int num);
 
 #endif

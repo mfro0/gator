@@ -13,6 +13,7 @@
 #include <linux/videodev.h>
 
 
+#include "km_api.h"
 #include "km.h"
 #include "km_memory.h"
 #include "km_v4l.h"
@@ -88,6 +89,18 @@ fail:
 KM_STRUCT km_devices[10];
 int num_devices=0;
 
+KM_FIELD kmfl_template[]={
+	{ type: KM_FIELD_TYPE_STATIC,
+	  name: "DEVICE_ID",
+	  changed: 0,
+	  lock: NULL,
+	  priv: NULL,
+	  read_complete: NULL
+	}, 
+	{ type: KM_FIELD_TYPE_EOL
+	}
+	};
+
 static int __devinit km_probe(struct pci_dev *dev, const struct pci_device_id *pci_id)
 {
 KM_STRUCT *kms;
@@ -152,6 +165,12 @@ switch(pci_id->driver_data){
 		goto fail;
 		}
 init_km_v4l(kms);
+printk("sizeof(kmfl_template)=%d sizeof(KM_FIELD)=%d\n", sizeof(kmfl_template), sizeof(KM_FIELD));
+kms->kmfl=kmalloc(sizeof(kmfl_template), GFP_KERNEL);
+memcpy(kms->kmfl, kmfl_template, sizeof(kmfl_template));
+kms->kmfl[0].data.c.string=kmalloc(strlen(dev->name)+1, GFP_KERNEL);
+memcpy(kms->kmfl[0].data.c.string, dev->name, strlen(dev->name)+1);
+kms->kmd=add_km_device(kms->kmfl, kms);
 printk("Device %s %s (0x%04x:0x%04x) corresponds to /dev/video%d\n",
 	dev->name, dev->slot_name, dev->vendor, dev->device, kms->vd.minor);
 pci_set_master(dev);
@@ -171,6 +190,7 @@ static void __devexit km_remove(struct pci_dev *pci_dev)
 KM_STRUCT *kms;
 kms=pci_get_drvdata(pci_dev);
 printk("Removing Kmultimedia supported device. interrupt_count=%ld\n", kms->interrupt_count);
+remove_km_device(kms->kmd);
 cleanup_km_v4l(kms);
 free_irq(kms->irq, kms);
 kms->deallocate_single_frame_buffer(kms, &(kms->frame));

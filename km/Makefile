@@ -2,17 +2,19 @@ CFLAGS = -m486 -O2 -Wall -Wstrict-prototypes -pipe -fno-strict-aliasing -fno-com
 LDFLAGS = -s -N
 CC=gcc
 
+TOPDIR=/usr/src/linux
+
 KM_OBJS=km.o km_v4l.o km_memory.o radeon.o mach64.o rage128.o
 
 KM_API_OBJS=km_api.o
 
-all: km_drv.o
+all: km_drv.o km_api.o
 
 km.o:	km.c 
 	$(CC) $(CFLAGS) -DMODULE -D__KERNEL__ -DLINUX -I/usr/src/linux/include -c km.c
 
 km_api.o:	km_api.c 
-	$(CC) $(CFLAGS) -DMODULE -D__KERNEL__ -DLINUX -I/usr/src/linux/include -c km_api.c
+	$(CC) $(CFLAGS) -DMODULE -D__KERNEL__  -DEXPORT_SYMTAB -DLINUX -I/usr/src/linux/include -c km_api.c
 
 km_drv.o: $(KM_OBJS)
 	ld -r $(KM_OBJS) -o km_drv.o
