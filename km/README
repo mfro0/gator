@@ -55,6 +55,10 @@ Additional notes:
     5) you need Linux 2.4.9 (or later) to compile it properly
        
     6) Note to Radeon owners: As of 12/11/01 this module will ONLY work 
-       with devel branch of ati_xv.           
-	    
+       with devel branch of ati_xv - try using the version tagged
+       checkpoint_2 (you will also need to get drm-kernel with the same tag)
+       	  
+    7) You might have problems if you don't let your BIOS assign an irq to 
+       your video card.
+
 	                        Vladimir Dergachev
