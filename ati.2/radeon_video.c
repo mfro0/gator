@@ -272,7 +272,7 @@ static XF86AttributeRec Attributes[NUM_DEC_ATTRIBUTES+1] =
    {XvSettable | XvGettable, 0, 2, "XV_OVERLAY_DEINTERLACING_METHOD"},
    {XvSettable | XvGettable, 0, 12, "XV_ENCODING"},
    {XvSettable | XvGettable, 0, -1, "XV_FREQ"},
-   {XvGettable, -1000, 1000, "XV_TUNER_STATUS"},
+   {             XvGettable, -1000, 1000, "XV_TUNER_STATUS"},
    {XvSettable | XvGettable, -1000, 1000, "XV_VOLUME"},
    {XvSettable | XvGettable, 0, 1, "XV_MUTE"},
    {XvSettable | XvGettable, 0, 1, "XV_SAP"},
