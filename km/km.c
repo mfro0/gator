@@ -197,14 +197,14 @@ int km_add_transfer_request(KM_TRANSFER_QUEUE *kmtq,
 	int (*start_transfer)(KM_TRANSFER_REQUEST *kmtr), void *user_data)
 {
 int last;
-spin_lock_irq(&(kmtq->lock));
+spin_lock(&(kmtq->lock));
 last=kmtq->last;
 last++;
 if(last>=kmtq->size)last=0;
 if(kmtq->request[last].flag!=KM_TRANSFER_NOP){
 	printk("km: GUI_DMA queue is full first=%d last=%d flag=0x%08x\n", kmtq->first, kmtq->last,
 		kmtq->request[last].flag);
-	spin_unlock_irq(&(kmtq->lock));
+	spin_unlock(&(kmtq->lock));
 	return -1;
 	}
 
@@ -216,11 +216,11 @@ kmtq->request[last].user_data=user_data;
 kmtq->last=last;
 /* check if any transfer has been scheduled */
 if(km_fire_transfer_request(kmtq)){
-	spin_unlock_irq(&(kmtq->lock));
+	spin_unlock(&(kmtq->lock));
 	kmtq->request[kmtq->first].start_transfer(&(kmtq->request[kmtq->first]));
 	return 0;
 	}
-spin_unlock_irq(&(kmtq->lock));
+spin_unlock(&(kmtq->lock));
 return 0;
 }
 

@@ -171,6 +171,7 @@ writel(a|(CAP_INT_BIT_BUF0|CAP_INT_BIT_BUF0_EVEN|
 void radeon_stop_transfer(KM_STRUCT *kms)
 {
 u32 a;
+int count;
 /* stop interrupts */
 a=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
 writel(a & ~(CAP_INT_BIT_BUF0|CAP_INT_BIT_BUF0_EVEN|
@@ -190,7 +191,12 @@ if(kms->gdq_usage==1){
 	if(a & RADEON_DMA_GUI_STATUS__ACTIVE){
 		writel(a | RADEON_DMA_GUI_STATUS__ABORT, kms->reg_aperture+RADEON_DMA_GUI_STATUS);
 		wmb();
-		while((a=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS))&RADEON_DMA_GUI_STATUS__ACTIVE);
+		count=1000;
+		while((a=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS))&RADEON_DMA_GUI_STATUS__ACTIVE){
+			udelay(1);
+			count--;
+			if(count<0)break;
+			}
 		wmb();
 		writel(a & ~ RADEON_DMA_GUI_STATUS__ABORT, kms->reg_aperture+RADEON_DMA_GUI_STATUS);
 		}
@@ -226,6 +232,7 @@ writel(a|(CAP_INT_BIT_VBI0|CAP_INT_BIT_VBI1), kms->reg_aperture+RADEON_CAP_INT_C
 void radeon_stop_vbi_transfer(KM_STRUCT *kms)
 {
 u32 a;
+int count;
 /* stop interrupts */
 a=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
 writel(a & ~(CAP_INT_BIT_VBI0|CAP_INT_BIT_VBI1), kms->reg_aperture+RADEON_CAP_INT_CNTL);
@@ -243,7 +250,12 @@ if(kms->gdq_usage==1){
 	if(a & RADEON_DMA_GUI_STATUS__ACTIVE){
 		writel(a | RADEON_DMA_GUI_STATUS__ABORT, kms->reg_aperture+RADEON_DMA_GUI_STATUS);
 		wmb();
-		while((a=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS))&RADEON_DMA_GUI_STATUS__ACTIVE);
+		count=1000;
+		while((a=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS))&RADEON_DMA_GUI_STATUS__ACTIVE){
+			udelay(1);
+			count--;
+			if(count<0)break;
+			}
 		wmb();
 		writel(a & ~ RADEON_DMA_GUI_STATUS__ABORT, kms->reg_aperture+RADEON_DMA_GUI_STATUS);
 		}
