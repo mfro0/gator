@@ -2713,8 +2713,10 @@ RADEONDisplayVideo(
         h_inc_uv = h_inc;
         }
 
+#if 0
     xf86DrvMsg(pScrn->scrnIndex, X_INFO, "step_by_y=%d step_by_uv=%d h_inc=0x%08x h_inc_uv=0x%08x\n",
     	step_by_y, step_by_uv, h_inc, h_inc_uv);
+#endif
 
     /* keep everything in 16.16 */
 
