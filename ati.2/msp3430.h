@@ -3,8 +3,6 @@
 
 #include "xf86i2c.h"
 
-#define MSP_DEBUG
-
 typedef struct {
         I2CDevRec d;
 	

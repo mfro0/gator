@@ -9,7 +9,6 @@
 #include "Xv.h"
 #include "fourcc.h"
 
-#undef NUM
 
 #include "xf86i2c.h"
 #include "fi1236.h"
