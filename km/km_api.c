@@ -102,7 +102,6 @@ if(strncmp(filename, "control", 7)){
 	return -EINVAL;
 	}
 i=simple_strtol(filename+7, NULL, 10);
-printk("Opening km_control device %d\n", i);
 if(i<0)return -EINVAL;
 if(i>=devices_free)return -EINVAL;
 kmd=&(devices[i]);
@@ -120,20 +119,29 @@ return 0;
 
 ssize_t km_fo_control_read(struct file *file, char *buf, size_t count, loff_t *ppos)
 {
+int retval=0;
 KM_DEVICE *kmd=file->private_data;
 DECLARE_WAITQUEUE(wait, current);
 if(kmd->br_free==0){
 	dump_changed_fields(kmd);
 	}
+add_wait_queue(&(kmd->wait), &wait);
+current->state=TASK_INTERRUPTIBLE;
 while(kmd->br_free==0){
-	if(file->f_flags & O_NONBLOCK)return -EAGAIN;
-	add_wait_queue(&(kmd->wait), &wait);
-	current->state=TASK_INTERRUPTIBLE;
+	if(file->f_flags & O_NONBLOCK){
+		retval=-EAGAIN;
+		break;
+		}
+	if(signal_pending(current)){
+		retval=-ERESTARTSYS;
+		break;
+		}
 	schedule();
-	current->state=TASK_RUNNING;
-	remove_wait_queue(&(kmd->wait), &wait);
 	dump_changed_fields(kmd);
 	}
+current->state=TASK_RUNNING;
+remove_wait_queue(&(kmd->wait), &wait);
+if(retval<0)return retval;
 if(count>(kmd->br_free-kmd->br_read))count=kmd->br_free-kmd->br_read;
 if(count>0)memcpy(buf, kmd->buffer_read+kmd->br_read, count); 
 kmd->br_read+=count;
@@ -142,6 +150,15 @@ if(kmd->br_read==kmd->br_free){
 	kmd->br_read=0;	
 	}
 return count;
+}
+
+static unsigned int km_fo_control_poll(struct file *file, poll_table *wait)
+{
+KM_DEVICE *kmd=file->private_data;
+poll_wait(file, &(kmd->wait), wait);
+if (kmd->br_free<kmd->br_read)
+	return POLLIN | POLLRDNORM;
+return 0;
 }
 
 static ssize_t km_fo_control_write(struct file * file, const char * buffer, size_t count, loff_t *ppos)
@@ -195,7 +212,8 @@ struct file_operations km_control_file_operations={
 	open:	km_fo_control_open,
 	read: 	km_fo_control_read,
 	release: km_fo_control_release,
-	write: km_fo_control_write
+	write: km_fo_control_write,
+	poll: km_fo_control_poll
 
 	} ;
 
