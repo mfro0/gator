@@ -105,9 +105,9 @@ dnl 	],)
 #exit
 #fi
 
-echo "quering $TCL_SHELL:"
-TCL_LIB=`echo 'puts "$tcl_library"' | $TCL_SHELL`
-echo "TCL_LIB=$TCL_LIB"
+#echo "quering $TCL_SHELL:"
+#TCL_LIB=`echo 'puts "$tcl_library"' | $TCL_SHELL`
+#echo "TCL_LIB=$TCL_LIB"
 
 AC_SUBST(X_CFLAGS)
 AC_SUBST(X_LIBS)
