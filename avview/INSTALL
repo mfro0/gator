@@ -5,7 +5,7 @@ Requirements:
 	Alsa 0.9.0 drivers and library (optional) (http://www.alsa-project.org/)
 	FFmpeg tarball (optional)
 	autoconf 2.52 or later (if compiling from CVS) (http://www.gnu.org/)
-	automake (if compiling from CVS) (http://www.gnu.org)
+	automake 1.6.3 (if compiling from CVS) (http://www.gnu.org)
 	
 To compile:
 
