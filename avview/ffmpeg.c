@@ -51,6 +51,7 @@ typedef struct {
 	pthread_mutex_t  incoming_wait;
 	FFMPEG_INCOMING_FRAME *first;
 	FFMPEG_INCOMING_FRAME *last;
+	FFMPEG_INCOMING_FRAME *unused;
 	} FFMPEG_V4L_ENCODING_DATA;
 
 int ffmpeg_present(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
@@ -64,12 +65,17 @@ FFMPEG_INCOMING_FRAME *ffmpeg_allocate_frame(long size)
 {
 FFMPEG_INCOMING_FRAME *f;
 
-f=do_alloc(1, sizeof(FFMPEG_INCOMING_FRAME));
+f=calloc(1, sizeof(FFMPEG_INCOMING_FRAME));
+if(f==NULL)return NULL;
 f->next=NULL;
 f->prev=NULL;
 f->size=size;
 f->free=0;
-f->data=do_alloc(size, 1);
+f->data=malloc(size);
+if(f->data==NULL){
+	free(f);
+	return NULL;
+	}
 return f;
 }
 
@@ -94,31 +100,63 @@ void *ffmpeg_v4l_encoding_thread(V4L_DATA *data)
 int i;
 int retval;
 FFMPEG_V4L_ENCODING_DATA *sdata;
-FFMPEG_INCOMING_FRAME *f;
+FFMPEG_INCOMING_FRAME *f,*fn;
 AVPicture picture;
+char *output_buf;
+long ob_size, ob_free, ob_written;
 
 sdata=(FFMPEG_V4L_ENCODING_DATA *)data->priv;
 if((sdata==NULL)||(sdata->type!=FFMPEG_V4L_CAPTURE_KEY))pthread_exit(NULL);
+ob_size=1000000;
+ob_free=0;
+output_buf=do_alloc(ob_size, sizeof(char));
 while(1){
 	/* wait for data to arrive */
-	sleep(1);
+/*	sleep(1); */
 	f=sdata->last;
 	fprintf(stderr,"frame_count=%d  stop=%d\n", sdata->frame_count, sdata->stop);
 	while((f!=NULL)&&(f->free==f->size)&&(f->prev!=NULL)){
-		free(f->data);
-		f=f->prev;
-		free(sdata->last);
+		/* encode frame */
+		picture.data[0]=f->data;
+		picture.data[1]=f->data;
+		picture.data[2]=f->data;
+		picture.linesize[0]=sdata->width*2;
+		picture.linesize[1]=sdata->width*2;
+		picture.linesize[2]=sdata->width*2;
+		ob_free=avcodec_encode_video(&(sdata->codec_context), output_buf, ob_size, &picture);
+		/* write out data */
+		ob_written=0;
+		while(ob_written<ob_free){
+			i=write(sdata->fd_out, output_buf+ob_written, ob_free-ob_written);
+			if(i>=0)ob_written+=i;
+			}
+		/* get next one */
+		fn=f->prev;
+		if(sdata->unused==NULL){
+			f->prev=NULL;
+			f->next=NULL;
+			f->free=0;
+			sdata->unused=f;
+			} else {
+			free(f->data);
+			free(f);
+			sdata->frame_count--;
+			}
+		f=fn;
 		sdata->last=f;
 		f->next=NULL;
-		sdata->frame_count--;
 		}
+#if 0
 	fprintf(stderr,"frame_count=%d  stop=%d\n", sdata->frame_count, sdata->stop);
+#endif
 	if(sdata->stop){
 		avcodec_close(&(sdata->codec_context));
 		close(sdata->fd_out);
 		data->priv=NULL;
 		free_frame_list(sdata->last);
+		free_frame_list(sdata->unused);
 		free(sdata);
+		fprintf(stderr,"Recording finished\n");
 		pthread_exit(NULL);
 		}
 	pthread_mutex_lock(&(sdata->incoming_wait));
@@ -144,15 +182,26 @@ if((sdata==NULL)||(sdata->type!=FFMPEG_V4L_CAPTURE_KEY)){
 f=sdata->first;
 if(f->free==f->size){
 	/* frame complete */
-	f=ffmpeg_allocate_frame(sdata->size);
+	if(sdata->unused==NULL){
+		f=ffmpeg_allocate_frame(sdata->size);
+		while(f==NULL){
+			Tcl_DoOneEvent(TCL_WINDOW_EVENTS|TCL_TIMER_EVENTS|TCL_IDLE_EVENTS|TCL_DONT_WAIT);	
+			f=ffmpeg_allocate_frame(sdata->size);	
+			}
+		sdata->frame_count++;
+		} else {
+		f=sdata->unused;
+		sdata->unused=NULL;
+		}
 	f->next=sdata->first;
 	sdata->first->prev=f;
 	sdata->first=f;
-	sdata->frame_count++;
 	/* wake up encoding thread */
 	pthread_mutex_unlock(&(sdata->incoming_wait));
 	pthread_mutex_lock(&(sdata->incoming_wait)); 
+	#if 0
 	fprintf(stderr,"fifo size %ld\n", sdata->size*sdata->frame_count);
+	#endif
 	Tcl_DoOneEvent(TCL_WINDOW_EVENTS|TCL_TIMER_EVENTS|TCL_IDLE_EVENTS|TCL_DONT_WAIT);
 	}
 status=read(data->fd, f->data+f->free, f->size-f->free);
@@ -197,16 +246,16 @@ sdata->stop=0;
 sdata->width=vwin.width;
 sdata->height=vwin.height;
 sdata->size=vwin.width*vwin.height*2;
-sdata->last=sdata->first;
+sdata->unused=NULL;
 sdata->frame_count=1;
-sdata->fd_out=open("test3.mpg", O_WRONLY|O_CREAT|O_TRUNC);
+sdata->fd_out=open("test3.mpg", O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
 if(sdata->fd_out<0){
 	free(sdata);
 	Tcl_AppendResult(interp, "failed: ", NULL);
 	Tcl_AppendResult(interp, strerror(errno), NULL);
 	return 0;
 	}
-sdata->codec=avcodec_find_encoder(CODEC_ID_MPEG4);
+sdata->codec=avcodec_find_encoder(CODEC_ID_MPEG1VIDEO);
 if(sdata->codec==NULL){
 	close(sdata->fd_out);
 	free(sdata);
@@ -218,6 +267,7 @@ sdata->codec_context.width=vwin.width;
 sdata->codec_context.height=vwin.height;
 sdata->codec_context.frame_rate=30*FRAME_RATE_BASE;
 sdata->codec_context.bit_rate=400000;
+sdata->codec_context.pix_fmt=PIX_FMT_YUV422;
 if(avcodec_open(&(sdata->codec_context), sdata->codec)<0){
 	close(sdata->fd_out);
 	free(sdata);
@@ -226,6 +276,10 @@ if(avcodec_open(&(sdata->codec_context), sdata->codec)<0){
 	}
 data->priv=sdata;
 sdata->first=ffmpeg_allocate_frame(sdata->size);
+while(sdata->first==NULL){
+	sleep(1);
+	sdata->first=ffmpeg_allocate_frame(sdata->size);
+	}
 sdata->last=sdata->first;
 pthread_mutex_init(&(sdata->incoming_wait), NULL);
 pthread_mutex_lock(&(sdata->incoming_wait));

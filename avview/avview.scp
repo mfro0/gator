@@ -611,6 +611,9 @@ if {[ffmpeg_present] == "yes"} {
 	checkbutton $cw.recordb -text "Record" -variable v4l_capture_on \
 		-indicatoron false -state disabled
 	grid x $cw.snapshotb $cw.recordb -sticky ns -padx 5
+	label $cw.fifol -text "Fifo size: "
+	label $cw.fifov -text "0 Mb"
+	grid $cw.fifol $cw.fifov -sticky nws
 	} {
 	button $cw.snapshotb -text "Snapshot" -command capture_snapshot -state disabled
 	grid x $cw.snapshotb
@@ -777,10 +780,20 @@ global v4l_capture_on
 global current_codec
 if { $v4l_capture_on } {
 	set status [ffmpeg_encode_v4l_stream current_v4l_handle $current_codec "hello.mpg"]
-	puts "$status"
+	after 800 "check_fifo $cw"
+	puts "status=$status"
 	} {
+	after cancel "check_fifo $cw"
 	ffmpeg_stop_encoding current_v4l_handle
 	}
+}
+
+proc check_fifo { cw } {
+catch {
+	set size [ffmpeg_incoming_fifo_size current_v4l_handle]
+	$cw.fifov -configure -text "$size"
+	}
+after 800 "check_fifo $cw"
 }
 
 global current_port
