@@ -253,8 +253,8 @@ u32 scale_cntl;
 u32 display_base;
 
 aperture=pci_resource_start(kms->dev,0);
-aperture_size=pci_resource_len(kms->dev,0);
 radeon_wait_for_idle(kms);
+aperture_size=readl(kms->reg_aperture+RADEON_CONFIG_APER_SIZE);
 mc_fb_location=readl(kms->reg_aperture+RADEON_MC_FB_LOCATION);
 default_offset=readl(kms->reg_aperture+RADEON_DEFAULT_OFFSET);
 cap0_config=readl(kms->reg_aperture+RADEON_CAP0_CONFIG);
