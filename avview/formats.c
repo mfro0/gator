@@ -377,7 +377,25 @@ void vcvt_422_bgr32(int width, int height, int plus, void *src, void *dst)
 }
 
 /* a rather simplistic deinterlacing.. for now */
-void deinterlace_422(long width, long height, long pitch, char *frame1, char *frame2, char *dest)
+void deinterlace_422_bob(long width, long height, long pitch, char *frame1, char *frame2, char *dest)
+{
+long line;
+long dst_pitch;
+char *t1,*t2;
+char *s1,*s2;
+dst_pitch=width*2;
+for(line=height-1;line>=0;line--){
+	s1=frame1+line*pitch;
+	s2=frame2+line*pitch;
+	t1=dest+line*dst_pitch*2;
+	t2=t1+dst_pitch;
+	memcpy(t1,s1,pitch);
+	memcpy(t2,s1,pitch);
+	}
+}
+
+/* a rather simplistic deinterlacing.. for now */
+void deinterlace_422_weave(long width, long height, long pitch, char *frame1, char *frame2, char *dest)
 {
 long line;
 long dst_pitch;

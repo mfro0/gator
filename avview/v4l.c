@@ -28,6 +28,10 @@
 
 STRING_CACHE *v4l_sc=NULL;
 
+#define MODE_SINGLE_FRAME	1
+#define MODE_DEINTERLACE_BOB	2
+#define MODE_DEINTERLACE_WEAVE	3
+
 typedef struct S_V4L_DATA{
 	int fd;
 	struct video_capability vcap;
@@ -40,6 +44,7 @@ typedef struct S_V4L_DATA{
 	char *transfer_failed_script;
 	Tk_PhotoHandle ph;
 	Tk_PhotoImageBlock pib;
+	int mode;
 	} V4L_DATA;
 
 
@@ -85,6 +90,7 @@ data->transfer_callback=NULL;
 data->interp=interp;
 data->transfer_complete_script=NULL;
 data->transfer_failed_script=NULL;
+data->mode=0;
 return 0;
 }
 
@@ -220,13 +226,23 @@ void v4l_snapshot_callback(V4L_DATA *data)
 char *p=NULL;
 if(data->transfer_size==data->transfer_read){
 	data->pib.pixelPtr=do_alloc(data->pib.pitch*data->pib.height, 1);
-	if(!strcmp(data->vcap.name, "Km")){
-		p=do_alloc(data->transfer_size, 1);
-		deinterlace_422(data->pib.width, data->pib.height/2, data->pib.width*2,
-				data->read_buffer, data->read_buffer+(data->transfer_size/2),
-				p);
-		free(data->read_buffer);
-		data->read_buffer=p;
+	switch(data->mode){
+		case MODE_DEINTERLACE_BOB:
+			p=do_alloc(data->transfer_size, 1);
+			deinterlace_422_bob(data->pib.width, data->pib.height/2, data->pib.width*2,
+					data->read_buffer, data->read_buffer+(data->transfer_size/2),
+					p);
+			free(data->read_buffer);
+			data->read_buffer=p;
+			break;
+		case MODE_DEINTERLACE_WEAVE:
+			p=do_alloc(data->transfer_size, 1);
+			deinterlace_422_weave(data->pib.width, data->pib.height/2, data->pib.width*2,
+					data->read_buffer, data->read_buffer+(data->transfer_size/2),
+					p);
+			free(data->read_buffer);
+			data->read_buffer=p;
+			break;
 		}
 	
 	vcvt_422_rgb32(data->pib.width, data->pib.height, data->pib.width, data->read_buffer, data->pib.pixelPtr);
@@ -261,8 +277,8 @@ struct video_window vwin;
 
 Tcl_ResetResult(interp);
 
-if(argc<4){
-	Tcl_AppendResult(interp,"ERROR: v4l_capture_snapshot requires three or four arguments", NULL);
+if(argc<5){
+	Tcl_AppendResult(interp,"ERROR: v4l_capture_snapshot requires four or five arguments", NULL);
 	return TCL_ERROR;
 	}
 i=lookup_string(v4l_sc, argv[1]);
@@ -288,14 +304,26 @@ if(ioctl(data->fd, VIDIOCGPICT, &vpic)<0){
 	Tcl_AppendResult(interp,"ERROR: v4l_capture_snapshot: error getting picture parameters", NULL);
 	return TCL_ERROR;
 	}
-data->transfer_complete_script=strdup(argv[3]);
-if(argc>=5)data->transfer_failed_script=strdup(argv[4]);
+data->mode=MODE_SINGLE_FRAME;
+if(!strcmp("deinterlace-bob", argv[3])){
+	data->mode=MODE_DEINTERLACE_BOB;
+	}
+if(!strcmp("deinterlace-weave", argv[3])){
+	data->mode=MODE_DEINTERLACE_WEAVE;
+	}
+data->transfer_complete_script=strdup(argv[4]);
+if(argc>=6)data->transfer_failed_script=strdup(argv[5]);
 data->transfer_callback=v4l_snapshot_callback;
 data->pib.width=vwin.width;
-/* recognize Km and deinterlace it's data to form a complete picture */
-if(!strcmp("Km", data->vcap.name))data->pib.height=vwin.height*2;
-	else
-	data->pib.height=vwin.height;
+switch(data->mode){
+	case MODE_SINGLE_FRAME:
+		data->pib.height=vwin.height;
+		break;
+	case MODE_DEINTERLACE_BOB:
+	case MODE_DEINTERLACE_WEAVE:
+		data->pib.height=vwin.height*2;
+		break;
+	}
 data->pib.offset[0]=0;
 data->pib.offset[1]=1;
 data->pib.offset[2]=2;
@@ -310,6 +338,46 @@ Tcl_CreateFileHandler(data->fd, TCL_READABLE, v4l_transfer_handler, data);
 return 0;
 }
 
+int v4l_get_current_window(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
+{
+long i;
+V4L_DATA *data;
+Tcl_Obj *ans;
+struct video_window vwin;
+
+Tcl_ResetResult(interp);
+
+if(argc<2){
+	Tcl_AppendResult(interp,"ERROR: v4l_get_current_window requires one argument", NULL);
+	return TCL_ERROR;
+	}
+i=lookup_string(v4l_sc, argv[1]);
+if(i<0){
+	Tcl_AppendResult(interp,"ERROR: v4l_get_current_window: no such v4l handle", NULL);
+	return TCL_ERROR;
+	}
+data=(V4L_DATA *)v4l_sc->data[i];	
+if(data==NULL){
+	Tcl_AppendResult(interp,"ERROR: v4l_get_current_window: no such v4l handle", NULL);
+	return TCL_ERROR;
+	}
+if(ioctl(data->fd, VIDIOCGWIN, &vwin)<0){
+	Tcl_AppendResult(interp,"ERROR: v4l_get_current_window: error getting window parameters", NULL);
+	return TCL_ERROR;
+	}
+
+ans=Tcl_NewListObj(0, NULL);
+
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj(vwin.x));
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj(vwin.y));
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj(vwin.width));
+Tcl_ListObjAppendElement(interp, ans, Tcl_NewIntObj(vwin.height));
+
+Tcl_SetObjResult(interp, ans);
+return 0;
+}
+
+
 struct {
 	char *name;
 	Tcl_CmdProc *command;
@@ -319,6 +387,7 @@ struct {
 	{"v4l_device_type", v4l_device_type},
 	{"v4l_device_name", v4l_device_name},
 	{"v4l_capture_snapshot", v4l_capture_snapshot},
+	{"v4l_get_current_window", v4l_get_current_window},
 	{NULL, NULL}
 	};
 

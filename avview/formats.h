@@ -25,7 +25,8 @@ void vcvt_422_rgb24(int width, int height, int plus, void *src, void *dst);
 void vcvt_422_bgr24(int width, int height, int plus, void *src, void *dst);
 void vcvt_422_rgb32(int width, int height, int plus, void *src, void *dst);
 void vcvt_422_bgr32(int width, int height, int plus, void *src, void *dst);
-void deinterlace_422(long width, long height, long pitch, char *frame1, char *frame2, char *dest);
+void deinterlace_422_bob(long width, long height, long pitch, char *frame1, char *frame2, char *dest);
+void deinterlace_422_weave(long width, long height, long pitch, char *frame1, char *frame2, char *dest);
 
 
 #endif

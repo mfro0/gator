@@ -588,6 +588,19 @@ set v4l_device_menu [tk_optionMenu $cw.deviceom current_v4l_device none]
 button $cw.rescanb -text "Rescan" -command rescan_v4l_devices
 grid $cw.devicel $cw.deviceom $cw.rescanb -sticky news
 grid configure $cw.devicel -sticky nws
+
+label $cw.model -text "Mode: "
+tk_optionMenu $cw.modeom current_v4l_mode single-frame deinterlace-bob deinterlace-weave
+grid $cw.model $cw.modeom - -sticky news
+grid configure $cw.model -sticky nws
+
+label $cw.windowl -text "Window: "
+label $cw.window -text "N/A"
+button $cw.windowb -text "Change"
+grid $cw.windowl $cw.window $cw.windowb
+grid configure $cw.windowl -sticky nws
+grid configure $cw.windowb -sticky news
+
 button $cw.snapshotb -text "Snapshot" -command capture_snapshot
 grid x $cw.snapshotb
 rescan_v4l_devices
@@ -613,14 +626,38 @@ for {set i 0 } {$i < 10 } { incr i } {
 	}
 }
 
-proc set_v4l_device {name1 name2 op } {
+proc update_v4l_window_info {cw} {
+global current_v4l_device
+global current_v4l_mode
+if { "$current_v4l_device" == "none" } { 
+	$cw.window configure -text "N/A"
+	return 
+	}
+set window [v4l_get_current_window current_v4l_handle]
+switch "$current_v4l_mode" \
+	"single-frame" {
+		$cw.window configure -text "[lindex $window 2]x[lindex $window 3]+[lindex $window 0]+[lindex $window 1]"
+		} \
+	"deinterlace-bob" {
+		$cw.window configure -text "[lindex $window 2]x[expr [lindex $window 3]*2]+[lindex $window 0]+[expr [lindex $window 1]*2]"
+		}\
+	"deinterlace-weave" {
+		$cw.window configure -text "[lindex $window 2]x[expr [lindex $window 3]*2]+[lindex $window 0]+[expr [lindex $window 1]*2]"
+		}
+
+}
+
+proc set_v4l_device {cw name1 name2 op } {
 global current_v4l_device
 if { "$current_v4l_device" == "none" } { 
 	v4l_close_device current_v4l_handle
 	return 
 	}
 set status "[v4l_open_device current_v4l_handle $current_v4l_device]"
-puts "status=$status"
+if { "$status" != "" } {
+	set current_v4l_device "none"
+	}
+update_v4l_window_info $cw
 }
 
 global snp_window_count
@@ -629,12 +666,13 @@ set snp_window_count 0
 proc capture_snapshot {} {
 global current_v4l_device
 global snp_window_count
+global current_v4l_mode
 if { "$current_v4l_device" == "none" } { 
 	return
 	}
 incr snp_window_count
 image create photo .snapshot$snp_window_count.image
-v4l_capture_snapshot current_v4l_handle .snapshot$snp_window_count.image {
+v4l_capture_snapshot current_v4l_handle .snapshot$snp_window_count.image $current_v4l_mode {
 	global snp_window_count
 	create_snapshot_window .snapshot$snp_window_count.image
 	} {
@@ -730,7 +768,10 @@ trace variable attributes_window w  { generate_attributes_window .controlwin.all
 global capture_window
 trace variable capture_window w  { generate_capture_window .controlwin.capture ; skip_args3 }
 global current_v4l_device
-trace variable current_v4l_device w  set_v4l_device
+trace variable current_v4l_device w  "set_v4l_device .controlwin.capture"
+global current_v4l_mode
+set current_v4l_mode single-frame
+trace variable current_v4l_mode w {update_v4l_window_info .controlwin.capture ; skip_args3 }
 
 bind $VIDEO_WINDOW <Configure> {
 	global $VIDEO_WINDOW
