@@ -295,6 +295,7 @@ static XF86AttributeRec Attributes[NUM_DEC_ATTRIBUTES+1] =
    {XvSettable | XvGettable, -1000, 1000, "XV_RED_INTENSITY"},
    {XvSettable | XvGettable, -1000, 1000, "XV_GREEN_INTENSITY"},
    {XvSettable | XvGettable, -1000, 1000, "XV_BLUE_INTENSITY"},
+   {XvSettable | XvGettable,     0, 0x1F, "XV_ADJUSTMENT"},   
    {XvSettable | XvGettable, -1000, 1000, "XV_DEC_BRIGHTNESS"},
    {XvSettable | XvGettable, -1000, 1000, "XV_DEC_CONTRAST"},
    {XvSettable | XvGettable, -1000, 1000, "XV_DEC_SATURATION"},
@@ -306,7 +307,6 @@ static XF86AttributeRec Attributes[NUM_DEC_ATTRIBUTES+1] =
    {XvSettable | XvGettable, -1000, 1000, "XV_VOLUME"},
    {XvSettable | XvGettable, 0, 1, "XV_MUTE"},
    {XvSettable | XvGettable, 0, 1, "XV_SAP"},
-   {XvSettable | XvGettable, 0, 0x1F, "XV_ADJUSTMENT"},   
    { 0, 0, 0, NULL}  /* just a place holder so I don't have to be fancy with commas */
 };
 
@@ -765,7 +765,6 @@ void RADEONResetVideo(ScrnInfoPtr pScrn)
     char tmp[200];
     int i;
 
-    CHECKPOINT
     if (info->accelOn) info->accel->Sync(pScrn);
 
     /* this is done here because each time the server is reset these
@@ -1885,6 +1884,14 @@ RADEONAllocAdaptor(ScrnInfoPtr pScrn)
     OUTPLL(RADEON_VCLK_ECP_CNTL, (INPLL(pScrn, RADEON_VCLK_ECP_CNTL) &
 				  0xfffffCff) | (pPriv->ecp_div << 8));
 
+    if ((info->ChipFamily == CHIP_FAMILY_RS100) ||
+	(info->ChipFamily == CHIP_FAMILY_RS200) ||
+	(info->ChipFamily == CHIP_FAMILY_RS300)) {
+        /* Force the overlay clock on for integrated chips
+	 */
+        OUTPLL(RADEON_VCLK_ECP_CNTL, (INPLL(pScrn, RADEON_VCLK_ECP_CNTL) | (1<<18)));
+    }
+
     info->adaptor = adapt;
 
     return adapt;
@@ -1999,8 +2006,7 @@ RADEONSetupImageVideo(ScreenPtr pScreen)
     adapt->nFormats = NUM_FORMATS;
     adapt->pFormats = Formats;
     adapt->nPorts = 1;
-    if(pPriv->theatre==NULL)
-    adapt->nAttributes = NUM_ATTRIBUTES;
+    if(pPriv->theatre==NULL)adapt->nAttributes = NUM_ATTRIBUTES;
 	    else
 	    adapt->nAttributes = NUM_DEC_ATTRIBUTES;
     adapt->pAttributes = Attributes;
@@ -2056,7 +2062,6 @@ RADEONClipVideo(
     BoxPtr extents = REGION_EXTENTS(DummyScreen, reg);
     int diff;
 
-    CHECKPOINT
     hscale = ((*xb - *xa) << 16) / (dst->x2 - dst->x1);
     vscale = ((*yb - *ya) << 16) / (dst->y2 - dst->y1);
 
@@ -2128,7 +2133,6 @@ RADEONStopVideo(ScrnInfoPtr pScrn, pointer data, Bool cleanup)
   unsigned char *RADEONMMIO = info->MMIO;
   RADEONPortPrivPtr pPriv = (RADEONPortPrivPtr)data;
 
-  CHECKPOINT
   REGION_EMPTY(pScrn->pScreen, &pPriv->clip);
 
   if(cleanup) {
@@ -2172,7 +2176,6 @@ RADEONSetPortAttribute(ScrnInfoPtr  pScrn,
     Bool		setAlpha = FALSE;
     unsigned char *RADEONMMIO = info->MMIO;
 
-    CHECKPOINT
     if (info->accelOn) info->accel->Sync(pScrn);
 
 #define RTFSaturation(a)   (1.0 + ((a)*1.0)/1000.0)
@@ -2401,7 +2404,6 @@ RADEONGetPortAttribute(ScrnInfoPtr  pScrn,
     RADEONInfoPtr	info = RADEONPTR(pScrn);
     RADEONPortPrivPtr	pPriv = (RADEONPortPrivPtr)data;
 
-    CHECKPOINT
     if (info->accelOn) info->accel->Sync(pScrn);
 
     if(attribute == xvAutopaintColorkey)
@@ -2443,7 +2445,6 @@ RADEONGetPortAttribute(ScrnInfoPtr  pScrn,
     else if(attribute == xvFrequency)
         *value = pPriv->frequency;
     else if(attribute == xvTunerStatus) {
-    	CHECKPOINT
         if(pPriv->fi1236==NULL){
                 *value=TUNER_OFF;
                 } else
@@ -2469,7 +2470,6 @@ RADEONGetPortAttribute(ScrnInfoPtr  pScrn,
     else
 	return BadMatch;
 
-    CHECKPOINT
     return Success;
 }
 
@@ -2673,7 +2673,6 @@ RADEONAllocateMemory(
    ScreenPtr pScreen;
    FBLinearPtr new_linear;
 
-   CHECKPOINT
    if(linear) {
 	if(linear->size >= size)
 	   return linear;
@@ -2737,7 +2736,6 @@ RADEONDisplayVideo(
     double dsr;
     int tap_set;
 
-    CHECKPOINT  
     is_rgb=0;
     switch(id){
         case FOURCC_RGBA32:
@@ -3013,7 +3011,6 @@ RADEONPutImage(
 		RADEON_NONSURF_AP0_SWP_32BPP) & ~RADEON_NONSURF_AP0_SWP_16BPP);
 #endif
 
-   CHECKPOINT
    if (info->accelOn) info->accel->Sync(pScrn);
 
    /* if capture was active shutdown it first */
@@ -3218,7 +3215,6 @@ RADEONQueryImageAttributes(
 ){
     int size, tmp;
 
-    CHECKPOINT
 #if 0
     /* Overlay scaler has buffer that is pPriv->overlay_scaler_buffer_width pixels wide */
     if(*w > pPriv->overlay_scaler_buffer_width) *w = pPriv->overlay_scaler_buffer_width;
@@ -3574,7 +3570,6 @@ RADEONPutVideo(
    int mult;
    int vbi_line_width;
 
-   CHECKPOINT
    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "PutVideo %dx%d+%d+%d\n", drw_w,drw_h,drw_x,drw_y);
    if (info->accelOn) info->accel->Sync(pScrn);
    /*
