@@ -372,6 +372,7 @@ proc read_settings {} {
 #
 # Read user-specific customizations
 #
+set saved_avview_version ""
 if { [file exists "~/.avview"] } {
 	catch {
 		set fileid [open "~/.avview" r]
