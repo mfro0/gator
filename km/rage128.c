@@ -199,6 +199,7 @@ kms->interrupt_count++;
 count=10000;
 
 while(1){
+	rage128_wait_for_idle(kms);
 /*	KM_DEBUG("beep %ld\n", kms->interrupt_count); */
 	if(!rage128_is_capture_irq_active(kms)){
 		status=readl(kms->reg_aperture+RAGE128_GEN_INT_STATUS);

@@ -20,6 +20,7 @@ int result;
 KM_STRUCT *kms=(KM_STRUCT *)dev;
 
 if(!kms->is_capture_active(kms)){
+	printk("km: no data is available until xawtv is started\n");
 	result=-ENODATA;
 	goto fail;
 	}
