@@ -39,12 +39,16 @@ source ffmpeg.scp
 source video_device.scp
 source diag.scp
 
-global show_control_window
-set show_control_window 1
-
-
-global file_save_path
-set file_save_path "."
+foreach {variable value} {
+	show_control_window 1
+	file_save_path "."
+	current_capture_filename "test3.avi"
+	remember_fullscreen_state false
+	always_start_fullscreen false
+	} {
+	global $variable
+	set $variable $value
+	}
 
 proc skip_args3 { a b c } {
 }
@@ -52,9 +56,6 @@ proc skip_args3 { a b c } {
 global VIDEO_WINDOW
 
 set VIDEO_WINDOW .video
-
-global current_capture_filename
-set current_capture_filename "test3.avi"
 
 destroy .video
 
@@ -348,7 +349,7 @@ puts $fileid "\n# General settings"
 
 foreach variable {current_port current_encoding_name current_table_name
 	current_channel attributes_window capture_window alsa_window
-	 show_control_window
+	 show_control_window always_start_fullscreen remember_fullscreen_state
 	display_setup_window_on_startup file_save_path} {
 	global $variable
 	puts $fileid "\nglobal $variable"
@@ -365,6 +366,12 @@ save_v4l_capture $fileid
 puts $fileid ""
 save_favorite_channels $fileid
 
+global fullscreen_mode
+if { $remember_fullscreen_state && $fullscreen_mode } {
+	puts $fileid "\n# Restore fullscreen mode"
+	puts $fileid "global fullscreen_mode"
+	puts $fileid "set fullscreen_mode true"
+	}
 close $fileid
 }
 
@@ -415,7 +422,7 @@ after 300 check_mapped_state
 # For debugging
 #check_mapped_state
 
-proc set_fullscreen {name1 name2 op} {
+proc set_fullscreen {} {
 global VIDEO_WINDOW
 global fullscreen_mode
 global saved_screensaver_mode
@@ -577,7 +584,7 @@ menu .video_menu.interface_menu.theme_menu -type normal -tearoff false
 .video_menu add separator
 .video_menu add command -label "Dismiss this menu"
 
-.video_menu.size_menu add checkbutton -variable fullscreen_mode -label "Fullscreen"
+.video_menu.size_menu add checkbutton -variable fullscreen_mode -label "Fullscreen" -onvalue true -offvalue false
 .video_menu.size_menu add command -label "Half size" -command "make_half_size"
 
 .video_menu.interface_menu add command -label "Show setup window" -command "create_setup_window"
@@ -609,7 +616,7 @@ trace variable current_table_name w set_channel_table
 global current_channel
 trace variable current_channel w "set_channel"
 global fullscreen_mode
-trace variable fullscreen_mode w set_fullscreen
+trace variable fullscreen_mode w "set_fullscreen ; skip_args3"
 global attributes_window
 trace variable attributes_window w  { generate_attributes_window .controlwin.allattributes ; skip_args3 }
 global capture_window
@@ -694,13 +701,22 @@ if { [alsa_present] } {
 		"Display capture(V4L) subsection" checkbutton capture_window \
 	}
 
+add_parameter_pane "/User interface settings/Fullscreen behaviour" "Fullscreen behaviour" \
+		"Remember fullscreen state for new sessions" checkbutton remember_fullscreen_state \
+		"Always start fullscreen" checkbutton always_start_fullscreen
+
+Tree:open .setup.tree "/User interface settings"
+
 replace_parameter_choices "/Video device parameters" 0 a
 
 after 200 {
 	read_settings
+	switch_to_pane "/User interface settings"
 	if { $display_setup_window_on_startup } {
 		create_setup_window
-		switch_to_pane "/User interface settings"
-		}	
+		}
+	if { $always_start_fullscreen && ! $fullscreen_mode } {
+		set fullscreen_mode true 
+		}
 	}	
 	
