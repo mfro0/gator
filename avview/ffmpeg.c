@@ -649,13 +649,13 @@ total=0;
 if(sdata->video_s!=NULL){
 	total+=sdata->video_s->total;
 	total+=sdata->video_s->unused_total;
-	fprintf(stderr,"video: fifo size=%d recycling fifo size=%d\n", 
+	fprintf(stderr,"video: fifo size=%d recycling stack size=%d\n", 
 		sdata->video_s->total, sdata->video_s->unused_total);
 	}
 if(sdata->audio_s!=NULL){
 	total+=sdata->audio_s->total;
 	total+=sdata->audio_s->unused_total;
-	fprintf(stderr,"audio: fifo size=%d recycling fifo size=%d\n", 
+	fprintf(stderr,"audio: fifo size=%d recycling stack size=%d\n", 
 		sdata->audio_s->total, sdata->audio_s->unused_total);
 	}
 

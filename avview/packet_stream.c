@@ -132,7 +132,7 @@ if((s->first!=NULL) && (s->first->discard) && (s->first->next==s->last)){
 	s->first=NULL;
 	s->last=NULL;
 	s->total-=p->free;
-	if((s->unused_total<=(s->total+s->threshold+2*p->size)/2)&&(p->recycle)){
+	if(p->recycle && !s->stop_stream && (s->unused_total<=(s->total+s->threshold+2*p->size)/2)){
 		p->next=s->unused;
 		p->prev=NULL;
 		s->unused=p;

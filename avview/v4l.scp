@@ -219,11 +219,8 @@ eval frame $sw.f [get_settings $sw.f Capture V4L]
 grid $sw.f - -sticky news
 canvas $sw.c -xscrollcommand "$sw.hscroll set" \
 	-yscrollcommand "$sw.vscroll set" -relief sunken -bd 2
-eval $cw.c configure [get_settings $cw.c Capture V4L]
 scrollbar $sw.vscroll -command "$sw.c yview"
 scrollbar $sw.hscroll -command "$sw.c xview" -orient horiz
-eval $sw.vscroll configure [get_settings $sw.vscroll Capture V4L]
-eval $sw.hscroll configure [get_settings $sw.hscroll Capture V4L]
 grid $sw.c $sw.vscroll 
 grid $sw.hscroll x
 grid configure $sw.c -sticky news
@@ -259,6 +256,9 @@ eval $sw.f.type configure [get_settings $sw.f.type Capture V4L]
 eval $menu configure [get_settings $menu Capture V4L]
 
 grid $sw.f.sab $sw.f.type -padx 5
+eval $cw.c configure [get_settings $cw.c Capture V4L]
+eval $sw.vscroll configure [get_settings $sw.vscroll Capture V4L]
+eval $sw.hscroll configure [get_settings $sw.hscroll Capture V4L]
 update
 }
 
