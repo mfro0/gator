@@ -1,5 +1,11 @@
 #define __KM_C__
 
+#include <linux/autoconf.h>
+#if defined(MODULE) && defined(CONFIG_MODVERSIONS)
+#define MODVERSIONS
+#include <linux/modversions.h>
+#endif
+
 #include <linux/types.h>
 #include <linux/config.h>
 #include <linux/version.h>
