@@ -1,5 +1,9 @@
               Kernel multimedia architecture
 
+        **     the latest version can be obtained from     **
+	
+	http://cvs.sourceforge.net/cgi-bin/viewcvs.cgi/gatos/km/km.rfc.txt
+
 0) Motivation
     v4l, v4l2 and Xv are all suffering from the same problem: attempt to fit 
     existing multimedia devices into a fixed scheme. The use of pre-defined
