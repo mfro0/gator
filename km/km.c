@@ -35,7 +35,7 @@ MODULE_DESCRIPTION("km_ati");
 MODULE_PARM(km_debug, "i");
 MODULE_PARM_DESC(km_debug, "kmultimedia debugging level");
 
-int km_debug=1;
+int km_debug=0;
 
 void generic_deallocate_single_frame_buffer(KM_STRUCT *kms, SINGLE_FRAME *frame)
 {
