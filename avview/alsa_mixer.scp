@@ -4,6 +4,10 @@ source alsa.scp
 
 frame .f
 pack .f -expand yes -fill both
+
+set alsa_window 1
+
 generate_alsa_window .f
 
 trace variable current_alsa_device1 w "set_alsa_device .f ; skip_args3"
+

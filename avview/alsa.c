@@ -394,7 +394,7 @@ switch(ad->etype[e]){
 		snd_ctl_elem_value_set_boolean(value,k, atoi(argv[4]));
 		break;
 	case SND_CTL_ELEM_TYPE_ENUMERATED:
-		for(j=0;j<snd_ctl_elem_info_get_items(ad->einfo[j]);j++){
+		for(j=0;j<snd_ctl_elem_info_get_items(ad->einfo[e]);j++){
 			snd_ctl_elem_info_set_item(ad->einfo[e], j);
 			if(!strcmp(argv[4],snd_ctl_elem_info_get_item_name(ad->einfo[e]))){
 				snd_ctl_elem_value_set_enumerated(value,k,j);				
