@@ -122,9 +122,6 @@ set encoding_themes {
 
 		
 global ffmpeg_encoding_theme
-trace variable ffmpeg_encoding_theme w {
-	skip_args3 }
-
 set ffmpeg_encoding_theme [lindex $encoding_themes 1]
 
 proc get_encoding_theme { short_name } {
@@ -324,8 +321,7 @@ catch {
 	}
 }
 
-rehash_themes
-
+set encoding_themes_list {}
 add_parameter_pane "/Configuration/Encoding settings" "Encoding settings" \
 		"Pre-configured themes" heading "" \
 		"Encoding theme" choice [concat ffmpeg_encoding_theme $encoding_themes_list] \
@@ -333,6 +329,8 @@ add_parameter_pane "/Configuration/Encoding settings" "Encoding settings" \
 		"Create custom theme" heading "" \
 		"Name" entry custom_theme_name \
 		"Create new theme based on current one" command create_new_theme
+
+rehash_themes
 
 add_description_pane "/Configuration/Encoding settings/Custom themes" "Custom themes" \
 {     You can create new custom encoding themes by 

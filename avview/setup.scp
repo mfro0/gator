@@ -60,6 +60,11 @@ place $SETUP_MAIN.f.c -x 0 -y 0
 
 proc switch_to_pane { key } {
 global SETUP_MAIN
+
+if {$key == ""} {
+	return
+}
+
 set pane [get_pane_frame "$key"]
 Tree:setselection $SETUP_MAIN.tree "$key"
 foreach win [place slaves $SETUP_MAIN.f] {
