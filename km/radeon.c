@@ -132,7 +132,10 @@ h_window=readl(kms->reg_aperture+RADEON_CAP0_VBI_H_WINDOW);
 v_window=readl(kms->reg_aperture+RADEON_CAP0_VBI_V_WINDOW);
 kms->vbi0_offset=readl(kms->reg_aperture+RADEON_CAP0_VBI0_OFFSET);
 kms->vbi1_offset=readl(kms->reg_aperture+RADEON_CAP0_VBI1_OFFSET);
-return ((h_window>>16)*((v_window>>16)-(v_window & 0xffff))*2);
+kms->vbi_width=(h_window>>16);
+kms->vbi_height=(v_window>>16)-(v_window & 0xffff)+1;
+kms->vbi_start=(v_window & 0xffff)+2; /* Rage Theatre has an off by 1 count */
+return (kms->vbi_width*kms->vbi_height);
 }
 
 void radeon_start_transfer(KM_STRUCT *kms)
@@ -301,9 +304,11 @@ switch(field){
 		break;
 	case 4: 
 		offset=kms->vbi0_offset;
+		stream->dvb.kmsbi[buffer].user_flag|=KM_FI_ODD;
 		break;
 	case 5:
 		offset=kms->vbi1_offset;
+		stream->dvb.kmsbi[buffer].user_flag&=~KM_FI_ODD;
 		break;
 	default:
 		printk("Internal error %s %s %d\n", __FILE__, __FUNCTION__, __LINE__);

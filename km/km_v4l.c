@@ -200,6 +200,7 @@ int result;
 
 if((result=start_vbi_capture(kms))<0)return result;
 
+kms->vbi_buf_parity=1;
 kms->vbi_kdufpd=km_data_create_kdufpd(kms->vbi.du);
 if(kms->vbi_kdufpd==NULL){
 	stop_vbi_capture(kms);
@@ -226,17 +227,31 @@ return -EINVAL;
 static long km_vbi_read(struct video_device *v, char *buf, unsigned long count, int nonblock)
 {
 KM_STRUCT *kms=(KM_STRUCT *)v->priv;
-int done;
+int done,r;
 KDU_FILE_PRIVATE_DATA *kdufpd=kms->vbi_kdufpd;
 
-done=km_data_generic_stream_read(kdufpd, &(kms->vbi.dvb), 
-	buf, count, nonblock,
-	0, 0);
+/* V4L reading apps *expect* to receive *two* full fields of data.. wacky ! 
+   The loop should really be in zvbi but I am too lazy to maintain yet
+   another piece of software */
+done=0;
+while(done<count){
+	r=km_data_generic_stream_read(kdufpd, &(kms->vbi.dvb), 
+		buf+done, count-done, nonblock,
+		kms->vbi_buf_parity, 1);
+	if((r > 0) && (kdufpd->bytes_read>=kms->vbi.dvb.free[kdufpd->buffer])){
+		kms->vbi_buf_parity=!kms->vbi_buf_parity;
+		}
+	if(r>0)done+=r;
+	if(r<0)return r;
+	if(nonblock)return done;
+	}
 	
 return done;
 }
 
+#ifndef BTTV_VBISIZE
 #define BTTV_VBISIZE            _IOR('v' , BASE_VIDIOCPRIVATE+8, int)
+#endif
 
 static int km_vbi_ioctl(struct video_device *dev, unsigned int cmd, void *arg)
 {
@@ -262,8 +277,28 @@ switch(cmd){
 		size=kms->get_vbi_buf_size(kms);
 		spin_unlock(&(kms->kms_lock));
 	 	return size;
+	 case VIDIOCGVBIFMT:
+	 	{
+	 	struct vbi_format vbi_f;
+		vbi_f.sampling_rate=28636363;
+		vbi_f.samples_per_line=kms->vbi_width;
+		vbi_f.sample_format=VIDEO_PALETTE_RAW;
+		vbi_f.start[0]=kms->vbi_start;
+		vbi_f.start[1]=kms->vbi_start;
+		vbi_f.start[0]=10;
+		vbi_f.start[1]=272;
+		vbi_f.count[0]=kms->vbi_height;
+		vbi_f.count[1]=kms->vbi_height;
+		vbi_f.flags=0;
+		if(copy_to_user(arg,&vbi_f,sizeof(vbi_f)))
+			return -EFAULT;
+	 	return 0;
+		}
+	  case VIDIOCSVBIFMT:
+	  	return -EBUSY;
+	  default:
+		return -EINVAL;
 	}
-return -EINVAL;
 }
 
 static unsigned int km_vbi_poll(struct video_device *dev, struct file *file,

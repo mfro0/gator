@@ -87,6 +87,7 @@ typedef struct S_KM_STRUCT {
 	unsigned char * reg_aperture;
 	
 	int v4l_buf_parity;
+	int vbi_buf_parity;
 
 	
 	KDU_FILE_PRIVATE_DATA *v4l_kdufpd;
@@ -101,6 +102,10 @@ typedef struct S_KM_STRUCT {
 	KM_TRANSFER_REQUEST gui_dma_request[10];  /* we should not have more than 10 
 	                                             outstanding DMA requests */
 	
+	/* hardware state
+	   these are the values 
+	   that were valid when DMA transfers
+	   were started */
 	u32 buf0_odd_offset;
 	u32 buf0_even_offset;
 	u32 buf1_odd_offset;
@@ -108,6 +113,7 @@ typedef struct S_KM_STRUCT {
 
 	u32 vbi0_offset;
 	u32 vbi1_offset;
+	int vbi_width, vbi_height, vbi_start;
 
 	long kmd;
 	KM_FIELD *kmfl;
