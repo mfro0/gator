@@ -55,6 +55,9 @@ typedef struct {
    int           saturation;
    int           hue;
    int           contrast;
+   int           red_intensity;
+   int           green_intensity;
+   int           blue_intensity;
 
    int           dec_brightness;
    int           dec_saturation;
@@ -133,6 +136,7 @@ static void RADEONVideoTimerCallback(ScrnInfoPtr pScrn, Time now);
 #define MAKE_ATOM(a) MakeAtom(a, sizeof(a) - 1, TRUE)
 
 static Atom xvBrightness, xvColorKey, xvSaturation, xvDoubleBuffer, 
+	     xvRedIntensity,xvGreenIntensity,xvBlueIntensity,
              xvEncoding, xvVolume, xvMute, xvFrequency, xvContrast, xvHue, xvColor,
 	     xv_autopaint_colorkey, xv_set_defaults,
 	     xvDecBrightness, xvDecContrast, xvDecHue, xvDecColor, xvDecSaturation;
@@ -217,8 +221,8 @@ static XF86VideoFormatRec Formats[NUM_FORMATS] =
 };
 
 
-#define NUM_DEC_ATTRIBUTES 17
-#define NUM_ATTRIBUTES 9
+#define NUM_DEC_ATTRIBUTES 17+3
+#define NUM_ATTRIBUTES 9+3
 
 static XF86AttributeRec Attributes[NUM_DEC_ATTRIBUTES+1] =
 {
@@ -231,6 +235,9 @@ static XF86AttributeRec Attributes[NUM_DEC_ATTRIBUTES+1] =
    {XvSettable | XvGettable, -1000, 1000, "XV_SATURATION"},
    {XvSettable | XvGettable, -1000, 1000, "XV_COLOR"},
    {XvSettable | XvGettable, -1000, 1000, "XV_HUE"},
+   {XvSettable | XvGettable, -1000, 1000, "XV_RED_INTENSITY"},
+   {XvSettable | XvGettable, -1000, 1000, "XV_GREEN_INTENSITY"},
+   {XvSettable | XvGettable, -1000, 1000, "XV_BLUE_INTENSITY"},
    {XvSettable | XvGettable, -1000, 1000, "XV_DEC_BRIGHTNESS"},
    {XvSettable | XvGettable, -1000, 1000, "XV_DEC_SATURATION"},
    {XvSettable | XvGettable, -1000, 1000, "XV_DEC_CONTRAST"},
@@ -339,13 +346,18 @@ GAMMA_SETTINGS def_gamma[18] =
  *            cont - contrast                                               *
  *            sat - saturation                                              *
  *            hue - hue                                                     *
+ *            red_intensity - intensity of red component                        *
+ *            green_intensity - intensity of green component                    *
+ *            blue_intensity - intensity of blue component                      *
  *            ref - index to the table of refernce transforms               *
  *   Outputs: NONE                                                          *
  ****************************************************************************/
 
 static void RADEONSetTransform(  ScrnInfoPtr pScrn,
-							   float bright, float cont, float sat, 
-							   float hue, CARD32 ref)
+				 float bright, float cont, float sat, 
+				 float hue,
+				 float red_intensity, float green_intensity, float blue_intensity,
+				 CARD32 ref)
 {
 	RADEONInfoPtr info = RADEONPTR(pScrn);
 	unsigned char *RADEONMMIO = info->MMIO;
@@ -354,6 +366,7 @@ static void RADEONSetTransform(  ScrnInfoPtr pScrn,
 	float CAdjRCb, CAdjRCr;
 	float CAdjGCb, CAdjGCr;
 	float CAdjBCb, CAdjBCr;
+	float RedAdj,GreenAdj,BlueAdj;
 	float OvLuma, OvROff, OvGOff, OvBOff;
 	float OvRCb, OvRCr;
 	float OvGCb, OvGCr;
@@ -373,6 +386,9 @@ static void RADEONSetTransform(  ScrnInfoPtr pScrn,
 
 	CAdjLuma = cont * trans[ref].RefLuma;
 	CAdjOff = cont * trans[ref].RefLuma * bright * 1023.0;
+	RedAdj = cont * trans[ref].RefLuma * red_intensity * 1023.0;
+	GreenAdj = cont * trans[ref].RefLuma * green_intensity * 1023.0;
+	BlueAdj = cont * trans[ref].RefLuma * blue_intensity * 1023.0;
 
 	CAdjRCb = sat * -OvHueSin * trans[ref].RefRCr;
 	CAdjRCr = sat * OvHueCos * trans[ref].RefRCr;
@@ -398,11 +414,11 @@ static void RADEONSetTransform(  ScrnInfoPtr pScrn,
 	OvGCr = CAdjGCr;
 	OvBCb = CAdjBCb;
 	OvBCr = CAdjBCr;
-	OvROff = CAdjOff -
+	OvROff = RedAdj + CAdjOff -
 		OvLuma * Loff - (OvRCb + OvRCr) * Coff;
-	OvGOff = CAdjOff - 
+	OvGOff = GreenAdj + CAdjOff - 
 		OvLuma * Loff - (OvGCb + OvGCr) * Coff;
-	OvBOff = CAdjOff - 
+	OvBOff = BlueAdj + CAdjOff - 
 		OvLuma * Loff - (OvBCb + OvBCr) * Coff;
    #if 0 /* default constants */
 	OvROff = -888.5;
@@ -413,7 +429,9 @@ static void RADEONSetTransform(  ScrnInfoPtr pScrn,
 	dwOvROff = ((INT32)(OvROff * 2.0)) & 0x1fff;
 	dwOvGOff = (INT32)(OvGOff * 2.0) & 0x1fff;
 	dwOvBOff = (INT32)(OvBOff * 2.0) & 0x1fff;
-	if(!info->IsR200)
+	/* Whatever docs say about R200 having 3.8 format instead of 3.11
+	   as in Radeon is a lie */
+	if(1 || !info->IsR200)
 	{
 		dwOvLuma =(((INT32)(OvLuma * 2048.0))&0x7fff)<<17;
 		dwOvRCb = (((INT32)(OvRCb * 2048.0))&0x7fff)<<1;
@@ -504,6 +522,9 @@ void RADEONResetVideo(ScrnInfoPtr pScrn)
     xvVolume       = MAKE_ATOM("XV_VOLUME");
     xvMute         = MAKE_ATOM("XV_MUTE");
     xvHue          = MAKE_ATOM("XV_HUE");
+    xvRedIntensity   = MAKE_ATOM("XV_RED_INTENSITY");
+    xvGreenIntensity = MAKE_ATOM("XV_GREEN_INTENSITY");
+    xvBlueIntensity  = MAKE_ATOM("XV_BLUE_INTENSITY");
 
     xvDecBrightness   = MAKE_ATOM("XV_DEC_BRIGHTNESS");
     xvDecSaturation   = MAKE_ATOM("XV_DEC_SATURATION");
@@ -1453,6 +1474,9 @@ RADEONAllocAdaptor(ScrnInfoPtr pScrn)
     pPriv->brightness = 0;
     pPriv->saturation = 0;
     pPriv->contrast = 0;
+    pPriv->red_intensity = 0;
+    pPriv->green_intensity = 0;
+    pPriv->blue_intensity = 0;
     pPriv->hue = 0;
 
     pPriv->dec_brightness = 0;
@@ -1748,6 +1772,7 @@ RADEONSetPortAttribute(
 
 #define RTFSaturation(a)   (1.0 + ((a)*1.0)/1000.0)
 #define RTFBrightness(a)   (((a)*1.0)/2000.0)
+#define RTFIntensity(a)   (((a)*1.0)/2000.0)
 #define RTFContrast(a)   (1.0 + ((a)*1.0)/1000.0)
 #define RTFHue(a)   (((a)*3.1416)/1000.0)
 
@@ -1760,6 +1785,9 @@ RADEONSetPortAttribute(
         RADEONSetPortAttribute(pScrn, xvSaturation, 0, data);
         RADEONSetPortAttribute(pScrn, xvContrast,   0, data);
         RADEONSetPortAttribute(pScrn, xvHue,   0, data);
+        RADEONSetPortAttribute(pScrn, xvRedIntensity,  0, data);
+        RADEONSetPortAttribute(pScrn, xvGreenIntensity,0, data);
+        RADEONSetPortAttribute(pScrn, xvBlueIntensity, 0, data);
 
         RADEONSetPortAttribute(pScrn, xvDecBrightness, 0, data);
         RADEONSetPortAttribute(pScrn, xvDecSaturation, 0, data);
@@ -1773,24 +1801,67 @@ RADEONSetPortAttribute(
   if(attribute == xvBrightness) {
 	pPriv->brightness = value;
 	RADEONSetTransform(pScrn, RTFBrightness(pPriv->brightness), RTFContrast(pPriv->contrast), 
-		RTFSaturation(pPriv->saturation), RTFHue(pPriv->hue), pPriv->transform_index);
+		RTFSaturation(pPriv->saturation), RTFHue(pPriv->hue),
+		RTFIntensity(pPriv->red_intensity),
+		RTFIntensity(pPriv->green_intensity),
+		RTFIntensity(pPriv->blue_intensity),
+		pPriv->transform_index);
   } else
   if((attribute == xvSaturation) || (attribute == xvColor)) {
   	if(value<-1000)value = -1000;
 	if(value>1000)value = 1000;
 	pPriv->saturation = value;
 	RADEONSetTransform(pScrn, RTFBrightness(pPriv->brightness), RTFContrast(pPriv->contrast), 
-		RTFSaturation(pPriv->saturation), RTFHue(pPriv->hue), pPriv->transform_index);
+		RTFSaturation(pPriv->saturation), RTFHue(pPriv->hue),
+		RTFIntensity(pPriv->red_intensity),
+		RTFIntensity(pPriv->green_intensity),
+		RTFIntensity(pPriv->blue_intensity),
+		pPriv->transform_index);
   } else
   if(attribute == xvContrast) {
 	pPriv->contrast = value;
 	RADEONSetTransform(pScrn, RTFBrightness(pPriv->brightness), RTFContrast(pPriv->contrast), 
-		RTFSaturation(pPriv->saturation), RTFHue(pPriv->hue), pPriv->transform_index);
+		RTFSaturation(pPriv->saturation), RTFHue(pPriv->hue),
+		RTFIntensity(pPriv->red_intensity),
+		RTFIntensity(pPriv->green_intensity),
+		RTFIntensity(pPriv->blue_intensity),
+		pPriv->transform_index);
   } else
   if(attribute == xvHue) {
 	pPriv->hue = value;
 	RADEONSetTransform(pScrn, RTFBrightness(pPriv->brightness), RTFContrast(pPriv->contrast), 
-		RTFSaturation(pPriv->saturation), RTFHue(pPriv->hue), pPriv->transform_index);
+		RTFSaturation(pPriv->saturation), RTFHue(pPriv->hue),
+		RTFIntensity(pPriv->red_intensity),
+		RTFIntensity(pPriv->green_intensity),
+		RTFIntensity(pPriv->blue_intensity),
+		pPriv->transform_index);
+  } else
+  if(attribute == xvRedIntensity) {
+	pPriv->red_intensity = value;
+	RADEONSetTransform(pScrn, RTFBrightness(pPriv->brightness), RTFContrast(pPriv->contrast), 
+		RTFSaturation(pPriv->saturation), RTFHue(pPriv->hue),
+		RTFIntensity(pPriv->red_intensity),
+		RTFIntensity(pPriv->green_intensity),
+		RTFIntensity(pPriv->blue_intensity),
+		pPriv->transform_index);
+  } else
+  if(attribute == xvGreenIntensity) {
+	pPriv->green_intensity = value;
+	RADEONSetTransform(pScrn, RTFBrightness(pPriv->brightness), RTFContrast(pPriv->contrast), 
+		RTFSaturation(pPriv->saturation), RTFHue(pPriv->hue),
+		RTFIntensity(pPriv->red_intensity),
+		RTFIntensity(pPriv->green_intensity),
+		RTFIntensity(pPriv->blue_intensity),
+		pPriv->transform_index);
+  } else
+  if(attribute == xvBlueIntensity) {
+	pPriv->blue_intensity = value;
+	RADEONSetTransform(pScrn, RTFBrightness(pPriv->brightness), RTFContrast(pPriv->contrast), 
+		RTFSaturation(pPriv->saturation), RTFHue(pPriv->hue),
+		RTFIntensity(pPriv->red_intensity),
+		RTFIntensity(pPriv->green_intensity),
+		RTFIntensity(pPriv->blue_intensity),
+		pPriv->transform_index);
   } else
   if(attribute == xvDecBrightness) {
 	pPriv->dec_brightness = value;
@@ -1880,6 +1951,15 @@ RADEONGetPortAttribute(
   } else
   if(attribute == xvHue) {
 	*value = pPriv->hue;
+  } else
+  if(attribute == xvRedIntensity) {
+	*value = pPriv->red_intensity;
+  } else
+  if(attribute == xvGreenIntensity) {
+	*value = pPriv->green_intensity;
+  } else
+  if(attribute == xvBlueIntensity) {
+	*value = pPriv->blue_intensity;
   } else
   if(attribute == xvDecBrightness) {
 	*value = pPriv->dec_brightness;
@@ -2549,7 +2629,7 @@ t->deemphasis=1;
 t->audio_gain=0;
 t->minimum_gain=0;
 t->gating=0; 
-t->vif_agc=1;
+t->vif_agc=0; /* set to 1 ? - depends on design */
 switch(pPriv->encoding){
 		/* PAL */
 	case 1:

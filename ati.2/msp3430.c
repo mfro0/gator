@@ -261,8 +261,8 @@ void MSP3430SetVolume (MSP3430Ptr m, CARD8 value)
     SetMSP3430Data(m, WR_DSP, 0x00, 0x07, value, 0);
     m->volume=value;
 
-#if __MSPDEBUG__ > 2
     MSP3430DumpStatus(m); 
+#if __MSPDEBUG__ > 2
     __MSPBEEP
     GetMSP3430Data(m, RD_DSP, 0x00, 0x00, &old_volume, &result);
     xf86DrvMsg(m->d.pI2CBus->scrnIndex, X_INFO, "MSP3430 volume 0x%02x\n",value);
