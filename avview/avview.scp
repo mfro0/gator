@@ -427,7 +427,7 @@ foreach variable {current_port current_encoding_name current_table_name
 	}
 global aspect_ratio
 puts $fileid "\nglobal aspect_ratio"
-puts $fileid "set aspect_ration \[list $aspect_ratio\]"
+puts $fileid "set aspect_ratio \[list $aspect_ratio\]"
 save_theme $fileid
 puts $fileid "update idletasks"
 
