@@ -328,7 +328,6 @@ do {
 		printk(KERN_ERR "radeon DMA_GUI queue full DMA_GUI_STATUS=0x%08x\n", status);
 		}
 	KM_DEBUG("status=0x%08lx\n", status);
-	printk("DGQ entries=%d\n", status & 0x1f);
 	} while (!(status & 0x1f));
 wmb();
 writel(kvirt_to_bus(kmtr->stream->dma_table[kmtr->buffer])&~1, kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR);
