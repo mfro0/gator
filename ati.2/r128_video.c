@@ -2289,6 +2289,7 @@ R128PutImage(
    if(pPriv->doubleBuffer)
 	offset += pPriv->currentBuffer * new_size * bpp;
 
+   
    switch(id) {
     case FOURCC_YV12:
     case FOURCC_I420:
@@ -2348,7 +2349,7 @@ R128PutImage(
 			srcPitch, dstPitch, nlines, npixels);
 	break;
     }
-
+    info->accel->Sync(pScrn);
 
     /* update cliplist */
     if(!RegionsEqual(&pPriv->clip, clipBoxes)) {
@@ -2360,6 +2361,7 @@ R128PutImage(
 					REGION_RECTS(clipBoxes));
     }
 
+    info->accel->Sync(pScrn);
 
     switch(id) {
      case FOURCC_YV12:

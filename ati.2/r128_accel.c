@@ -229,7 +229,7 @@ void R128CCEWaitForIdle(ScrnInfoPtr pScrn)
 {
     R128InfoPtr info = R128PTR(pScrn);
     int         ret;
-    int         i    = 0;
+    int         i;
 
     if(!info->CCEInUse){
     	R128WaitForIdle(pScrn);
@@ -239,6 +239,7 @@ void R128CCEWaitForIdle(ScrnInfoPtr pScrn)
     FLUSH_RING();
 
     for (;;) {
+        i=0;
 	do {
 	    ret = drmR128WaitForIdleCCE(info->drmFD);
 	    if (ret && ret != -EBUSY) {
@@ -247,7 +248,10 @@ void R128CCEWaitForIdle(ScrnInfoPtr pScrn)
 	    }
 	} while ((ret == -EBUSY) && (i++ < R128_TIMEOUT));
 
-	if (ret == 0) return;
+	if (ret == 0){
+		 R128WaitForIdle(pScrn);
+		 return;
+		 }
 
 	xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
 		   "Idle timed out, resetting engine...\n");
