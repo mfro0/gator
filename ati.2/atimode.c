@@ -325,10 +325,6 @@ ATIModePreInit
                      */
                     pATIHW->lcd_gen_ctrl &= ~LCD_ON; 
                     pATIHW->lcd_gen_ctrl |= CRT_ON ;
-		    /* XXXX */
-		    /* pATIHW->lcd_gen_ctrl |= CRTC_RW_SELECT; 
-		    pATIHW->lcd_index &= ~LCD_CRTC2_DISPLAY_DIS; 
-		    pATIHW->lcd_index |= LCD_DISPLAY_DIS | LCD_SRC_SEL; */
                 }
                 else
                 {
