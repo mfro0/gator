@@ -15,6 +15,36 @@
 #include "km_memory.h"
 #include "mach64_reg.h"
 
+void mach64_wait_for_fifo(KM_STRUCT *kms, int entries)
+{
+long count;
+u32 a;
+count=1000;
+while(((a=readl(kms->reg_aperture+MACH64_FIFO_STAT))&0xFFFF)>((u32)(0x8000>>entries))){
+	usleep(1);
+	count--;
+	if(count<0){
+		printk(KERN_ERR "km: mach64 FIFO locked up\n");
+		return;
+		}
+	}
+}
+
+void mach64_wait_for_idle(KM_STRUCT *kms)
+{
+u32 a;
+long count;
+mach64_wait_for_fifo(kms,16);
+count=1000;
+while(((a=readl(kms->reg_aperture+MACH64_GUI_STAT)) & 0x1)!=0){
+	usleep(1);
+	count--;
+	if(count<0){
+		printk(KERN_ERR "km: mach64 engine lock up\n");
+		return;
+		}
+	}
+}
 
 int mach64_is_capture_active(KM_STRUCT *kms)
 {
@@ -74,6 +104,7 @@ if(kms->frame.buffer==NULL)return;
 kms->frame.timestamp=jiffies;
 offset=readl(kms->reg_aperture+MACH64_CAP0_BUF0_OFFSET);
 mach64_setup_single_frame_buffer(kms, &(kms->frame), offset);
+mach64_wait_for_idle(kms);
 #if 0 
 /* no analog for mach64.. yet ? */
 /* wait for at least one available queue */
@@ -102,6 +133,7 @@ if(kms->frame_even.buffer==NULL)return;
 kms->frame_even.timestamp=jiffies;
 offset=readl(kms->reg_aperture+MACH64_CAP0_BUF0_EVEN_OFFSET);
 mach64_setup_single_frame_buffer(kms, &(kms->frame_even), offset);
+mach64_wait_for_idle(kms);
 #if 0 
 /* no analog for mach64.. yet ? */
 /* wait for at least one available queue */

@@ -1,6 +1,9 @@
 #ifndef __MACH64_REG_H__
 #define __MACH64_REG_H__
 
+#define MACH64_FIFO_STAT	(0xC4*4+1024)
+#define MACH64_GUI_STAT		(0xCE*4+1024)
+
 #define MACH64_CRTC_INT_CNTL (0x06*4+1024)
 
 #define MACH64_CAPBUF0_INT_EN  (1<<16)
