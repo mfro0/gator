@@ -390,7 +390,7 @@ while(1){
 	#if 0
 	mask=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL) & ((1<<30)|7);
 	#endif
-	KM_DEBUG_LEVEL(3)("GEN_INT_STATUS=0x%08x mask=0x%08x\n", status, mask);
+	KM_DEBUG_LEVEL(3)("GEN_INT_STATUS=0x%08x\n", status);
 	status &=INT_BIT_GUIDMA|
 		INT_BIT_VLINE|
 		INT_BIT_VSYNC|

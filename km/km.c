@@ -80,7 +80,7 @@ stream->dvb_info.size=num_buffers*sizeof(KM_STREAM_BUFFER_INFO);
 stream->dvb_info.n=1;
 stream->dvb_info.free=&(stream->info_free);
 stream->info_free=num_buffers*sizeof(KM_STREAM_BUFFER_INFO);
-stream->dvb_info.ptr=&(stream->dvb.kmsbi);
+stream->dvb_info.ptr=(void **) &(stream->dvb.kmsbi);
 stream->dvb_info.kmsbi=NULL; /* no meta-metainfo */
 stream->info_du=km_allocate_data_virtual_block(&(stream->dvb_info), S_IFREG | S_IRUGO);
 if(stream->info_du<0)return -1;
