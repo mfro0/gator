@@ -127,7 +127,7 @@ printk("km: using irq %ld\n", kms->irq);
 init_waitqueue_head(&(kms->frameq));
 if (pci_enable_device(dev))
 	return -EIO;	
-printk("Register aperture is 0x%lu08x 0x%lu08x\n", pci_resource_start(dev, 2), pci_resource_len(dev, 2));
+printk("Register aperture is 0x%08lx 0x%08lx\n", pci_resource_start(dev, 2), pci_resource_len(dev, 2));
 if (!request_mem_region(pci_resource_start(dev,2),
 			pci_resource_len(dev,2),
 			"km")) {
@@ -135,7 +135,7 @@ if (!request_mem_region(pci_resource_start(dev,2),
 	}
 
 kms->reg_aperture=ioremap(pci_resource_start(dev, 2), pci_resource_len(dev, 2));
-printk("kms variables: reg_aperture=0x%p08x\n",
+printk("kms variables: reg_aperture=0x%p\n",
 	kms->reg_aperture);
 
 switch(pci_id->driver_data){

@@ -51,6 +51,10 @@
 #define RADEON_DMA_GUI_COMMAND__INTDIS                            0x40000000
 #define RADEON_DMA_GUI_COMMAND__EOL                               0x80000000
 
+#define RADEON_MC_FB_LOCATION			0x0148
+#define RADEON_DISPLAY_BASE_ADDR		0x023C
+#define RADEON_OVERLAY_BASE_ADDR		0x043C
+#define RADEON_DEFAULT_OFFSET			0x16E0
 
 
 #endif
