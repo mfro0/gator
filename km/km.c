@@ -65,10 +65,10 @@ if(kms->frame_even.dma_active){
 return 0;
 }
 
-int install_irq_handler(KM_STRUCT *kms, void *handler)
+int install_irq_handler(KM_STRUCT *kms, void *handler, char *tag)
 {
 int result;
-result=request_irq(kms->irq, handler, SA_SHIRQ, "km", (void *)kms);
+result=request_irq(kms->irq, handler, SA_SHIRQ, tag, (void *)kms);
 if(result==-EINVAL){
 	printk(KERN_ERR "km: bad irq number or handler\n");
 	goto fail;
@@ -114,9 +114,22 @@ static int __devinit km_probe(struct pci_dev *dev, const struct pci_device_id *p
 KM_STRUCT *kms;
 int result;
 void *irq_handler=NULL;
+char *tag;
 /* too many */
 if(num_devices>=MAX_DEVICES)return -1;
 
+switch(pci_id->driver_data){
+	case HARDWARE_RADEON:
+		tag="km_ati (Radeon)";
+		break;
+	case HARDWARE_MACH64:
+		tag="km_ati (Mach64)";
+		break;
+	case HARDWARE_RAGE128:
+		tag="km_ati (Rage128)";
+		break;
+	}
+		
 kms=&(km_devices[num_devices]);
 kms->dev=dev;
 kms->irq=dev->irq;
@@ -133,7 +146,7 @@ if (pci_enable_device(dev))
 printk("Register aperture is 0x%08lx 0x%08lx\n", pci_resource_start(dev, 2), pci_resource_len(dev, 2));
 if (!request_mem_region(pci_resource_start(dev,2),
 			pci_resource_len(dev,2),
-			"km")) {
+			tag)) {
 	return -EBUSY;
 	}
 
@@ -172,7 +185,7 @@ switch(pci_id->driver_data){
 	default:
 		printk("Unknown hardware type %ld\n", pci_id->driver_data);
 		}
-if((irq_handler==NULL) || (install_irq_handler(kms, irq_handler)<0)){
+if((irq_handler==NULL) || (install_irq_handler(kms, irq_handler, tag)<0)){
 	iounmap(kms->reg_aperture);
 	release_mem_region(pci_resource_start(dev,2),
         	pci_resource_len(dev,2));
