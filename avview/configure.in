@@ -71,17 +71,17 @@ AC_CHECK_LIB([tk8.3], [Tk_Init],,,[$X_LIBS])
 A_CFLAGS="$CFLAGS"
 
 AC_CHECK_HEADERS(tk.h tcl.h, TCL_HEADERS=in_path TK_HEADERS=in_path,
-	CFLAGS="$A_FLAGS -I/usr/local/include"
+	[CFLAGS="$A_FLAGS -I/usr/local/include"
 	AC_CHECK_HEADERS(tk.h tcl.h, TCL_HEADERS=/usr/local/include TK_HEADERS=/usr/local/include,
-		CFLAGS="$A_CFLAGS -I/usr/include/tcl8.3 -I/usr/include/tk8.3"
+		[CFLAGS="$A_CFLAGS -I/usr/include/tcl8.3 -I/usr/include/tk8.3"
 		AC_CHECK_HEADERS(tk.h tcl.h, TCL_HEADERS=/usr/include/tcl8.3 TK_HEADERS=/usr/include/tk8.3,
-			echo ""
+			[echo ""
 			echo " Could not find Tcl/Tk headers. Please install Tcl/Tk 8.3"
 			echo ""
 			exit
-			,)
-		,)
-	,)
+			],)
+		],)
+	],)
 
 AC_SUBST(X_CFLAGS)
 AC_SUBST(X_LIBS)
