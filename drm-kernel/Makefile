@@ -8,7 +8,7 @@
 #
 #
 #
-# $XFree86: xc/config/cf/Imake.tmpl,v 3.115 2001/11/16 00:41:47 dawes Exp $
+# $XFree86: xc/config/cf/Imake.tmpl,v 3.138 2002/12/10 03:20:41 dawes Exp $
 # ----------------------------------------------------------------------
 
 all::
@@ -17,9 +17,11 @@ all::
 
 # $Xorg: Imake.cf,v 1.4 2000/08/17 19:41:45 cpqbld Exp $
 
-# $XFree86: xc/config/cf/Imake.cf,v 3.74 2001/11/16 16:47:50 dawes Exp $
+# $XFree86: xc/config/cf/Imake.cf,v 3.79 2002/10/29 23:24:18 herrb Exp $
 
 # Keep cpp from replacing path elements containing i486/i586/i686
+
+# Keep this order! s390x has also __s390__ defined.
 
 #  for compatibility with 3.3.x
 
@@ -29,25 +31,25 @@ all::
 
 # site:  $TOG: site.sample /main/r64_final/1 1998/02/05 16:28:49 kaleb $
 
-# site:  $XFree86: xc/config/cf/site.def,v 3.24 2000/06/25 20:17:29 dawes Exp $
+# site:  $XFree86: xc/config/cf/site.def,v 3.25 2002/02/27 00:51:12 dawes Exp $
 
-# $XFree86: xc/config/cf/xf86site.def,v 3.178 2001/11/21 21:31:20 dawes Exp $
+# $XFree86: xc/config/cf/xf86site.def,v 3.182 2002/10/11 01:40:22 dawes Exp $
 
 # ----------------------------------------------------------------------
 # platform-specific configuration parameters - edit linux.cf to change
 
 # platform:  $Xorg: linux.cf,v 1.3 2000/08/17 19:41:47 cpqbld Exp $
 
-# platform:  $XFree86: xc/config/cf/linux.cf,v 3.174 2001/12/17 16:03:57 keithp Exp $
+# platform:  $XFree86: xc/config/cf/linux.cf,v 3.196 2002/12/11 02:41:46 dawes Exp $
 
-# operating system:  Linux 2.4.16 i686 [ELF] (2.4.16)
+# operating system:  Linux 2.4.20 i686 [ELF] (2.4.20)
 # libc:	(6.2.3)
 # binutils:	(211)
 
 # $Xorg: lnxLib.rules,v 1.3 2000/08/17 19:41:47 cpqbld Exp $
-# $XFree86: xc/config/cf/lnxLib.rules,v 3.41 2001/06/05 23:03:19 dawes Exp $
+# $XFree86: xc/config/cf/lnxLib.rules,v 3.44 2002/11/18 22:47:25 dawes Exp $
 
-# $XFree86: xc/config/cf/xfree86.cf,v 3.388 2002/01/03 22:51:54 alanh Exp $
+# $XFree86: xc/config/cf/xfree86.cf,v 3.431 2002/12/10 15:12:15 alanh Exp $
 
 # $Xorg: xfree86.cf,v 1.4 2000/08/17 19:41:49 cpqbld Exp $
 
@@ -79,7 +81,7 @@ XFREE86JAPANESEDOCDIR = $(DOCDIR)/Japanese
 
 # site:  $TOG: site.sample /main/r64_final/1 1998/02/05 16:28:49 kaleb $
 
-# site:  $XFree86: xc/config/cf/site.def,v 3.24 2000/06/25 20:17:29 dawes Exp $
+# site:  $XFree86: xc/config/cf/site.def,v 3.25 2002/02/27 00:51:12 dawes Exp $
 
 # ---------------------------------------------------------------------
 # Imake rules for building libraries, programs, scripts, and data files
@@ -88,7 +90,7 @@ XFREE86JAPANESEDOCDIR = $(DOCDIR)/Japanese
 #
 #
 #
-# rules:  $XFree86: xc/config/cf/Imake.rules,v 3.102 2001/12/17 20:00:37 dawes Exp $
+# rules:  $XFree86: xc/config/cf/Imake.rules,v 3.113 2002/12/09 23:00:42 dawes Exp $
 
  _NULLCMD_ = @ echo -n
 
@@ -118,6 +120,7 @@ TCLIBDIR =
           REVPATH = $(CONFIGSRC)/util/revpath
     EXPORTLISTGEN =
              RMAN = $(TOP)/config/util/rman
+     RMANBASENAME = rman
       RMANOPTIONS = -f HTML
         CONFIGSRC = $(TOP)/config
          IMAKESRC = $(CONFIGSRC)/imake
@@ -145,13 +148,18 @@ TCLIBDIR =
          VARDBDIR = $(VARDIR)/lib
 
                AR = ar clq
+
+# Nice try but useless: make will inherit BOOTSTRAPCFLAGS
+# from  top Makefile
   BOOTSTRAPCFLAGS =
+
                CC = gcc
-               AS = as
+               AS = gcc -c -x assembler
 
 .SUFFIXES: .cc
 
               CXX = c++
+
           CXXFILT = c++filt
            CXXLIB =
     CXXDEBUGFLAGS = -O2 -fno-strength-reduce
@@ -166,19 +174,25 @@ CXXEXTRA_INCLUDES =
 
          COMPRESS = compress
           GZIPCMD = gzip
-              CPP = /lib/cpp $(STD_CPP_DEFINES)
-           RAWCPP = /lib/cpp -undef $(STD_CPP_OPTIONS)
+
+              CPP = /usr/bin/cpp $(STD_CPP_DEFINES)
+           RAWCPP = /usr/bin/cpp -undef $(STD_CPP_OPTIONS)
     PREPROCESSCMD = gcc -E $(STD_CPP_DEFINES)
+
           INSTALL = install
      INSTALLFLAGS = -c
-               LD = ld
+
+               LD = gcc -nostdlib
+
               LEX = flex -l
                M4 = m4
           M4FLAGS =
            LEXLIB = -lfl
              YACC = bison -y
            CCYACC = bison -y
+
              LINT = lint
+
       LINTLIBFLAG = -C
          LINTOPTS = -axz
                LN = ln -s
@@ -187,6 +201,7 @@ CXXEXTRA_INCLUDES =
                CP = cp
 
            RANLIB = ranlib
+
   RANLIBINSTFLAGS =
 
                RM = rm -f
@@ -199,7 +214,7 @@ CXXEXTRA_INCLUDES =
   DRIVERMANSUFFIX = 4
      MANSRCSUFFIX = man
      MANNEWSUFFIX = _man
-          MANDEFS = -D__apploaddir__=$(XAPPLOADDIR) -D__filemansuffix__=$(FILEMANSUFFIX) -D__miscmansuffix__=$(MISCMANSUFFIX) -D__drivermansuffix__=$(DRIVERMANSUFFIX) -D__projectroot__=$(PROJECTROOT) $(XORGMANDEFS) $(VENDORMANDEFS)
+          MANDEFS = -D__apploaddir__=$(XAPPLOADDIR) -D__filemansuffix__=$(FILEMANSUFFIX) -D__libmansuffix__=$(LIBMANSUFFIX) -D__miscmansuffix__=$(MISCMANSUFFIX) -D__drivermansuffix__=$(DRIVERMANSUFFIX) -D__projectroot__=$(PROJECTROOT) $(XORGMANDEFS) $(VENDORMANDEFS)
 
    COMPRESSMANCMD = gzip -n
 
@@ -212,15 +227,20 @@ CXXEXTRA_INCLUDES =
              NEQN = neqn
               COL = col
          COLFLAGS = -b
+
             MODCC = gcc
-           MODCPP = /lib/cpp
+
+           MODCPP = /usr/bin/cpp
         MODCFLAGS = $(CFLAGS)
-            MODAS = as
+            MODAS = gcc -c -x assembler
        MODASFLAGS =
-            MODLD = ld
+
+            MODLD = gcc -nostdlib
+
        MODLDFLAGS =
 MODLDCOMBINEFLAGS = -r
             MODAR = ar clq
+
         MODRANLIB = ranlib
 
      STD_INCLUDES =
@@ -237,7 +257,7 @@ MODLDCOMBINEFLAGS = -r
     SHAREDCODEDEF =
          SHLIBDEF =
 
-     SHLIBLDFLAGS = -shared
+     SHLIBLDFLAGS = -shared $(SHLIBGLOBALSFLAGS)
 
          PICFLAGS = -fPIC
 
@@ -258,13 +278,13 @@ MODLDCOMBINEFLAGS = -r
       PROJECTROOT = /usr/X11R6
 
       CDEBUGFLAGS = -O2 -fno-strength-reduce
-        CCOPTIONS = -ansi -pedantic -Wall -Wpointer-arith -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls -Wnested-externs
+        CCOPTIONS = -ansi -pedantic -Wall -Wpointer-arith -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls -Wnested-externs -Wundef
 
       ALLINCLUDES = $(INCLUDES) $(EXTRA_INCLUDES) $(TOP_INCLUDES) $(INSTALLED_INCLUDES) $(STD_INCLUDES)
        ALLDEFINES = $(ALLINCLUDES) $(STD_DEFINES) $(PROTO_DEFINES) $(THREADS_DEFINES) $(MODULE_DEFINES) $(DEFINES) $(EXTRA_DEFINES)
            CFLAGS = $(CDEBUGFLAGS) $(CCOPTIONS) $(THREADS_CFLAGS) $(MODULE_CFLAGS) $(ALLDEFINES)
         LINTFLAGS = $(LINTOPTS) -DLINT $(ALLDEFINES) $(DEPEND_DEFINES)
-         LDPRELIB = -L$(BUILDLIBDIR)
+         LDPRELIB = -L$(BUILDLIBDIR) $(INSTALLED_LIBS)
         LDPOSTLIB =
         LDOPTIONS = $(CDEBUGFLAGS) $(CCOPTIONS)  $(EXTRA_LDOPTIONS) $(THREADS_LDFLAGS) $(LOCAL_LDFLAGS) $(LDPRELIBS)
      CXXLDOPTIONS = $(CXXDEBUGFLAGS) $(CXXOPTIONS) $(EXTRA_LDOPTIONS) $(THREADS_CXXLDFLAGS) $(LOCAL_LDFLAGS) $(LDPRELIBS)
@@ -294,9 +314,10 @@ MODLDCOMBINEFLAGS = -r
            RM_CMD = $(RM)
 
     IMAKE_DEFINES =
+   IMAKE_WARNINGS = -Wundef
 
          IRULESRC = $(CONFIGSRC)/cf
-        IMAKE_CMD = $(IMAKE) -I$(IRULESRC) $(IMAKE_DEFINES)
+        IMAKE_CMD = $(IMAKE) -I$(IRULESRC) $(IMAKE_DEFINES) $(IMAKE_WARNINGS)
 
      ICONFIGFILES = $(IRULESRC)/Imake.tmpl $(IRULESRC)/X11.tmpl 			$(IRULESRC)/site.def $(IRULESRC)/$(MACROFILE) 			$(IRULESRC)/xfree86.cf $(IRULESRC)/xf86.rules $(IRULESRC)/xf86site.def $(IRULESRC)/host.def $(EXTRA_ICONFIGFILES)
 
@@ -311,13 +332,13 @@ MODLDCOMBINEFLAGS = -r
 #
 #
 #
-# $XFree86: xc/config/cf/X11.tmpl,v 1.139 2002/01/07 22:15:28 tsi Exp $
+# $XFree86: xc/config/cf/X11.tmpl,v 1.189 2002/12/09 17:18:59 dawes Exp $
 
 XORGRELSTRING = Release 6.6
 XORGMANNAME = X Version 11
 
 VENDORMANNAME = XFree86
-VENDORMANVERSION = Version `echo 4 1 99 5 | sed 's/ /./g'`
+VENDORMANVERSION = `echo 4 2 99 2 | sed -e 's/ /./g' -e 's/^/Version\\\ /'`
 
 STICKY_DEFINES = -DHAS_STICKY_DIR_BIT
 
@@ -343,7 +364,7 @@ FCHOWN_DEFINES = -DHAS_FCHOWN
      XBUILDBINDIR = $(XBUILDINCROOT)/bin
            INCDIR = $(INCROOT)
            ADMDIR = /usr/adm
-           LIBDIR = $(USRLIBDIR)/X11
+           LIBDIR = /usr/X11R6/lib/X11
        LIBEXECDIR = /usr/X11R6/libexec
         MODULEDIR = $(USRLIBDIR)/modules
    TOP_X_INCLUDES = -I$(TOP)/exports/include
@@ -374,9 +395,11 @@ FCHOWN_DEFINES = -DHAS_FCHOWN
      INSTAPPFLAGS = $(INSTDATFLAGS)
 
               RGB = $(CLIENTENVSETUP) $(XBUILDBINDIR)/rgb
+
             FONTC = $(CLIENTENVSETUP) $(PRELOADFONTSETUP) $(XBUILDBINDIR)/bdftopcf
         MKFONTDIR = $(CLIENTENVSETUP) $(PRELOADFONTSETUP) $(XBUILDBINDIR)/mkfontdir
-         XFTCACHE = $(CLIENTENVSETUP) $(PRELOADSETUP) XFT_CONFIG=$(XFTLIBSRC)/XftConfig $(XBUILDBINDIR)/xftcache
+          FCCACHE = set -x; $(CLIENTENVSETUP) $(PRELOADXFTSETUP) FONTCONFIG_PATH=$(FONTCONFIGLIBSRC) $(XBUILDBINDIR)/fc-cache
+       XCURSORGEN = $(CLIENTENVSETUP) $(PRELOADSETUP) $(XBUILDBINDIR)/xcursorgen
 
       MKHTMLINDEX = $(PERL) $(PERLOPTS) $(CONFIGSRC)/util/mkhtmlindex.pl
 
@@ -485,7 +508,8 @@ LINTXXF86RUSH = $(XXF86RUSHLIBSRC)/llib-Xxf86rush.ln
 
     XVLIBSRC = $(LIBSRC)/Xv
 
-DEPXVLIB = $(TOP)/exports/lib/libXv.a
+SOXVREV = 1.0
+DEPXVLIB =
 XVLIB =  -lXv
 
 LINTXV = $(XVLIBSRC)/llib-Xv.ln
@@ -503,6 +527,13 @@ DEPXINERAMALIB = $(TOP)/exports/lib/libXinerama.a
 XINERAMALIB =  -lXinerama
 
 LINTXINERAMA = $(XINERAMALIBSRC)/llib-Xinerama.ln
+
+    XRESLIBSRC = $(LIBSRC)/XRes
+
+DEPXRESLIB = $(TOP)/exports/lib/libXRes.a
+XRESLIB =  -lXRes
+
+LINTXRES = $(XRESLIBSRC)/llib-XRes.ln
 
     DPSLIBSRC = $(LIBSRC)/dps
 
@@ -553,7 +584,7 @@ LINTGLW = $(GLWIDGETSRC)/llib-GLw.ln
 
     XRENDERLIBSRC = $(LIBSRC)/Xrender
 
-SOXRENDERREV = 1.1
+SOXRENDERREV = 1.2
 DEPXRENDERLIB =
 XRENDERLIB =  -lXrender
 
@@ -561,11 +592,19 @@ LINTXRENDER = $(XRENDERLIBSRC)/llib-Xrender.ln
 
     XRANDRRLIBSRC = $(LIBSRC)/Xrandr
 
-SOXRANDRREV = 1.0
+SOXRANDRREV = 2.0
 DEPXRANDRLIB =
 XRANDRLIB =  -lXrandr
 
 LINTXRANDR = $(XRANDRLIBSRC)/llib-Xrandr.ln
+
+   XCURSORRLIBSRC = $(LIBSRC)/Xcursor
+
+SOXCURSORREV = 1.0
+DEPXCURSORLIB =
+XCURSORLIB =  -lXcursor
+
+LINTXCURSOR = $(XCURSORLIBSRC)/llib-Xcursor.ln
 
     XFONTCACHELIBSRC = $(LIBSRC)/Xfontcache
 
@@ -751,7 +790,7 @@ FONTSTUBLIB =  -lfntstubs
 
 LINTFONTSTUB = $(FONTSUBLIBSRC)/llib-fntstubs.ln
          DEPFONTLIB = $(DEPXFONTLIB) $(DEPFONTSTUBLIB)
-            FONTLIB = $(XFONTLIB) $(FONTSTUBLIB)
+            FONTLIB = $(XFONTLIB) $(FONTSTUBLIB) $(FONTFT2LIB)
 
          FONTENCLIBSRC = $(LIBSRC)/fontenc
 
@@ -770,22 +809,76 @@ LINTXPM = $(XPMLIBSRC)/llib-Xpm.ln
 
           FREETYPE2LIBSRC = $(LIBSRC)/freetype2
 
-SOFREETYPE2REV = 7.0
+SOFREETYPE2REV = 6.3
 DEPFREETYPE2LIB =
 FREETYPE2LIB =  -lfreetype
 
 LINTFREETYPE2 = $(FREETYPE2LIBSRC)/llib-freetype.ln
 
-FREETYPE2INCLUDES=$(TOP_X_INCLUDES)/freetype2
-FREETYPE2DEFINES=-DFREETYPE2
+FREETYPE2INCDIR=$(BUILDINCDIR)/freetype2
+
+FREETYPE2INCLUDES = -I$(FREETYPE2INCDIR)
+FREETYPE2DEFINES = -DFREETYPE2
+
+          LIBXML2LIBSRC = $(LIBSRC)/libxml2
+
+SOLIBXML2REV = 2.4
+DEPLIBXML2LIB =
+LIBXML2LIB =  -lxml2
+
+LINTLIBXML2 = $(LIBXML2LIBSRC)/llib-xml2.ln
+
+          EXPATLIBSRC = $(LIBSRC)/expat
+
+SOEXPATREV = 1.0
+DEPEXPATLIB =
+EXPATLIB =  -lexpat
+
+LINTEXPAT = $(EXPATLIBSRC)/llib-expat.ln
+
+EXPATINCLUDES=$(TOP_X_INCLUDES)
+EXPATDEFINES=-DEXPAT
+
+          XFT1LIBSRC = $(LIBSRC)/Xft1
+
+SOXFT1REV = 1.1
+DEPXFT1LIB =
+XFT1LIB =  -lXft
+
+LINTXFT1 = $(XFT1LIBSRC)/llib-Xft.ln
 
           XFTLIBSRC = $(LIBSRC)/Xft
 
-SOXFTREV = 1.1
+SOXFTREV = 2.0
 DEPXFTLIB =
 XFTLIB =  -lXft
 
 LINTXFT = $(XFTLIBSRC)/llib-Xft.ln
+
+XFTINCLUDES=$(FONTCONFIGINCLUDES) $(FREETYPE2INCLUDES)
+
+          FONTCONFIGLIBSRC = $(LIBSRC)/fontconfig
+
+SOFONTCONFIGREV = 1.0
+DEPFONTCONFIGLIB =
+FONTCONFIGLIB =  -lfontconfig
+
+LINTFONTCONFIG = $(FONTCONFIGLIBSRC)/llib-fontconfig.ln
+
+FONTCONFIGINCDIR=$(BUILDINCDIR)
+
+FONTCONFIGINCLUDES = -I$(FONTCONFIGINCDIR)
+FONTCONFIGDEFINES = -DFONTCONFIG
+
+LIBPNGINCDIR = /usr/include
+
+LIBPNGINC=
+
+LIBPNGDIR = /usr
+LIBPNGLIBDIR = /usr/lib
+LIBPNGINCDIR = /usr/include
+
+LIBPNGLIB = -lpng
 
     XKBFILELIBSRC = $(LIBSRC)/xkbfile
 
@@ -832,7 +925,7 @@ XMULIB = $(XMULIBONLY) $(XTOOLLIB) $(XLIB)
         CONFIGDIR = $(LIBDIR)/config
 
     USRLIBDIRPATH = $(USRLIBDIR)
-        LDPRELIBS = -L$(BUILDLIBDIR)
+        LDPRELIBS = -L$(BUILDLIBDIR)  $(INSTALLED_LIBS)
        LDPOSTLIBS =
      TOP_INCLUDES = -I$(TOP) $(TOP_X_INCLUDES)
   PROJECT_DEFINES =
@@ -842,25 +935,26 @@ CXXPROJECT_DEFINES =
 # ----------------------------------------------------------------------
 # start of Imakefile
 
-# $XFree86: xc/programs/Xserver/hw/xfree86/os-support/linux/drm/kernel/Imakefile,v 1.4 2001/04/18 14:52:43 dawes Exp $
+# $XFree86: xc/programs/Xserver/hw/xfree86/os-support/linux/drm/kernel/Imakefile,v 1.6 2002/10/30 12:52:33 alanh Exp $
 
-# $XFree86: xc/config/cf/Server.tmpl,v 3.18 2001/04/20 15:51:15 tsi Exp $
+# $XFree86: xc/config/cf/Server.tmpl,v 3.20 2002/11/20 04:32:55 dawes Exp $
 
 # $Xorg: Server.tmpl,v 1.3 2000/08/17 19:41:46 cpqbld Exp $
 
          CC = gcc
-  CCOPTIONS = -ansi -pedantic -Wall -Wpointer-arith -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls -Wnested-externs
 
-STD_DEFINES = -Dlinux -D__i386__ -D_POSIX_C_SOURCE=199309L -D_POSIX_SOURCE -D_XOPEN_SOURCE -D_BSD_SOURCE -D_SVID_SOURCE  -D_GNU_SOURCE  -DSHAPE -DXINPUT -DXKB -DLBX -DXAPPGROUP -DXCSECURITY -DTOGCUP  -DXF86BIGFONT -DDPMSExtension  -DPIXPRIV -DPANORAMIX  -DRENDER  -DGCCUSESGAS -DAVOID_GLYPHBLT -DPIXPRIV -DSINGLEDEPTH -DXFreeXDGA -DXvExtension -DXFree86LOADER  -DXFree86Server -DXF86VIDMODE -DXvMCExtension  -DSMART_SCHEDULE -DBUILDDEBUG -DX_BYTE_ORDER=X_LITTLE_ENDIAN -DNDEBUG $(SERVER_THREAD_DEFINES)
+  CCOPTIONS = -ansi -pedantic -Wall -Wpointer-arith -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls -Wnested-externs -Wundef
+
+STD_DEFINES = -Dlinux -D__i386__ -D_POSIX_C_SOURCE=199309L -D_POSIX_SOURCE -D_XOPEN_SOURCE -D_BSD_SOURCE -D_SVID_SOURCE  -D_GNU_SOURCE  -DSHAPE -DXINPUT -DXKB -DLBX -DXAPPGROUP -DXCSECURITY -DTOGCUP  -DXF86BIGFONT -DDPMSExtension  -DPIXPRIV -DPANORAMIX  -DRENDER -DRANDR -DGCCUSESGAS -DAVOID_GLYPHBLT -DPIXPRIV -DSINGLEDEPTH -DXFreeXDGA -DXvExtension -DXFree86LOADER  -DXFree86Server -DXF86VIDMODE -DXvMCExtension  -DSMART_SCHEDULE -DBUILDDEBUG -DXResExtension -DX_BYTE_ORDER=X_LITTLE_ENDIAN -DNDEBUG $(SERVER_THREAD_DEFINES)
 CDEBUGFLAGS = -O2 -fno-strength-reduce
-EXT_DEFINES =  -DMITMISC -DXTEST -DXTRAP -DXSYNC -DXCMISC -DXRECORD  -DMITSHM  -DBIGREQS -DXF86VIDMODE -DXF86MISC -DDBE -DDPMSExtension -DEVI -DSCREENSAVER -DXV -DXVMC -DGLXEXT -DXF86DRI -DGLX_DIRECT_RENDERING -DGLX_USE_DLOPEN -DGLX_USE_MESA  -DFONTCACHE
+EXT_DEFINES =  -DMITMISC -DXTEST -DXTRAP -DXSYNC -DXCMISC -DXRECORD  -DMITSHM  -DBIGREQS -DXF86VIDMODE -DXF86MISC -DDBE -DDPMSExtension -DEVI -DSCREENSAVER -DXV -DXVMC -DGLXEXT -DXF86DRI -DGLX_DIRECT_RENDERING -DGLX_USE_DLOPEN -DGLX_USE_MESA  -DFONTCACHE  -DRES
 OS_DEFINES  = -DDDXOSINIT -DSERVER_LOCK -DDDXOSFATALERROR -DDDXOSVERRORF -DDDXTIME -DPART_NET
 
 GLX_DEFINES = -DGLXEXT -DXF86DRI -DGLX_DIRECT_RENDERING -DGLX_USE_DLOPEN -DGLX_USE_MESA
 
 # $Xorg: xf86.tmpl,v 1.3 2000/08/17 19:41:48 cpqbld Exp $
 
-# $XFree86: xc/config/cf/xf86.tmpl,v 3.30 2001/11/16 00:41:47 dawes Exp $
+# $XFree86: xc/config/cf/xf86.tmpl,v 3.32 2002/11/14 21:01:14 tsi Exp $
 
 BUILDERADDR = "xfree86@xfree86.org"
 
@@ -878,6 +972,226 @@ all::
 
 cleandir::
 	$(MAKE) -f Makefile.linux cleandir
+
+drm_sarea.h:  $(XF86OSSRC)/shared/drm/kernel/drm_sarea.h
+	$(RM) $@
+	$(LN) $? $@
+
+includes:: drm_sarea.h
+
+depend:: drm_sarea.h
+
+cleandir::
+	$(RM) drm_sarea.h
+
+mga.h:  $(XF86OSSRC)/shared/drm/kernel/mga.h
+	$(RM) $@
+	$(LN) $? $@
+
+includes:: mga.h
+
+depend:: mga.h
+
+cleandir::
+	$(RM) mga.h
+
+mga_dma.c:  $(XF86OSSRC)/shared/drm/kernel/mga_dma.c
+	$(RM) $@
+	$(LN) $? $@
+
+includes:: mga_dma.c
+
+depend:: mga_dma.c
+
+cleandir::
+	$(RM) mga_dma.c
+
+mga_drm.h:  $(XF86OSSRC)/shared/drm/kernel/mga_drm.h
+	$(RM) $@
+	$(LN) $? $@
+
+includes:: mga_drm.h
+
+depend:: mga_drm.h
+
+cleandir::
+	$(RM) mga_drm.h
+
+mga_drv.h:  $(XF86OSSRC)/shared/drm/kernel/mga_drv.h
+	$(RM) $@
+	$(LN) $? $@
+
+includes:: mga_drv.h
+
+depend:: mga_drv.h
+
+cleandir::
+	$(RM) mga_drv.h
+
+mga_state.c:  $(XF86OSSRC)/shared/drm/kernel/mga_state.c
+	$(RM) $@
+	$(LN) $? $@
+
+includes:: mga_state.c
+
+depend:: mga_state.c
+
+cleandir::
+	$(RM) mga_state.c
+
+mga_ucode.h:  $(XF86OSSRC)/shared/drm/kernel/mga_ucode.h
+	$(RM) $@
+	$(LN) $? $@
+
+includes:: mga_ucode.h
+
+depend:: mga_ucode.h
+
+cleandir::
+	$(RM) mga_ucode.h
+
+mga_warp.c:  $(XF86OSSRC)/shared/drm/kernel/mga_warp.c
+	$(RM) $@
+	$(LN) $? $@
+
+includes:: mga_warp.c
+
+depend:: mga_warp.c
+
+cleandir::
+	$(RM) mga_warp.c
+
+r128.h:  $(XF86OSSRC)/shared/drm/kernel/r128.h
+	$(RM) $@
+	$(LN) $? $@
+
+includes:: r128.h
+
+depend:: r128.h
+
+cleandir::
+	$(RM) r128.h
+
+r128_cce.c:  $(XF86OSSRC)/shared/drm/kernel/r128_cce.c
+	$(RM) $@
+	$(LN) $? $@
+
+includes:: r128_cce.c
+
+depend:: r128_cce.c
+
+cleandir::
+	$(RM) r128_cce.c
+
+r128_drm.h:  $(XF86OSSRC)/shared/drm/kernel/r128_drm.h
+	$(RM) $@
+	$(LN) $? $@
+
+includes:: r128_drm.h
+
+depend:: r128_drm.h
+
+cleandir::
+	$(RM) r128_drm.h
+
+r128_drv.h:  $(XF86OSSRC)/shared/drm/kernel/r128_drv.h
+	$(RM) $@
+	$(LN) $? $@
+
+includes:: r128_drv.h
+
+depend:: r128_drv.h
+
+cleandir::
+	$(RM) r128_drv.h
+
+r128_state.c:  $(XF86OSSRC)/shared/drm/kernel/r128_state.c
+	$(RM) $@
+	$(LN) $? $@
+
+includes:: r128_state.c
+
+depend:: r128_state.c
+
+cleandir::
+	$(RM) r128_state.c
+
+radeon.h:  $(XF86OSSRC)/shared/drm/kernel/radeon.h
+	$(RM) $@
+	$(LN) $? $@
+
+includes:: radeon.h
+
+depend:: radeon.h
+
+cleandir::
+	$(RM) radeon.h
+
+radeon_cp.c:  $(XF86OSSRC)/shared/drm/kernel/radeon_cp.c
+	$(RM) $@
+	$(LN) $? $@
+
+includes:: radeon_cp.c
+
+depend:: radeon_cp.c
+
+cleandir::
+	$(RM) radeon_cp.c
+
+radeon_drm.h:  $(XF86OSSRC)/shared/drm/kernel/radeon_drm.h
+	$(RM) $@
+	$(LN) $? $@
+
+includes:: radeon_drm.h
+
+depend:: radeon_drm.h
+
+cleandir::
+	$(RM) radeon_drm.h
+
+radeon_drv.h:  $(XF86OSSRC)/shared/drm/kernel/radeon_drv.h
+	$(RM) $@
+	$(LN) $? $@
+
+includes:: radeon_drv.h
+
+depend:: radeon_drv.h
+
+cleandir::
+	$(RM) radeon_drv.h
+
+radeon_state.c:  $(XF86OSSRC)/shared/drm/kernel/radeon_state.c
+	$(RM) $@
+	$(LN) $? $@
+
+includes:: radeon_state.c
+
+depend:: radeon_state.c
+
+cleandir::
+	$(RM) radeon_state.c
+
+radeon_mem.c:  $(XF86OSSRC)/shared/drm/kernel/radeon_mem.c
+	$(RM) $@
+	$(LN) $? $@
+
+includes:: radeon_mem.c
+
+depend:: radeon_mem.c
+
+cleandir::
+	$(RM) radeon_mem.c
+
+radeon_irq.c:  $(XF86OSSRC)/shared/drm/kernel/radeon_irq.c
+	$(RM) $@
+	$(LN) $? $@
+
+includes:: radeon_irq.c
+
+depend:: radeon_irq.c
+
+cleandir::
+	$(RM) radeon_irq.c
 
 # ----------------------------------------------------------------------
 # common rules for all Makefiles - do not edit
@@ -913,8 +1227,8 @@ Makefile::
 	$(IMAKE_CMD) -DTOPDIR=$(TOP) -DCURDIR=$(CURRENT_DIR)
 
 $(RMAN):
-	@echo "checking $@ over in $(TOP)/config/util first..."; \
-	cd $(TOP)/config/util && $(MAKE) rman; \
+	@echo "checking $(RMANBASENAME) over in $(TOP)/config/util first..."; \
+	cd $(TOP)/config/util && $(MAKE) $(RMANBASENAME); \
 	echo "okay, continuing in $(CURRENT_DIR)"
 
 tags::
@@ -949,7 +1263,7 @@ includes::
 depend::
 
 distclean::
-	$(RM) Makefile
+	$(RM) Makefile Makefile.dep
 
 # ----------------------------------------------------------------------
 # dependencies generated by makedepend
