@@ -220,7 +220,7 @@ do {
 if(kms->frame_info[FRAME_EVEN].dma_active)KM_DEBUG("DMA overrun\n");
 if(kms->frame_info[FRAME_EVEN].buf_ptr!=kms->frame_info[FRAME_EVEN].buf_free){
 	kms->overrun++;
-	KM_DEBUG("Data overrun\n");
+	KM_DEBUG("Data overrun total_frames=%d\n", kms->total_frames);
 	}
 kms->total_frames++;
 kms->frame_info[FRAME_EVEN].dma_active=1;

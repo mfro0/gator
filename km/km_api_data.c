@@ -114,7 +114,7 @@ if(kdufpd==NULL){
 	spin_unlock(&(kdu->lock));
 	return -ENOMEM;
 	}
-memset(kdufpd, sizeof(KDU_FILE_PRIVATE_DATA), 0);
+memset(kdufpd, 0, sizeof(KDU_FILE_PRIVATE_DATA));
 
 kdufpd->kdu=kdu;
 

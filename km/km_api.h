@@ -108,6 +108,7 @@ typedef union {
 
 typedef struct {
 	KM_DEVICE *kmd;
+	spinlock_t lock;
 	int request_flags;
 	int *field_flags;
 	char *buffer_read;

@@ -164,7 +164,7 @@ MOD_INC_USE_COUNT;
 
 spin_lock(&(kmd->lock));
 kmfpd=kmalloc(sizeof(KM_FILE_PRIVATE_DATA), GFP_KERNEL);
-memset(kmfpd, sizeof(KM_FILE_PRIVATE_DATA), 0);
+memset(kmfpd, 0, sizeof(KM_FILE_PRIVATE_DATA));
 
 kmfpd->br_size=PAGE_SIZE;
 kmfpd->br_free=0;
@@ -173,10 +173,12 @@ kmfpd->buffer_read=kmalloc(kmfpd->br_size, GFP_KERNEL);
 
 kmfpd->kmd=kmd;
 kmfpd->field_flags=kmalloc(sizeof(*(kmfpd->field_flags))*kmd->num_fields, GFP_KERNEL);
-memset(kmfpd->field_flags, sizeof(*(kmfpd->field_flags))*kmd->num_fields, 0);
+memset(kmfpd->field_flags, 0, sizeof(*(kmfpd->field_flags))*kmd->num_fields);
 
 kmfpd->kfd=kmalloc(sizeof(*(kmfpd->kfd))*kmd->num_fields, GFP_KERNEL);
-memset(kmfpd->kfd, sizeof(*(kmfpd->kfd))*kmd->num_fields, 0);
+memset(kmfpd->kfd, 0, sizeof(*(kmfpd->kfd))*kmd->num_fields);
+
+spin_lock_init(&(kmfpd->lock));
 
 file->private_data=kmfpd;
 kmd->use_count++;
@@ -192,9 +194,13 @@ KM_FILE_PRIVATE_DATA *kmfpd=file->private_data;
 KM_DEVICE *kmd=kmfpd->kmd;
 
 kfree(kmfpd->field_flags);
+kmfpd->field_flags=NULL;
 kfree(kmfpd->kfd);
+kmfpd->kfd=NULL;
 kfree(kmfpd->buffer_read);
+kmfpd->buffer_read=NULL;
 kfree(kmfpd);
+kmfpd=NULL;
 file->private_data=NULL;
 spin_lock(&(kmd->lock));
 kmd->use_count--;
@@ -218,9 +224,11 @@ int retval=0;
 KM_FILE_PRIVATE_DATA *kmfpd=file->private_data;
 KM_DEVICE *kmd=kmfpd->kmd;
 DECLARE_WAITQUEUE(wait, current);
-if(kmfpd->br_free==0){
+spin_lock(&(kmfpd->lock));
+if(kmfpd->br_free==0){	
 	dump_changed_fields(kmd, kmfpd);
 	}
+spin_unlock(&(kmfpd->lock));
 add_wait_queue(&(kmd->wait), &wait);
 current->state=TASK_INTERRUPTIBLE;
 while(kmfpd->br_free==0){
@@ -235,8 +243,10 @@ while(kmfpd->br_free==0){
 	schedule();
 	/* check that the devices has not been removed from under us */
 	if(kmd->fields!=NULL){
+		spin_lock(&(kmfpd->lock));
 		if(kmfpd->request_flags & KM_STATUS_REQUESTED)perform_status_cmd(kmd, kmfpd);
 		dump_changed_fields(kmd, kmfpd);
+		spin_unlock(&(kmfpd->lock));
 		}
 	}
 current->state=TASK_RUNNING;
@@ -271,24 +281,30 @@ int field_length;
 unsigned hash;
 hash=km_command_hash(buffer, count);
 if((hash==kmd->status_hash) && !strncmp("STATUS\n", buffer, count)){
+	spin_lock(&(kmfpd->lock));
 	kmfpd->request_flags|=KM_STATUS_REQUESTED;
+	spin_unlock(&(kmfpd->lock));
 	kmd_signal_state_change(kmd->number);
 	} else
-if((hash==kmd->report_hash)&&!strncmp("REPORT ", buffer, count)){
+if((hash==kmd->report_hash)&& (count>8) && !strncmp("REPORT ", buffer, 7)){
 	field_length=count-8; /* exclude trailing \n */
 	if(field_length<=0)return count; /* bogus command */
 	for(i=0;i<kmd->num_fields;i++){
 		if(!strncmp(buffer+7, kmd->fields[i].name, field_length)&&
 			!kmd->fields[i].name[field_length]){
+			spin_lock(&(kmfpd->lock));
 			kmfpd->field_flags[i]|=KM_FIELD_UPDATE_REQUESTED;
+			spin_unlock(&(kmfpd->lock));
 			kmd_signal_state_change(kmd->number);
-			break;
+			printk("Reporting field %d = %s\n", i, kmd->fields[i].name);
+			return count;
 			}
 		}
 	} else {
 	i=kmd->command_hash[hash];
 	while((i>=0) && strncmp(kmd->fields[i].name, buffer, count))i=kmd->fields[i].next_command;
 	if(i<0)return count; /* nothing matched, gobble up rest of input */
+	printk("Performing action %s [not implemented]\n", kmd->fields[i].name);
 	switch(kmd->fields[i].type){
 		case KM_FIELD_TYPE_PROGRAMMABLE:
 			break;
@@ -299,7 +315,7 @@ return count;
 
 static void expand_devices(void)
 {
-KM_DEVICE *d;
+KM_DEVICE **d;
 devices_size+=devices_size+10;
 d=kmalloc(devices_size*sizeof(*devices), GFP_KERNEL);
 if(d==NULL){
@@ -346,7 +362,7 @@ if(kmd==NULL){
 	return -ENOMEM;
 	}
 devices[num]=kmd;
-memset(kmd, sizeof(KM_DEVICE), 0);
+memset(kmd, 0, sizeof(KM_DEVICE));
 kmd->number=num;
 kmd->fields=kmfl;
 kmd->num_fields=0;

@@ -56,6 +56,7 @@ if(kms->allocate_v4l_dvb!=NULL){
 		result=-ENOMEM;
 		goto fail;
 		}
+	kmd_signal_state_change(kms->kmd);
 	} else {
 
 kms->deallocate_single_frame_buffer(kms, &(kms->frame_info[FRAME_ODD]));
@@ -96,6 +97,7 @@ kms->frame_info[FRAME_EVEN].buf_ptr=0;
 kms->buf_read_from=-1; /* none */
 if(kms->deallocate_v4l_dvb!=NULL){
 	kms->deallocate_v4l_dvb(kms);
+	kmd_signal_state_change(kms->kmd);
 	} else {
 kms->deallocate_single_frame_buffer(kms, &(kms->frame_info[FRAME_ODD]));
 kms->deallocate_single_frame_buffer(kms, &(kms->frame_info[FRAME_EVEN]));

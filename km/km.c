@@ -162,7 +162,21 @@ KM_FIELD kmfl_template[]={
 	  lock: NULL,
 	  priv: NULL,
 	  read_complete: NULL,
-	}, 
+	},
+	{ type: KM_FIELD_TYPE_DYNAMIC_INT,
+	  name: "VIDEO_STREAM_DATA_UNIT",
+	  changed: 0,
+	  lock: NULL,
+	  priv: NULL,
+	  read_complete: NULL,
+	},
+	{ type: KM_FIELD_TYPE_DYNAMIC_INT,
+	  name: "VIDEO_STREAM_INFO_DATA_UNIT",
+	  changed: 0,
+	  lock: NULL,
+	  priv: NULL,
+	  read_complete: NULL,
+	},
 	{ type: KM_FIELD_TYPE_EOL
 	}
 	};
@@ -294,6 +308,10 @@ kms->kmfl[4].data.i.field=&(kms->vblank_count);
 kms->kmfl[5].data.i.field=&(kms->vline_count);
 
 kms->kmfl[6].data.i.field=&(kms->vd.minor);
+
+kms->kmfl[7].data.i.field=&(kms->v4l_du);
+
+kms->kmfl[8].data.i.field=&(kms->v4l_info_du);
 
 kms->kmd=add_km_device(kms->kmfl, kms);
 printk("Device %s %s (0x%04x:0x%04x) corresponds to /dev/video%d\n",
