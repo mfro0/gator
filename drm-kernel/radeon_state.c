@@ -65,6 +65,9 @@ static inline void radeon_emit_context( drm_radeon_private_t *dev_priv )
 	RING_LOCALS;
 	DRM_DEBUG( "    %s\n", __FUNCTION__ );
 
+        printk("radeon_emit_context dp=0x%08x, do=0x%08x, cp=0x%08x\n",
+		ctx->rb3d_depthpitch, ctx->rb3d_depthoffset, ctx->rb3d_colorpitch);
+
 	BEGIN_RING( 14 );
 
 	OUT_RING( CP_PACKET0( RADEON_PP_MISC, 6 ) );
@@ -438,8 +441,10 @@ static void radeon_clear_box( drm_radeon_private_t *dev_priv,
 		  RADEON_GMC_SRC_DATATYPE_COLOR |
 		  RADEON_ROP3_P |
 		  RADEON_GMC_CLR_CMP_CNTL_DIS );
-
+#if 0
 	OUT_RING( (pitch << 22) | ((offset) >> 5) );
+#endif
+	OUT_RING( (pitch << 22) | ((offset+dev_priv->fb_offset) >> 10) );
 	OUT_RING( color );
 
 	OUT_RING( (x << 16) | y );
@@ -737,10 +742,10 @@ static void radeon_cp_dispatch_flip( drm_device_t *dev )
 	OUT_RING( CP_PACKET0( RADEON_CRTC_OFFSET, 0 ) );
 
 	if ( dev_priv->current_page == 0 ) {
-		OUT_RING( dev_priv->back_offset );
+		OUT_RING( dev_priv->back_offset + dev_priv->fb->offset);
 		dev_priv->current_page = 1;
 	} else {
-		OUT_RING( dev_priv->front_offset );
+		OUT_RING( dev_priv->front_offset + dev_priv->fb->offset);
 		dev_priv->current_page = 0;
 	}
 
@@ -766,7 +771,11 @@ static void radeon_cp_dispatch_vertex( drm_device_t *dev,
 	drm_radeon_buf_priv_t *buf_priv = buf->dev_private;
 	drm_radeon_sarea_t *sarea_priv = dev_priv->sarea_priv;
 	int format = sarea_priv->vc_format;
+#if 1
 	int offset = dev_priv->agp_buffers_offset + buf->offset+dev_priv->fb->offset;
+#else
+	int offset = dev_priv->agp_buffers_offset + buf->offset;
+#endif	
 	int size = buf->used;
 	int prim = buf_priv->prim;
 	int i = 0;

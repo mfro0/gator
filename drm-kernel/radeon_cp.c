@@ -748,11 +748,11 @@ static int radeon_do_init_cp( drm_device_t *dev, drm_radeon_init_t *init )
 		dev_priv->back_offset, dev_priv->depth_offset);
 
 	dev_priv->front_pitch_offset = (((dev_priv->front_pitch/64) << 22) |
-					((dev_priv->front_offset+dev_priv->fb->offset) >> 10));
+					(((dev_priv->front_offset+dev_priv->fb->offset) >> 10)&0x3FFFFF));
 	dev_priv->back_pitch_offset = (((dev_priv->back_pitch/64) << 22) |
-				       ((dev_priv->back_offset+dev_priv->fb->offset) >> 10));
+				       (((dev_priv->back_offset+dev_priv->fb->offset) >> 10)&0x3FFFFF));
 	dev_priv->depth_pitch_offset = (((dev_priv->depth_pitch/64) << 22) |
-					((dev_priv->depth_offset+dev_priv->fb->offset) >> 10));
+					(((dev_priv->depth_offset+dev_priv->fb->offset) >> 10)&0x3FFFFF));
 
 	/* Hardware state for depth clears.  Remove this if/when we no
 	 * longer clear the depth buffer with a 3D rectangle.  Hard-code
@@ -1369,6 +1369,8 @@ int radeon_wait_ring( drm_radeon_private_t *dev_priv, int n )
 	drm_radeon_ring_buffer_t *ring = &dev_priv->ring;
 	int i;
 
+	printk("Radeon wait ring\n");
+
 	for ( i = 0 ; i < dev_priv->usec_timeout ; i++ ) {
 		radeon_update_ring_snapshot( ring );
 		if ( ring->space > n )
@@ -1381,6 +1383,7 @@ int radeon_wait_ring( drm_radeon_private_t *dev_priv, int n )
 	radeon_status( dev_priv );
 	DRM_ERROR( "failed!\n" );
 #endif
+	printk("Radeon wait ring busy\n");
 	return -EBUSY;
 }
 
