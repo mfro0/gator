@@ -14,6 +14,11 @@
 #include "km_memory.h"
 #include "radeon_reg.h"
 
+static int radeon_is_capture_active(KM_STRUCT *kms)
+{
+return (readl(kms->reg_aperture+RADEON_CAP0_CONFIG) & 0x1);
+}
+
 static void radeon_get_window_parameters(KM_STRUCT *kms, struct video_window *vwin)
 {
 u32 a;
@@ -43,6 +48,12 @@ static int km_open(struct video_device *dev, int flags)
 u32 buf_size;
 int result;
 KM_STRUCT *kms=(KM_STRUCT *)dev;
+
+if(!radeon_is_capture_active(kms)){
+	result=-ENODATA;
+	goto fail;
+	}
+
 kms->frame.buf_ptr=0;
 kms->frame_even.buf_ptr=0;
 kms->buf_read_from=0;
