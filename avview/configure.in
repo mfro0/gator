@@ -46,6 +46,12 @@ AC_CHECK_LIB([pthread], [pthread_create])
 AC_CHECK_LIB([zvbi], [vbi_capture_v4l_new])
 AC_CHECK_LIB([asound], [snd_card_get_name])
 
+echo "The libraries mp3lamd, ogg, vorbis, vorbisenc might be required by ffmpeg"
+AC_CHECK_LIB([mp3lame], [lame_encode_buffer])
+AC_CHECK_LIB([ogg], [oggpack_write])
+AC_CHECK_LIB([vorbis], [vorbis_book_init_encode])
+AC_CHECK_LIB([vorbisenc], [vorbis_encode_init])
+
 #
 #
 # Default values
