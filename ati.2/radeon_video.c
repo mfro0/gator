@@ -2373,7 +2373,7 @@ RADEONDisplayVideo(
     int v_inc, h_inc, step_by, tmp;
     int p1_h_accum_init, p23_h_accum_init;
     int p1_v_accum_init;
-
+    int is_rgb;
     /* Unlike older Mach64 chips, RADEON has only two ECP settings: 0 for PIXCLK < 175Mhz, and 1 (divide by 2)
        for higher clocks, sure makes life nicer 
        
@@ -2420,10 +2420,17 @@ RADEONDisplayVideo(
     while(!(INREG(RADEON_OV0_REG_LOAD_CNTL) & (1 << 3)));
 
     RADEONWaitForFifo(pScrn, 1);
+    is_rgb=0;
     switch(id){
     	case FOURCC_RGBA32:
 	case FOURCC_RGB24:
-	    OUTREG(RADEON_OV0_H_INC, (h_inc>>1) | ((h_inc >> 1) << 16));
+	    OUTREG(RADEON_OV0_H_INC, (h_inc>>0) | ((h_inc>>0)<<16));
+	    is_rgb=1;
+	    break;
+	case FOURCC_RGBT16:
+	case FOURCC_RGB16:
+	    OUTREG(RADEON_OV0_H_INC, h_inc | (h_inc << 16));
+	    is_rgb=1;
 	    break;
 	default:
 	    OUTREG(RADEON_OV0_H_INC, h_inc | ((h_inc >> 1) << 16));
@@ -2438,7 +2445,7 @@ RADEONDisplayVideo(
     OUTREG(RADEON_OV0_VID_BUF_PITCH0_VALUE, pitch);
     OUTREG(RADEON_OV0_VID_BUF_PITCH1_VALUE, pitch);
     OUTREG(RADEON_OV0_P1_X_START_END, (src_w + left - 1) | (left << 16));
-    left >>= 1; src_w >>= 1;
+    if(!is_rgb) { left >>= 1; src_w >>= 1; }
     OUTREG(RADEON_OV0_P2_X_START_END, (src_w + left - 1) | (left << 16));
     OUTREG(RADEON_OV0_P3_X_START_END, (src_w + left - 1) | (left << 16));
     OUTREG(RADEON_OV0_VID_BUF0_BASE_ADRS, offset1 & 0xfffffff0);
@@ -2474,20 +2481,23 @@ RADEONDisplayVideo(
        	       		| RADEON_SCALER_ADAPTIVE_DEINT \
 	       		| RADEON_SCALER_SMART_SWITCH \
 	       		| RADEON_SCALER_DOUBLE_BUFFER \
+			| 0x10000000 \
 	       		| RADEON_SCALER_ENABLE);
 		break;
 	case FOURCC_RGBT16:
-       		OUTREG(RADEON_OV0_SCALE_CNTL, RADEON_SCALER_SOURCE_15BPP \
+       		OUTREG(RADEON_OV0_SCALE_CNTL, RADEON_SCALER_SOURCE_16BPP \
        	       		| RADEON_SCALER_ADAPTIVE_DEINT \
 	       		| RADEON_SCALER_SMART_SWITCH \
 	       		| RADEON_SCALER_DOUBLE_BUFFER \
+			| 0x10000000 \
 	       		| RADEON_SCALER_ENABLE);
 		break;
 	case FOURCC_RGB16:
-       		OUTREG(RADEON_OV0_SCALE_CNTL, RADEON_SCALER_SOURCE_15BPP \
+       		OUTREG(RADEON_OV0_SCALE_CNTL, RADEON_SCALER_SOURCE_16BPP \
        	       		| RADEON_SCALER_ADAPTIVE_DEINT \
 	       		| RADEON_SCALER_SMART_SWITCH \
 	       		| RADEON_SCALER_DOUBLE_BUFFER \
+			| 0x10000000 \
 	       		| RADEON_SCALER_ENABLE);
 		break;
 	case FOURCC_YUY2:
