@@ -12,5 +12,16 @@
 	 * configure X to use /devfs/input/mice as a mouse
 	 * start X - enjoy !
 	 
-	 
+     loading module like this:
+     
+     insmod ati_remote channel_mask=16
+     
+     will tell ati_remote to ignore signals coming from remote controls
+     transmitting on channel 4 (16=2^4). To mask out more channels just
+     add 2^channel_number values. Default is 0 (respond to all channels).
+     
+     You can change the channel by pressing and holding the hand icon until
+     it starts to blink. When it stops input channel code (from 1 to 16)
+     and press hand icon again.
+     	 
 	             Vladimir Dergachev

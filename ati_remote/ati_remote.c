@@ -21,7 +21,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  * 
- * Should you need to contact me, the author, you can do so either by
+ * Should you need to contact me, the author, you can do so by
  * e-mail - mail your message to volodya@mindspring.com
  *
  * This driver was derived from usbati_remote and usbkbd drivers by Vojtech Pavlik
@@ -37,13 +37,17 @@
 /*
  * Version Information
  */
-#define DRIVER_VERSION "v0.1"
+#define DRIVER_VERSION "v0.2"
 #define DRIVER_AUTHOR "Vladimir Dergachev <volodya@minspring.com>"
 #define DRIVER_DESC "USB ATI Remote driver"
 
 MODULE_AUTHOR( DRIVER_AUTHOR );
 MODULE_DESCRIPTION( DRIVER_DESC );
 MODULE_LICENSE("GPL");
+MODULE_PARM(channel_mask, "i");
+MODULE_PARM_DESC(channel_mask, "bitmask that determines which remote control channels to ignore");
+
+int channel_mask=0;
 
 /* Get hi and low bytes of a 16-bits int */
 #define HI(a)	((unsigned char)((a) >> 8))
@@ -52,10 +56,11 @@ MODULE_LICENSE("GPL");
 struct ati_remote {
 	unsigned char data[8];
 	char name[128];
-	unsigned char old[2];
-	unsigned long old_jiffies;
+	char input_name[16][160];
+	unsigned char old[16][2];
+	unsigned long old_jiffies[16];
 	struct usb_device *usbdev;
-	struct input_dev dev;
+	struct input_dev dev[16];
 	struct urb irq, out;
 	wait_queue_head_t wait;
 	devrequest dr;
@@ -189,15 +194,19 @@ static void ati_remote_irq(struct urb *urb)
 {
 	struct ati_remote *ati_remote = urb->context;
 	unsigned char *data = ati_remote->data;
-	struct input_dev *dev = &ati_remote->dev;
+	struct input_dev *dev = &(ati_remote->dev[0x0f]);
 	int i;
 	int accel;
+	int remote_num=0x0f;
 
-	if (urb->status) return;
+	if (urb->status) return;	
 	
 	if(urb->actual_length==4){
-		if((data[0]!=0x14)||(data[3]!=0xf0))
+		if((data[0]!=0x14)||((data[3] & 0x0f)!=0x00))
 			printk("** weird key=%02x%02x%02x%02x\n", data[0], data[1], data[2], data[3]);
+		remote_num=(data[3]>>4)&0x0f;
+		dev=&(ati_remote->dev[remote_num]);
+		if(channel_mask & (1<<(remote_num+1)))return; /* ignore signals from this channel */
 		} else
 	if(urb->actual_length==1){
 		if((data[0]!=(unsigned char)0xff)&&(data[0]!=0x00))
@@ -208,20 +217,22 @@ static void ati_remote_irq(struct urb *urb)
 		}
 
 	accel=1;
-	if((ati_remote->old[0]==data[1])&&(ati_remote->old[1]==data[2])){
-		if(ati_remote->old_jiffies+4*HZ<jiffies)accel=8;
+	if((urb->actual_length==4) && (ati_remote->old[remote_num][0]==data[1])&&(ati_remote->old[remote_num][1]==data[2])){
+		if(ati_remote->old_jiffies[remote_num]+4*HZ<jiffies)accel=8;
 			else
-		if(ati_remote->old_jiffies+3*HZ<jiffies)accel=6;
+		if(ati_remote->old_jiffies[remote_num]+3*HZ<jiffies)accel=6;
 			else
-		if(ati_remote->old_jiffies+2*HZ<jiffies)accel=4;
+		if(ati_remote->old_jiffies[remote_num]+2*HZ<jiffies)accel=4;
 			else
-		if(ati_remote->old_jiffies+HZ<jiffies)accel=3;
+		if(ati_remote->old_jiffies[remote_num]+HZ<jiffies)accel=3;
 			else
-		if(ati_remote->old_jiffies+(HZ>>1)<jiffies)accel=2;
+		if(ati_remote->old_jiffies[remote_num]+(HZ>>1)<jiffies)accel=2;
 		}
-	if((urb->actual_length==4) && (data[0]==0x14) && (data[3]==0xf0)){
+	if((urb->actual_length==4) && (data[0]==0x14) && ((data[3]&0x0f)==0x00)){
 		for(i=0;ati_remote_translation_table[i].kind!=KIND_END;i++){
-			if((ati_remote_translation_table[i].data1==data[1]) && (ati_remote_translation_table[i].data2==data[2])){
+			if((((ati_remote_translation_table[i].data1 & 0x0f)==(data[1] & 0x0f))) && 
+				((((ati_remote_translation_table[i].data1>>4)-(data[1]>>4)+remote_num)&0x0f)==0x0f) &&
+				(ati_remote_translation_table[i].data2==data[2])){
 				switch(ati_remote_translation_table[i].kind){
 					case KIND_LITERAL:
 						input_event(dev, ati_remote_translation_table[i].type,
@@ -250,7 +261,7 @@ static void ati_remote_irq(struct urb *urb)
 						input_report_rel(dev, REL_Y, accel);
 						break;
 					case KIND_FILTERED:
-						if((ati_remote->old[0]==data[1])&&(ati_remote->old[1]==data[2])&&((ati_remote->old_jiffies+(HZ>>2))>jiffies)){
+						if((ati_remote->old[remote_num][0]==data[1])&&(ati_remote->old[remote_num][1]==data[2])&&((ati_remote->old_jiffies[remote_num]+(HZ>>2))>jiffies)){
 							return;
 							}
 						input_event(dev, ati_remote_translation_table[i].type,
@@ -269,10 +280,10 @@ static void ati_remote_irq(struct urb *urb)
 		if(ati_remote_translation_table[i].kind==KIND_END){
 			printk("** unknown key=%02x%02x\n", data[1], data[2]);
 			}
-		if((ati_remote->old[0]!=data[1])||(ati_remote->old[1]!=data[2]))
-			ati_remote->old_jiffies=jiffies;
-		ati_remote->old[0]=data[1];
-		ati_remote->old[1]=data[2];
+		if((ati_remote->old[remote_num][0]!=data[1])||(ati_remote->old[remote_num][1]!=data[2]))
+			ati_remote->old_jiffies[remote_num]=jiffies;
+		ati_remote->old[remote_num][0]=data[1];
+		ati_remote->old[remote_num][1]=data[2];
 		}
 }
 
@@ -280,7 +291,7 @@ static int ati_remote_open(struct input_dev *dev)
 {
 	struct ati_remote *ati_remote = dev->private;
 
-	printk("ati_remote_open %d\n", ati_remote->open);
+/*	printk("ati_remote_open %d\n", ati_remote->open); */
 
 	if (ati_remote->open++)
 		return 0;
@@ -289,7 +300,7 @@ static int ati_remote_open(struct input_dev *dev)
 	if (usb_submit_urb(&ati_remote->irq))
 		return -EIO;
 
-	printk("done: ati_remote_open now open=%d\n", ati_remote->open);
+/*	printk("done: ati_remote_open now open=%d\n", ati_remote->open); */
 	return 0;
 }
 
@@ -318,7 +329,7 @@ static void *ati_remote_probe(struct usb_device *dev, unsigned int ifnum,
 	struct ati_remote *ati_remote;
 	int pipe, maxp;
 	char *buf;
-	int i;
+	int i,j;
 
 
 	iface = &dev->actconfig->interface[ifnum];
@@ -343,38 +354,6 @@ static void *ati_remote_probe(struct usb_device *dev, unsigned int ifnum,
 
 	ati_remote->usbdev = dev;
 
-	for(i=0;ati_remote_translation_table[i].kind!=KIND_END;i++)
-		if(ati_remote_translation_table[i].type==EV_KEY)
-			set_bit(ati_remote_translation_table[i].code, ati_remote->dev.keybit);
-	clear_bit(BTN_LEFT, ati_remote->dev.keybit);
-	clear_bit(BTN_RIGHT, ati_remote->dev.keybit);
-
-	ati_remote->dev.evbit[0] = BIT(EV_KEY) | BIT(EV_REL);
-	ati_remote->dev.keybit[LONG(BTN_MOUSE)] = BIT(BTN_LEFT) | BIT(BTN_RIGHT) | BIT(BTN_MIDDLE);
-	ati_remote->dev.relbit[0] = BIT(REL_X) | BIT(REL_Y);
-	ati_remote->dev.keybit[LONG(BTN_MOUSE)] |= BIT(BTN_SIDE) | BIT(BTN_EXTRA);
-	ati_remote->dev.relbit[0] |= BIT(REL_WHEEL);
-
-
-	ati_remote->dev.private = ati_remote;
-	ati_remote->dev.open = ati_remote_open;
-	ati_remote->dev.close = ati_remote_close;
-
-	ati_remote->dev.name = ati_remote->name;
-	ati_remote->dev.idbus = BUS_USB;
-	ati_remote->dev.idvendor = dev->descriptor.idVendor;
-	ati_remote->dev.idproduct = dev->descriptor.idProduct;
-	ati_remote->dev.idversion = dev->descriptor.bcdDevice;
-	init_waitqueue_head(&ati_remote->wait);
-
-	ati_remote->dr.requesttype = USB_TYPE_VENDOR | USB_DIR_IN | USB_RECIP_INTERFACE;
-	ati_remote->dr.index = 0;
-	ati_remote->dr.length = 16;
-	
-	ati_remote->old[0]=0;
-	ati_remote->old[1]=0;
-	ati_remote->old_jiffies=jiffies;
-
 	if (!(buf = kmalloc(63, GFP_KERNEL))) {
 		kfree(ati_remote);
 		return NULL;
@@ -388,21 +367,62 @@ static void *ati_remote_probe(struct usb_device *dev, unsigned int ifnum,
 			sprintf(ati_remote->name, "%s %s", ati_remote->name, buf);
 
 	if (!strlen(ati_remote->name))
-		sprintf(ati_remote->name, "USB HIDBP Mouse %04x:%04x",
-			ati_remote->dev.idvendor, ati_remote->dev.idproduct);
+		sprintf(ati_remote->name, "USB ATI (X10) remote %04x:%04x",
+			dev->descriptor.idVendor, dev->descriptor.idProduct);
 
 	kfree(buf);
 
+	for(i=0;i<16;i++){
+		for(j=0;ati_remote_translation_table[j].kind!=KIND_END;j++)
+			if(ati_remote_translation_table[j].type==EV_KEY)
+				set_bit(ati_remote_translation_table[j].code, ati_remote->dev[i].keybit);
+		clear_bit(BTN_LEFT, ati_remote->dev[i].keybit);
+		clear_bit(BTN_RIGHT, ati_remote->dev[i].keybit);
+
+		ati_remote->dev[i].evbit[0] = BIT(EV_KEY) | BIT(EV_REL);
+		ati_remote->dev[i].keybit[LONG(BTN_MOUSE)] = BIT(BTN_LEFT) | BIT(BTN_RIGHT) | BIT(BTN_MIDDLE);
+		ati_remote->dev[i].relbit[0] = BIT(REL_X) | BIT(REL_Y);
+		ati_remote->dev[i].keybit[LONG(BTN_MOUSE)] |= BIT(BTN_SIDE) | BIT(BTN_EXTRA);
+		ati_remote->dev[i].relbit[0] |= BIT(REL_WHEEL);
+
+
+		ati_remote->dev[i].private = ati_remote;
+		ati_remote->dev[i].open = ati_remote_open;
+		ati_remote->dev[i].close = ati_remote_close;
+
+		sprintf(ati_remote->input_name[i], "%s remote channel %d", ati_remote->name, i+1);
+		ati_remote->dev[i].name = ati_remote->input_name[i];
+		ati_remote->dev[i].idbus = BUS_USB;
+		ati_remote->dev[i].idvendor = dev->descriptor.idVendor;
+		ati_remote->dev[i].idproduct = dev->descriptor.idProduct;
+		ati_remote->dev[i].idversion = dev->descriptor.bcdDevice;
+
+		ati_remote->old[i][0]=0;
+		ati_remote->old[i][1]=0;
+		ati_remote->old_jiffies[i]=jiffies;
+
+		}
+	init_waitqueue_head(&ati_remote->wait);
+
+	ati_remote->dr.requesttype = USB_TYPE_VENDOR | USB_DIR_IN | USB_RECIP_INTERFACE;
+	ati_remote->dr.index = 0;
+	ati_remote->dr.length = 16;
+	
 	FILL_INT_URB(&ati_remote->irq, dev, pipe, ati_remote->data, maxp > 8 ? 8 : maxp,
 		ati_remote_irq, ati_remote, endpoint->bInterval);
 
 	FILL_INT_URB(&ati_remote->out, dev, usb_sndintpipe(dev, epout->bEndpointAddress),
 			ati_remote + 1, 32, ati_remote_usb_out, ati_remote, epout->bInterval);
 
-	input_register_device(&ati_remote->dev);
 
-	printk(KERN_INFO "input%d: %s on usb%d:%d.%d\n",
-		 ati_remote->dev.number, ati_remote->name, dev->bus->busnum, dev->devnum, ifnum);
+	printk(KERN_INFO "%s on usb%d:%d.%d\n",
+			 ati_remote->name, dev->bus->busnum, dev->devnum, ifnum);
+	for(i=0;i<16;i++){
+		input_register_device(&(ati_remote->dev[i]));
+
+		printk(KERN_INFO "\tremote control channel %d corresponds to input%d\n",
+			 i+1, ati_remote->dev[i].number);
+		}
 
 	send_packet(ati_remote, 0x8004, init1);
 	send_packet(ati_remote, 0x8007, init2);
@@ -412,9 +432,11 @@ static void *ati_remote_probe(struct usb_device *dev, unsigned int ifnum,
 
 static void ati_remote_disconnect(struct usb_device *dev, void *ptr)
 {
+	int i;
 	struct ati_remote *ati_remote = ptr;
 	usb_unlink_urb(&ati_remote->irq);
-	input_unregister_device(&ati_remote->dev);
+	for(i=0;i<16;i++)
+		input_unregister_device(&(ati_remote->dev[i]));
 	kfree(ati_remote);
 }
 
