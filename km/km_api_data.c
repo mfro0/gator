@@ -169,12 +169,8 @@ int km_allocate_data_virtual_block(KM_DATA_VIRTUAL_BLOCK *dvb, mode_t mode)
 {
 long i,k;
 KM_DATA_UNIT *kdu;
-dvb->ptr=rvmalloc(dvb->size);
-if(dvb->ptr==NULL)return -ENOMEM;
 k=km_allocate_data_unit(mode);
 if(k<0){
-	kfree(dvb->ptr);
-	dvb->ptr=NULL;
 	return k;
 	}
 kdu=&(data_units[k]);

@@ -42,10 +42,14 @@ MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("km_ati");
 MODULE_PARM(km_debug, "i");
 MODULE_PARM(km_debug_overruns, "i");
+MODULE_PARM(km_buffers, "i");
 MODULE_PARM_DESC(km_debug, "kmultimedia debugging level");
+MODULE_PARM_DESC(km_debug_overruns, "kmultimedia debug overruns");
+MODULE_PARM_DESC(km_buffers, "how many buffers to use for video capture per each device");
 
 int km_debug=0;
 int km_debug_overruns=0;
+int km_buffers=5;
 
 void generic_deallocate_single_frame_buffer(KM_STRUCT *kms, SINGLE_FRAME *frame)
 {
@@ -55,19 +59,33 @@ frame->buffer=NULL;
 frame->dma_table=NULL;
 }
 
+int find_free_buffer(KM_STRUCT *kms)
+{
+int i;
+int age;
+int k;
+if(kms->fi==NULL)return -1;
+while(kms->fi[kms->next_cap_buf].flag & KM_FI_PINNED)kms->next_cap_buf=kms->fi[kms->next_cap_buf].next;
+i=kms->next_cap_buf;
+kms->next_cap_buf=kms->fi[kms->next_cap_buf].next;
+return i;
+}
+
+int find_next_buffer(KM_STRUCT *kms, int buf)
+{
+
+}
 
 int acknowledge_dma(KM_STRUCT *kms)
 {
-if(kms->frame_info[FRAME_ODD].dma_active){
-	kms->frame_info[FRAME_ODD].dma_active=0;
-	if(kms->frame_info[FRAME_ODD].buf_ptr==kms->frame_info[FRAME_ODD].buf_free){
-		kms->frame_info[FRAME_ODD].buf_ptr=0;
-		if(kms->buf_read_from==0)wake_up_interruptible(&(kms->frameq));
-		} else
-	if(km_debug_overruns)printk("overrun buf_ptr=%d buf_free=%d total=%d\n", 
-			kms->frame_info[FRAME_ODD].buf_ptr,
-			kms->frame_info[FRAME_ODD].buf_free, kms->total_frames);
+int i;
+for(i=0;i<kms->num_buffers;i++)
+if(kms->fi[i].flag & KM_FI_DMA_ACTIVE){
+	kms->fi[i].flag&=~KM_FI_DMA_ACTIVE;
+	kms->fi[i].timestamp_end=jiffies;
+	wake_up_interruptible(&(kms->frameq));
 	}
+#if 0
 if(kms->frame_info[FRAME_EVEN].dma_active){
 	kms->frame_info[FRAME_EVEN].dma_active=0;
 	if(kms->frame_info[FRAME_EVEN].buf_ptr==kms->frame_info[FRAME_EVEN].buf_free){
@@ -78,6 +96,7 @@ if(kms->frame_info[FRAME_EVEN].dma_active){
 			kms->frame_info[FRAME_ODD].buf_ptr,
 			kms->frame_info[FRAME_ODD].buf_free, kms->total_frames);
 	}
+#endif
 return 0;
 }
 
@@ -189,6 +208,8 @@ char *tag;
 /* too many */
 if(num_devices>=MAX_DEVICES)return -1;
 
+KM_CHECKPOINT
+
 switch(pci_id->driver_data){
 	case HARDWARE_RADEON:
 		tag="km_ati (Radeon)";
@@ -205,13 +226,17 @@ kms=&(km_devices[num_devices]);
 memset(kms, 0, sizeof(KM_STRUCT));
 kms->dev=dev;
 kms->irq=dev->irq;
+#if 0
 kms->frame_info[FRAME_ODD].buffer=NULL;
 kms->frame_info[FRAME_ODD].dma_table=NULL;
 kms->frame_info[FRAME_EVEN].buffer=NULL;
 kms->frame_info[FRAME_EVEN].dma_table=NULL;
+#endif
 kms->interrupt_count=0;
 kms->irq_handler=NULL;
-kms->num_buffers=2;
+if(km_buffers<2)km_buffers=2;
+if(km_buffers>=MAX_FRAME_BUFF_NUM)km_buffers=MAX_FRAME_BUFF_NUM-1;
+kms->num_buffers=km_buffers;
 kms->v4l_du=-1;
 kms->v4l_info_du=-1;
 spin_lock_init(&(kms->kms_lock));
@@ -231,6 +256,7 @@ kms->reg_aperture=ioremap(pci_resource_start(dev, 2), pci_resource_len(dev, 2));
 printk("kms variables: reg_aperture=0x%p\n",
 	kms->reg_aperture);
 switch(pci_id->driver_data){
+#ifndef OMIT_RADEON_DRIVER
 	case HARDWARE_RADEON:
 		kms->is_capture_active=radeon_is_capture_active;
 		kms->get_window_parameters=radeon_get_window_parameters;
@@ -244,6 +270,8 @@ switch(pci_id->driver_data){
 		kms->init_hardware=radeon_init_hardware;
 		kms->uninit_hardware=radeon_uninit_hardware;
 		break;
+#endif
+#ifndef OMIT_MACH64_DRIVER
 	case HARDWARE_MACH64:
 		kms->is_capture_active=mach64_is_capture_active;
 		kms->get_window_parameters=mach64_get_window_parameters;
@@ -255,6 +283,8 @@ switch(pci_id->driver_data){
 		kms->deallocate_single_frame_buffer=generic_deallocate_single_frame_buffer;
 		kms->irq_handler=mach64_km_irq;
 		break;
+#endif
+#ifndef OMIT_RAGE128_DRIVER
 	case HARDWARE_RAGE128:
 		kms->is_capture_active=rage128_is_capture_active;
 		kms->get_window_parameters=rage128_get_window_parameters;
@@ -266,6 +296,7 @@ switch(pci_id->driver_data){
 		kms->deallocate_single_frame_buffer=generic_deallocate_single_frame_buffer;
 		kms->irq_handler=rage128_km_irq;
 		break;
+#endif
 	default:
 		printk("Unknown hardware type %ld\n", pci_id->driver_data);
 		}
@@ -334,8 +365,10 @@ if(kms->uninit_hardware!=NULL)kms->uninit_hardware(kms);
 remove_km_device(kms->kmd);
 cleanup_km_v4l(kms);
 free_irq(kms->irq, kms);
+#if 0
 kms->deallocate_single_frame_buffer(kms, &(kms->frame_info[FRAME_ODD]));
 kms->deallocate_single_frame_buffer(kms, &(kms->frame_info[FRAME_EVEN]));
+#endif
 iounmap(kms->reg_aperture);
 kfree(kms->kmfl[0].data.c.string);
 kfree(kms->kmfl[1].data.c.string);

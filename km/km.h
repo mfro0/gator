@@ -33,15 +33,20 @@ typedef struct {
 	bm_list_descriptor *dma_table;
 	} SINGLE_FRAME;
 
-#define KM_FI_ODD	1
+#define KM_FI_ODD		1
+#define KM_FI_DMA_ACTIVE	2
+#define KM_FI_PINNED		4
 
 typedef struct {
 	int age;
-	int next_frame;
+	long timestamp_start;
+	long timestamp_end;
+	int next;
+	int prev;
 	int flag;
 	} FIELD_INFO;
 
-typedef struct S_KM_STRUCT{
+typedef struct S_KM_STRUCT {
 	struct video_device vd;
 	struct video_window vwin;
 	spinlock_t kms_lock;
@@ -55,23 +60,35 @@ typedef struct S_KM_STRUCT{
 	long total_frames;
 	long overrun;
 	unsigned char * reg_aperture;
-	int buf_read_from;
+	
+	long next_cap_buf;
+	
+	int v4l_buf_read_from;
+	long buf_ptr;
+	long buf_age;
 
 #define FRAME_ODD 		0
 #define FRAME_EVEN 		1
 #define MAX_FRAME_BUFF_NUM 	10
 
+#if 0
 	SINGLE_FRAME frame_info[MAX_FRAME_BUFF_NUM];
+#endif
 	KM_DATA_VIRTUAL_BLOCK v4l_dvb_info;
-	void *info_ptr;
+	FIELD_INFO *fi;
 	long info_free;
 	int v4l_info_du;
+	
 	KM_DATA_VIRTUAL_BLOCK v4l_dvb;
-	void *v4l_ptr[MAX_FRAME_BUFF_NUM];
+	void *buffer[MAX_FRAME_BUFF_NUM];
 	long v4l_free[MAX_FRAME_BUFF_NUM];
-	FIELD_INFO *fi;
 	int v4l_du;
+	
+	bm_list_descriptor **dma_table;
 	int num_buffers;
+	
+	long odd_offset;
+	long even_offset;
 
 	int capture_active;
 	long kmd;
@@ -90,6 +107,7 @@ typedef struct S_KM_STRUCT{
 	} KM_STRUCT;
 
 int acknowledge_dma(KM_STRUCT *kms);
+int find_free_buffer(KM_STRUCT *kms);
 
 #define HARDWARE_MACH64		0
 #define HARDWARE_RAGE128	1
@@ -101,4 +119,9 @@ extern int km_debug;
 
 #define KM_DEBUG   if(km_debug)printk
 
+#if 1
+#define KM_CHECKPOINT printk("**CKPT %s %s %d\n", __FILE__, __FUNCTION__, __LINE__);
+#else
+#define KM_CHECKPOINT
+#endif
 #endif

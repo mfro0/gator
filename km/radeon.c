@@ -119,6 +119,10 @@ a=readl(kms->reg_aperture+RADEON_CAP0_BUF_PITCH);
 vwin->width=a/2;
 a=readl(kms->reg_aperture+RADEON_CAP0_V_WINDOW);
 vwin->height=(((a>>16)& 0xffff)-(a & 0xffff))+1;
+a=readl(kms->reg_aperture+RADEON_CAP0_BUF0_EVEN_OFFSET);
+kms->even_offset=a;
+a=readl(kms->reg_aperture+RADEON_CAP0_BUF0_OFFSET);
+kms->odd_offset=a;
 printk("radeon_get_window_parameters: width=%d height=%d\n", vwin->width, vwin->height);
 }
 
@@ -157,25 +161,60 @@ wmb();
 kms->capture_active=0;
 }
 
-static int radeon_setup_single_frame_buffer(KM_STRUCT *kms, SINGLE_FRAME *frame, long offset)
+static int radeon_setup_single_frame_buffer(KM_STRUCT *kms, bm_list_descriptor *dma_table, long offset, long free)
 {
 int i;
 long count;
 u32 mem_aperture;
-count=frame->buf_free;
+count=free;
 mem_aperture=pci_resource_start(kms->dev, 0);
-for(i=0;i<(frame->buf_size/PAGE_SIZE);i++){
-	frame->dma_table[i].from_addr=offset+i*PAGE_SIZE;
+for(i=0;i<(kms->v4l_dvb.size/PAGE_SIZE);i++){
+	dma_table[i].from_addr=offset+i*PAGE_SIZE;
 	if(count>PAGE_SIZE){
-		frame->dma_table[i].command=PAGE_SIZE;
+		dma_table[i].command=PAGE_SIZE;
 		count-=PAGE_SIZE;
 		} else {
-		frame->dma_table[i].command=count | RADEON_DMA_GUI_COMMAND__EOL ;
+		dma_table[i].command=count | RADEON_DMA_GUI_COMMAND__EOL ;
 		}
 	}
 /* verify_dma_table(kms, frame); */
 return 0;
 }
+
+static void radeon_start_frame_transfer(KM_STRUCT *kms, int buffer, int field)
+{
+long status;
+long offset;
+if(buffer<0){
+	KM_DEBUG("start_frame_transfer buffer=%d field=%d\n",buffer, field);
+	return;
+	}
+if(field){
+	offset=kms->odd_offset;
+	kms->fi[buffer].flag|=KM_FI_ODD;
+	} else {
+	offset=kms->even_offset;
+	kms->fi[buffer].flag&=~KM_FI_ODD;
+	}
+KM_DEBUG("buf=%d field=%d\n", buffer, field);
+kms->fi[buffer].timestamp_start=jiffies;
+radeon_setup_single_frame_buffer(kms, (kms->dma_table[buffer]), offset, kms->v4l_free[buffer]);
+wmb();
+/* wait for at least one available queue */
+do {
+	status=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
+	KM_DEBUG("status=0x%08lx\n", status);
+	} while (!(status & 0x1f));
+/* start transfer */
+kms->total_frames++;
+kms->fi[buffer].flag|=KM_FI_DMA_ACTIVE;
+kms->fi[buffer].age=kms->total_frames;
+wmb();
+writel(kvirt_to_pa(kms->dma_table[buffer]), (u32)(kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR)| (0));
+KM_DEBUG("start_frame_transfer_buf0\n");
+}
+
+#if 0
 
 static void radeon_start_frame_transfer_buf0(KM_STRUCT *kms)
 {
@@ -228,6 +267,7 @@ wmb();
 writel(kvirt_to_pa(kms->frame_info[FRAME_EVEN].dma_table), (u32)(kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR) | (0));
 KM_DEBUG("start_frame_transfer_buf0_even\n");
 }
+#endif
 
 static int radeon_is_capture_irq_active(KM_STRUCT *kms)
 {
@@ -243,8 +283,8 @@ writel(status & mask, kms->reg_aperture+RADEON_CAP_INT_STATUS);
 KM_DEBUG("CAP_INT_STATUS=0x%08x\n", status);
 /* do not start dma transfer if capture is not active anymore */
 if(!kms->capture_active)return 1;
-if(status & 1)radeon_start_frame_transfer_buf0(kms);
-if(status & 2)radeon_start_frame_transfer_buf0_even(kms); 
+if(status & 1)radeon_start_frame_transfer(kms, find_free_buffer(kms), 1);
+if(status & 2)radeon_start_frame_transfer(kms, find_free_buffer(kms), 0);
 return 1;
 }
 
@@ -348,6 +388,7 @@ if(new_mc_fb_location!=mc_fb_location){
 int radeon_allocate_v4l_dvb(KM_STRUCT *kms, long size)
 {
 int i,k;
+KM_CHECKPOINT
 if(size>(4096*4096/sizeof(bm_list_descriptor))){
 	printk("Too large buffer allocation requested: %ld bytes\n", size);
 	return -1;
@@ -356,18 +397,44 @@ if(size>(4096*4096/sizeof(bm_list_descriptor))){
 kms->v4l_dvb.size=((size+PAGE_SIZE-1)/PAGE_SIZE)*PAGE_SIZE;
 kms->v4l_dvb.n=kms->num_buffers;
 kms->v4l_dvb.free=kms->v4l_free;
-kms->v4l_dvb.ptr=kms->v4l_ptr;
+kms->v4l_dvb.ptr=kms->buffer;
 kms->v4l_du=km_allocate_data_virtual_block(&(kms->v4l_dvb), S_IFREG | S_IRUGO);
+if(kms->v4l_du<0)return -1;
+KM_CHECKPOINT
 /* allocate data unit to hold field info */
 kms->v4l_dvb_info.size=kms->num_buffers*sizeof(FIELD_INFO);
 kms->v4l_dvb_info.n=1;
 kms->v4l_dvb_info.free=&(kms->info_free);
 kms->info_free=kms->num_buffers*sizeof(FIELD_INFO);
-kms->v4l_dvb_info.ptr=&(kms->info_ptr);
+kms->v4l_dvb_info.ptr=&(kms->fi);
 kms->v4l_info_du=km_allocate_data_virtual_block(&(kms->v4l_dvb_info), S_IFREG | S_IRUGO);
-if(kms->v4l_du<0)return -1;
+if(kms->v4l_info_du<0){
+	km_deallocate_data(kms->v4l_du);
+	kms->v4l_du=-1;
+	return -1;
+	}
+kms->dma_table=kmalloc(sizeof(*(kms->dma_table))*kms->num_buffers, GFP_KERNEL);
+memset(kms->fi, 0 , sizeof(*(kms->fi))*kms->num_buffers);
 for(k=0;k<kms->num_buffers;k++){
 	kms->v4l_dvb.free[k]=size;
+	kms->fi[k].flag=0;
+	kms->fi[k].next=k+1;
+	kms->fi[k].prev=k-1;
+	kms->dma_table[k]=rvmalloc(4096);
+	kms->v4l_free[k]=size;
+	memset(kms->dma_table[k], 0, 4096);
+	/* create DMA table */
+	for(i=0;i<(kms->v4l_dvb.size/PAGE_SIZE);i++){
+		kms->dma_table[k][i].to_addr=kvirt_to_pa(kms->buffer[k]+i*PAGE_SIZE);
+		#if 0
+		printk("entry virt %p phys %p %s\n", kms->frame_info[k].buffer+i*PAGE_SIZE, kms->frame_info[k].dma_table[i].to_addr,
+		((unsigned long)kms->frame_info[k].dma_table[i].to_addr)<64*1024*1024?"*":"");
+		#endif
+		if(kvirt_to_pa(kms->buffer[k]+i*PAGE_SIZE)!=kvirt_to_bus(kms->buffer[k]+i*PAGE_SIZE)){
+			printk(KERN_ERR "pa!=bus for entry %d frame %d\n", i, k);
+			}
+		}
+	#if 0
 	kms->frame_info[k].buf_free=size;
 	kms->frame_info[k].buf_ptr=size;
 	kms->frame_info[k].buf_size=kms->v4l_dvb.size;
@@ -386,7 +453,12 @@ for(k=0;k<kms->num_buffers;k++){
 			printk(KERN_ERR "pa!=bus for entry %d frame %d\n", i, k);
 			}
 		}
+	#endif
 	}
+kms->fi[0].prev=kms->num_buffers-1;
+kms->fi[kms->num_buffers-1].next=0;
+kms->next_cap_buf=0;
+KM_CHECKPOINT
 return 0;
 }
 
@@ -394,14 +466,10 @@ int radeon_deallocate_v4l_dvb(KM_STRUCT *kms)
 {
 int k;
 for(k=0;k<kms->num_buffers;k++){
-	kms->frame_info[k].buf_free=0;
-	kms->frame_info[k].buf_ptr=0;
-	kms->frame_info[k].buf_size=0;
-	kms->frame_info[k].buffer=NULL;
-	kms->frame_info[k].dma_active=0;
-	rvfree(kms->frame_info[k].dma_table, 4096);
-	kms->frame_info[k].dma_table=NULL;
+	rvfree(kms->dma_table[k], 4096);
 	}
+kfree(kms->dma_table);
+kms->dma_table=NULL;
 km_deallocate_data(kms->v4l_info_du);
 kms->v4l_info_du=-1;
 km_deallocate_data(kms->v4l_du);

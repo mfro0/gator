@@ -1,4 +1,5 @@
-CFLAGS = -m486 -O2 -Wall -Wstrict-prototypes -pipe -fno-strict-aliasing -fno-common
+KM_FLAGS=
+CFLAGS = -m486 -O2 -Wall -Wstrict-prototypes -pipe -fno-strict-aliasing -fno-common $(KM_FLAGS)
 LDFLAGS = -s -N
 CC=gcc
 
@@ -49,7 +50,7 @@ test: km_drv.o km_api_drv.o
 	modprobe videodev || true
 	@echo "** Now loading km modules"
 	insmod ./km_api_drv.o
-	insmod ./km_drv.o km_debug=0 
+	insmod ./km_drv.o km_debug=0 km_buffers=5
 
 install:
 	mkdir -p /lib/modules/`uname -r`/misc/
