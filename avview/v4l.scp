@@ -1,0 +1,314 @@
+#!avview_shell
+#
+#
+
+proc generate_capture_window { cw } {
+global capture_window
+foreach win [grid slaves $cw] { destroy $win }
+
+if { !$capture_window } { 
+	grid columnconfigure .controlwin 1 -weight 0
+	canvas $cw.f -width 0 -height 0 -background red
+	grid $cw.f
+	return 
+	}
+grid columnconfigure .controlwin 1 -weight 1
+
+eval label $cw.title -text "\"Capture (V4L)\"" [get_settings $cw.title Capture V4L]
+grid $cw.title - - -sticky news -pady 2 -padx 2
+grid columnconfigure $cw 1 -weight 1
+
+eval label $cw.devicel -text "\"V4L device: \"" [get_settings $cw.devicel Capture V4L]
+global v4l_device_menu
+set v4l_device_menu [tk_optionMenu $cw.deviceom current_v4l_device none]
+
+eval button $cw.rescanb -text "Rescan" -command rescan_v4l_devices [get_settings $cw.rescanb Capture V4L]
+grid $cw.devicel $cw.deviceom $cw.rescanb -sticky news
+grid configure $cw.devicel -sticky nws
+
+eval label $cw.model -text "\"Recording mode: \"" [get_settings $cw.model Capture V4L]
+tk_optionMenu $cw.modeom current_v4l_mode single-frame deinterlace-bob deinterlace-weave half-width
+grid $cw.model $cw.modeom - -sticky news
+grid configure $cw.model -sticky nws
+
+eval label $cw.windowl -text "\"Window: \""  [get_settings $cw.windowl Capture V4L]
+eval label $cw.window -text "\"N/A\"" [get_settings $cw.window Capture V4L]
+eval button $cw.windowb -text "Change" [get_settings $cw.windowb Capture V4L]
+grid $cw.windowl $cw.window $cw.windowb
+grid configure $cw.windowl -sticky nws
+grid configure $cw.windowb -sticky news
+
+if {[ffmpeg_present] == "yes"} {
+	eval label $cw.rratel -text "\"Recording framerate: \"" [get_settings $cw.rratel Capture V4L]
+	tk_optionMenu $cw.rrateom current_v4l_rrate "as is" "one half" "one quarter"
+	grid $cw.rratel $cw.rrateom - -sticky news
+	grid configure $cw.rratel -sticky nws
+
+	eval label $cw.vcodecl -text "\"Video codec:\"" [get_settings $cw.vcodecl Capture V4L]
+	set menu [tk_optionMenu $cw.vcodecom current_video_codec "H263" "H263I" "H263P" "MJPEG" "MPEG-1" "MPEG-4" "MSMPEG-4" "RV10"]
+	eval $cw.vcodecom configure [get_settings $cw.vcodecom Capture V4L]
+	eval $menu configure [get_settings $menu Capture V4L menu]
+	grid $cw.vcodecl $cw.vcodecom
+	grid configure $cw.vcodecl -sticky nws
+	grid configure $cw.vcodecom -sticky news
+
+	eval label $cw.acodecl -text "\"Audio codec:\"" [get_settings $cw.acodecl Capture V4L]
+	set menu [tk_optionMenu $cw.acodecom current_audio_codec "PCM" "MPEG-2" "AC-3"]
+	eval $cw.acodecom configure [get_settings $cw.acodecom Capture V4L]
+	eval $menu configure [get_settings $menu Capture V4L menu]
+	grid $cw.acodecl $cw.acodecom
+	grid configure $cw.acodecl -sticky nws
+	grid configure $cw.acodecom -sticky news
+
+	eval label $cw.av_formatl -text "\"File format:\"" [get_settings $cw.av_formatl Capture V4L]
+	set menu [tk_optionMenu $cw.av_formatom current_av_format "none" "AVI" "ASF" "MPEG"]
+	eval $cw.av_formatom configure [get_settings $cw.av_formatom Capture V4L]
+	eval $menu configure [get_settings $menu Capture V4L menu]
+	grid $cw.av_formatl $cw.av_formatom
+	grid configure $cw.av_formatl -sticky nws
+	grid configure $cw.av_formatom -sticky news
+
+	eval label $cw.filenamel -text "\"Save to file:\"" [get_settings $cw.filenamel Capture V4L]
+	eval entry $cw.filenamee -textvariable current_capture_filename [get_settings $cw.filenamee Capture V4L]
+	button $cw.filenameb -text "Change" -command { 
+		global current_capture_filename; 
+		set result [tk_getSaveFile -initialfile "$current_capture_filename" \
+			-parent .controlwin -title "Specify file to hold recorded video"  \
+			-filetypes { {"All files" { * } } { "Mpeg streams" { *.mpg *.MPG} } \ { "\"AVI streams\"" { *.avi *.AVI} } }\
+			] ; 
+		if { "$result" != "" } { 
+			set current_capture_filename "$result" 
+			}
+		}
+	eval $cw.filenameb configure [get_settings $cw.filenameb Capture V4L]
+	grid $cw.filenamel $cw.filenamee $cw.filenameb
+	grid configure $cw.filenamel -sticky nws
+	grid configure $cw.filenamee -sticky news
+	grid configure $cw.filenameb -sticky news
+
+	button $cw.snapshotb -text "Snapshot" -command capture_snapshot -state disabled
+	eval $cw.snapshotb configure [get_settings $cw.snapshotb Capture V4L]
+	checkbutton $cw.recordb -text "Record" -variable v4l_capture_on \
+		-indicatoron false 
+	eval $cw.recordb configure [get_settings $cw.recordb Capture V4L]
+	grid x $cw.snapshotb $cw.recordb -sticky ns -padx 5
+	label $cw.fifol -text "Fifo size: "
+	label $cw.fifov -text "0 Mb"
+	eval $cw.fifol configure [get_settings $cw.fifol Capture V4L]
+	eval $cw.fifov configure [get_settings $cw.fifov Capture V4L]
+	grid $cw.fifol $cw.fifov -sticky nws
+	} {
+	button $cw.snapshotb -text "Snapshot" -command capture_snapshot -state disabled
+	eval $cw.snapshotb configure [get_settings $cw.snapshotb Capture V4L]
+	grid x $cw.snapshotb
+	}
+rescan_v4l_devices
+}
+
+proc rescan_v4l_devices {} {
+global v4l_device_menu
+global current_v4l_device
+set current_v4l_device none
+$v4l_device_menu delete 0 end
+$v4l_device_menu add radiobutton -label "none"\
+				-value "none" -variable current_v4l_device
+for {set i 0 } {$i < 10 } { incr i } {
+	set status "[v4l_open_device rescan_handle /dev/video$i]"
+	if { "$status" == "" } {
+		set type [v4l_device_type rescan_handle]
+		if { [lsearch $type capture] >= 0 } {
+			$v4l_device_menu add radiobutton -label "/dev/video$i: [v4l_device_name rescan_handle]"\
+				-value "/dev/video$i" -variable current_v4l_device
+			}
+		v4l_close_device rescan_handle
+		}
+	}
+}
+
+proc update_v4l_window_info {cw} {
+global current_v4l_device
+global current_v4l_mode
+if { ! [winfo exists $cw] } {
+	return 
+	}
+if { ! [winfo exists $cw.window] } {
+	return
+	}
+if { "$current_v4l_device" == "none" } { 
+	$cw.window configure -text "N/A"
+	return 
+	}
+set window [v4l_get_current_window current_v4l_handle]
+switch "$current_v4l_mode" \
+	"single-frame" {
+		$cw.window configure -text "[lindex $window 2]x[lindex $window 3]+[lindex $window 0]+[lindex $window 1]"
+		} \
+	"deinterlace-bob" {
+		$cw.window configure -text "[lindex $window 2]x[expr [lindex $window 3]*2]+[lindex $window 0]+[expr [lindex $window 1]*2]"
+		}\
+	"deinterlace-weave" {
+		$cw.window configure -text "[lindex $window 2]x[expr [lindex $window 3]*2]+[lindex $window 0]+[expr [lindex $window 1]*2]"
+		}\
+	"half-width" {
+		$cw.window configure -text "[expr [lindex $window 2]/2]x[lindex $window 3]+[lindex $window 0]+[expr [lindex $window 1]*2]"
+		}
+
+}
+
+proc set_v4l_device {cw name1 name2 op } {
+global current_v4l_device
+global v4l_capture_on
+v4l_close_device current_v4l_handle
+if { "$current_v4l_device" == "none" } { 
+	set v4l_capture_on false
+	catch {
+		$cw.snapshotb configure -state disabled
+		}
+	return 
+	}
+set status "[v4l_open_device current_v4l_handle $current_v4l_device]"
+if { "$status" != "" } {
+	set current_v4l_device "none"
+	}
+$cw.snapshotb configure -state normal
+update_v4l_window_info $cw
+}
+
+global snp_window_count
+set snp_window_count 0
+
+proc capture_snapshot {} {
+global current_v4l_device
+global snp_window_count
+global current_v4l_mode
+if { "$current_v4l_device" == "none" } { 
+	return
+	}
+incr snp_window_count
+image create photo .snapshot$snp_window_count.image
+v4l_capture_snapshot current_v4l_handle .snapshot$snp_window_count.image $current_v4l_mode {
+	global snp_window_count
+	create_snapshot_window .snapshot$snp_window_count.image
+	} {
+	global snp_window_count
+	puts "Error capturing image $snp_window_count" 
+	}
+}
+
+proc create_snapshot_window {image} {
+global control_screen
+global snp_window_count
+set sw .snapshot$snp_window_count
+if { "$control_screen" != "" } {
+	toplevel $sw -screen "$control_screen"
+	} {
+	toplevel $sw
+	}
+wm title $sw "Snapshot $snp_window_count"
+eval frame $sw.f [get_settings $sw.f Capture V4L]
+grid $sw.f - -sticky news
+canvas $sw.c -xscrollcommand "$sw.hscroll set" \
+	-yscrollcommand "$sw.vscroll set" -relief sunken -bd 2
+eval $cw.c configure [get_settings $cw.c Capture V4L]
+scrollbar $sw.vscroll -command "$sw.c yview"
+scrollbar $sw.hscroll -command "$sw.c xview" -orient horiz
+eval $sw.vscroll configure [get_settings $sw.vscroll Capture V4L]
+eval $sw.hscroll configure [get_settings $sw.hscroll Capture V4L]
+grid $sw.c $sw.vscroll 
+grid $sw.hscroll x
+grid configure $sw.c -sticky news
+grid configure $sw.vscroll -sticky ns
+grid configure $sw.hscroll -sticky ew
+grid rowconfig $sw 1 -weight 1
+grid columnconfig $sw 0 -weight 1
+$sw.c create image 0 0 -anchor nw -image $image
+# size the canvas
+set screenheight [expr [winfo screenheight $sw.c] - 40]
+set screenwidth [expr [winfo screenwidth $sw.c] - 20]
+set width [image width $image]
+set height [image height $image]
+
+# scrollregion
+$sw.c configure -scrollregion "-10 -10 $width $height"
+
+# size - truncate to fit screen
+if { $width > $screenwidth } { set width $screenwidth }
+if { $height > $screenheight } { set height $screenheight}
+
+$sw.c configure -width $width -height $height
+
+#
+# Now populate control frame
+#
+
+button $sw.f.sab -text "Save as" -command "save_image_as $sw $image"
+eval $sw.f.sab configure [get_settings $sw.f.sab Capture V4L]
+
+set menu [tk_optionMenu $sw.f.type save_type Postscript PPM]
+eval $sw.f.type configure [get_settings $sw.f.type Capture V4L]
+eval $menu configure [get_settings $menu Capture V4L]
+
+grid $sw.f.sab $sw.f.type -padx 5
+update
+}
+
+proc save_image_as { sw image } {
+global save_type
+puts "$image $save_type"
+switch "$save_type" \
+	"Postscript" {
+		set file [tk_getSaveFile -defaultextension .eps \
+			-filetypes {{"Postscript" {.eps .ps}} {"All files" {.*}}} -parent $sw]
+		if { "$file" != "" } {
+			$sw.c postscript -file "$file"
+			}
+		} \
+	"PPM" {
+		set file [tk_getSaveFile -defaultextension .ppm \
+			-filetypes {{"PPM" {.ppm}} {"All files" {.*}}} -parent $sw]
+		if { "$file" != "" } {
+			$image write "$file" -format ppm
+			}
+		}
+}
+
+proc on_v4l_capture_set {cw name1 name2 w } {
+global v4l_capture_on
+global current_video_codec
+global current_audio_codec
+global current_v4l_mode
+global current_v4l_rrate
+global current_av_format
+global current_capture_filename
+global current_alsa_device
+if { $v4l_capture_on } {
+	set status [ffmpeg_encode_v4l_stream -v4l_handle current_v4l_handle \
+				-video_codec $current_video_codec \
+				-audio_code $current_audio_codec \
+				-deinterlace_mode $current_v4l_mode \
+				-step_frames $current_v4l_rrate \
+				-av_format $current_av_format \
+				-audio_device "$current_alsa_device" \
+				-audio_rate 48000 \
+				-filename "$current_capture_filename"]
+	if { "$status" == "" } { 
+		after cancel "check_fifo $cw"
+		after 800 "check_fifo $cw"
+		}
+	puts "status=$status"
+	} {
+	if { [ffmpeg_present] == "yes" } {
+		ffmpeg_stop_encoding current_v4l_handle
+		}
+	}
+}
+
+proc check_fifo { cw } {
+if { [ffmpeg_present] == "no" } { return }
+catch {
+	set size [ffmpeg_incoming_fifo_size current_v4l_handle]
+	$cw.fifov configure -text "[expr $size/(1024*1024)] Mb"
+	}
+after 800 "check_fifo $cw"
+}
+

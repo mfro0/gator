@@ -1,5 +1,6 @@
 #!avview_shell
 
+source themes.scp
 source alsa.scp
 
 frame .f

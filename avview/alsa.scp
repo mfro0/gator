@@ -66,11 +66,11 @@ trace vdelete $name.locked w "set_locked_state $mw \"$name\" \"$element\" $i ; s
 if { ! [info exists $name.locked] } {
 	set $name.locked 1
 	}
-label $mw.l$i -text "$name"
+eval label $mw.l$i -text "\"$name\"" -justify left [get_settings $mw.l$i ALSA $i]
 destroy $mw.f$i
 destroy $mw.f_locked$i
-frame $mw.f$i
-frame $mw.f_locked$i
+eval frame $mw.f$i [get_settings $mw.f$i ALSA $i]
+eval frame $mw.f_locked$i [get_settings $mw.f_locked$i ALSA $i]
 if { [llength $value] > 1 } {
 	# check if all values are identical
 	set a [lindex $value 0]
@@ -81,18 +81,18 @@ if { [llength $value] > 1 } {
 			}
 		}
 
-	checkbutton $mw.cb$i -text "Locked" -variable $name.locked \
-			-indicatoron false
+	eval checkbutton $mw.cb$i -text "Locked" -variable \"$name.locked\" \
+			-indicatoron false [get_settings $mw.cb$i ALSA $i]
 	if { [set $name.locked ] } {
 		grid $mw.l$i $mw.f_locked$i $mw.cb$i -sticky news
 		} {
 		grid $mw.l$i $mw.f$i $mw.cb$i -sticky news
 		}
-	grid configure $mw.l$i -sticky nws
+	grid configure $mw.l$i -sticky news
 	grid columnconfig $mw.f$i 0 -weight 1
 	} {
 	grid $mw.l$i $mw.f$i - -sticky news
-	grid configure $mw.l$i -sticky nws
+	grid configure $mw.l$i -sticky news
 	grid columnconfig $mw.f$i 0 -weight 1
 	}
 trace variable $name.locked w "set_locked_state $mw \"$name\" \"$element\" $i ; skip_args3"
@@ -109,14 +109,14 @@ grid columnconfig $mw 1 -weight 1
 switch "[get_value $element "-type"]" \
 	"BOOLEAN" {
 		set value [alsa_hctl_get_element_value "$current_alsa_device" $i]
-		label $mw.l$i -text "$name"
-		frame $mw.f$i 
+		eval label $mw.l$i -text "\"$name\"" -justify left [get_settings $mw.l$i ALSA $i]
+		eval frame $mw.f$i [get_settings $mw.f$i ALSA $i]
 		grid $mw.l$i $mw.f$i - -sticky news
-		grid configure $mw.l$i -sticky nws
+		grid configure $mw.l$i -sticky news
 		grid columnconfig $mw.f$i 0 -weight 1
 		for { set j 0 } { $j < $values_count } { incr j } {
 			global $name.v$j
-			checkbutton $mw.f$i.cb$j -variable $name.v$j
+			eval checkbutton $mw.f$i.cb$j -variable \"$name.v$j\" [get_settings $mw.f$i.cb$j ALSA $i $j]
 			grid $mw.f$i.cb$j -row 0 -column $j -sticky news
 			trace vdelete $name.v$j w "set_element_value \"$name\" $values_count $i $j ; skip_args3"
 			set $name.v$j [lindex $value $j]
@@ -132,28 +132,30 @@ switch "[get_value $element "-type"]" \
 		if { "$step" == "0" } { set step 1 }
 		for { set j 0 } { $j < $values_count } { incr j } {
 			global $name.v$j
-			scale $mw.f$i.s$j -variable $name.v$j \
+			eval scale $mw.f$i.scale$j -variable \"$name.v$j\" \
 				-from $min -to $max -resolution $step \
-				-orient horizontal -showvalue false
-			grid $mw.f$i.s$j -row $j -column 0 -sticky news
+				-orient horizontal -showvalue false \
+				[get_settings $mw.f$i.scale$j ALSA $i $j]
+			grid $mw.f$i.scale$j -row $j -column 0 -sticky news
 			trace vdelete $name.v$j w "set_element_value \"$name\" $values_count $i $j ; skip_args3"
 			set $name.v$j [lindex $value $j]
 			trace variable $name.v$j w "set_element_value \"$name\" $values_count $i $j ; skip_args3"
 			}
 		global $name.average_v
-		scale $mw.f_locked$i.s -variable $name.average_v \
+		eval scale $mw.f_locked$i.scale -variable \"$name.average_v\" \
 			-from $min -to $max -resolution $step \
-			-orient horizontal -showvalue false
-		grid $mw.f_locked$i.s -row $j -column 0 -sticky news
+			-orient horizontal -showvalue false \
+			[get_settings $mw.f_locked$i.scale ALSA $i]
+		grid $mw.f_locked$i.scale -row $j -column 0 -sticky news
 		trace vdelete $name.average_v w "set_element_average_value \"$name\" $values_count $i; skip_args3"
 		set $name.average_v [average_list $value]
 		trace variable $name.average_v w "set_element_average_value \"$name\" $values_count $i; skip_args3"
 		} \
 	"ENUMERATED" {
-		label $mw.l$i -text "$name"
-		frame $mw.f$i 
+		eval label $mw.l$i -text "\"$name\"" -justify left [get_settings $mw.l$i ALSA $i]
+		eval frame $mw.f$i [get_settings $mw.f$i ALSA $i]
 		grid $mw.l$i $mw.f$i - -sticky news
-		grid configure $mw.l$i -sticky nws
+		grid configure $mw.l$i -sticky news
 		set value [alsa_hctl_get_element_value "$current_alsa_device" $i]
 		set min [get_value $element "-min"]
 		set max [get_value $element "-max"]
@@ -164,9 +166,11 @@ switch "[get_value $element "-type"]" \
 		for { set j 0 } { $j < $values_count } { incr j } {
 			global $name.v$j
 			set "element.$i.$j.menu" [tk_optionMenu $mw.f$i.om$j $name.v$j none]
+			eval $mw.f$i.om$j configure [get_settings $mw.f$i.om$j ALSA $i $j]
+			eval [set "element.$i.$j.menu"] configure [get_settings [set "element.$i.$j.menu"] ALSA $i $j]
 			[set element.$i.$j.menu] delete 0 end
 			foreach item $items {
-				[set element.$i.$j.menu] add radiobutton -label "$item" -value "$item" -variable $name.v$j
+				[set element.$i.$j.menu] add radiobutton -label "$item" -value "$item" -variable $name.v$j 
 				}
 			grid $mw.f$i.om$j -row $j -column 0 -sticky news
 			trace vdelete $name.v$j w "set_element_value \"$name\" $values_count $i $j ; skip_args3"
@@ -191,7 +195,9 @@ if { "$current_alsa_device" == "none" } {
 	grid $mw.l
 	return
 	}
-label $mw.title -text "Mixer (ALSA)" -background black -foreground white
+eval label $mw.title -text "\"Mixer (ALSA)\"" \
+	[get_settings $mw.title ALSA]
+	
 grid $mw.title - - -sticky news -pady 2 -padx 2
 grid columnconfigure $mw 1 -weight 1
 set i 0
@@ -232,15 +238,18 @@ if { "$master" != "" } {
 	grid rowconfigure $master [expr $row+1] -weight 1
 	}
 
-frame $cw.f 
+eval frame $cw.f [get_settings $cw.f ALSA]
 
 label $cw.title -text "Audio (ALSA)" -background black -foreground white
+eval $cw.title configure [get_settings $cw.title ALSA]
 grid $cw.title - - -sticky news -pady 2 -padx 2 -row 0
 grid columnconfigure $cw 1 -weight 1
 label $cw.devicel -text "ALSA Audio device: "
+eval $cw.devicel configure [get_settings $cw.devicel ALSA]
 global alsa_device_menu
 set alsa_device_menu [tk_optionMenu $cw.deviceom current_alsa_device1 none]
 button $cw.rescanb -text "Rescan" -command rescan_alsa_devices
+eval $cw.rescanb configure [get_settings $cw.rescanb ALSA]
 grid $cw.devicel $cw.deviceom $cw.rescanb -sticky news
 grid configure $cw.devicel -sticky nws
 
@@ -252,6 +261,7 @@ global current_alsa_device1
 set current_alsa_device1 "$save_alsa_device"
 
 frame $cw.f1 -relief groove -borderwidth 2
+eval $cw.f1 configure [get_settings $cw.f1 ALSA]
 
 grid $cw.f1 - - -sticky news -padx 2 
 
@@ -262,6 +272,10 @@ grid rowconfig $cw [get_value $c_info "-row"] -weight 1
 canvas $cw.f1.c -yscrollcommand "$cw.f1.vscroll set" -bd 0 -borderwidth 0\
 	-highlightthickness 0 -confine "yes" -relief flat
 scrollbar $cw.f1.vscroll -command "$cw.f1.c yview" -orient vertical 
+
+eval $cw.f1.c configure [get_settings $cw.f1.c ALSA]
+eval $cw.f1.vscroll configure [get_settings $cw.f1.vscroll ALSA]
+
 #grid $cw.f1.c - $cw.f1.vscroll -sticky news
 #grid rowconfig $cw.f1 0 -weight 1
 #grid columnconfig $cw.f1 0 -weight 1

@@ -50,10 +50,8 @@ void free_generic_packet(PACKET *p)
 {
 p->size=0;
 p->free=0;
-#if 0
 if(p->buf!=NULL)do_free(p->buf);
 do_free(p);
-#endif
 }
 
 void deliver_packet(PACKET_STREAM *s, PACKET *p)

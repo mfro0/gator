@@ -192,6 +192,11 @@ if(tkwin==NULL){
 
 d=Tk_Display(tkwin);
 win=Tk_WindowId(tkwin);
+if((d==NULL)||(win==(Window)NULL)){
+	Tk_MapWindow(tkwin);
+	d=Tk_Display(tkwin);
+	win=Tk_WindowId(tkwin);
+	}
 
 if((d==NULL)||(win==(Window)NULL)){
 	Tcl_AppendResult(interp,"ERROR: xmisc_hidecursor: first argument must be a mapped toplevel or frame window", NULL);

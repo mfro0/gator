@@ -1,0 +1,85 @@
+#!avview_shell
+
+global theme_name
+set theme_name ""
+
+global theme_settings_cache
+
+global theme_list
+
+proc save_theme { fileid } {
+global theme_name
+global theme_settings_cache
+puts $fileid "global theme_name"
+puts $fileid "global theme_settings_cache"
+puts $fileid "set_theme_name \"$theme_name\""
+if { [array exists theme_settings_cache] } {
+	puts $fileid "set theme_settings_cache \[array set \[list [array get theme_settings_cache]\]\]"
+	}
+puts $fileid "set_theme \"$theme_name\""
+}
+
+proc set_theme { name } {
+global theme_list
+global theme_name
+global current_theme_proc
+global theme_settings_cache
+
+if { "$theme_name" != "$name" } {
+	catch { unset theme_settings_cache }
+	}
+if { [ catch { set current_theme_proc $theme_list(\"$name\") } ] } {
+	set current_theme_proc theme_none
+	}
+}
+#
+#
+#
+proc get_settings { widget args } {
+global theme_settings_cache
+global current_theme_proc
+if { [catch { return "$theme_settings_cache("$widget $args")" } ] } {
+	set a [$current_theme_proc "$widget" $args]
+	array set theme_settings_cache [list  "$widget $args" $a ]
+	return $a
+	}
+}
+
+#
+# It is args to distinguish it from args which is reserved by Tcl/Tk
+# for variable arg number assignments
+#
+proc theme_none { widget args1 } {
+return ""
+}
+
+set theme_list("Unthemed")  theme_none
+
+proc theme_red { widget args1 } {
+return [list -background red]
+}
+
+set theme_list("Red") theme_red
+
+proc theme_default { widget args1 } {
+puts "widget=$widget args=$args1"
+switch -glob -- "$widget $args1" \
+	.video*AVview {return "-background #102030" } \
+	*.fullscreen*  { return "-background blue" } \
+	*.title*  { return "-background black -foreground white" } \
+	*.c.f.*ALSA* {  \
+		set i [lindex $args1 1]
+		puts "i=$i"
+		if { [expr $i % 2] } {
+			return "-background #CCCCCC";
+			} {
+			return "-background #AAAAAA";
+			}
+		} \
+	default { return "" }
+}
+
+set theme_list("Default") theme_default
+
+set_theme Default
+
