@@ -146,5 +146,3 @@ echo "Unless this tree is really in directory named \"yes\" or \"no\" please"
 echo "restart ./configure with the correct parameter syntax"
 echo ""
 fi
-
-chmod +x start_avview
