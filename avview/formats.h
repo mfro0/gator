@@ -1,7 +1,7 @@
 #ifndef __FORMATS_H__
 #define __FORMATS_H__
 
-/* Borrowed from pwc webcam driver by Nemosoft */
+/* Borrowed and modified from pwc webcam driver by Nemosoft */
 
 #define PUSH_RGB24	1
 #define PUSH_BGR24	2
@@ -13,11 +13,19 @@ void vcvt_420i_rgb24(int width, int height, int plus, void *src, void *dst);
 void vcvt_420i_bgr24(int width, int height, int plus, void *src, void *dst);
 void vcvt_420i_rgb32(int width, int height, int plus, void *src, void *dst);
 void vcvt_420i_bgr32(int width, int height, int plus, void *src, void *dst);
+
 void vcvt_420p(int width, int height, int plus, unsigned char *src, unsigned char *dst, int push);
 void vcvt_420p_rgb24(int width, int height, int plus, void *src, void *dst);
 void vcvt_420p_bgr24(int width, int height, int plus, void *src, void *dst);
 void vcvt_420p_rgb32(int width, int height, int plus, void *src, void *dst);
 void vcvt_420p_bgr32(int width, int height, int plus, void *src, void *dst);
+
+void vcvt_422(int width, int height, int plus, unsigned char *src, unsigned char *dst, int push);
+void vcvt_422_rgb24(int width, int height, int plus, void *src, void *dst);
+void vcvt_422_bgr24(int width, int height, int plus, void *src, void *dst);
+void vcvt_422_rgb32(int width, int height, int plus, void *src, void *dst);
+void vcvt_422_bgr32(int width, int height, int plus, void *src, void *dst);
+void deinterlace_422(long width, long height, long pitch, char *frame1, char *frame2, char *dest);
 
 
 #endif

@@ -189,16 +189,14 @@ return 0;
 
 void set_transparency(Tk_PhotoImageBlock *pib, char alpha)
 {
-long *p;
-long w;
+char *p;
 long i,j;
 
-w=alpha<<24;
 for(j=0;j<pib->height;j++){
-	p=(long *)(pib->pixelPtr+j*pib->pitch);
+	p=(pib->pixelPtr+j*pib->pitch)+3;
 	for(i=0;i<pib->width;i++){
-		*p=((*p)&0x00ffffff)|w;
-		p++;
+		*p=alpha;
+		p+=4;
 		}
 	}
 }
@@ -210,15 +208,28 @@ if(mask & TCL_READABLE){
 	status=read(data->fd, data->read_buffer+data->transfer_read, data->transfer_size-data->transfer_read);
 	if(status<0)return;
 	data->transfer_read+=status;
-	if(data->transfer_read==data->transfer_size)data->transfer_callback(data);
+	if((status==0) || (data->transfer_read==data->transfer_size)){
+		Tcl_DeleteFileHandler(data->fd);
+		data->transfer_callback(data);
+		}
 	}
 }
 
 void v4l_snapshot_callback(V4L_DATA *data)
 {
+char *p=NULL;
 if(data->transfer_size==data->transfer_read){
 	data->pib.pixelPtr=do_alloc(data->pib.pitch*data->pib.height, 1);
-	vcvt_420p_rgb32(data->pib.width, data->pib.height, data->pib.width, data->read_buffer, data->pib.pixelPtr);
+	if(!strcmp(data->vcap.name, "Km")){
+		p=do_alloc(data->transfer_size, 1);
+		deinterlace_422(data->pib.width, data->pib.height/2, data->pib.width*2,
+				data->read_buffer, data->read_buffer+(data->transfer_size/2),
+				p);
+		free(data->read_buffer);
+		data->read_buffer=p;
+		}
+	
+	vcvt_422_rgb32(data->pib.width, data->pib.height, data->pib.width, data->read_buffer, data->pib.pixelPtr);
 	set_transparency(&(data->pib), 0xff);
 	Tk_PhotoSetSize(data->ph, data->pib.width, data->pib.height);
 	Tk_PhotoPutBlock(data->ph, &(data->pib), 0, 0, data->pib.width, data->pib.height);
@@ -232,7 +243,6 @@ if(data->read_buffer!=NULL){
 	free(data->read_buffer);
 	data->read_buffer=NULL;
 	}
-Tcl_DeleteFileHandler(data->fd);
 if(data->transfer_complete_script!=NULL)free(data->transfer_complete_script);
 if(data->transfer_failed_script!=NULL)free(data->transfer_failed_script);
 data->transfer_complete_script=NULL;
@@ -282,7 +292,10 @@ data->transfer_complete_script=strdup(argv[3]);
 if(argc>=5)data->transfer_failed_script=strdup(argv[4]);
 data->transfer_callback=v4l_snapshot_callback;
 data->pib.width=vwin.width;
-data->pib.height=vwin.height;
+/* recognize Km and deinterlace it's data to form a complete picture */
+if(!strcmp("Km", data->vcap.name))data->pib.height=vwin.height*2;
+	else
+	data->pib.height=vwin.height;
 data->pib.offset[0]=0;
 data->pib.offset[1]=1;
 data->pib.offset[2]=2;
@@ -290,7 +303,7 @@ data->pib.offset[3]=3;
 data->pib.pixelSize=4;
 data->pib.pitch=data->pib.width*data->pib.pixelSize;
 data->pib.pixelPtr=NULL;
-data->transfer_size=data->pib.width*data->pib.height*2; 
+data->transfer_size=2*data->pib.width*data->pib.height; 
 data->transfer_read=0;
 data->read_buffer=do_alloc(data->transfer_size, 1);
 Tcl_CreateFileHandler(data->fd, TCL_READABLE, v4l_transfer_handler, data);

@@ -623,31 +623,97 @@ set status "[v4l_open_device current_v4l_handle $current_v4l_device]"
 puts "status=$status"
 }
 
+global snp_window_count
+set snp_window_count 0
+
 proc capture_snapshot {} {
 global current_v4l_device
+global snp_window_count
 if { "$current_v4l_device" == "none" } { 
 	return
 	}
-image create photo .snapshot.image
-v4l_capture_snapshot current_v4l_handle .snapshot.image {
-	create_snapshot_window .snapshot.image
+incr snp_window_count
+image create photo .snapshot$snp_window_count.image
+v4l_capture_snapshot current_v4l_handle .snapshot$snp_window_count.image {
+	global snp_window_count
+	create_snapshot_window .snapshot$snp_window_count.image
 	} {
-	puts "hello2" 
+	global snp_window_count
+	puts "Error capturing image $snp_window_count" 
 	}
 }
 
 proc create_snapshot_window {image} {
 global control_screen
-set sw .snapshot
+global snp_window_count
+set sw .snapshot$snp_window_count
 if { "$control_screen" != "" } {
 	toplevel $sw -screen "$control_screen"
 	} {
 	toplevel $sw
 	}
-button $sw.b -image $image
-pack $sw.b -fill both -expand yes
+wm title $sw "Snapshot $snp_window_count"
+frame $sw.f
+grid $sw.f - -sticky news
+canvas $sw.c -xscrollcommand "$sw.hscroll set" \
+	-yscrollcommand "$sw.vscroll set" -relief sunken -bd 2
+scrollbar $sw.vscroll -command "$sw.c yview"
+scrollbar $sw.hscroll -command "$sw.c xview" -orient horiz
+grid $sw.c $sw.vscroll 
+grid $sw.hscroll x
+grid configure $sw.c -sticky news
+grid configure $sw.vscroll -sticky ns
+grid configure $sw.hscroll -sticky ew
+grid rowconfig $sw 1 -weight 1
+grid columnconfig $sw 0 -weight 1
+$sw.c create image 0 0 -anchor nw -image $image
+# size the canvas
+set screenheight [expr [winfo screenheight $sw.c] - 40]
+set screenwidth [expr [winfo screenwidth $sw.c] - 20]
+set width [image width $image]
+set height [image height $image]
+
+# scrollregion
+$sw.c configure -scrollregion "-10 -10 $width $height"
+
+# size - truncate to fit screen
+if { $width > $screenwidth } { set width $screenwidth }
+if { $height > $screenheight } { set height $screenheight}
+
+$sw.c configure -width $width -height $height
+
+#
+# Now populate control frame
+#
+
+button $sw.f.sab -text "Save as" -command "save_image_as $sw $image"
+
+tk_optionMenu $sw.f.type save_type Postscript PPM
+
+grid $sw.f.sab $sw.f.type -padx 5
 update
 }
+
+proc save_image_as { sw image } {
+global save_type
+puts "$image $save_type"
+switch "$save_type" \
+	"Postscript" {
+		set file [tk_getSaveFile -defaultextension .eps \
+			-filetypes {{"Postscript" {.eps .ps}} {"All files" {.*}}} -parent $sw]
+		if { "$file" != "" } {
+			$sw.c postscript -file "$file"
+			}
+		} \
+	"PPM" {
+		set file [tk_getSaveFile -defaultextension .ppm \
+			-filetypes {{"PPM" {.ppm}} {"All files" {.*}}} -parent $sw]
+		if { "$file" != "" } {
+			$image write "$file" -format ppm
+			}
+		}
+}
+
 
 global current_port
 trace variable current_port w set_port

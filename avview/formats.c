@@ -1,7 +1,7 @@
 #include "global.h"
 #include "formats.h"
 
-/* Borrowed from pwc webcam driver by Nemosoft */
+/* Borrowed and modified from pwc webcam driver by Nemosoft */
 
 /**
   \brief convert YUV 4:2:0 data into RGB, BGR, RGBa or BGRa
@@ -256,4 +256,140 @@ void vcvt_420p_rgb32(int width, int height, int plus, void *src, void *dst)
 void vcvt_420p_bgr32(int width, int height, int plus, void *src, void *dst)
 {
 	vcvt_420p(width, height, plus, (unsigned char *)src, (unsigned char *)dst, PUSH_BGR32);
+}
+
+/**
+  \brief convert YUV 4:2:2 data into RGB, BGR, RGBa or BGRa
+  \param width Width of yuv data, in pixels
+  \param height Height of yuv data, in pixels
+  \param plus Width of viewport, in pixels
+  \param src beginning of YUV data
+  \param dst beginning of RGB data, \b including the initial offset into the viewport
+  \param push The requested RGB format 
+
+  \e push can be any of PUSH_RGB24, PUSH_BGR24, PUSH_RGB32 or PUSH_BGR32
+  
+ This is a really simplistic approach. Speedups are welcomed. 
+*/
+void vcvt_422(int width, int height, int plus, unsigned char *src, unsigned char *dst, int push)
+{
+	int line, col, pitch;
+	int y, u, v, yy, vr = 0, ug = 0, vg = 0, ub = 0;
+	int r, g, b;
+	unsigned char *sy, *su, *sv;
+
+	pitch=width*2;
+
+	for (line = 0; line < height; line++) {
+		sy = src+line*pitch;
+		su = sy + 1;
+		sv = sy + 3;
+		for (col = 0; col < width; col++) {
+			yy = (*sy) << 8;
+			sy+=2;
+			if ((col & 1) == 0) {
+				/* only at even colums we update the u/v data */
+				u = *su - 128;
+				ug =   88 * u;
+				ub =  454 * u;
+				v = *sv - 128;
+				vg =  183 * v;
+				vr =  359 * v;
+
+				su+=4;
+				sv+=4;
+			}
+			#if 0
+			if ((col & 3) == 3) {
+				sy += 2; /* skip u/v */
+				su += 4; /* skip y */
+				sv += 4; /* skip y */
+			}
+			#endif
+			r = (yy +      vr) >> 8;
+			g = (yy - ug - vg) >> 8;
+			b = (yy + ub     ) >> 8;
+			/* At moments like this, you crave for MMX instructions with saturation */
+			if (r <   0) r =   0;
+			if (r > 255) r = 255;
+			if (g <   0) g =   0;
+			if (g > 255) g = 255;
+			if (b <   0) b =   0;
+			if (b > 255) b = 255;
+			
+			switch(push) {
+			case PUSH_RGB24:
+				*dst++ = r;
+				*dst++ = g;
+				*dst++ = b;
+				break;
+
+			case PUSH_BGR24:
+				*dst++ = b;
+				*dst++ = g;
+				*dst++ = r;
+				break;
+			
+			case PUSH_RGB32:
+				*dst++ = r;
+				*dst++ = g;
+				*dst++ = b;
+				*dst++ = 0;
+				break;
+
+			case PUSH_BGR32:
+				*dst++ = b;
+				*dst++ = g;
+				*dst++ = r;
+				*dst++ = 0;
+				break;
+			}
+		} /* ..for col */
+		/* Adjust destination pointer, using viewport. We have just
+		   filled one line worth of data, so only skip the difference
+		   between the view width and the image width.
+		 */
+		if ((push == PUSH_RGB24) || (push == PUSH_BGR24))
+			dst += ((plus - width) * 3);
+		else
+			dst += ((plus - width) * 4);
+	} /* ..for line */
+}
+
+void vcvt_422_rgb24(int width, int height, int plus, void *src, void *dst)
+{
+	vcvt_422(width, height, plus, (unsigned char *)src, (unsigned char *)dst, PUSH_RGB24);
+}
+
+void vcvt_422_bgr24(int width, int height, int plus, void *src, void *dst)
+{
+	vcvt_422(width, height, plus, (unsigned char *)src, (unsigned char *)dst, PUSH_BGR24);
+}
+
+void vcvt_422_rgb32(int width, int height, int plus, void *src, void *dst)
+{
+	vcvt_422(width, height, plus, (unsigned char *)src, (unsigned char *)dst, PUSH_RGB32);
+}
+
+void vcvt_422_bgr32(int width, int height, int plus, void *src, void *dst)
+{
+	vcvt_422(width, height, plus, (unsigned char *)src, (unsigned char *)dst, PUSH_BGR32);
+}
+
+/* a rather simplistic deinterlacing.. for now */
+void deinterlace_422(long width, long height, long pitch, char *frame1, char *frame2, char *dest)
+{
+long line;
+long dst_pitch;
+char *t1,*t2;
+char *s1,*s2;
+dst_pitch=width*2;
+for(line=height-1;line>=0;line--){
+	s1=frame1+line*pitch;
+	s2=frame2+line*pitch;
+	t1=dest+line*dst_pitch*2;
+	t2=t1+dst_pitch;
+	memcpy(t1,s1,pitch);
+	memcpy(t2,s2,pitch);
+	}
 }
