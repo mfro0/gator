@@ -91,25 +91,20 @@ data[0]=0x00; /* start with register 0x00 */
 data[1]=0x1A; 
 data[2]=0x44;
 data[3]=0x20;
-data[4]=0x0F;
-data[5]=0x1F;
 
-I2C_WriteRead(&(f->d), (I2CByte *)data, 6, NULL, 0);
+I2C_WriteRead(&(f->d), (I2CByte *)data, 4, NULL, 0);
 
 data[0]=0x05; /* now start with register 0x05 */
 data[1]=0xD7;
 data[2]=0x14;
 data[3]=0x05;
-data[4]=0xC3;
-data[5]=0x4E;
-I2C_WriteRead(&(f->d), (I2CByte *)data, 6, NULL, 0);
+I2C_WriteRead(&(f->d), (I2CByte *)data, 4, NULL, 0);
 
-data[0]=0x0A; /* now start with register 0x05 */
-data[1]=0xEC;
-data[2]=0x8F;
-data[3]=0x07;
-data[4]=0x43;
-I2C_WriteRead(&(f->d), (I2CByte *)data, 5, NULL, 0);
+data[0]=0x0B; /* now start with register 0x05 */
+data[1]=0x8F;
+data[2]=0x07;
+data[3]=0x43;
+I2C_WriteRead(&(f->d), (I2CByte *)data, 4, NULL, 0);
 
 usleep(15000);
 }
@@ -142,26 +137,29 @@ data[0]=0x0d; /* now start with register 0x0d */
 data[1]=0x32;
 I2C_WriteRead(&(f->d), (I2CByte *)data, 2, NULL, 0);
 
-xogc=7;
-
 while(1) {
 	usleep(15000); /* wait 15 milliseconds */
 
 	data[0]=0x0e; /* register number 7, status */
 	value=0xFF;
 	if(!I2C_WriteRead(&(f->d), (I2CByte *)data, 1, &value, 1))
-		xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: failed to read XOK\n", value & 0x01); 
+		xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: failed to read XOK\n"); 
 	xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: XOK=%d\n", value & 0x01); 
 	if(value & 1) break;
 	
-	xogc--;
-	if(xogc==3){
-		xogc++;
+	data[0]=0x07;
+	if(!I2C_WriteRead(&(f->d), (I2CByte *)data, 1, &value, 1))
+		xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: failed to read XOGC\n"); 
+	 
+	xogc=value & 0x7;
+	if(xogc==4){
 		break; /* XOGC has reached 4.. stop */	
 		}
+	xogc--;
 	xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: try XOGC=%d\n", xogc); 
+	usleep(15000);
 	data[0]=0x07; /* register number 7, control byte 2 */
-	data[1]=0x88 | xogc;
+	data[1]=0x08 | xogc;
 	I2C_WriteRead(&(f->d), (I2CByte *)data, 2, NULL, 0);	
 	}
 f->xogc=xogc;
@@ -324,14 +322,6 @@ data[0]=0x01;  /* start with register 1 */
 data[1]=(m->SEL<<4)|(m->LO1I & 0x7);
 I2C_WriteRead(&(f->d), (I2CByte *)data, 2, NULL, 0);
 
-if(!MT2032_wait_for_lock(f)){
-	data[0]=0x07;
-	data[1]=0x88|f->xogc;
-	I2C_WriteRead(&(f->d), (I2CByte *)data, 2, NULL, 0);
-	usleep(15000);
-	data[1]=0x08|f->xogc;
-	I2C_WriteRead(&(f->d), (I2CByte *)data, 2, NULL, 0);
-	}
 }
 
 static int FI1236_get_afc_hint(FI1236Ptr f)
@@ -407,22 +397,33 @@ static void MT2032_tune(FI1236Ptr f, double freq, double step)
 {
 MT2032_parameters m;
 CARD8 data[10];
+int i;
 /* NTSC IF is 44mhz.. but 733/16=45.8125 and all TDAXXXX docs mention
      45.75, 39, 58.75 and 30. */
 #if 0
 MT2032_calculate_register_settings(&m, freq, 1090.0, 45.125, 5.25, 6.0, step);
 MT2032_calculate_register_settings(&m, freq, 1090.0, 45.74, 5.25, 6.0, step);
 #endif
-MT2032_calculate_register_settings(&m, freq, 1090.0, f->video_if, 5.25, 6.0, step);
+MT2032_calculate_register_settings(&m, freq, 1090.0, f->video_if, 5.25, 3.0, step);
 MT2032_dump_parameters(f, &m);
 MT2032_implement_settings(f, &m);
-MT2032_optimize_VCO(f, &m);
 /* MT2032_dump_parameters(f, &m); */
-if(MT2032_wait_for_lock(f)){
-	data[0]=0x02;  /* LO Gain control register 0x02 */
-	data[1]=0x20;
+for(i=0;i<3;i++){
+	MT2032_optimize_VCO(f, &m);
+	if(MT2032_wait_for_lock(f)){
+		data[0]=0x02;  /* LO Gain control register 0x02 */
+		data[1]=0x20;
+		I2C_WriteRead(&(f->d), (I2CByte *)data, 2, NULL, 0);
+		return;
+		}
+	data[0]=0x07;
+	data[1]=0x88|f->xogc;
 	I2C_WriteRead(&(f->d), (I2CByte *)data, 2, NULL, 0);
+	usleep(15000);
+	data[1]=0x08|f->xogc;
+	I2C_WriteRead(&(f->d), (I2CByte *)data, 2, NULL, 0);	
 	}
+xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: failed to set frequency\n");
 }
 
 void FI1236_set_tuner_type(FI1236Ptr f, int type)

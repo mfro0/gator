@@ -41,6 +41,7 @@ TheatrePtr DetectTheatre(GENERIC_BUS_Ptr b)
    t = xcalloc(1,sizeof(TheatreRec));
    t->VIP = b;
    t->theatre_num = -1;
+   t->mode=MODE_UNINITIALIZED;
    
    b->read(b, VIP_VIP_VENDOR_DEVICE_ID, 4, (CARD8 *)&val);
    for(i=0;i<4;i++)
@@ -1773,10 +1774,13 @@ void RT_SetConnector (TheatrePtr t, CARD16 wConnector, int tunerFlag)
      xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre Checkpoint 1\n");
     /* Get the contrast value - make sure we are viewing a visible line*/
     counter=0;
+    #if 0
     while (!((ReadRT_fld (fld_VS_LINE_COUNT)> 1) && (ReadRT_fld (fld_VS_LINE_COUNT)<20)) && (counter < 100000)){
+    #endif
+    while ((ReadRT_fld (fld_VS_LINE_COUNT)<20) && (counter < 100000)){
     	counter++;
 	}
-    xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre Checkpoint 2, counter=%ld\n", counter);
+    xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre Checkpoint 2, counter=%ld  (%d)\n", counter,  ReadRT_fld(fld_VS_LINE_COUNT));
     if(counter>=100000)xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre: timeout waiting for line count (%d)\n", ReadRT_fld (fld_VS_LINE_COUNT));
 
     dwTempContrast = ReadRT_fld (fld_LP_CONTRAST);
@@ -1823,10 +1827,13 @@ void RT_SetConnector (TheatrePtr t, CARD16 wConnector, int tunerFlag)
     if(i<0) xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre: waiting for fld_HS_GENLOCKED failed\n");
     xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre Checkpoint 4 i=%d\n",i);
     counter = 0;
+    #if 0
     while (!((ReadRT_fld (fld_VS_LINE_COUNT)> 1) && (ReadRT_fld (fld_VS_LINE_COUNT)<20)) && (counter < 100000)){
+    #endif
+    while ((ReadRT_fld(fld_VS_LINE_COUNT)<20) && (counter < 100000)){
     	counter++;
 	}
-    xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre Checkpoint 5 counter=%d\n", counter);
+    xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre Checkpoint 5 counter=%d (%d)\n", counter, ReadRT_fld (fld_VS_LINE_COUNT));
     if(counter>=100000)xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "Rage Theatre: timeout waiting for line count (%d)\n", ReadRT_fld (fld_VS_LINE_COUNT));
 
     WriteRT_fld (fld_LP_CONTRAST, dwTempContrast);
@@ -1841,10 +1848,12 @@ void InitTheatre(TheatrePtr t)
 {
     CARD32 data;
 
+    
     /* 0 reset Rage Theatre */
     ShutdownTheatre(t);
     usleep(100000);
        
+    t->mode=MODE_INITIALIZATION_IN_PROGRESS;
     /* 1.
      Set the VIN_PLL to NTSC value */
     RT_SetVINClock(t, RT_NTSC);
@@ -1895,6 +1904,8 @@ void InitTheatre(TheatrePtr t)
     RT_regr (fld_DVS_DIRECTION, &data);
     RT_regw (fld_DVS_DIRECTION, data & RT_DVSDIR_OUT);
 /*	WriteRT_fld (fld_DVS_DIRECTION, RT_DVSDIR_IN); */
+
+    t->mode=MODE_INITIALIZED_FOR_TV_IN;
 }
 
 
@@ -1904,6 +1915,7 @@ void ShutdownTheatre(TheatrePtr t)
     WriteRT_fld (fld_VINRST       , RT_VINRST_RESET);
     WriteRT_fld (fld_ADC_PDWN     , RT_ADC_DISABLE);
     WriteRT_fld (fld_DVS_DIRECTION, RT_DVSDIR_IN);
+    t->mode=MODE_UNINITIALIZED;
 }
 
 void DumpRageTheatreRegs(TheatrePtr t)

@@ -1,12 +1,16 @@
 #ifndef __THEATRE_H__
 #define __THEATRE_H__
 
+#define MODE_UNINITIALIZED		1
+#define MODE_INITIALIZATION_IN_PROGRESS 2
+#define MODE_INITIALIZED_FOR_TV_IN	3
 
 typedef struct {
          GENERIC_BUS_Ptr VIP;
 	 
 	 int theatre_num;
 	 CARD32 theatre_id;
+	 int  mode;
 	 
 	 CARD16 video_decoder_type;
 	 CARD32 wStandard;
