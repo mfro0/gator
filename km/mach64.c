@@ -76,9 +76,9 @@ vwin->width=(a>>16)/2;
 a=readl(kms->reg_aperture+MACH64_CAP0_START_END);
 vwin->height=(((a>>16)& 0xffff)-(a & 0xffff))+1;
 a=readl(kms->reg_aperture+MACH64_CAP0_BUF0_EVEN_OFFSET);
-kms->even_offset=a;
+kms->buf0_even_offset=a;
 a=readl(kms->reg_aperture+MACH64_CAP0_BUF0_OFFSET);
-kms->odd_offset=a;
+kms->buf0_odd_offset=a;
 printk("mach64_get_window_parameters: width=%d height=%d\n", vwin->width, vwin->height);
 }
 
@@ -131,11 +131,11 @@ if(buffer<0){
 	return;
 	}
 if(field){
-	offset=kms->odd_offset;
-	kms->fi[buffer].flag|=KM_FI_ODD;
-	} else {
-	offset=kms->even_offset;
+	offset=kms->buf0_even_offset;
 	kms->fi[buffer].flag&=~KM_FI_ODD;
+	} else {
+	offset=kms->buf0_odd_offset;
+	kms->fi[buffer].flag|=KM_FI_ODD;
 	}
 KM_DEBUG("buf=%d field=%d\n", buffer, field);
 kms->fi[buffer].timestamp_start=jiffies;
@@ -170,8 +170,8 @@ writel(ACK_INTERRUPT(status, MACH64_CAPBUF0_INT_ACK|MACH64_CAPBUF1_INT_ACK), kms
 KM_DEBUG("CRTC_INT_CNTL=0x%08x\n", status);
 /* do not start dma transfer if capture is not active anymore */
 if(!mach64_is_capture_active(kms))return 1;
-if(status & MACH64_CAPBUF0_INT_ACK)mach64_start_frame_transfer(kms, find_free_buffer(kms), 1);
-if(status & MACH64_CAPBUF1_INT_ACK)mach64_start_frame_transfer(kms, find_free_buffer(kms), 0); 
+if(status & MACH64_CAPBUF0_INT_ACK)mach64_start_frame_transfer(kms, find_free_buffer(kms), 0);
+if(status & MACH64_CAPBUF1_INT_ACK)mach64_start_frame_transfer(kms, find_free_buffer(kms), 1); 
 return 1;
 }
 

@@ -77,8 +77,10 @@ typedef struct S_KM_STRUCT {
 	bm_list_descriptor **dma_table;
 	int num_buffers;
 	
-	long odd_offset;
-	long even_offset;
+	unsigned long buf0_odd_offset;
+	unsigned long buf0_even_offset;
+	unsigned long buf1_odd_offset;
+	unsigned long buf1_even_offset;
 
 	int capture_active;
 	long kmd;

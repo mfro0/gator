@@ -110,9 +110,13 @@ vwin->width=a/2;
 a=readl(kms->reg_aperture+RADEON_CAP0_V_WINDOW);
 vwin->height=(((a>>16)& 0xffff)-(a & 0xffff))+1;
 a=readl(kms->reg_aperture+RADEON_CAP0_BUF0_EVEN_OFFSET);
-kms->even_offset=a;
+kms->buf0_even_offset=a;
 a=readl(kms->reg_aperture+RADEON_CAP0_BUF0_OFFSET);
-kms->odd_offset=a;
+kms->buf0_odd_offset=a;
+a=readl(kms->reg_aperture+RADEON_CAP0_BUF1_EVEN_OFFSET);
+kms->buf1_even_offset=a;
+a=readl(kms->reg_aperture+RADEON_CAP0_BUF1_OFFSET);
+kms->buf1_odd_offset=a;
 printk("radeon_get_window_parameters: width=%d height=%d\n", vwin->width, vwin->height);
 }
 
@@ -134,7 +138,7 @@ wmb();
 writel(3, kms->reg_aperture+RADEON_CAP_INT_STATUS);
 writel(1<<30, kms->reg_aperture+RADEON_GEN_INT_STATUS);
 a=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
-writel(a|3, kms->reg_aperture+RADEON_CAP_INT_CNTL);
+writel(a|0xf, kms->reg_aperture+RADEON_CAP_INT_CNTL);
 a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
 writel(a|(1<<30), kms->reg_aperture+RADEON_GEN_INT_CNTL);
 }
@@ -144,7 +148,7 @@ void radeon_stop_transfer(KM_STRUCT *kms)
 u32 a;
 /* stop interrupts */
 a=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
-writel(a & ~3, kms->reg_aperture+RADEON_CAP_INT_CNTL);
+writel(a & ~0xf, kms->reg_aperture+RADEON_CAP_INT_CNTL);
 a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
 writel(a & ~(1<<30), kms->reg_aperture+RADEON_GEN_INT_CNTL);
 wmb();
@@ -188,12 +192,25 @@ if(buffer<0){
 	KM_DEBUG("start_frame_transfer buffer=%d field=%d\n",buffer, field);
 	return;
 	}
-if(field){
-	offset=kms->odd_offset;
-	kms->fi[buffer].flag|=KM_FI_ODD;
-	} else {
-	offset=kms->even_offset;
-	kms->fi[buffer].flag&=~KM_FI_ODD;
+switch(field){
+	case 0:
+		offset=kms->buf0_odd_offset;
+		kms->fi[buffer].flag|=KM_FI_ODD;
+		break;
+	case 1:
+		offset=kms->buf0_even_offset;
+		kms->fi[buffer].flag&=~KM_FI_ODD;
+		break;
+	case 2:
+		offset=kms->buf1_odd_offset;
+		kms->fi[buffer].flag|=KM_FI_ODD;
+		break;
+	case 3:
+		offset=kms->buf1_even_offset;
+		kms->fi[buffer].flag&=~KM_FI_ODD;
+		break;
+	default:
+		printk("Internal error %s %s %d\n", __FILE__, __FUNCTION__, __LINE__);
 	}
 KM_DEBUG("buf=%d field=%d\n", buffer, field);
 kms->fi[buffer].timestamp_start=jiffies;
@@ -227,8 +244,10 @@ writel(status & mask, kms->reg_aperture+RADEON_CAP_INT_STATUS);
 KM_DEBUG("CAP_INT_STATUS=0x%08x\n", status);
 /* do not start dma transfer if capture is not active anymore */
 if(!kms->capture_active)return 1;
-if(status & 1)radeon_start_frame_transfer(kms, find_free_buffer(kms), 1);
-if(status & 2)radeon_start_frame_transfer(kms, find_free_buffer(kms), 0);
+if(status & 1)radeon_start_frame_transfer(kms, find_free_buffer(kms), 0);
+if(status & 2)radeon_start_frame_transfer(kms, find_free_buffer(kms), 1);
+if(status & 4)radeon_start_frame_transfer(kms, find_free_buffer(kms), 2);
+if(status & 8)radeon_start_frame_transfer(kms, find_free_buffer(kms), 3);
 return 1;
 }
 

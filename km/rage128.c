@@ -78,9 +78,9 @@ vwin->width=a/2;
 a=readl(kms->reg_aperture+RAGE128_CAP0_V_WINDOW);
 vwin->height=(((a>>16)& 0xffff)-(a & 0xffff))+1;
 a=readl(kms->reg_aperture+RAGE128_CAP0_BUF0_EVEN_OFFSET);
-kms->even_offset=a;
+kms->buf0_even_offset=a;
 a=readl(kms->reg_aperture+RAGE128_CAP0_BUF0_OFFSET);
-kms->odd_offset=a;
+kms->buf0_odd_offset=a;
 printk("rage128_get_window_parameters: width=%d height=%d\n", vwin->width, vwin->height);
 }
 
@@ -143,11 +143,11 @@ if(buffer<0){
 	return;
 	}
 if(field){
-	offset=kms->odd_offset;
-	kms->fi[buffer].flag|=KM_FI_ODD;
-	} else {
-	offset=kms->even_offset;
+	offset=kms->buf0_even_offset;
 	kms->fi[buffer].flag&=~KM_FI_ODD;
+	} else {
+	offset=kms->buf0_odd_offset;
+	kms->fi[buffer].flag|=KM_FI_ODD;
 	}
 KM_DEBUG("buf=%d field=%d\n", buffer, field);
 kms->fi[buffer].timestamp_start=jiffies;
@@ -183,8 +183,8 @@ rage128_wait_for_idle(kms);
 writel(status & mask, kms->reg_aperture+RAGE128_CAP_INT_STATUS);
 /* do not start dma transfer if capture is not active anymore */
 if(!rage128_is_capture_active(kms))return 1;
-if(status & 1)rage128_start_frame_transfer(kms, find_free_buffer(kms), 1);
-if(status & 2)rage128_start_frame_transfer(kms, find_free_buffer(kms), 0); 
+if(status & 1)rage128_start_frame_transfer(kms, find_free_buffer(kms), 0);
+if(status & 2)rage128_start_frame_transfer(kms, find_free_buffer(kms), 1); 
 return 1;
 }
 
