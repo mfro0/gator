@@ -697,8 +697,8 @@ FIELD("VLINE_COUNT").data.i.field=&(kms->vline_count);
 
 FIELD("V4L_DEVICE").data.i.field=&(kms->vd.minor);
 
-FIELD("VIDEO_STREAM_ACTIVE").data.t.zero2one=video_stream_on;
-FIELD("VIDEO_STREAM_ACTIVE").data.t.one2zero=video_stream_off;
+FIELD("VIDEO_STREAM_ACTIVE").data.t.zero2one=start_video_capture;
+FIELD("VIDEO_STREAM_ACTIVE").data.t.one2zero=stop_video_capture;
 FIELD("VIDEO_STREAM_ACTIVE").data.t.priv=kms;
 
 FIELD("VIDEO_STREAM_DATA_UNIT").data.i.field=&(kms->capture.du);
@@ -711,8 +711,8 @@ FIELD("VBI_STREAM_DATA_UNIT").data.i.field=&(kms->vbi.du);
 
 FIELD("VBI_STREAM_INFO_DATA_UNIT").data.i.field=&(kms->vbi.info_du);
 
-FIELD("VBI_STREAM_ACTIVE").data.t.zero2one=vbi_stream_on;
-FIELD("VBI_STREAM_ACTIVE").data.t.one2zero=vbi_stream_off;
+FIELD("VBI_STREAM_ACTIVE").data.t.zero2one=start_video_capture;
+FIELD("VBI_STREAM_ACTIVE").data.t.one2zero=stop_video_capture;
 FIELD("VBI_STREAM_ACTIVE").data.t.priv=kms;
 
 kms->kmd=add_km_device(kms->kmfl, kms);

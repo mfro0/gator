@@ -35,12 +35,17 @@ int result;
 kms->kmfpd=open_km_device(kms->kmd);
 if(kms->kmfpd==NULL)return -EINVAL;
 
-if((result=start_video_capture(kms))<0)return result;
+if((result=km_fo_control_perform_command(kms->kmfpd,"VIDEO_STREAM_ACTIVE=1", 1000))!=0){
+	close_km_device(kms->kmfpd);
+	kms->kmfpd=NULL;
+	return result;
+	}
 
 kms->v4l_buf_parity=0;
 kms->v4l_kdufpd=km_data_create_kdufpd(kms->capture.du);
 if(kms->v4l_kdufpd==NULL){
-	stop_video_capture(kms);
+	close_km_device(kms->kmfpd);
+	kms->kmfpd=NULL;
 	return -EINVAL;
 	}
 return 0;
@@ -53,7 +58,6 @@ KM_STRUCT *kms=(KM_STRUCT *)dev->priv;
 
 km_data_destroy_kdufpd(kms->v4l_kdufpd);
 kms->v4l_kdufpd=NULL;
-stop_video_capture(kms);
 
 close_km_device(kms->kmfpd);
 kms->kmfpd=NULL;

@@ -146,7 +146,7 @@ void kmd_signal_state_change(int num);
 int num_km_devices(void);
 KM_FILE_PRIVATE_DATA *open_km_device(int number);
 void close_km_device(KM_FILE_PRIVATE_DATA *kmfpd);
-void km_fo_control_perform_command(KM_FILE_PRIVATE_DATA *kmfpd, const char *command, size_t count);
+int km_fo_control_perform_command(KM_FILE_PRIVATE_DATA *kmfpd, const char *command, size_t count);
 
 
 #if 1

@@ -342,7 +342,7 @@ return 0;
 
 /* for now only process one command per string */
 
-void km_fo_control_perform_command(KM_FILE_PRIVATE_DATA *kmfpd, const char *command, size_t count)
+int km_fo_control_perform_command(KM_FILE_PRIVATE_DATA *kmfpd, const char *command, size_t count)
 {
 KM_DEVICE *kmd=kmfpd->kmd;
 int i,j;
@@ -352,6 +352,7 @@ char *value;
 KM_FIELD *kf;
 KM_FIELD_DATA *kfd;
 u32 int_value;
+int result=0;
 
 spin_lock(&(kmd->lock));
 hash=km_command_hash(command, count);
@@ -411,14 +412,11 @@ if((hash==kmd->report_hash)&& (count>8) && !strncmp("REPORT ", command, 7)){
 				if(kfd->t.requested){ goto exit; /* redundant */ }
 				/* the zero2one transition checks for success before
 				   increasing count first */
-				if(!kf->data.t.count && !kf->data.t.zero2one(kf->data.t.priv)){
-					kfd->t.requested=1;
-					kf->data.t.count++;
-					} else 
-				if(kf->data.t.count){
-					kfd->t.requested=1;
-					kf->data.t.count++;
-					}
+				if(!kf->data.t.count && (result=kf->data.t.zero2one(kf->data.t.priv))){
+					goto exit;
+					} 
+				kfd->t.requested=1;
+				kf->data.t.count++;
 				}
 			break;
 		}
@@ -426,6 +424,7 @@ if((hash==kmd->report_hash)&& (count>8) && !strncmp("REPORT ", command, 7)){
 
 exit:
 spin_unlock(&(kmd->lock));
+return result;
 }
 
 static ssize_t km_fo_control_write(struct file * file, const char * buffer, size_t count, loff_t *ppos)
