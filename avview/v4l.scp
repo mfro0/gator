@@ -641,46 +641,24 @@ $widget.f.right_audio_level coords top_volume_line 1 $top_right_coord 20 $top_ri
 }
 
 proc save_v4l_capture { fileid } {
-global current_v4l_rrate
-global current_v4l_mode
-global ffmpeg_file_format
-global ffmpeg_video_codec
-global ffmpeg_audio_codec
-global ffmpeg_audio_sample_rate
-global ffmpeg_video_bitrate
-global ffmpeg_video_quality
-global ffmpeg_audio_bitrate
-global ffmpeg_max_fifo_size
-global ffmpeg_recording_chunk_size
-global ffmpeg_video_bitrate_control
 
 puts $fileid "#\n# V4L and capture settings\n#"
 
-puts $fileid "global current_v4l_mode"
-puts $fileid "global current_v4l_rrate"
-puts $fileid "global ffmpeg_file_format"
-puts $fileid "global ffmpeg_video_codec"
-puts $fileid "global ffmpeg_audio_codec"
-puts $fileid "global ffmpeg_audio_sample_rate"
-puts $fileid "global ffmpeg_audio_bitrate"
-puts $fileid "global ffmpeg_video_bitrate"
-puts $fileid "global ffmpeg_video_quality"
-puts $fileid "global ffmpeg_max_fifo_size"
-puts $fileid "global ffmpeg_recording_chunk_size"
-puts $fileid "global ffmpeg_video_bitrate_control"
+set ffmpeg_vars { 
+	ffmpeg_file_format 
+	ffmpeg_audio_codec ffmpeg_audio_sample_rate ffmpeg_audio_bitrate 
+	ffmpeg_video_codec ffmpeg_video_bitrate ffmpeg_video_quality
+	ffmpeg_video_bitrate_control
+	ffmpeg_max_fifo_size ffmpeg_recording_chunk_size 
+	}
 
-puts $fileid "set ffmpeg_video_codec \"$ffmpeg_video_codec\""
-puts $fileid "set ffmpeg_audio_codec \"$ffmpeg_audio_codec\""
-puts $fileid "set current_v4l_mode \"$current_v4l_mode\""
-puts $fileid "set current_v4l_rrate \"$current_v4l_rrate\""
-puts $fileid "set ffmpeg_file_format \"$ffmpeg_file_format\""
-puts $fileid "set ffmpeg_audio_sample_rate \"$ffmpeg_audio_sample_rate\""
-puts $fileid "set ffmpeg_audio_bitrate \"$ffmpeg_audio_bitrate\""
-puts $fileid "set ffmpeg_video_bitrate \"$ffmpeg_video_bitrate\""
-puts $fileid "set ffmpeg_video_quality \"$ffmpeg_video_quality\""
-puts $fileid "set ffmpeg_max_fifo_size \"$ffmpeg_max_fifo_size\""
-puts $fileid "set ffmpeg_recording_chunk_size \"$ffmpeg_recording_chunk_size\""
-puts $fileid "set ffmpeg_video_bitrate_control \"$ffmpeg_video_bitrate_control\""
+foreach variable [concat [list current_v4l_mode current_v4l_rrate] $ffmpeg_vars ] {
+	catch {
+		global $variable
+		puts $fileid "global $variable"
+		puts $fileid "set $variable \"[set $variable]\""
+		}
+	}
 
 puts $fileid "#\n# End of V4L and capture settings\n#"
 }
