@@ -251,10 +251,10 @@ writel(status & mask, kms->reg_aperture+RADEON_CAP_INT_STATUS);
 KM_DEBUG("CAP_INT_STATUS=0x%08x\n", status);
 /* do not start dma transfer if capture is not active anymore */
 if(!kms->capture_active)return 1;
-if(status & 1)radeon_schedule_request(kms, find_free_buffer(kms), 0);
-if(status & 2)radeon_schedule_request(kms, find_free_buffer(kms), 1);
-if(status & 4)radeon_schedule_request(kms, find_free_buffer(kms), 2);
-if(status & 8)radeon_schedule_request(kms, find_free_buffer(kms), 3);
+if(status & 1)radeon_schedule_request(kms, find_free_buffer(&(kms->capture)), 0);
+if(status & 2)radeon_schedule_request(kms, find_free_buffer(&(kms->capture)), 1);
+if(status & 4)radeon_schedule_request(kms, find_free_buffer(&(kms->capture)), 2);
+if(status & 8)radeon_schedule_request(kms, find_free_buffer(&(kms->capture)), 3);
 return 1;
 }
 
@@ -366,12 +366,10 @@ writel(a|(7), kms->reg_aperture+RADEON_GEN_INT_CNTL);
 return 0;
 }
 
-/* setup statistics counting.. */
-int radeon_uninit_hardware(KM_STRUCT *kms)
+void radeon_uninit_hardware(KM_STRUCT *kms)
 {
 u32 a;
 
 a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
 writel(a& ~((7)|(1<<30)), kms->reg_aperture+RADEON_GEN_INT_CNTL);
-return 0;
 }

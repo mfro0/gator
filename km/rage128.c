@@ -181,8 +181,8 @@ rage128_wait_for_idle(kms);
 writel(status & mask, kms->reg_aperture+RAGE128_CAP_INT_STATUS);
 /* do not start dma transfer if capture is not active anymore */
 if(!rage128_is_capture_active(kms))return 1;
-if(status & 1)rage128_schedule_request(kms, find_free_buffer(kms), 0);
-if(status & 2)rage128_schedule_request(kms, find_free_buffer(kms), 1); 
+if(status & 1)rage128_schedule_request(kms, find_free_buffer(&(kms->capture)), 0);
+if(status & 2)rage128_schedule_request(kms, find_free_buffer(&(kms->capture)), 1); 
 return 1;
 }
 

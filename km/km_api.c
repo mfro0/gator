@@ -209,7 +209,7 @@ spin_lock(&(kmd->lock));
 kmd->use_count--;
 if(kmd->use_count<=0){
 	devices[kmd->number]=NULL;
-	sprintf(temp, "control%d", kmd->number);
+	sprintf(temp, "control%ld", kmd->number);
 	remove_proc_entry(temp, km_root);
 	kmd->control=NULL;
 	kfree(kmd);

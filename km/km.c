@@ -524,9 +524,6 @@ printk("kms variables: reg_aperture=0x%08x\n",
 	kms->reg_aperture);
 num_devices++;
 return 0;
-
-fail:
-	return -1;
 }
 
 
