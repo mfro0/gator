@@ -16,8 +16,8 @@ const FI1236_parameters tuner_parms[NUM_TUNERS] =
     { 623 ,16*48.75 ,16*855.25 ,16*170 ,16*450 ,0xA0 ,0x90, 0x30, 0x8e },
     /* 2 - TEMIC FN5AL */
     { 623 ,16*45.75 ,16*855.25 ,16*169 ,16*454 ,0xA0 ,0x90, 0x30, 0x8e },
-    /* 3 - the new silicon tuner.. */
-    { 733 ,884 ,12820 ,2516 ,7220 ,0xA2 ,0x94, 0x34, 0xce }
+    /* 3 - MT2032.. */
+    { 733 ,768 ,13760 , 0 , 0 , 0 , 0,  0, 0 }
 };
 
 
@@ -91,7 +91,7 @@ data[1]=0x32;
 I2C_WriteRead(&(f->d), (I2CByte *)data, 2, NULL, 0);
 
 while(1) {
-	usleep(15); /* wait 15 milliseconds */
+	usleep(15); /* wait 20 milliseconds */
 
 	data[0]=0x0e; /* register number 7, status */
 	I2C_WriteRead(&(f->d), (I2CByte *)data, 1, &value, 1);
@@ -118,12 +118,13 @@ while(1){
 	while(1){
 		n2--;
 		f_test=f_test-m->f_lo2;
-		if(fabs(fabs(f_test)-m->f_if2)*2<m->f_ifbw)return 0;
-		if(n2<-n_max)break;
+		xf86DrvMsg(0, X_INFO, "testing f_test=%g n1=%d n2=%d f_lo1=%g f_lo2=%g f_if2=%g\n", f_test, n1, n2, m->f_lo1, m->f_lo2, m->f_if2);
+		if((fabs(fabs(f_test)-m->f_if2)*2.0)<=m->f_ifbw)return 0;
+		if(n2<=-n_max)break;
 		if(f_test<(m->f_lo2-m->f_if2-m->f_ifbw))break;
 		}
 	n1++;
-	if(n1>n_max)return 1;
+	if(n1>=n_max)return 1;
 	}
 
 }
@@ -139,7 +140,7 @@ m->f_ifbw=f_ifbw;
 m->f_step=f_step;
 
 m->f_lo1=f_rf+f_if1;
-m->LO1I=(int)((m->f_lo1/f_ref)+0.5);
+m->LO1I=(int)floor((m->f_lo1/f_ref)+0.5);
 m->f_lo1=f_ref*m->LO1I;
 
 m->f_lo2=m->f_lo1-f_rf-f_if2;
@@ -172,10 +173,10 @@ if(m->f_lo1<1890.0)m->SEL=1;
 	m->SEL=0;
 
 /* calculate the rest of the registers */
-m->LO2I=(int)(m->f_lo2/f_ref);
-m->STEP=(int)(3780.0*f_step/f_ref);
-m->NUM=(int)(3780.0*(m->f_lo2/f_ref-m->LO2I));
-m->NUM=m->STEP*(int)((1.0*m->NUM)/(1.0*m->STEP)+0.5);
+m->LO2I=(int)floor(m->f_lo2/f_ref);
+m->STEP=(int)floor(3780.0*f_step/f_ref);
+m->NUM=(int)floor(3780.0*(m->f_lo2/f_ref-m->LO2I));
+m->NUM=m->STEP*(int)floor((1.0*m->NUM)/(1.0*m->STEP)+0.5);
 }
 
 static int MT2032_wait_for_lock(FI1236Ptr f)
@@ -295,7 +296,8 @@ static void MT2032_tune_NTSC(FI1236Ptr f, double freq)
 {
 MT2032_parameters m;
 CARD8 data[10];
-
+/* NTSC IF is 44mhz.. but 733/16=45.8125 and all TDAXXXX docs mention
+     45.75, 39, 58.75 and 30. */
 MT2032_calculate_register_settings(&m, freq, 1090.0, 44.0, 5.25, 6.0, 0.0625);
 MT2032_implement_settings(f, &m);
 MT2032_optimize_VCO(f, &m);
@@ -311,26 +313,26 @@ MT2032_dump_status(f);
 void FI1236_set_tuner_type(FI1236Ptr f, int type)
 {
 f->type=type;
+if(type>=NUM_TUNERS)type = NUM_TUNERS-1;
+if(type<0)type = 0;
+memcpy(&(f->parm), &(tuner_parms[type]), sizeof(FI1236_parameters));
 if(type==TUNER_TYPE_MT2032){
 	MT2032_init(f);
 	return;
 	}
-if(type<0)type = 0;
-if(type>=NUM_TUNERS)type = NUM_TUNERS-1;
-memcpy(&(f->parm), &(tuner_parms[type]), sizeof(FI1236_parameters));
 }
 
 void FI1236_tune(FI1236Ptr f, CARD32 frequency)
 {
     CARD16 divider;
 
+    if(frequency < f->parm.min_freq) frequency = f->parm.min_freq;
+    if(frequency > f->parm.max_freq) frequency = f->parm.max_freq;
+
     if(f->type==TUNER_TYPE_MT2032){
     	MT2032_tune_NTSC(f, (1.0*frequency)/16.0);
 	return;
 	}
-
-    if(frequency < f->parm.min_freq) frequency = f->parm.min_freq;
-    if(frequency > f->parm.max_freq) frequency = f->parm.max_freq;
 
     divider = (f->parm.fcar+(CARD16)frequency) & 0x7fff;
     f->tuner_data.div1 = (CARD8)((divider>>8)&0x7f);
