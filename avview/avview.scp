@@ -19,6 +19,8 @@ set debug 0
 global TABLE_LIST
 set TABLE_LIST [freq_get_table_list]
 
+global display_setup_window_on_startup
+set display_setup_window_on_startup true
 
 source tree.scp
 source setup.scp
@@ -122,30 +124,30 @@ grid configure $c.channell -sticky nsw
 global fullscreen_mode
 set fullscreen_mode false
 
-eval checkbutton $c.fullscreen_checkbutton -text "Fullscreen"  \
-	-indicatoron false -variable fullscreen_mode [get_settings $c.fullscreen_checkbutton]
-eval button $c.half_size_button -text \"Half size\" -command "make_half_size" [get_settings $c.half_size_button]
+#eval checkbutton $c.fullscreen_checkbutton -text "Fullscreen"  \
+#	-indicatoron false -variable fullscreen_mode [get_settings $c.fullscreen_checkbutton]
+#eval button $c.half_size_button -text \"Half size\" -command "make_half_size" [get_settings $c.half_size_button]
 
-eval menubutton $c.interface_menubutton -text "Interface" -relief raised -menu $c.interface_menubutton.menu [get_settings $c.interface_menubutton]
-eval menu $c.interface_menubutton.menu [get_settings $c.interface_menubutton.menu AVview]
-$c.interface_menubutton.menu add checkbutton -label "Show main control window" -variable show_control_window
-$c.interface_menubutton.menu add checkbutton -label "Attributes" -variable attributes_window
-$c.interface_menubutton.menu add checkbutton -label "Capture (V4L)" -variable capture_window
-if { [alsa_present] == "yes" } {
-	$c.interface_menubutton.menu add checkbutton -label "Audio mixer (ALSA)" -variable alsa_window
-	} 
-$c.interface_menubutton.menu add separator
-$c.interface_menubutton.menu add command -label "Favorite channel editor" -command scan_channels
-eval menu $c.interface_menubutton.menu.theme [get_settings $c.interface_menubutton.menu.theme AVview]
-$c.interface_menubutton.menu add cascade -menu $c.interface_menubutton.menu.theme -label "Theme"
-$c.interface_menubutton.menu add separator
-$c.interface_menubutton.menu add command -label "Exit" -command {
-	ffmpeg_stop_encoding
-	save_settings
-	exit
-	}
+#eval menubutton $c.interface_menubutton -text "Interface" -relief raised -menu $c.interface_menubutton.menu [get_settings $c.interface_menubutton]
+#eval menu $c.interface_menubutton.menu [get_settings $c.interface_menubutton.menu AVview]
+#$c.interface_menubutton.menu add checkbutton -label "Show main control window" -variable show_control_window
+#$c.interface_menubutton.menu add checkbutton -label "Attributes" -variable attributes_window
+#$c.interface_menubutton.menu add checkbutton -label "Capture (V4L)" -variable capture_window
+#if { [alsa_present] == "yes" } {
+#	$c.interface_menubutton.menu add checkbutton -label "Audio mixer (ALSA)" -variable alsa_window
+#	} 
+#$c.interface_menubutton.menu add separator
+#$c.interface_menubutton.menu add command -label "Favorite channel editor" -command scan_channels
+#eval menu $c.interface_menubutton.menu.theme [get_settings $c.interface_menubutton.menu.theme AVview]
+#$c.interface_menubutton.menu add cascade -menu $c.interface_menubutton.menu.theme -label "Theme"
+#$c.interface_menubutton.menu add separator
+#$c.interface_menubutton.menu add command -label "Exit" -command {
+#	ffmpeg_stop_encoding
+#	save_settings
+#	exit
+#	}
 
-grid $c.fullscreen_checkbutton $c.half_size_button $c.interface_menubutton -padx 5 -pady 5 -sticky ns
+#grid $c.fullscreen_checkbutton $c.half_size_button $c.interface_menubutton -padx 5 -pady 5 -sticky ns
 
 # pack $c -expand yes -fill both
 # pack .controlwin.allattributes -expand yes -fill both -pady 5 
@@ -337,6 +339,7 @@ global alsa_window
 global current_alsa_device
 global file_save_path
 global show_control_window
+global display_setup_window_on_startup
 catch {
 	set fileid [open "~/.avview_state" w]
 	}
@@ -349,6 +352,7 @@ puts $fileid "global capture_window"
 puts $fileid "global alsa_window"
 puts $fileid "global current_alsa_device1"
 puts $fileid "global show_control_window"
+puts $fileid "global display_setup_window_on_startup"
 if { $current_port != "none" } {
 	puts $fileid "set current_port \"$current_port\""
 	if { $current_encoding_name != "none" } {
@@ -376,6 +380,7 @@ save_favorite_channels $fileid
 
 puts $fileid "global file_save_path"
 puts $fileid "set file_save_path \"$file_save_path\""
+puts $fileid "set display_setup_window_on_startup \"$display_setup_window_on_startup\""
 
 close $fileid
 }
@@ -540,10 +545,13 @@ adjust_message_font
 menu .video_menu -type normal -tearoff false
 menu .video_menu.size_menu -type normal -tearoff false
 menu .video_menu.channel_menu -type normal -tearoff false
+menu .video_menu.interface_menu -type normal -tearoff false
+menu .video_menu.interface_menu.theme_menu -type normal -tearoff false
+
 .video_menu add cascade -menu .video_menu.channel_menu -label "Channel"
 .video_menu add cascade -menu .video_menu.size_menu -label "Size"
 .video_menu add separator
-.video_menu add checkbutton -label "Show control window" -variable show_control_window
+.video_menu add cascade -menu .video_menu.interface_menu -label "User interface"
 .video_menu add separator
 .video_menu add command -label "Exit AVview" -command { save_settings; exit }
 .video_menu add separator
@@ -551,6 +559,19 @@ menu .video_menu.channel_menu -type normal -tearoff false
 
 .video_menu.size_menu add checkbutton -variable fullscreen_mode -label "Fullscreen"
 .video_menu.size_menu add command -label "Half size" -command "make_half_size"
+
+.video_menu.interface_menu add command -label "Show setup window" -command "create_setup_window"
+.video_menu.interface_menu add command -label "Favorite channel editor" -command scan_channels
+.video_menu.interface_menu add separator
+.video_menu.interface_menu add checkbutton -label "Show control window" -variable show_control_window
+.video_menu.interface_menu add checkbutton -label "Show Xv attributes section" -variable attributes_window
+.video_menu.interface_menu add checkbutton -label "Show capture (V4L) section" -variable capture_window
+if { [alsa_present] == "yes" } {
+	.video_menu.interface_menu add checkbutton -label "Show audio mixer (ALSA) section" -variable alsa_window
+	} 
+.video_menu.interface_menu add separator
+.video_menu.interface_menu add cascade -label "Theme" -menu .video_menu.interface_menu.theme_menu
+
 
 bind $VIDEO_WINDOW  <ButtonPress-3>  {
 	global $VIDEO_WINDOW
@@ -605,7 +626,6 @@ bind $VIDEO_WINDOW <Configure> {
 	}
 
 
-after 200 read_settings
 
 wm protocol . WM_DELETE_WINDOW { 
         if { [ffmpeg_present] == "yes" } {
@@ -627,10 +647,27 @@ wm title .controlwin "AV Control"
 #
 # Generate theme menu
 #
-$c.interface_menubutton.menu.theme delete 0 end
+#$c.interface_menubutton.menu.theme delete 0 end
+.video_menu.interface_menu.theme_menu delete 0 end
 foreach theme [lsort -ascii [array names theme_list]] {
-	$c.interface_menubutton.menu.theme add radiobutton -label "$theme" \
+#	$c.interface_menubutton.menu.theme add radiobutton -label "$theme" \
+#		-value "$theme" -variable theme_name \
+#		-command {global theme_name ; reset_theme $theme_name}
+
+	.video_menu.interface_menu.theme_menu add radiobutton -label "$theme" \
 		-value "$theme" -variable theme_name \
 		-command {global theme_name ; reset_theme $theme_name}
 	}
 
+add_parameter_pane "/User interface settings" "User interface settings" \
+	"Display setup window on startup" checkbutton display_setup_window_on_startup
+
+after 200 {
+	read_settings
+	if { $display_setup_window_on_startup } {
+		wm deiconify .setup
+		global SETUP_MAIN
+		resize_frames
+		}	
+	}	
+	

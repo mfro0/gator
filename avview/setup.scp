@@ -18,8 +18,12 @@ proc create_setup_window {} {
 
 global SETUP_MAIN
 if { [winfo exists $SETUP_MAIN] } {
-	deiconify $SETUP_MAIN
+	wm deiconify $SETUP_MAIN
 	raise $SETUP_MAIN
+	after idle {
+		global SETUP_MAIN
+		resize_frames
+		}	
 	return
 	}
 
@@ -260,9 +264,14 @@ if { $propagate_count < 1 } {
 }
 
 create_setup_window
+wm withdraw .setup
 
 after idle {
 	global SETUP_MAIN
 	resize_frames
 	bind $SETUP_MAIN.f <Configure> "propagate_frame_size"
+	}
+
+wm protocol .setup WM_DELETE_WINDOW {
+	wm withdraw .setup
 	}
