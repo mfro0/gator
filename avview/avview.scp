@@ -585,26 +585,34 @@ if { $fullscreen_mode } {
 			update
 			update idletasks
 			}
-		set screen_width   [winfo screenwidth $VIDEO_WINDOW]
-		set screen_height  [winfo screenheight $VIDEO_WINDOW]
 		
 		if { [xmisc_xinerama_active $VIDEO_WINDOW] } {
 			puts stderr "Xinerama is active"
-			puts stderr "Xinerama info: [xmisc_xinerama_query_screens $VIDEO_WINDOW]"
+			set xinerama_info [xmisc_xinerama_query_screens $VIDEO_WINDOW]
+			puts stderr "Xinerama info: $xinerama_info"
+			puts stderr "Buggy - assuming adaptor is on screen [lindex $xinerama_info 1]"
+			set coords [lindex $xinerama_info 3]
+			set width [lindex $coords 2]
+			set height [lindex $coords 3]
+			set geometry ${width}x${height}+[lindex $coords 0]+[lindex $coords 1]
+			} {
+			set width [winfo screenwidth $VIDEO_WINDOW]
+			set height [winfo screenheight $VIDEO_WINDOW]
+			set geometry ${width}x$height+0+0
 			}
 
-		wm geometry . =${screen_width}x${screen_height}+0+0
+		wm geometry . =$geometry
 		place $VIDEO_WINDOW.onscreen_display -relx 0.05 -rely 0.05 -anchor nw
 		
 		update
 		update idletasks
 #		xmisc_setfullscreen .
-		wm geometry . =${screen_width}x${screen_height}+0+0
+		wm geometry . =$geometry
 
 	#	. configure -width $screen_width \
 	#		-height $screen_height  -background red
-		$VIDEO_WINDOW configure -width ${screen_width} \
-			-height ${screen_height}
+		$VIDEO_WINDOW configure -width $width \
+			-height $height
 		display_video
 		update
 #		puts "1. state=[wm state .]"
@@ -616,9 +624,9 @@ if { $fullscreen_mode } {
 			update idletasks
 			}
 #		puts "3. state=[wm state .] mapped=[winfo ismapped .]"
-		$VIDEO_WINDOW configure -width ${screen_width} \
-			-height ${screen_height}
-		wm geometry . =${screen_width}x${screen_height}+0+0
+		$VIDEO_WINDOW configure -width $width \
+			-height $height
+		wm geometry . =$geometry
 		grab -global .
 		focus -force .
 #		}
