@@ -19,17 +19,10 @@
 typedef struct S_V4L_DATA{
 	int fd;
 	struct video_capability vcap;
-	char *read_buffer;
-	long transfer_size;
-	long transfer_read;
 	void (*transfer_callback)(struct S_V4L_DATA *);
-	Tcl_Interp *interp;
-	char *transfer_complete_script;
-	char *transfer_failed_script;
-	Tk_PhotoHandle ph;
-	Tk_PhotoImageBlock pib;
 	int mode;
 	int frame_count; /* to keep track of odd/even fields */
+	void *priv;
 	} V4L_DATA;
 
 
@@ -37,5 +30,7 @@ typedef struct S_V4L_DATA{
 void init_v4l(Tcl_Interp *interp);
 V4L_DATA *get_v4l_device_from_handle(char *handle);
 
+#define V4L_SNAPSHOT_KEY	1
+#define FFMPEG_V4L_CAPTURE_KEY	2
 
 #endif

@@ -30,6 +30,21 @@
 #include "avcodec.h"
 #include "v4l.h"
 
+typedef struct S_FFMPEG_INCOMING_FRAME{
+	struct S_FFMPEG_INCOMING_FRAME *next;
+	struct S_FFMPEG_INCOMING_FRAME *prev;
+	char *data;
+	} FFMPEG_INCOMING_FRAME;
+
+typedef struct {
+	long type;
+	long width;
+	long height;
+	long stop;
+	FFMPEG_INCOMING_FRAME *first;
+	FFMPEG_INCOMING_FRAME *last;
+	} FFMPEG_V4L_ENCODING_DATA;
+
 int ffmpeg_present(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
 {
 Tcl_ResetResult(interp);
@@ -41,6 +56,10 @@ void *ffmpeg_v4l_encoding_thread(V4L_DATA *data)
 {
 int i;
 int retval;
+FFMPEG_V4L_ENCODING_DATA *sdata;
+
+sdata=(FFMPEG_V4L_ENCODING_DATA *)data->priv;
+if((sdata==NULL)||(sdata->type!=FFMPEG_V4L_CAPTURE_KEY))pthread_exit(NULL);
 for(i=0;i<100;i++){
 	fprintf(stderr,"i=%d\n",i);
 	}
@@ -51,6 +70,9 @@ int ffmpeg_encode_v4l_stream(ClientData client_data,Tcl_Interp* interp,int argc,
 {
 V4L_DATA *data;
 pthread_t thread;
+FFMPEG_V4L_ENCODING_DATA *sdata;
+struct video_picture vpic;
+struct video_window vwin;
 
 Tcl_ResetResult(interp);
 
@@ -63,6 +85,26 @@ if(data==NULL){
 	Tcl_AppendResult(interp,"ERROR: ffmpeg_encode_v4l_stream: no such v4l device", NULL);
 	return TCL_ERROR;
 	}
+if(data->priv!=NULL){
+	Tcl_AppendResult(interp,"ERROR: ffmpeg_encode_v4l_stream: v4l device busy", NULL);
+	return TCL_ERROR;
+	}
+if(ioctl(data->fd, VIDIOCGWIN, &vwin)<0){
+	Tcl_AppendResult(interp,"ERROR: ffmpeg_encode_v4l_stream: error getting window parameters", NULL);
+	return TCL_ERROR;
+	}
+if(ioctl(data->fd, VIDIOCGPICT, &vpic)<0){
+	Tcl_AppendResult(interp,"ERROR: ffmpeg_encode_v4l_stream: error getting picture parameters", NULL);
+	return TCL_ERROR;
+	}
+sdata=do_alloc(1, sizeof(FFMPEG_V4L_ENCODING_DATA));
+sdata->type=FFMPEG_V4L_CAPTURE_KEY;
+sdata->stop=0;
+sdata->width=vwin.width;
+sdata->height=vwin.height;
+data->priv=sdata;
+sdata->first=NULL;
+sdata->last=NULL;
 if(pthread_create(&thread, NULL, ffmpeg_v4l_encoding_thread, data)<0){
 	Tcl_AppendResult(interp,"ERROR: ffmpeg_encode_v4l_stream: error creating encoding thread, ", NULL);
 	Tcl_AppendResult(interp, strerror(errno), NULL);
