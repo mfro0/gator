@@ -1704,15 +1704,19 @@ RADEONSetupImageVideo(ScreenPtr pScreen)
 
     if(!xf86LoadSubModule(pScrn,"theatre")) 
     {
-    	xf86DrvMsg(pScrn->scrnIndex,X_ERROR,"Unable to initialize i2c bus\n");
+    	xf86DrvMsg(pScrn->scrnIndex,X_ERROR,"Unable to initialize Rage Theatre\n");
 	pPriv->i2c=NULL;
 	return NULL;
     } 
     xf86LoaderReqSymbols(TheatreSymbolsList, NULL);
     if(!info->IsM6)
 	    pPriv->theatre=xf86_DetectTheatre(pPriv->VIP);
-	    else
+	    else {
 	    pPriv->theatre=NULL;
+	    pPriv->i2c=NULL;
+	    xf86DrvMsg(pScrn->scrnIndex,X_INFO,"Detected Radeon Mobility M6, disabling i2c and Rage Theatre\n");
+	    return NULL;
+	    }
     if((pPriv->theatre!=NULL) && !RADEONSetupTheatre(pScrn,pPriv,pPriv->theatre))
     {
     	free(pPriv->theatre);
