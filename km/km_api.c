@@ -49,7 +49,7 @@ static int km_control_read(char *page, char **start, off_t off, int count, int *
 char s[5]="XYXY";
 KM_DEVICE *kmd=data;
 if(count>(kmd->br_free-kmd->br_read))count=kmd->br_free-kmd->br_read;
-printk("km_control_read: off=%d count=%d %s kmd->number=%ld\n", off, count, s, kmd->number);
+printk("km_control_read: off=%lu count=%d %s kmd->number=%ld\n", off, count, s, kmd->number);
 if(count>0)memcpy(page, kmd->buffer_read+kmd->br_read, count); 
 kmd->br_read+=count;
 if(kmd->br_read==kmd->br_free){
