@@ -21,12 +21,16 @@
 #include <tcl.h>
 #include <tk.h>
 #include "string_cache.h"
-
+#include "packet_stream.h"
 #include "config.h"
+
 
 #if USE_ALSA
 
+#include <pthread.h>
+
 #include <alsa/asoundlib.h>
+#include <endian.h>
 
 STRING_CACHE *alsa_sc;
 
@@ -39,6 +43,9 @@ typedef struct {
 	snd_hctl_elem_t **elem;
 	snd_ctl_elem_info_t **einfo;
 	snd_ctl_elem_type_t *etype;
+	snd_pcm_t *recording_handle;
+	long recording_chunk_size;
+	void *priv;
 	} ALSA_DATA;
 
 #include "global.h"
@@ -427,6 +434,123 @@ snd_ctl_elem_value_free(value);
 return TCL_OK;
 }
 
+void alsa_reader_thread(PACKET_STREAM *s)
+{
+PACKET *p;
+ALSA_DATA *data=(ALSA_DATA *)s->priv;
+int a;
+/* lock mutex before testing s->stop_stream */
+p=new_generic_packet(data->recording_chunk_size); /* allocate enough for 2 seconds of audio */
+pthread_mutex_lock(&(s->ctr_mutex));
+while(!s->stop_stream){
+	pthread_mutex_unlock(&(s->ctr_mutex));
+	
+	/* do the reading */
+	if((a=snd_pcm_readi(data->recording_handle, p->buf+p->free, p->size-p->free))>0){
+		p->free+=a;
+		/* deliver always */
+		fprintf(stderr,"Read %d bytes\n", a);
+		if(1 || (p->free>=(p->size/2))){ /* deliver packet */
+			pthread_mutex_lock(&(s->ctr_mutex));
+			if(!s->stop_stream){
+				deliver_packet(s, p);
+				p=new_generic_packet(data->recording_chunk_size);
+				}
+			pthread_mutex_unlock(&(s->ctr_mutex));
+			}
+		} else
+	if(a<0){
+		fprintf(stderr,"snd_pcm_readi error: %s\n", snd_strerror(a));
+		} 
+	pthread_mutex_lock(&(s->ctr_mutex));
+	}
+data->priv=NULL; 
+pthread_mutex_unlock(&(s->ctr_mutex));
+pthread_exit(NULL);
+}
+
+int alsa_setup_reader_thread(PACKET_STREAM *s, int argc, char *argv[], ALSA_PARAMETERS *param)
+{
+int a;
+ALSA_DATA *ad;
+long i;
+snd_pcm_hw_params_t *hwparams;
+snd_pcm_sw_params_t *swparams;
+char *arg_audio_device;
+char *arg_audio_rate;
+long rate;
+
+snd_pcm_hw_params_alloca(&hwparams);
+snd_pcm_sw_params_alloca(&swparams);
+
+arg_audio_device=get_value(argc, argv, "-audio_device");
+if(arg_audio_device==NULL)return -1;
+
+arg_audio_rate=get_value(argc, argv, "-audio_rate");
+rate=24000; /* should be ok.. */
+if(arg_audio_rate!=NULL)rate=atol(arg_audio_rate);
+
+i=lookup_string(alsa_sc, arg_audio_device);
+if((i<0)||((ad=(ALSA_DATA *)alsa_sc->data[i])==NULL)){
+	return -1;
+	}
+if((a=snd_pcm_open(&(ad->recording_handle), arg_audio_device, SND_PCM_STREAM_CAPTURE, 0))<0){
+	fprintf(stderr,"Error opening device %s for capture %s\n", arg_audio_device, snd_strerror(a));
+	return -1;
+	}
+if((a=snd_pcm_hw_params_any(ad->recording_handle, hwparams))<0){
+	fprintf(stderr,"Error device %s has no configurations available: \n", arg_audio_device, snd_strerror(a));
+	return -1;
+	}
+a=snd_pcm_hw_params_set_access(ad->recording_handle, hwparams, SND_PCM_ACCESS_RW_INTERLEAVED);
+if(a<0){
+        fprintf(stderr, "Access type not available for playback: %s\n", snd_strerror(a));
+        return -1;
+	}
+/* set the sample format signed 16 bits, machine endianness */
+if(__BYTE_ORDER == __LITTLE_ENDIAN){
+	a=snd_pcm_hw_params_set_format(ad->recording_handle, hwparams,  SND_PCM_FORMAT_S16_LE);
+	} else {
+	a=snd_pcm_hw_params_set_format(ad->recording_handle, hwparams, SND_PCM_FORMAT_S16_BE);
+	}
+if(a<0){
+        fprintf(stderr,"Sample format not available for recording: %s\n", snd_strerror(a));
+        return -1;
+        }
+        /* set the count of channels - stereo for now */
+a=snd_pcm_hw_params_set_channels(ad->recording_handle, hwparams, 2);
+if(a<0){
+        fprintf(stderr,"Channels count (%i) not available for recording: %s\n", 2, snd_strerror(a));
+        return -1;
+        }
+        /* set the stream rate */
+a=snd_pcm_hw_params_set_rate_near(ad->recording_handle, hwparams, rate, 0);
+if(a<0){
+        fprintf(stderr,"Rate %iHz not available for recording: %s\n", rate, snd_strerror(a));
+        return -1;
+        }
+param->sample_rate=a;
+ad->recording_chunk_size=a*2*4; /* allocate enough for 2 seconds of audio */
+fprintf(stderr,"Using sample rate %ld Hz\n", param->sample_rate);
+#if 0 /* don't know what to do with this */
+        /* set buffer time */
+a=snd_pcm_hw_params_set_buffer_time_near(ad->recording_handle, hwparams, buffer_time, &dir);
+if(a<0){
+       fprintf(stderr,"Unable to set buffer time %i for recording: %s\n", buffer_time, snd_strerror(a));
+       return -1;
+       }
+#endif
+
+a=snd_pcm_hw_params(ad->recording_handle, hwparams);
+if(a<0){
+	fprintf(stderr,"Unable to set hw params for recording: %s\n", snd_strerror(a));
+	return -1;
+	}
+s->priv=ad;
+ad->priv=s;
+return 0;
+}
+
 int alsa_present(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
 {
 Tcl_ResetResult(interp);
@@ -464,6 +588,16 @@ for(i=0;alsa_commands[i].name!=NULL;i++)
 	Tcl_CreateCommand(interp, alsa_commands[i].name, alsa_commands[i].command, (ClientData)0, NULL);
 }
 #else /* USE_ALSA */
+
+void alsa_reader_thread(PACKET_STREAM *s)
+{
+}
+
+
+int alsa_setup_reader_thread(PACKET_STREAM *s, int argc, char *argv[], ALSA_PARAMETERS *param)
+{
+return -1;
+}
 
 int alsa_present(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
 {
