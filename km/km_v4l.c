@@ -75,6 +75,8 @@ fail:
 static void km_close(struct video_device *dev)
 {
 KM_STRUCT *kms=(KM_STRUCT *)dev;
+DECLARE_WAITQUEUE(wait, current);
+
 spin_lock(&(kms->kms_lock));
 kms->stop_transfer(kms);
 kms->v4l_buf_read_from=-1; /* none */
@@ -82,7 +84,7 @@ if(kms->deallocate_dvb!=NULL){
 	kms->deallocate_dvb(kms);
 	kmd_signal_state_change(kms->kmd);
 	} else {
-}
+	}
 printk("km: total frames: %ld, overrun: %ld\n", kms->total_frames, kms->overrun);
 spin_unlock(&(kms->kms_lock));
 }
@@ -97,15 +99,14 @@ static long km_read(struct video_device *v, char *buf, unsigned long count, int 
 KM_STRUCT *kms=(KM_STRUCT *)v;
 int q,todo;
 DECLARE_WAITQUEUE(wait, current);
-
 spin_lock(&(kms->kms_lock));
-todo=count;
 if(kms->v4l_buf_read_from<0){
 	printk("Internal error in km_v4l:km_read()\n");
 	spin_unlock(&(kms->kms_lock));
 	return -EIO;
 	}
-while((kms->buf_ptr==kms->v4l_free[kms->v4l_buf_read_from])||((kms->fi[q].flag & 1)!=kms->v4l_buf_parity)){
+q=kms->fi[kms->v4l_buf_read_from].next;
+while((kms->buf_ptr==kms->v4l_free[kms->v4l_buf_read_from])||(q<0)||((kms->fi[q].flag & 1)!=kms->v4l_buf_parity)){
 	q=kms->fi[kms->v4l_buf_read_from].next;
 	if((q>=0) && (kms->buf_age<kms->fi[q].age)){
 		kms->v4l_buf_read_from=q;
@@ -139,6 +140,7 @@ while((kms->buf_ptr==kms->v4l_free[kms->v4l_buf_read_from])||((kms->fi[q].flag &
 	remove_wait_queue(&(kms->frameq), &wait);
 	current->state=TASK_RUNNING;
 	}
+todo=count;
 while(todo>0){	
 	q=todo;
 	if((kms->buf_ptr+q)>=kms->v4l_free[kms->v4l_buf_read_from])q=kms->v4l_free[kms->v4l_buf_read_from]-kms->buf_ptr;   

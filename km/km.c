@@ -112,6 +112,7 @@ for(k=0;k<kms->num_buffers;k++){
 	kms->fi[k].flag=0;
 	kms->fi[k].next=k+1;
 	kms->fi[k].prev=k-1;
+	kms->fi[k].age=-1;
 	kms->dma_table[k]=rvmalloc(4096);
 	kms->v4l_free[k]=size;
 	memset(kms->dma_table[k], 0, 4096);
