@@ -5,7 +5,8 @@
 #
 #
 
-global avview_bindings avview_bindings_layout
+global avview_bindings avview_bindings_layout avview_video_window_bindings
+
 set avview_bindings {
 	"toggle_fullscreen" "<Control-KeyPress-f>"
 	"toggle_fullscreen" "<Key-Insert>"
@@ -28,12 +29,22 @@ set avview_bindings {
 	"switch_to_control XV_VOLUME; change_control 1" "<Key-XF86AudioRaiseVolume>"
 	"switch_to_control XV_VOLUME; change_control -1" "<Key-XF86AudioLowerVolume>"
 	}
+
+set avview_video_window_bindings {
+	"input_channel %s %K" <Key> 
+	"next_control 1" <ButtonPress-1>
+	"change_control -1" <ButtonPress-4>
+	"change_control 1" <ButtonPress-5>
+	}
+
 set avview_bindings_layout {action default_sequence}
 
 proc assign_default_bindings {} {
-global avview_bindings avview_bindings_layout VIDEO_WINDOW
+global avview_bindings avview_bindings_layout VIDEO_WINDOW avview_video_window_bindings
 
-bind . <Key> "input_channel %s %K"
+foreach $avview_bindings_layout $avview_video_window_bindings {
+	bind . $default_sequence $action
+	}
 
 foreach $avview_bindings_layout $avview_bindings {
 	bind all $default_sequence $action
