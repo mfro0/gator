@@ -2422,6 +2422,13 @@ RADEONDisplayVideo(
     v_inc = (src_h << (20
 		+ ((pScrn->currentMode->Flags & V_INTERLACE)?1:0)
 		- ((pScrn->currentMode->Flags & V_DBLSCAN)?1:0))) / drw_h;
+
+    v_inc = v_inc * pScrn->currentMode->VDisplay;
+    if(info->DisplayType==MT_LCD)
+        v_inc = v_inc/(drw_h*info->PanelYRes);
+        else
+        v_inc = v_inc/(drw_h*pScrn->currentMode->VDisplay);
+
     h_inc = ((src_w << (12
     		+ pPriv->ecp_div)) / drw_w);
     step_by = 1;
