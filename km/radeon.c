@@ -239,15 +239,58 @@ while(1){
 	}
 }
 
-
-int radeon_allocate_single_frame_buffer(KM_STRUCT *kms, SINGLE_FRAME *frame, long size)
+void radeon_update_base_addr(KM_STRUCT *kms)
 {
-int i;
 u32 aperture, aperture_size;
 u32 new_mc_fb_location;
 u32 mc_fb_location;
 u32 default_offset;
 u32 new_default_offset;
+u32 cap0_config;
+u32 trig_cntl;
+u32 fcp_cntl;
+u32 scale_cntl;
+
+aperture=pci_resource_start(kms->dev,0);
+aperture_size=pci_resource_len(kms->dev,0);
+radeon_wait_for_idle(kms);
+mc_fb_location=readl(kms->reg_aperture+RADEON_MC_FB_LOCATION);
+default_offset=readl(kms->reg_aperture+RADEON_DEFAULT_OFFSET);
+cap0_config=readl(kms->reg_aperture+RADEON_CAP0_CONFIG);
+trig_cntl=readl(kms->reg_aperture+RADEON_TRIG_CNTL);
+fcp_cntl=readl(kms->reg_aperture+RADEON_FCP_CNTL);
+scale_cntl=readl(kms->reg_aperture+RADEON_SCALE_CNTL);
+
+new_mc_fb_location=(aperture>>16)|
+	((aperture+aperture_size-1)&0xffff0000);
+new_default_offset=(default_offset & (~0x3FFFFF))|(aperture>>10);
+printk("new MC_FB_LOCATION=0x%08x versus 0x%08x\n", new_mc_fb_location, mc_fb_location);
+printk("new DEFAULT_OFFSET=0x%08x versus 0x%08x\n", new_default_offset, default_offset);
+if(new_mc_fb_location!=mc_fb_location){
+	printk("WARNING !   upgrade your Xserver and DRM driver\n");
+	printk("WARNING !   resetting MC_FB_LOCATION, DISPLAY_BASE_ADDR, OVERLAY_BASE_ADDR and DEFAULT_OFFSET\n");
+	/* disable capture and overlay
+	      - as they are the only ones that are still accessing memory */
+	writel(0, kms->reg_aperture+RADEON_SCALE_CNTL);
+	writel(0, kms->reg_aperture+RADEON_TRIG_CNTL);
+	writel(0, kms->reg_aperture+RADEON_FCP_CNTL);
+	/* set new base addresses */
+	radeon_wait_for_idle(kms);
+	writel(new_mc_fb_location, kms->reg_aperture+RADEON_MC_FB_LOCATION);
+	writel(aperture, kms->reg_aperture+RADEON_DISPLAY_BASE_ADDR);
+	writel(aperture, kms->reg_aperture+RADEON_OVERLAY_BASE_ADDR);
+	writel(new_default_offset, kms->reg_aperture+RADEON_DEFAULT_OFFSET);
+	/* restore capture state */
+	radeon_wait_for_idle(kms);
+	writel(fcp_cntl, kms->reg_aperture+RADEON_FCP_CNTL);
+	writel(trig_cntl, kms->reg_aperture+RADEON_TRIG_CNTL);
+	writel(scale_cntl, kms->reg_aperture+RADEON_SCALE_CNTL);
+	}
+}
+
+int radeon_allocate_single_frame_buffer(KM_STRUCT *kms, SINGLE_FRAME *frame, long size)
+{
+int i;
 if(size>(4096*4096/sizeof(bm_list_descriptor))){
 	printk("Too large buffer allocation requested: %ld bytes\n", size);
 	return -1;
@@ -283,23 +326,7 @@ for(i=0;i<(frame->buf_size/PAGE_SIZE);i++){
 		}
 	}
 /* Reset MC_FB_LOCATION */
-aperture=pci_resource_start(kms->dev,0);
-aperture_size=pci_resource_len(kms->dev,0);
-radeon_wait_for_idle(kms);
-mc_fb_location=readl(kms->reg_aperture+RADEON_MC_FB_LOCATION);
-default_offset=readl(kms->reg_aperture+RADEON_DEFAULT_OFFSET);
-new_mc_fb_location=(aperture>>16)|
-	((aperture+aperture_size-1)&0xffff0000);
-new_default_offset=(default_offset & (~0x3FFFFF))|(aperture>>10);
-printk("new MC_FB_LOCATION=0x%08x versus 0x%08x\n", new_mc_fb_location, mc_fb_location);
-if(new_mc_fb_location!=mc_fb_location){
-	printk("WARNING !   upgrade your Xserver and DRM driver\n");
-	printk("WARNING !   resetting MC_FB_LOCATION, DISPLAY_BASE_ADDR, OVERLAY_BASE_ADDR and DEFAULT_OFFSET\n");
-	writel(new_mc_fb_location, kms->reg_aperture+RADEON_MC_FB_LOCATION);
-	writel(aperture, kms->reg_aperture+RADEON_DISPLAY_BASE_ADDR);
-	writel(aperture, kms->reg_aperture+RADEON_OVERLAY_BASE_ADDR);
-	writel(new_default_offset, kms->reg_aperture+RADEON_DEFAULT_OFFSET);
-	}
+radeon_update_base_addr(kms);
 return 0;
 }
 
