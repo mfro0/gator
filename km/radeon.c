@@ -184,7 +184,7 @@ for(i=0;i<(kms->dvb.size/PAGE_SIZE);i++){
 return 0;
 }
 
-static void radeon_start_frame_transfer(KM_STRUCT *kms, int buffer, int field)
+static void radeon_start_frame_transfer2(KM_STRUCT *kms, int buffer, int field)
 {
 long status;
 long offset;
@@ -211,6 +211,7 @@ switch(field){
 		break;
 	default:
 		printk("Internal error %s %s %d\n", __FILE__, __FUNCTION__, __LINE__);
+		return;
 	}
 KM_DEBUG("buf=%d field=%d\n", buffer, field);
 kms->fi[buffer].timestamp_start=jiffies;
@@ -230,6 +231,60 @@ writel(kvirt_to_pa(kms->dma_table[buffer]), (u32)(kms->reg_aperture+RADEON_DMA_G
 KM_DEBUG("start_frame_transfer_buf0\n");
 }
 
+static void radeon_start_request_transfer(KM_TRANSFER_REQUEST *kmtr)
+{
+long status;
+KM_STRUCT *kms=kmtr->user_data;
+wmb();
+/* wait for at least one available queue */
+do {
+	status=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
+	KM_DEBUG("status=0x%08lx\n", status);
+	} while (!(status & 0x1f));
+wmb();
+writel(kvirt_to_pa(kms->dma_table[kmtr->buffer]), (u32)(kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR)| (0));
+}
+
+static void radeon_schedule_request(KM_STRUCT *kms, int buffer, int field)
+{
+long offset;
+if(buffer<0){
+	KM_DEBUG("radeon_schedule_request buffer=%d field=%d\n",buffer, field);
+	return;
+	}
+switch(field){
+	case 0:
+		offset=kms->buf0_odd_offset;
+		kms->kmsbi[buffer].user_flag|=KM_FI_ODD;
+		break;
+	case 1:
+		offset=kms->buf0_even_offset;
+		kms->kmsbi[buffer].user_flag&=~KM_FI_ODD;
+		break;
+	case 2:
+		offset=kms->buf1_odd_offset;
+		kms->kmsbi[buffer].user_flag|=KM_FI_ODD;
+		break;
+	case 3:
+		offset=kms->buf1_even_offset;
+		kms->kmsbi[buffer].user_flag&=~KM_FI_ODD;
+		break;
+	default:
+		printk("Internal error %s %s %d\n", __FILE__, __FUNCTION__, __LINE__);
+		return;
+	}
+KM_DEBUG("buf=%d field=%d\n", buffer, field);
+kms->fi[buffer].timestamp_start=jiffies;
+radeon_setup_dma_table(kms, (kms->dma_table[buffer]), offset, kms->v4l_free[buffer]);
+/* start transfer */
+kms->total_frames++;
+kms->kmsbi[buffer].user_flag|=KM_FI_DMA_ACTIVE;
+kms->kmsbi[buffer].age=kms->total_frames;
+wmb();
+km_add_transfer_request(&(kms->gui_dma_queue),
+	kms->kmsbi, &(kms->dvb), buffer, KM_TRANSFER_TO_SYSTEM_RAM, radeon_start_request_transfer, kms);
+}
+
 static int radeon_is_capture_irq_active(KM_STRUCT *kms)
 {
 long status, mask;
@@ -244,10 +299,10 @@ writel(status & mask, kms->reg_aperture+RADEON_CAP_INT_STATUS);
 KM_DEBUG("CAP_INT_STATUS=0x%08x\n", status);
 /* do not start dma transfer if capture is not active anymore */
 if(!kms->capture_active)return 1;
-if(status & 1)radeon_start_frame_transfer(kms, find_free_buffer(kms), 0);
-if(status & 2)radeon_start_frame_transfer(kms, find_free_buffer(kms), 1);
-if(status & 4)radeon_start_frame_transfer(kms, find_free_buffer(kms), 2);
-if(status & 8)radeon_start_frame_transfer(kms, find_free_buffer(kms), 3);
+if(status & 1)radeon_schedule_request(kms, find_free_buffer(kms), 0);
+if(status & 2)radeon_schedule_request(kms, find_free_buffer(kms), 1);
+if(status & 4)radeon_schedule_request(kms, find_free_buffer(kms), 2);
+if(status & 8)radeon_schedule_request(kms, find_free_buffer(kms), 3);
 return 1;
 }
 

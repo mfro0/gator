@@ -143,7 +143,7 @@ kms->capture_du=-1;
 return 0;
 }
 
-int acknowledge_dma(KM_STRUCT *kms)
+int acknowledge_dma2(KM_STRUCT *kms)
 {
 int i;
 for(i=0;i<kms->num_buffers;i++)
@@ -167,6 +167,22 @@ if(kms->frame_info[FRAME_EVEN].dma_active){
 return 0;
 }
 
+static int km_fire_transfer_request(KM_TRANSFER_QUEUE *kmtq)
+{
+if(kmtq->request[kmtq->first].flag & KM_TRANSFER_IN_PROGRESS){
+	return 0;
+	}
+while(kmtq->first!=kmtq->last){
+	kmtq->first++;
+	if(kmtq->first>=kmtq->size)kmtq->first=0;
+	if(kmtq->request[kmtq->first].flag!=KM_TRANSFER_NOP){
+		kmtq->request[kmtq->first].flag|=KM_TRANSFER_IN_PROGRESS;
+		return 1;		
+		}
+	}
+return 0;
+}
+
 KM_TRANSFER_QUEUE * km_make_transfer_queue(int size)
 {
 int i;
@@ -175,7 +191,7 @@ kmtq=kmalloc(sizeof(KM_TRANSFER_QUEUE)+size*sizeof(KM_TRANSFER_REQUEST), GFP_KER
 if(kmtq==NULL)return NULL;
 kmtq->request=((u8 *)kmtq)+sizeof(KM_TRANSFER_QUEUE);
 kmtq->size=size;
-kmtq->last=0;
+kmtq->first=0;
 kmtq->last=0;
 spin_lock_init(&(kmtq->lock));
 for(i=0;i<kmtq->size;i++)
@@ -188,10 +204,10 @@ int km_add_transfer_request(KM_TRANSFER_QUEUE *kmtq,
 	int (*start_transfer)(KM_TRANSFER_REQUEST *kmtr), void *user_data)
 {
 int last;
-spin_lock(&(kmtq->lock));
+spin_lock_irq(&(kmtq->lock));
 last=kmtq->last;
 if(kmtq->request[last].flag!=KM_TRANSFER_NOP){
-	spin_unlock(&(kmtq->lock));
+	spin_unlock_irq(&(kmtq->lock));
 	return -1;
 	}
 
@@ -204,33 +220,37 @@ kmtq->request[last].user_data=user_data;
 
 kmtq->last++;
 if(kmtq->last>=kmtq->size)kmtq->last=0;
-
-if(!(kmtq->request[kmtq->last].flag & KM_TRANSFER_IN_PROGRESS)){
-	kmtq->last=last;
-	kmtq->request[last].flag|=KM_TRANSFER_IN_PROGRESS;
-	spin_unlock(&(kmtq->lock));
-	kmtq->request[last].start_transfer(&(kmtq->request[last]));
+/* check if any transfer has been schedule */
+if(km_fire_transfer_request(kmtq)){
+	spin_unlock_irq(&(kmtq->lock));
+	kmtq->request[kmtq->first].start_transfer(&(kmtq->request[kmtq->first]));
 	return 0;
 	}
-spin_unlock(&(kmtq->lock));
+spin_unlock_irq(&(kmtq->lock));
 return 0;
 }
 
+/* this function could be called from an interrupt handler.
+   Be careful with spin_locks */
 void km_signal_transfer_completion(KM_TRANSFER_QUEUE *kmtq)
 {
 spin_lock(&(kmtq->lock));
-kmtq->request[kmtq->last].flag=KM_TRANSFER_NOP;
-while(kmtq->last!=kmtq->last){
-	kmtq->last++;
-	if(kmtq->last>=kmtq->size)kmtq->last=0;
-	if(kmtq->request[kmtq->last].flag!=KM_TRANSFER_NOP){
-		kmtq->request[kmtq->last].flag|=KM_TRANSFER_IN_PROGRESS;
-		spin_unlock(&(kmtq->lock));
-		kmtq->request[kmtq->last].start_transfer(&(kmtq->request[kmtq->last]));
-		return;		
-		}
+wake_up_interruptible(kmtq->request[kmtq->first].dvb->dataq);
+/* this operation is atomic as the value written in 32 bits */
+kmtq->request[kmtq->first].flag=KM_TRANSFER_NOP;
+wmb();
+if(km_fire_transfer_request(kmtq)){
+	spin_unlock(&(kmtq->lock));
+	kmtq->request[kmtq->first].start_transfer(&(kmtq->request[kmtq->first]));
+	return;
 	}
 spin_unlock(&(kmtq->lock));
+}
+
+int acknowledge_dma(KM_STRUCT *kms)
+{
+km_signal_transfer_completion(&(kms->gui_dma_queue));
+return 0;
 }
 
 int install_irq_handler(KM_STRUCT *kms, void *handler, char *tag)
@@ -407,12 +427,13 @@ kms=&(km_devices[num_devices]);
 memset(kms, 0, sizeof(KM_STRUCT));
 kms->dev=dev;
 kms->irq=dev->irq;
-#if 0
-kms->frame_info[FRAME_ODD].buffer=NULL;
-kms->frame_info[FRAME_ODD].dma_table=NULL;
-kms->frame_info[FRAME_EVEN].buffer=NULL;
-kms->frame_info[FRAME_EVEN].dma_table=NULL;
-#endif
+kms->gui_dma_queue.request=kms->gui_dma_request;
+kms->gui_dma_queue.size=10;
+kms->gui_dma_queue.last=0;
+kms->gui_dma_queue.first=0;
+spin_lock_init(&(kms->gui_dma_queue.lock));
+memset(kms->gui_dma_request, 0, kms->gui_dma_queue.size*sizeof(KM_TRANSFER_REQUEST));
+
 kms->interrupt_count=0;
 kms->irq_handler=NULL;
 if(km_buffers<2)km_buffers=2;

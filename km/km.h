@@ -95,6 +95,10 @@ typedef struct S_KM_STRUCT {
 	bm_list_descriptor **dma_table;
 	int num_buffers;
 	
+	KM_TRANSFER_QUEUE gui_dma_queue;
+	KM_TRANSFER_REQUEST gui_dma_request[10];  /* we should not have more than 10 
+	                                             outstanding DMA requests */
+	
 	unsigned long buf0_odd_offset;
 	unsigned long buf0_even_offset;
 	unsigned long buf1_odd_offset;
@@ -118,6 +122,9 @@ int acknowledge_dma(KM_STRUCT *kms);
 int find_free_buffer(KM_STRUCT *kms);
 int start_video_capture(KM_STRUCT *kms);
 void stop_video_capture(KM_STRUCT *kms);
+int km_add_transfer_request(KM_TRANSFER_QUEUE *kmtq, 
+	KM_STREAM_BUFFER_INFO *kmsbi, KM_DATA_VIRTUAL_BLOCK *dvb, int buffer, int flag,
+	int (*start_transfer)(KM_TRANSFER_REQUEST *kmtr), void *user_data);
 
 #define HARDWARE_MACH64		0
 #define HARDWARE_RAGE128	1
