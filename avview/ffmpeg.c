@@ -101,6 +101,8 @@ char *output_buf;
 long ob_size, ob_free, ob_written;
 long incoming_frames_count=0;
 
+/* encode in the background */
+nice(1);
 data=(V4L_DATA *)s->priv;
 if((data==NULL)||(sdata==NULL)||(sdata->type!=FFMPEG_CAPTURE_KEY)||(sdata->video_s==NULL))pthread_exit(NULL);
 ob_size=1024*1024;
@@ -171,6 +173,9 @@ long ob_size, ob_free, ob_written, i;
 PACKET *f;
 ob_size=sdata->alsa_param.chunk_size;
 out_buf=do_alloc(ob_size, 1);
+
+/* encode in the background */
+nice(1);
 while(1){
 	pthread_mutex_lock(&(s->ctr_mutex));
 	f=s->first;
