@@ -158,6 +158,7 @@ proc on_attribute_change { attr_name variable a b } {
 global $variable
 global VIDEO_WINDOW
 global current_port
+if { $current_port == "none" } { return }
 xv_setportattribute $VIDEO_WINDOW $current_port $attr_name [set $variable]
 #puts "$attr_name=[set $variable]"
 #
