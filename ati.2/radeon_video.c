@@ -371,30 +371,13 @@ static void RADEONSetTransform(  ScrnInfoPtr pScrn,
 
 	CAdjLuma = cont * trans[ref].RefLuma;
 	CAdjOff = cont * trans[ref].RefLuma * bright * 1023.0;
-#if 1	
-	CAdjRCb = sat * -OvHueSin * trans[ref].RefRCr;
-	CAdjRCr = sat * OvHueCos * trans[ref].RefRCr;
-	CAdjGCb = sat * (OvHueCos * trans[ref].RefGCb - OvHueSin * trans[ref].RefGCr);
-	CAdjGCr = sat * (OvHueSin * trans[ref].RefGCb + OvHueCos * trans[ref].RefGCr);
-	CAdjBCb = sat * OvHueCos * trans[ref].RefBCb;
-	CAdjBCr = sat * OvHueSin * trans[ref].RefBCb;
-#endif
-	/* we really need the inverse transform .. */
-    #if 0
-	CAdjRCb = sat * -OvHueSin * trans[ref].RefRCr;
-	CAdjRCr = sat * OvHueCos * trans[ref].RefRCr;
-	CAdjGCb = sat * (OvHueCos * trans[ref].RefGCb - OvHueSin * trans[ref].RefGCr);
-	CAdjGCr = sat * (OvHueSin * trans[ref].RefGCb + OvHueCos * trans[ref].RefGCr);
-	CAdjBCb = sat * OvHueCos * trans[ref].RefBCb;
-	CAdjBCr = sat * OvHueSin * trans[ref].RefBCb;
 
-	CAdjRCb = sat * (-CAdjLuma/1.772);
-	CAdjRCr = sat * (CAdjLuma/((1+0.344136/1.772)*0.714136));
-	CAdjGCb = sat * 0;
-	CAdjGCr = sat * 0;
-	CAdjBCb = sat * (CAdjLuma/((1+0.344136/1.402)*0.714136));
-	CAdjBCr = sat * (-CAdjLuma/1.402);
-    #endif
+	CAdjRCb = sat * -OvHueSin * trans[ref].RefRCr;
+	CAdjRCr = sat * OvHueCos * trans[ref].RefRCr;
+	CAdjGCb = sat * (OvHueCos * trans[ref].RefGCb - OvHueSin * trans[ref].RefGCr);
+	CAdjGCr = sat * (OvHueSin * trans[ref].RefGCb + OvHueCos * trans[ref].RefGCr);
+	CAdjBCb = sat * OvHueCos * trans[ref].RefBCb;
+	CAdjBCr = sat * OvHueSin * trans[ref].RefBCb;
     
     #if 0 /* default constants */
         CAdjLuma = 1.16455078125;
