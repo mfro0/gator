@@ -1,0 +1,27 @@
+			*** INSTALLATION ****
+
+Requirements:
+	Tcl/Tk 8.3
+	Alsa 0.9.0 drivers and library (optional) (http://www.alsa-project.org/)
+	FFmpeg tarball (optional)
+	autoconf 2.52 or later (if compiling from CVS) (http://www.gnu.org/)
+	automake (if compiling from CVS) (http://www.gnu.org)
+	
+To compile:
+
+	./configure --with-ffmpeg=/path/to/compiled/ffmpeg/tree
+	make
+	
+If you are using code from CVS you need to run these commands first:
+	automake
+	autoconf
+
+To install:
+	make install
+	
+You can now run avview with the command:
+	start_avview
+	
+If you would like to run avview without installing it use command:
+	./start_avview.no_install
+	
