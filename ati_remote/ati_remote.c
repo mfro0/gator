@@ -278,6 +278,7 @@ static void ati_remote_irq(struct urb *urb)
 						input_event(dev, ati_remote_translation_table[i].type,
 							ati_remote_translation_table[i].code,
 							0);
+							ati_remote->old_jiffies[remote_num]=jiffies;
 						break;
 					default:
 						printk("kind=%d\n", ati_remote_translation_table[i].kind);
