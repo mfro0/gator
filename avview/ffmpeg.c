@@ -625,7 +625,8 @@ pthread_mutex_init(&(sdata->format_context_mutex), NULL);
 
 errno=0;
 while(0){}
-sdata->fd_out=open64(arg_filename, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
+sdata->fd_out=open64(arg_filename, O_WRONLY|O_CREAT|O_TRUNC, 
+		S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
 if((sdata->fd_out<0)||(errno!=0)){
 	do_free(sdata);
 	Tcl_AppendResult(interp, strerror(errno), NULL);
