@@ -247,7 +247,7 @@ void ATI_detect_addon(ATIPortPrivPtr pPriv);
 void ATI_read_eeprom(ATIPortPrivPtr pPriv);
 void ATI_board_setmisc(ATIPortPrivPtr pPriv);
 void ATI_MSP_SetEncoding(ATIPortPrivPtr pPriv);
-void ATI_BT_SetEncoding(ATIPortPrivPtr pPriv);
+void ATI_BT_SetEncoding(ScrnInfoPtr pScrn, ATIPortPrivPtr pPriv);
 void ATILeaveVT_Video(ScrnInfoPtr pScrn);
 void ATIEnterVT_Video(ScrnInfoPtr pScrn);
 static void ATIMuteAudio(ATIPortPrivPtr pPriv, Bool mute);
@@ -1543,7 +1543,7 @@ ATISetPortAttribute(
 	pPriv->encoding = value;
 	if(pPriv->video_stream_active)
 	{
-	   if(pPriv->bt829 != NULL) ATI_BT_SetEncoding(pPriv);
+	   if(pPriv->bt829 != NULL) ATI_BT_SetEncoding(pScrn, pPriv);
 	   if(pPriv->msp3430 != NULL) ATI_MSP_SetEncoding(pPriv);
            if(pPriv->i2c!=NULL) ATI_board_setmisc(pPriv);
 	/* put more here to actually change it */
@@ -2162,8 +2162,10 @@ xf86_InitMSP3430(pPriv->msp3430);
 xf86_MSP3430SetVolume(pPriv->msp3430, pPriv->mute ? MSP3430_FAST_MUTE : pPriv->volume);
 }
 
-void ATI_BT_SetEncoding(ATIPortPrivPtr pPriv)
+void ATI_BT_SetEncoding(ScrnInfoPtr pScrn, ATIPortPrivPtr pPriv)
 {
+ATIPtr pATI = ATIPTR(pScrn);
+int width, height;
 switch(pPriv->encoding){
 	case 1:
                 xf86_bt829_SetMux(pPriv->bt829, BT829_MUX2);
@@ -2216,6 +2218,14 @@ switch(pPriv->encoding){
 	        xf86_bt829_SetFormat(pPriv->bt829, BT829_NTSC);
 		return;
 	}	
+if(pATI->Chip>=ATI_CHIP_264GTPRO){
+	      width = RagePro_InputVideoEncodings[pPriv->encoding].width;
+      	      height = RagePro_InputVideoEncodings[pPriv->encoding].height; 
+	      } else {
+	      width = VT_GT_InputVideoEncodings[pPriv->encoding].width;
+      	      height = VT_GT_InputVideoEncodings[pPriv->encoding].height; 
+	      }
+xf86_bt829_SetCaptSize(pPriv->bt829, width, height*2);
 if(pPriv->tda9850!=NULL){
 	pPriv->tda9850->mux = pPriv->bt829->mux;
 	xf86_tda9850_setaudio(pPriv->tda9850);
@@ -2372,7 +2382,7 @@ ATIPutVideo(
       
    if(pPriv->bt829 != NULL) 
    {
-      ATI_BT_SetEncoding(pPriv);
+      ATI_BT_SetEncoding(pScrn, pPriv);
       xf86_bt829_SetCaptSize(pPriv->bt829, width, height*2);
    }
    
