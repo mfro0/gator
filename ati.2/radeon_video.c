@@ -3469,7 +3469,10 @@ RADEONPutVideo(
 
    width = InputVideoEncodings[pPriv->encoding].width;
    height = InputVideoEncodings[pPriv->encoding].height;
+   vbi_line_width = 0x326;
+   vbi_line_width = 2048;
    vbi_line_width = 0x618;
+   vbi_line_width = 798*2;
         
    if(!RADEONClipVideo(&dstBox, &xa, &xb, &ya, &yb, clipBoxes, width, height))
         return Success;
@@ -3575,7 +3578,7 @@ RADEONPutVideo(
         OUTREG(RADEON_CAP0_VBI1_OFFSET, vbi_offset1+display_base);
         OUTREG(RADEON_CAP0_VBI2_OFFSET, 0);
         OUTREG(RADEON_CAP0_VBI3_OFFSET, 0);
-        OUTREG(RADEON_CAP0_VBI_V_WINDOW, 9 | ((pPriv->v-1)<<16));
+        OUTREG(RADEON_CAP0_VBI_V_WINDOW, 19 | ((pPriv->v-1)<<16));
         OUTREG(RADEON_CAP0_VBI_H_WINDOW, 0 | (vbi_line_width)<<16);
         }
    
