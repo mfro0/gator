@@ -347,6 +347,7 @@ char *arg_video_bitrate;
 char *arg_deinterlace_mode;
 char *arg_step_frames;
 char *arg_video_quality;
+char *arg_video_bitrate_control;
 struct video_picture vpic;
 double a,b;
 
@@ -360,6 +361,7 @@ arg_video_bitrate=get_value(argc, argv, "-video_bitrate");
 arg_deinterlace_mode=get_value(argc, argv, "-deinterlace_mode");
 arg_step_frames=get_value(argc, argv, "-step_frames");
 arg_video_quality=get_value(argc, argv, "-video_quality");
+arg_video_bitrate_control=get_value(argc, argv, "-video_bitrate_control");
 
 if((arg_v4l_handle==NULL)||
 	(!strcmp(arg_v4l_handle, "none"))||
@@ -476,7 +478,9 @@ if(sdata->video_codec_context.bit_rate< (sdata->video_codec_context.frame_rate/F
 	sdata->video_codec_context.bit_rate=rint(a/b);
 fprintf(stderr,"video: using bitrate=%d, frame_rate=%d\n", sdata->video_codec_context.bit_rate, sdata->video_codec_context.frame_rate);
 sdata->video_codec_context.pix_fmt=PIX_FMT_YUV422;
-sdata->video_codec_context.flags=CODEC_FLAG_QSCALE;
+sdata->video_codec_context.flags=0;
+if((arg_video_bitrate_control!=NULL)&&!strcmp(arg_video_bitrate_control, "Fix quality"))
+	sdata->video_codec_context.flags=CODEC_FLAG_QSCALE;
 sdata->video_codec_context.qmin=qmin;
 sdata->video_codec_context.quality=qmin;
 if(arg_video_quality!=NULL)sdata->video_codec_context.quality=atoi(arg_video_quality);
