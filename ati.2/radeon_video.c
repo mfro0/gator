@@ -2684,11 +2684,13 @@ RADEONDisplayVideo(
     	}
 
 
+    h_inc_d = src_w;
+    h_inc_d = h_inc_d/drw_w;
     /* we could do a tad better  - but why
        bother when this concerns downscaling and the code is so much more
        hairy */
-    while(h_inc >= (2 << 12)) {
-        if(!is_rgb && ((h_inc+h_inc/2)<(2<<12))){
+    while(h_inc*h_inc_d >= (2 << 12)) {
+        if(!is_rgb && (((h_inc+h_inc/2)*h_inc_d)<(2<<12))){
                 step_by_uv = step_by_y+1;
                 break;
                 }
@@ -2697,8 +2699,6 @@ RADEONDisplayVideo(
         h_inc >>= 1;
         }
     h_inc_uv = h_inc>>(step_by_uv-step_by_y);
-    h_inc_d = src_w;
-    h_inc_d = h_inc_d/drw_w;
     h_inc = h_inc * h_inc_d;
     h_inc_uv = h_inc_uv * h_inc_d;
     /* 1536 is magic number - maximum line length the overlay scaler can fit 
@@ -2712,6 +2712,9 @@ RADEONDisplayVideo(
         step_by_uv=1;
         h_inc_uv = h_inc;
         }
+
+    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "step_by_y=%d step_by_uv=%d h_inc=0x%08x h_inc_uv=0x%08x\n",
+    	step_by_y, step_by_uv, h_inc, h_inc_uv);
 
     /* keep everything in 16.16 */
 
