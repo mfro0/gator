@@ -473,6 +473,7 @@ while(!(s->stop_stream & STOP_PRODUCER_THREAD)){
 			p->timestamp=(((int64)tv.tv_sec)<<20)|(tv.tv_usec);
 			pthread_mutex_lock(&(s->ctr_mutex));
 			if(!(s->stop_stream & STOP_PRODUCER_THREAD)){
+				p->use_count=1;
 				deliver_packet(s, p);
 				pthread_mutex_unlock(&(s->ctr_mutex));
 				p=new_generic_packet(s, data->recording_chunk_size);

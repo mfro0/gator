@@ -82,6 +82,10 @@ if(ioctl(data->fd, VIDIOCSPICT, &vpic)<0){
 data->mode=0;
 data->frame_count=0;
 data->priv=NULL;
+pthread_mutex_init(&data->streams_out_mutex, NULL);
+data->streams_out_free=0;
+data->streams_out_size=10;
+data->streams_out=do_alloc(data->streams_out_size, sizeof(*(data->streams_out)));
 return 0;
 }
 
@@ -91,6 +95,37 @@ long i;
 i=lookup_string(v4l_sc, handle);
 if(i<0)return NULL;
 return (V4L_DATA *)v4l_sc->data[i];	
+}
+
+void v4l_attach_output_stream(V4L_DATA *data, PACKET_STREAM *s)
+{
+PACKET_STREAM **p;
+pthread_mutex_lock(&data->streams_out_mutex);
+if(data->streams_out_free>=data->streams_out_size){
+	data->streams_out_size=2*data->streams_out_size+10;
+	p=do_alloc(data->streams_out_size, sizeof(*p));
+	if(data->streams_out_free>0)memcpy(p, data->streams_out, data->streams_out_free*sizeof(*p));
+	free(data->streams_out);
+	data->streams_out=p;
+	}
+data->streams_out[data->streams_out_free]=s;
+data->streams_out_free++;
+pthread_mutex_unlock(&data->streams_out_mutex);
+}
+
+void v4l_detach_output_stream(V4L_DATA *data, PACKET_STREAM *s)
+{
+int i;
+pthread_mutex_lock(&data->streams_out_mutex);
+for(i=0;i<data->streams_out_free;i++)
+	if(data->streams_out[i]==s)break;
+if(i<(data->streams_out_free-1)){
+	memmove(&(data->streams_out[i]), &(data->streams_out[i+1]), data->streams_out_free-i-1);
+	}
+if(i==data->streams_out_free){
+	fprintf(stderr,"V4L: Cannot detach packet stream - not attached\n");
+	}
+pthread_mutex_unlock(&data->streams_out_mutex);
 }
 
 int v4l_close_device(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
@@ -533,9 +568,11 @@ void v4l_reader_thread(PACKET_STREAM *s)
 PACKET *p;
 V4L_DATA *data=s->priv;
 fd_set read_fds;
+PACKET_STREAM *stm;
 int a;
 long incoming_frames_count=0;
 struct timeval tv;
+int i;
 /* lock mutex before testing s->stop_stream */
 p=new_generic_packet(s, data->video_size);
 pthread_mutex_lock(&(s->ctr_mutex));
@@ -548,16 +585,21 @@ while(!(s->stop_stream & STOP_PRODUCER_THREAD)){
 		if(p->free==p->size){ /* deliver packet */
 			gettimeofday(&tv, NULL);
 			p->timestamp=(((int64)tv.tv_sec)<<20)|(tv.tv_usec);
-			pthread_mutex_lock(&(s->ctr_mutex));
-			if(!(s->stop_stream & STOP_PRODUCER_THREAD) &&
-				(!data->step_frames || !(incoming_frames_count % data->step_frames))){
-				deliver_packet(s, p);
-				pthread_mutex_unlock(&(s->ctr_mutex));
-				p=new_generic_packet(s, data->video_size);
-				} else {
-				p->free=0;
-				pthread_mutex_unlock(&(s->ctr_mutex));
+			p->use_count=1;
+			pthread_mutex_lock(&(data->streams_out_mutex));
+			for(i=0;i<data->streams_out_free;i++){
+				stm=data->streams_out[i];
+				pthread_mutex_lock(&(stm->ctr_mutex));
+				if(!(stm->stop_stream & STOP_PRODUCER_THREAD) &&
+					(!data->step_frames || !(incoming_frames_count % data->step_frames))){
+					p->use_count++;
+					deliver_packet(stm, p);
+					} 
+				pthread_mutex_unlock(&(stm->ctr_mutex));
 				}
+			pthread_mutex_unlock(&(data->streams_out_mutex));
+			p->free_func(p);
+			p=new_generic_packet(s, data->video_size);
 			incoming_frames_count++;
 			}
 		} else

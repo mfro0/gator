@@ -66,6 +66,7 @@ p->prev=NULL;
 p->size=size;
 p->free=0;
 p->recycle=0;
+p->use_count=0;
 if(size>0){
 	p->buf=do_alloc(size,1);
 	while(p->buf==NULL){
@@ -82,6 +83,11 @@ return p;
 
 void free_generic_packet(PACKET *p)
 {
+p->use_count--;
+if(p->use_count>0)return;
+if(p->use_count<0){
+	fprintf(stderr,"Freeing packet with negative use count\n");
+	}
 p->size=0;
 p->free=0;
 if(p->buf!=NULL)do_free(p->buf);

@@ -24,6 +24,7 @@ typedef struct S_PACKET{
 	int recycle;
 	int64 timestamp;
 	unsigned char *buf;
+	long use_count;
 	void (*free_func)(struct S_PACKET *);
 	char *type;
 	void *priv;

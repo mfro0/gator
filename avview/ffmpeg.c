@@ -481,6 +481,7 @@ sdata->video_s->priv=data;
 sdata->video_s->consume_func=ffmpeg_v4l_encoding_thread;
 /* set threshold to two frames worth of data */
 sdata->video_s->threshold=data->video_size*2;
+v4l_attach_output_stream(data, sdata->video_s);
 return 1;
 }
 
