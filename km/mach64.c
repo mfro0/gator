@@ -152,7 +152,7 @@ if(field){
 	stream->dvb.kmsbi[buffer].user_flag|=KM_FI_ODD;
 	}
 KM_DEBUG("buf=%d field=%d\n", buffer, field);
-stream->fi[buffer].timestamp_start=jiffies;
+stream->dvb.kmsbi[buffer].timestamp=jiffies;
 mach64_setup_dma_table(kms, (stream->dma_table[buffer]), offset, stream->free[buffer]);
 /* start transfer */
 stream->total_frames++;

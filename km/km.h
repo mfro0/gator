@@ -25,11 +25,6 @@ typedef struct {
 
 #define KM_FI_ODD		1
 
-typedef struct {
-	long timestamp_start;
-	long timestamp_end;
-	} FIELD_INFO;
-
 #define MAX_FRAME_BUFF_NUM 	10
 
 /* this structure contains information corresponding to a single stream
@@ -50,8 +45,6 @@ typedef struct {
 	int info_du;
 	KM_DATA_VIRTUAL_BLOCK dvb_info;
 	long info_free;
-
-	FIELD_INFO *fi;
 	} KM_STREAM;
 
 /* DMA request struct */
@@ -104,6 +97,7 @@ typedef struct S_KM_STRUCT {
 	KM_STREAM vbi;
 	
 	KM_TRANSFER_QUEUE gui_dma_queue;
+	int gdq_usage;
 	KM_TRANSFER_REQUEST gui_dma_request[10];  /* we should not have more than 10 
 	                                             outstanding DMA requests */
 	

@@ -32,6 +32,7 @@ typedef int KM_BUFFER_AGE;
 
 typedef struct {
 	KM_BUFFER_AGE age;  /* age of the corresponding buffer */
+	long timestamp;    /* usually in jiffies */
 	int next;      /* buffer that is next in chain */
 	int prev;	/* buffer that is before it in chain */
 	int flag;       /* flag that relates special information about

@@ -132,7 +132,7 @@ h_window=readl(kms->reg_aperture+RADEON_CAP0_VBI_H_WINDOW);
 v_window=readl(kms->reg_aperture+RADEON_CAP0_VBI_V_WINDOW);
 kms->vbi0_offset=readl(kms->reg_aperture+RADEON_CAP0_VBI0_OFFSET);
 kms->vbi1_offset=readl(kms->reg_aperture+RADEON_CAP0_VBI1_OFFSET);
-return ((h_window>>16)*((v_window>>16)-(v_window & 0xffff)));
+return ((h_window>>16)*((v_window>>16)-(v_window & 0xffff))*2);
 }
 
 void radeon_start_transfer(KM_STRUCT *kms)
@@ -164,21 +164,21 @@ u32 a;
 /* stop interrupts */
 a=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
 writel(a & ~0xf, kms->reg_aperture+RADEON_CAP_INT_CNTL);
-#if 0
-a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
-writel(a & ~(1<<30), kms->reg_aperture+RADEON_GEN_INT_CNTL);
-#endif
-wmb();
-/* stop outstanding DMA transfers */
-a=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
-if(a & RADEON_DMA_GUI_STATUS__ACTIVE){
-	writel(a | RADEON_DMA_GUI_STATUS__ABORT, kms->reg_aperture+RADEON_DMA_GUI_STATUS);
+if(kms->gdq_usage==1){
+	a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
+	writel(a & ~(1<<30), kms->reg_aperture+RADEON_GEN_INT_CNTL);
 	wmb();
-	while((a=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS))&RADEON_DMA_GUI_STATUS__ACTIVE);
-	wmb();
-	writel(a & ~ RADEON_DMA_GUI_STATUS__ABORT, kms->reg_aperture+RADEON_DMA_GUI_STATUS);
+	/* stop outstanding DMA transfers */
+	a=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
+	if(a & RADEON_DMA_GUI_STATUS__ACTIVE){
+		writel(a | RADEON_DMA_GUI_STATUS__ABORT, kms->reg_aperture+RADEON_DMA_GUI_STATUS);
+		wmb();
+		while((a=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS))&RADEON_DMA_GUI_STATUS__ACTIVE);
+		wmb();
+		writel(a & ~ RADEON_DMA_GUI_STATUS__ABORT, kms->reg_aperture+RADEON_DMA_GUI_STATUS);
+		}
+	kms->capture_active=0;
 	}
-kms->capture_active=0;
 }
 
 void radeon_start_vbi_transfer(KM_STRUCT *kms)
@@ -210,21 +210,21 @@ u32 a;
 /* stop interrupts */
 a=readl(kms->reg_aperture+RADEON_CAP_INT_CNTL);
 writel(a & ~0x30, kms->reg_aperture+RADEON_CAP_INT_CNTL);
-#if 0
-a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
-writel(a & ~(1<<30), kms->reg_aperture+RADEON_GEN_INT_CNTL);
-#endif
-wmb();
-/* stop outstanding DMA transfers */
-a=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
-if(a & RADEON_DMA_GUI_STATUS__ACTIVE){
-	writel(a | RADEON_DMA_GUI_STATUS__ABORT, kms->reg_aperture+RADEON_DMA_GUI_STATUS);
+if(kms->gdq_usage==1){
+	a=readl(kms->reg_aperture+RADEON_GEN_INT_CNTL);
+	writel(a & ~(1<<30), kms->reg_aperture+RADEON_GEN_INT_CNTL);
 	wmb();
-	while((a=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS))&RADEON_DMA_GUI_STATUS__ACTIVE);
-	wmb();
-	writel(a & ~ RADEON_DMA_GUI_STATUS__ABORT, kms->reg_aperture+RADEON_DMA_GUI_STATUS);
+	/* stop outstanding DMA transfers */
+	a=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
+	if(a & RADEON_DMA_GUI_STATUS__ACTIVE){
+		writel(a | RADEON_DMA_GUI_STATUS__ABORT, kms->reg_aperture+RADEON_DMA_GUI_STATUS);
+		wmb();
+		while((a=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS))&RADEON_DMA_GUI_STATUS__ACTIVE);
+		wmb();
+		writel(a & ~ RADEON_DMA_GUI_STATUS__ABORT, kms->reg_aperture+RADEON_DMA_GUI_STATUS);
+		}
+	kms->capture_active=0;
 	}
-kms->capture_active=0;
 }
 
 static int radeon_setup_dma_table(KM_STRUCT *kms, bm_list_descriptor *dma_table, long offset, long free)
@@ -300,7 +300,7 @@ switch(field){
 		return;
 	}
 KM_DEBUG("buf=%d field=%d\n", buffer, field);
-stream->fi[buffer].timestamp_start=jiffies;
+stream->dvb.kmsbi[buffer].timestamp=jiffies;
 radeon_setup_dma_table(kms, (stream->dma_table[buffer]), offset, stream->free[buffer]);
 /* start transfer */
 stream->total_frames++;

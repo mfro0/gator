@@ -236,80 +236,33 @@ done=km_data_generic_stream_read(kdufpd, &(kms->vbi.dvb),
 return done;
 }
 
+#define BTTV_VBISIZE            _IOR('v' , BASE_VIDIOCPRIVATE+8, int)
+
 static int km_vbi_ioctl(struct video_device *dev, unsigned int cmd, void *arg)
 {
 KM_STRUCT *kms=(KM_STRUCT *)dev->priv;
-spin_lock(&(kms->kms_lock));
+long size;
+
+if(kms->vbi_kdufpd==NULL)return -EINVAL;
 switch(cmd){
 	case VIDIOCGCAP:{
 		struct video_capability b;
-		struct video_window vwin;
+		
+		memset(&b, 0, sizeof(b));
 		strcpy(b.name,kms->vd.name);
-		b.type = VID_TYPE_CAPTURE;
-		if(kms->get_window_parameters==NULL)return -EINVAL;
-		kms->get_window_parameters(kms, &(vwin));
-		spin_unlock(&(kms->kms_lock));
+		b.type = VID_TYPE_CAPTURE | VID_TYPE_TELETEXT;
 
-		b.channels = 1;
-		b.audios = 0;
-		b.maxwidth = vwin.width;
-		b.maxheight = vwin.height;
-		b.minwidth = vwin.width;
-		b.minheight = vwin.height;
 		if(copy_to_user(arg,&b,sizeof(b)))
 			return -EFAULT;
 		return 0;
 		}
-	case VIDIOCGPICT:{
-		struct video_picture p;
-		p.palette=VIDEO_PALETTE_YUV422;
-		p.brightness=32768;
-		p.hue=32768;
-		p.colour=32768;
-		p.whiteness=32768;
-		p.depth=16;
+	 case BTTV_VBISIZE:
+	 	spin_lock(&(kms->kms_lock));
+		if(kms->get_vbi_buf_size==NULL)return -ENOTSUPP;
+		size=kms->get_vbi_buf_size(kms);
 		spin_unlock(&(kms->kms_lock));
-
-		if(copy_to_user(arg, &p, sizeof(p)))
-			return -EFAULT;
-		return 0;
-		}
-	case VIDIOCSPICT:{
-		struct video_picture p;
-		spin_unlock(&(kms->kms_lock));
-
-		if(copy_from_user(&p, arg,sizeof(p)))
-			return -EFAULT;
-		if(p.palette!=VIDEO_PALETTE_YUV422)return -EINVAL;
-		return 0;
-		}
-	case VIDIOCGWIN:{
-		struct video_window vwin;
-		if(kms->get_window_parameters==NULL)return -EINVAL;
-		kms->get_window_parameters(kms, &(vwin));
-		spin_unlock(&(kms->kms_lock));
-
-		if(copy_to_user(arg,&vwin,sizeof(vwin)))
-			return -EFAULT;
-		return 0;
-		}
-	case VIDIOCSWIN: {
-		struct video_window vwin, vwin1;
-		if(kms->get_window_parameters==NULL)return -EINVAL;
-		kms->get_window_parameters(kms, &(vwin1));
-		spin_unlock(&(kms->kms_lock));
-
-		if(copy_from_user(&vwin, arg, sizeof(vwin)))
-			return -EFAULT;
-		if((vwin.width!=vwin1.width)||(vwin.height!=vwin1.height)){
-			printk("km: /dev/video%d uses frame format %dx%d\n",
-				kms->vd.minor, vwin1.width, vwin1.height);
-			return -EINVAL;
-			}
-		return 0;
-		}
+	 	return size;
 	}
-spin_unlock(&(kms->kms_lock));
 return -EINVAL;
 }
 
@@ -318,6 +271,7 @@ static unsigned int km_vbi_poll(struct video_device *dev, struct file *file,
 {
 KM_STRUCT *kms=(KM_STRUCT *)dev->priv;
 
+if(kms->vbi_kdufpd==NULL)return -EINVAL;
 return km_data_generic_stream_poll(kms->vbi_kdufpd, &(kms->vbi.dvb), file, wait);
 }
 

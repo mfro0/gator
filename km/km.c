@@ -71,10 +71,10 @@ if(size>(4096*4096/sizeof(bm_list_descriptor))){
 	}
 stream->total_frames=0;
 /* allocate data unit to hold stream meta info */
-stream->dvb_info.size=num_buffers*(sizeof(FIELD_INFO)+sizeof(KM_STREAM_BUFFER_INFO));
+stream->dvb_info.size=num_buffers*sizeof(KM_STREAM_BUFFER_INFO);
 stream->dvb_info.n=1;
 stream->dvb_info.free=&(stream->info_free);
-stream->info_free=num_buffers*(sizeof(FIELD_INFO)+sizeof(KM_STREAM_BUFFER_INFO));
+stream->info_free=num_buffers*sizeof(KM_STREAM_BUFFER_INFO);
 stream->dvb_info.ptr=&(stream->dvb.kmsbi);
 stream->dvb_info.kmsbi=NULL; /* no meta-metainfo */
 stream->info_du=km_allocate_data_virtual_block(&(stream->dvb_info), S_IFREG | S_IRUGO);
@@ -93,8 +93,6 @@ if(stream->du<0){
 	return -1;
 	}
 memset(stream->dvb.kmsbi, 0 , stream->dvb_info.size);
-/* Position field info after generic stream buffer information */
-stream->fi=((unsigned char *)stream->dvb.kmsbi)+num_buffers*sizeof(KM_STREAM_BUFFER_INFO);
 /*
   dma_table allocation and initialization is the only hardware dependent part of this function
 
@@ -187,8 +185,8 @@ int last;
 spin_lock_irq(&(kmtq->lock));
 last=kmtq->last;
 if(kmtq->request[last].flag!=KM_TRANSFER_NOP){
+	printk("km: GUI_DMA queue is full first=%d last=%d\n", kmtq->first, kmtq->last);
 	spin_unlock_irq(&(kmtq->lock));
-	printk("km: GUI_DMA queue is full\n");
 	return -1;
 	}
 
@@ -231,6 +229,16 @@ if(km_fire_transfer_request(kmtq)){
 spin_unlock(&(kmtq->lock));
 }
 
+void km_purge_queue(KM_TRANSFER_QUEUE *kmtq)
+{
+printk("Purging transfer queue\n");
+spin_lock_irq(&(kmtq->lock));
+memset(kmtq->request, 0, kmtq->size*sizeof(*(kmtq->request)));
+kmtq->first=0;
+kmtq->last=0;
+spin_unlock_irq(&(kmtq->lock));
+}
+
 int acknowledge_dma(KM_STRUCT *kms)
 {
 km_signal_transfer_completion(&(kms->gui_dma_queue));
@@ -266,6 +274,7 @@ int start_video_capture(KM_STRUCT *kms)
 int result;
 u32 buf_size;
 spin_lock(&(kms->kms_lock));
+kms->gdq_usage++;
 if((kms->is_capture_active==NULL)||(kms->get_window_parameters==NULL)||(kms->allocate_dvb==NULL)){
 	result=-ENOTSUPP;
 	goto fail;
@@ -294,6 +303,7 @@ if(kms->start_transfer!=NULL){
 result=0;
 
 fail:
+  kms->gdq_usage--;
   spin_unlock(&(kms->kms_lock));
   return result;
 }
@@ -307,6 +317,10 @@ if(kms->deallocate_dvb!=NULL){
 	kmd_signal_state_change(kms->kmd);
 	} else {
 	}
+kms->gdq_usage--;
+if(kms->gdq_usage==0){
+	km_purge_queue(&(kms->gui_dma_queue));
+	}
 spin_unlock(&(kms->kms_lock));
 }
 
@@ -315,6 +329,7 @@ int start_vbi_capture(KM_STRUCT *kms)
 int result;
 long buf_size;
 spin_lock(&(kms->kms_lock));
+kms->gdq_usage++;
 if((kms->is_vbi_active==NULL)||(kms->get_vbi_buf_size==NULL)||(kms->allocate_dvb==NULL)){
 	result=-ENOTSUPP;
 	goto fail;
@@ -342,6 +357,7 @@ if(kms->start_vbi_transfer!=NULL){
 result=0;
 
 fail:
+  kms->gdq_usage--;
   spin_unlock(&(kms->kms_lock));
   return result;
 }
@@ -354,6 +370,11 @@ if(kms->deallocate_dvb!=NULL){
 	kms->deallocate_dvb(&(kms->vbi));
 	kmd_signal_state_change(kms->kmd);
 	} else {
+	}
+kms->gdq_usage--;
+kms->gdq_usage--;
+if(kms->gdq_usage==0){
+	km_purge_queue(&(kms->gui_dma_queue));
 	}
 spin_unlock(&(kms->kms_lock));
 }
