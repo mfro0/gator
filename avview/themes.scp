@@ -44,7 +44,6 @@ set theme_name "$name"
 if { [ catch { set current_theme_proc $theme_list($name) } ] } {
 	set current_theme_proc theme_none
 	}
-puts "current_theme_proc=$current_theme_proc"
 set id [array startsearch theme_settings_cache]
 for {} { [array anymore theme_settings_cache $id ] } {} {
 	set element [array nextelement theme_settings_cache $id]
@@ -82,20 +81,118 @@ return ""
 set theme_list(Unthemed)  theme_none
 
 proc theme_red { widget args1 } {
-return "-background red"
+switch -glob -- "$widget $args1" \
+	.video*AVview {return "-background #102030" } \
+	*.fullscreen*  { return "-background #FFDDCC" } \
+	*.title*  { return "-background black -foreground white" } \
+	*.c.f.*ALSA* {  \
+		set i [lindex $args1 1]
+		if { [expr $i % 2] } {
+			return "-background #FFCCCC";
+			} {
+			return "-background #FFAAAA";
+			}
+		} \
+	default { return "-background red" }
 }
 
 set theme_list(Red) theme_red
 
+proc theme_pink { widget args1 } {
+switch -glob -- "$widget $args1" \
+	.video*AVview {return "-background #102030" } \
+	*.title*  { return "-background black -foreground white" } \
+	*.c.f.*checkbutton*ALSA* {  \
+		set i [lindex $args1 1]
+		if { [expr $i % 2] } {
+			return "-background #FFCCCC -activebackground #FFDDDD -selectcolor #FF4444 -highlightbackground #FFCCCC";
+			} {
+			return "-background #FFAAAA -activebackground #FFDDDD -selectcolor #FF4444 -highlightbackground #FFAAAA";
+			}
+		} \
+	*.c.f.*scale*ALSA* {  \
+		set i [lindex $args1 1]
+		if { [expr $i % 2] } {
+			return "-background #FFCCCC -activebackground #FFDDDD -highlightbackground #FFCCCC";
+			} {
+			return "-background #FFAAAA -activebackground #FFDDDD -highlightbackground #FFAAAA";
+			}
+		} \
+	*.c.f.*optionmenu*ALSA*menu* {  \
+		set i [lindex $args1 1]
+		if { [expr $i % 2] } {
+			return "-background #FFCCCC -activebackground #FFDDDD -highlightbackground #FFCCCC";
+			} {
+			return "-background #FFAAAA -activebackground #FFDDDD -highlightbackground #FFAAAA";
+			}
+		} \
+	*.c.f.*optionmenu*ALSA* {  \
+		set i [lindex $args1 1]
+		if { [expr $i % 2] } {
+			return "-background #FFCCCC -activebackground #FFDDDD";
+			} {
+			return "-background #FFAAAA -activebackground #FFDDDD";
+			}
+		} \
+	*.c.f.*ALSA* {  \
+		set i [lindex $args1 1]
+		if { [expr $i % 2] } {
+			return "-background #FFCCCC";
+			} {
+			return "-background #FFAAAA";
+			}
+		} \
+	*optionmenu*\ menu {  \
+		puts "widget=$widget args=$args1"
+		return "-background #FFCCCC -activebackground #FFDDDD";
+		} \
+	*optionmenu* {  \
+		puts "widget=$widget args=$args1"
+		return "-background #FFCCCC -activebackground #FFDDDD -highlightbackground #FFCCCC";
+		} \
+	*button*.menu* {  \
+		puts "widget=$widget args=$args1"
+		return "-background #FFCCCC -activebackground #FFDDDD";
+		} \
+	*button* {  \
+		puts "widget=$widget args=$args1"
+		return "-background #FFCCCC -activebackground #FFDDDD -highlightbackground #FFCCCC";
+		} \
+	*entry* {  \
+		puts "widget=$widget args=$args1"
+		return "-background #FFCCCC  -highlightbackground #FFCCCC";
+		} \
+	*scroll* {
+		return "-background #FFCCCC -troughcolor #FF8888 -activebackground #FFDDDD -highlightbackground #FFCCCC";
+		} \
+	default { return "-background #FFCCCC" }
+}
+
+set theme_list(Pink) theme_pink
+
 proc theme_default { widget args1 } {
-puts "widget=$widget args=$args1"
 switch -glob -- "$widget $args1" \
 	.video*AVview {return "-background #102030" } \
 	*.fullscreen*  { return "-background #CCDDFF" } \
 	*.title*  { return "-background black -foreground white" } \
+	*.c.f.*checkbutton*ALSA* {  \
+		set i [lindex $args1 1]
+		if { [expr $i % 2] } {
+			return "-background #CCCCCC -highlightbackground #CCCCCC";
+			} {
+			return "-background #AAAAAA -highlightbackground #AAAAAA";
+			}
+		} \
+	*.c.f.*scale*ALSA* {  \
+		set i [lindex $args1 1]
+		if { [expr $i % 2] } {
+			return "-background #CCCCCC -highlightbackground #CCCCCC";
+			} {
+			return "-background #AAAAAA -highlightbackground #AAAAAA";
+			}
+		} \
 	*.c.f.*ALSA* {  \
 		set i [lindex $args1 1]
-		puts "i=$i"
 		if { [expr $i % 2] } {
 			return "-background #CCCCCC";
 			} {
@@ -107,5 +204,11 @@ switch -glob -- "$widget $args1" \
 
 set theme_list(Default) theme_default
 
-set_theme Default
+proc theme_widget_dump { widget args1 } {
+puts "widget=$widget args=$args1"
+}
+
+set theme_list(Widget\ dump) theme_widget_dump
+
+set_theme Pink
 

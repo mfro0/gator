@@ -67,58 +67,58 @@ global current_table
 set current_table -1
 set current_encoding -1
 
-eval label $c.portl -text "\"Port: \"" [get_settings $c.portl]
-set current_port_menu [tk_optionMenu $c.portom current_port  none]
-eval $c.portom configure [get_settings $c.portom AVview]
+eval label $c.portl -text "\"Port: \"" [get_settings $c.portl AVview]
+set current_port_menu [tk_optionMenu $c.port_optionmenu current_port  none]
+eval $c.port_optionmenu configure [get_settings $c.port_optionmenu AVview]
 eval $current_port_menu configure [get_settings $current_port_menu AVview menu]
 $current_port_menu delete 0 end
-grid $c.portl $c.portom -sticky news
+grid $c.portl $c.port_optionmenu -sticky news
 grid configure $c.portl -sticky nws
 
-eval label $c.encodingl -text "\"Encoding: \"" [get_settings $c.encodingl]
-set current_encoding_menu [tk_optionMenu $c.encodingom current_encoding_name  none]
-eval $c.encodingom configure [get_settings $c.encodingom AVview]
+eval label $c.encodingl -text "\"Encoding: \"" [get_settings $c.encodingl AVview]
+set current_encoding_menu [tk_optionMenu $c.encoding_optionmenu current_encoding_name  none]
+eval $c.encoding_optionmenu configure [get_settings $c.encoding_optionmenu AVview]
 eval $current_encoding_menu configure [get_settings $current_encoding_menu AVview menu]
 $current_encoding_menu delete 0 end
-grid $c.encodingl $c.encodingom -sticky news
+grid $c.encodingl $c.encoding_optionmenu -sticky news
 grid configure $c.encodingl -sticky nws
 
-eval label $c.tablel -text "\"Channel table: \"" [get_settings $c.tablel]
-set current_table_menu [tk_optionMenu $c.tableom current_table_name none]
-eval $c.tableom configure [get_settings $c.tableom AVview]
+eval label $c.tablel -text "\"Channel table: \"" [get_settings $c.tablel AVview]
+set current_table_menu [tk_optionMenu $c.table_optionmenu current_table_name none]
+eval $c.table_optionmenu configure [get_settings $c.table_optionmenu AVview]
 eval $current_table_menu configure [get_settings $current_table_menu AVview menu]
 $current_table_menu delete 0 end
 foreach table $TABLE_LIST {
-	eval $current_table_menu add radiobutton -label "$table" -value "$table" -variable current_table_name [get_settings $current_table_menu "$table"]
+	$current_table_menu add radiobutton -label "$table" -value "$table" -variable current_table_name 
 	}
-grid $c.tablel $c.tableom -sticky news
+grid $c.tablel $c.table_optionmenu -sticky news
 grid configure $c.tablel -sticky nws
 
 eval label $c.channell -text "\"Channel: \"" [get_settings $c.channell]
-set current_channel_menu [tk_optionMenu $c.channelom current_channel none]
-eval $c.channelom configure [get_settings $c.channelom AVview]
+set current_channel_menu [tk_optionMenu $c.channel_optionmenu current_channel none]
+eval $c.channel_optionmenu configure [get_settings $c.channel_optionmenu AVview]
 eval $current_channel_menu configure [get_settings $current_channel_menu AVview menu]
 $current_channel_menu delete 0 end
-grid $c.channell $c.channelom -sticky news
+grid $c.channell $c.channel_optionmenu -sticky news
 grid configure $c.channell -sticky nsw
 
 global fullscreen_mode
 set fullscreen_mode false
 
-eval checkbutton $c.fullscreen -text "Fullscreen"  \
-	-indicatoron false -variable fullscreen_mode [get_settings $c.fullscreen]
-eval button $c.half_size -text \"Half size\" -command "make_half_size" [get_settings $c.half_size]
+eval checkbutton $c.fullscreen_checkbutton -text "Fullscreen"  \
+	-indicatoron false -variable fullscreen_mode [get_settings $c.fullscreen_checkbutton]
+eval button $c.half_size_button -text \"Half size\" -command "make_half_size" [get_settings $c.half_size_button]
 
-eval menubutton $c.interface -text "Interface" -relief raised -menu $c.interface.menu [get_settings $c.interface]
-eval menu $c.interface.menu [get_settings $c.inteface.menu AVview]
-$c.interface.menu add checkbutton -label "Attributes" -variable attributes_window
-$c.interface.menu add checkbutton -label "Capture (V4L)" -variable capture_window
-$c.interface.menu add checkbutton -label "Audio mixer (ALSA)" -variable alsa_window
-$c.interface.menu add separator
-eval menu $c.interface.menu.theme [get_settings $c.interface.menu.theme AVview]
-$c.interface.menu add cascade -menu $c.interface.menu.theme -label "Theme"
+eval menubutton $c.inteface_menubutton -text "Interface" -relief raised -menu $c.inteface_menubutton.menu [get_settings $c.inteface_menubutton]
+eval menu $c.inteface_menubutton.menu [get_settings $c.interface_menubutton.menu AVview]
+$c.inteface_menubutton.menu add checkbutton -label "Attributes" -variable attributes_window
+$c.inteface_menubutton.menu add checkbutton -label "Capture (V4L)" -variable capture_window
+$c.inteface_menubutton.menu add checkbutton -label "Audio mixer (ALSA)" -variable alsa_window
+$c.inteface_menubutton.menu add separator
+eval menu $c.inteface_menubutton.menu.theme [get_settings $c.inteface_menubutton.menu.theme AVview]
+$c.inteface_menubutton.menu add cascade -menu $c.inteface_menubutton.menu.theme -label "Theme"
 
-grid $c.fullscreen $c.half_size $c.interface -padx 5 -pady 5 -sticky ns
+grid $c.fullscreen_checkbutton $c.half_size_button $c.inteface_menubutton -padx 5 -pady 5 -sticky ns
 
 # pack $c -expand yes -fill both
 # pack .controlwin.allattributes -expand yes -fill both -pady 5 
@@ -305,31 +305,39 @@ switch  $type {
 		return
 		}
 	"entry" {     
-		label $widget.l$suffix -text [translate_attribute_name $name]
-		entry $widget.x$suffix -textvariable $attr_var
-		grid $widget.l$suffix $widget.x$suffix -sticky news -padx 2
-		grid configure $widget.l$suffix -sticky nw 
+		label $widget.label$suffix -text [translate_attribute_name $name]
+		entry $widget.entry$suffix -textvariable $attr_var
+		eval $widget.label$suffix configure [get_settings $widget.label$suffix AVview Xvideo $port $attribute]
+		eval $widget.entry$suffix configure [get_settings $widget.entry$suffix AVview Xvideo $port $attribute]
+		grid $widget.label$suffix $widget.entry$suffix -sticky news -padx 2
+		grid configure $widget.label$suffix -sticky nw 
 		}	
 	"toggle" {
-		label $widget.l$suffix -text [translate_attribute_name $name]
-		checkbutton $widget.x$suffix -variable $attr_var \
+		label $widget.label$suffix -text [translate_attribute_name $name]
+		checkbutton $widget.checkbutton$suffix -variable $attr_var \
 			-onvalue 1 -offvalue 0
-		grid $widget.l$suffix $widget.x$suffix -sticky news -padx 2
-		grid configure $widget.l$suffix -sticky nw
+		eval $widget.label$suffix configure [get_settings $widget.label$suffix AVview Xvideo $port $attribute]
+		eval $widget.checkbutton$suffix configure [get_settings $widget.checkbutton$suffix AVview Xvideo $port $attribute]
+		grid $widget.label$suffix $widget.checkbutton$suffix -sticky news -padx 2
+		grid configure $widget.label$suffix -sticky nw
 		}
 	"button" {
-		label $widget.l$suffix -text [translate_attribute_name $name]
-		button $widget.x$suffix -command "xv_setportattribute $video_window $port $name 1"\
+		label $widget.label$suffix -text [translate_attribute_name $name]
+		button $widget.button$suffix -command "xv_setportattribute $video_window $port $name 1"\
 			-text "perform now"
-		grid $widget.l$suffix $widget.x$suffix -sticky news -padx 2
-		grid configure $widget.l$suffix -sticky nw
+		eval $widget.label$suffix configure [get_settings $widget.label$suffix AVview Xvideo $port $attribute]
+		eval $widget.button$suffix configure [get_settings $widget.button$suffix AVview Xvideo $port $attribute]
+		grid $widget.label$suffix $widget.button$suffix -sticky news -padx 2
+		grid configure $widget.label$suffix -sticky nw
 		}
 	"slider" {
-		label $widget.l$suffix -text [translate_attribute_name $name]
-		scale $widget.x$suffix -from [lindex $range 0] -to [lindex $range 1] \
+		label $widget.label$suffix -text [translate_attribute_name $name]
+		scale $widget.scale$suffix -from [lindex $range 0] -to [lindex $range 1] \
 			-variable $attr_var -orient horizontal
-		grid $widget.l$suffix $widget.x$suffix -sticky news -padx 2
-		grid configure $widget.l$suffix -sticky sw
+		eval $widget.label$suffix configure [get_settings $widget.label$suffix AVview Xvideo $port $attribute]
+		eval $widget.scale$suffix configure [get_settings $widget.scale$suffix AVview Xvideo $port $attribute]
+		grid $widget.label$suffix $widget.scale$suffix -sticky news -padx 2
+		grid configure $widget.label$suffix -sticky sw
 		}
 	}
 if { $type != "button" } {
@@ -709,9 +717,9 @@ wm title .controlwin "AV Control"
 #
 # Generate theme menu
 #
-$c.interface.menu.theme delete 0 end
+$c.inteface_menubutton.menu.theme delete 0 end
 foreach theme [array names theme_list] {
-	$c.interface.menu.theme add radiobutton -label "$theme" \
+	$c.inteface_menubutton.menu.theme add radiobutton -label "$theme" \
 		-value "$theme" -variable theme_name \
 		-command {global theme_name ; reset_theme $theme_name}
 	}

@@ -20,57 +20,63 @@ grid columnconfigure $cw 1 -weight 1
 
 eval label $cw.devicel -text "\"V4L device: \"" [get_settings $cw.devicel Capture V4L]
 global v4l_device_menu
-set v4l_device_menu [tk_optionMenu $cw.deviceom current_v4l_device none]
+set v4l_device_menu [tk_optionMenu $cw.device_optionmenu current_v4l_device none]
+eval $cw.device_optionmenu configure [get_settings $cw.device_optionmenu Capture V4L]
+eval $v4l_device_menu configure [get_settings $v4l_device_menu Capture V4L menu]
 
-eval button $cw.rescanb -text "Rescan" -command rescan_v4l_devices [get_settings $cw.rescanb Capture V4L]
-grid $cw.devicel $cw.deviceom $cw.rescanb -sticky news
+eval button $cw.rescan_button -text "Rescan" -command rescan_v4l_devices [get_settings $cw.rescan_button Capture V4L]
+grid $cw.devicel $cw.device_optionmenu $cw.rescan_button -sticky news
 grid configure $cw.devicel -sticky nws
 
 eval label $cw.model -text "\"Recording mode: \"" [get_settings $cw.model Capture V4L]
-tk_optionMenu $cw.modeom current_v4l_mode single-frame deinterlace-bob deinterlace-weave half-width
-grid $cw.model $cw.modeom - -sticky news
+set menu [tk_optionMenu $cw.mode_optionmenu current_v4l_mode single-frame deinterlace-bob deinterlace-weave half-width]
+eval $cw.mode_optionmenu configure [get_settings $cw.mode_optionmenu Capture V4L]
+eval $menu configure [get_settings $menu Capture V4L menu]
+grid $cw.model $cw.mode_optionmenu - -sticky news
 grid configure $cw.model -sticky nws
 
 eval label $cw.windowl -text "\"Window: \""  [get_settings $cw.windowl Capture V4L]
 eval label $cw.window -text "\"N/A\"" [get_settings $cw.window Capture V4L]
-eval button $cw.windowb -text "Change" [get_settings $cw.windowb Capture V4L]
-grid $cw.windowl $cw.window $cw.windowb
+eval button $cw.window_button -text "Change" [get_settings $cw.window_button Capture V4L]
+grid $cw.windowl $cw.window $cw.window_button
 grid configure $cw.windowl -sticky nws
-grid configure $cw.windowb -sticky news
+grid configure $cw.window_button -sticky news
 
 if {[ffmpeg_present] == "yes"} {
 	eval label $cw.rratel -text "\"Recording framerate: \"" [get_settings $cw.rratel Capture V4L]
-	tk_optionMenu $cw.rrateom current_v4l_rrate "as is" "one half" "one quarter"
-	grid $cw.rratel $cw.rrateom - -sticky news
+	set menu [tk_optionMenu $cw.rrate_optionmenu current_v4l_rrate "as is" "one half" "one quarter"]
+	eval $cw.rrate_optionmenu configure [get_settings $cw.rrate_optionmenu Capture V4L]
+	eval $menu configure [get_settings $menu Capture V4L menu]
+	grid $cw.rratel $cw.rrate_optionmenu - -sticky news
 	grid configure $cw.rratel -sticky nws
 
 	eval label $cw.vcodecl -text "\"Video codec:\"" [get_settings $cw.vcodecl Capture V4L]
-	set menu [tk_optionMenu $cw.vcodecom current_video_codec "H263" "H263I" "H263P" "MJPEG" "MPEG-1" "MPEG-4" "MSMPEG-4" "RV10"]
-	eval $cw.vcodecom configure [get_settings $cw.vcodecom Capture V4L]
+	set menu [tk_optionMenu $cw.vcodec_optionmenu current_video_codec "H263" "H263I" "H263P" "MJPEG" "MPEG-1" "MPEG-4" "MSMPEG-4" "RV10"]
+	eval $cw.vcodec_optionmenu configure [get_settings $cw.vcodec_optionmenu Capture V4L]
 	eval $menu configure [get_settings $menu Capture V4L menu]
-	grid $cw.vcodecl $cw.vcodecom
+	grid $cw.vcodecl $cw.vcodec_optionmenu
 	grid configure $cw.vcodecl -sticky nws
-	grid configure $cw.vcodecom -sticky news
+	grid configure $cw.vcodec_optionmenu -sticky news
 
 	eval label $cw.acodecl -text "\"Audio codec:\"" [get_settings $cw.acodecl Capture V4L]
-	set menu [tk_optionMenu $cw.acodecom current_audio_codec "PCM" "MPEG-2" "AC-3"]
-	eval $cw.acodecom configure [get_settings $cw.acodecom Capture V4L]
+	set menu [tk_optionMenu $cw.acodec_optionmenu current_audio_codec "PCM" "MPEG-2" "AC-3"]
+	eval $cw.acodec_optionmenu configure [get_settings $cw.acodec_optionmenu Capture V4L]
 	eval $menu configure [get_settings $menu Capture V4L menu]
-	grid $cw.acodecl $cw.acodecom
+	grid $cw.acodecl $cw.acodec_optionmenu
 	grid configure $cw.acodecl -sticky nws
-	grid configure $cw.acodecom -sticky news
+	grid configure $cw.acodec_optionmenu -sticky news
 
 	eval label $cw.av_formatl -text "\"File format:\"" [get_settings $cw.av_formatl Capture V4L]
-	set menu [tk_optionMenu $cw.av_formatom current_av_format "none" "AVI" "ASF" "MPEG"]
-	eval $cw.av_formatom configure [get_settings $cw.av_formatom Capture V4L]
+	set menu [tk_optionMenu $cw.av_format_optionmenu current_av_format "none" "AVI" "ASF" "MPEG"]
+	eval $cw.av_format_optionmenu configure [get_settings $cw.av_format_optionmenu Capture V4L]
 	eval $menu configure [get_settings $menu Capture V4L menu]
-	grid $cw.av_formatl $cw.av_formatom
+	grid $cw.av_formatl $cw.av_format_optionmenu
 	grid configure $cw.av_formatl -sticky nws
-	grid configure $cw.av_formatom -sticky news
+	grid configure $cw.av_format_optionmenu -sticky news
 
 	eval label $cw.filenamel -text "\"Save to file:\"" [get_settings $cw.filenamel Capture V4L]
-	eval entry $cw.filenamee -textvariable current_capture_filename [get_settings $cw.filenamee Capture V4L]
-	button $cw.filenameb -text "Change" -command { 
+	eval entry $cw.filename_entry -textvariable current_capture_filename [get_settings $cw.filename_entry Capture V4L]
+	button $cw.filename_button -text "Change" -command { 
 		global current_capture_filename; 
 		set result [tk_getSaveFile -initialfile "$current_capture_filename" \
 			-parent .controlwin -title "Specify file to hold recorded video"  \
@@ -80,27 +86,27 @@ if {[ffmpeg_present] == "yes"} {
 			set current_capture_filename "$result" 
 			}
 		}
-	eval $cw.filenameb configure [get_settings $cw.filenameb Capture V4L]
-	grid $cw.filenamel $cw.filenamee $cw.filenameb
+	eval $cw.filename_button configure [get_settings $cw.filename_button Capture V4L]
+	grid $cw.filenamel $cw.filename_entry $cw.filename_button
 	grid configure $cw.filenamel -sticky nws
-	grid configure $cw.filenamee -sticky news
-	grid configure $cw.filenameb -sticky news
+	grid configure $cw.filename_entry -sticky news
+	grid configure $cw.filename_button -sticky news
 
-	button $cw.snapshotb -text "Snapshot" -command capture_snapshot -state disabled
-	eval $cw.snapshotb configure [get_settings $cw.snapshotb Capture V4L]
-	checkbutton $cw.recordb -text "Record" -variable v4l_capture_on \
+	button $cw.snapshot_button -text "Snapshot" -command capture_snapshot -state disabled
+	eval $cw.snapshot_button configure [get_settings $cw.snapshot_button Capture V4L]
+	checkbutton $cw.record_button -text "Record" -variable v4l_capture_on \
 		-indicatoron false 
-	eval $cw.recordb configure [get_settings $cw.recordb Capture V4L]
-	grid x $cw.snapshotb $cw.recordb -sticky ns -padx 5
+	eval $cw.record_button configure [get_settings $cw.record_button Capture V4L]
+	grid x $cw.snapshot_button $cw.record_button -sticky ns -padx 5
 	label $cw.fifol -text "Fifo size: "
 	label $cw.fifov -text "0 Mb"
 	eval $cw.fifol configure [get_settings $cw.fifol Capture V4L]
 	eval $cw.fifov configure [get_settings $cw.fifov Capture V4L]
 	grid $cw.fifol $cw.fifov -sticky nws
 	} {
-	button $cw.snapshotb -text "Snapshot" -command capture_snapshot -state disabled
-	eval $cw.snapshotb configure [get_settings $cw.snapshotb Capture V4L]
-	grid x $cw.snapshotb
+	button $cw.snapshot_button -text "Snapshot" -command capture_snapshot -state disabled
+	eval $cw.snapshot_button configure [get_settings $cw.snapshot_button Capture V4L]
+	grid x $cw.snapshot_button
 	}
 rescan_v4l_devices
 }
@@ -162,7 +168,7 @@ v4l_close_device current_v4l_handle
 if { "$current_v4l_device" == "none" } { 
 	set v4l_capture_on false
 	catch {
-		$cw.snapshotb configure -state disabled
+		$cw.snapshot_button configure -state disabled
 		}
 	return 
 	}
@@ -170,7 +176,7 @@ set status "[v4l_open_device current_v4l_handle $current_v4l_device]"
 if { "$status" != "" } {
 	set current_v4l_device "none"
 	}
-$cw.snapshotb configure -state normal
+$cw.snapshot_button configure -state normal
 update_v4l_window_info $cw
 }
 

@@ -247,10 +247,12 @@ grid columnconfigure $cw 1 -weight 1
 label $cw.devicel -text "ALSA Audio device: "
 eval $cw.devicel configure [get_settings $cw.devicel ALSA]
 global alsa_device_menu
-set alsa_device_menu [tk_optionMenu $cw.deviceom current_alsa_device1 none]
-button $cw.rescanb -text "Rescan" -command rescan_alsa_devices
-eval $cw.rescanb configure [get_settings $cw.rescanb ALSA]
-grid $cw.devicel $cw.deviceom $cw.rescanb -sticky news
+set alsa_device_menu [tk_optionMenu $cw.device_optionmenu current_alsa_device1 none]
+eval $cw.device_optionmenu configure [get_settings $cw.device_optionmenu ALSA]
+eval $alsa_device_menu configure [get_settings $alsa_device_menu ALSA menu]
+button $cw.rescan_button -text "Rescan" -command rescan_alsa_devices
+eval $cw.rescan_button configure [get_settings $cw.rescan_button ALSA]
+grid $cw.devicel $cw.device_optionmenu $cw.rescan_button -sticky news
 grid configure $cw.devicel -sticky nws
 
 grid $cw.f - - -sticky news
@@ -288,7 +290,7 @@ grid columnconfig $cw.f1 1 -weight 1
 #pack configure $cw.f1.c -fill both -expand yes
 #pack configure $cw.f1.vscroll -fill y -expand yes 
 
-frame $cw.f1.c.f
+eval frame $cw.f1.c.f [get_settings $cw.f1.c.f ALSA]
 $cw.f1.c create window 5 0 -window $cw.f1.c.f -anchor nw
 
 if { "$current_alsa_device" != "none" } {
