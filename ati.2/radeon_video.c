@@ -726,6 +726,67 @@ void RADEONResetVideo(ScrnInfoPtr pScrn)
 #define I2C_SEL		(1<<16)
 #define I2C_EN		(1<<17)
 
+static CARD8 radeon_i2c_cntl_read8(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv, CARD32 reg)
+{
+    RADEONInfoPtr info = RADEONPTR(pScrn);
+    unsigned char *RADEONMMIO = info->MMIO;
+    CARD8 data;
+
+    if(info->IsRV200){
+        if(pPriv->theatre==NULL){
+		xf86DrvMsg(pScrn->scrnIndex, X_WARNING, "Attempt to access i2c bus on RV200 with Rage Theatre not detected\n");
+		return 0;
+		}
+	#undef read
+         if(pPriv->VIP->read(pPriv->VIP, ((pPriv->theatre->theatre_num & 0x03) << 14) | (reg-RADEON_I2C_CNTL_0+0x20), 1, &data))
+		 return data;
+		 else
+		 return 0;
+	
+    	} else {
+	return INREG8(reg);
+	}
+
+}
+
+
+static void radeon_i2c_cntl_write8(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv, CARD32 reg, CARD8 value)
+{
+    RADEONInfoPtr info = RADEONPTR(pScrn);
+    unsigned char *RADEONMMIO = info->MMIO;
+
+    if(info->IsRV200){
+        if(pPriv->theatre==NULL){
+		xf86DrvMsg(pScrn->scrnIndex, X_WARNING, "Attempt to access i2c bus on RV200 with Rage Theatre not detected\n");
+		return;
+		}
+	#undef write
+         pPriv->VIP->write(pPriv->VIP, ((pPriv->theatre->theatre_num & 0x03) << 14) | (reg-RADEON_I2C_CNTL_0+0x20), 1, &value);
+    	} else {
+	OUTREG8(reg, value);
+	}
+
+}
+
+static void radeon_i2c_cntl_write(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv, CARD32 reg, CARD32 value)
+{
+    RADEONInfoPtr info = RADEONPTR(pScrn);
+    unsigned char *RADEONMMIO = info->MMIO;
+
+    if(info->IsRV200){
+        if(pPriv->theatre==NULL){
+		xf86DrvMsg(pScrn->scrnIndex, X_WARNING, "Attempt to access i2c bus on RV200 with Rage Theatre not detected\n");
+		return;
+		}
+	#undef write
+         pPriv->VIP->write(pPriv->VIP, ((pPriv->theatre->theatre_num & 0x03) << 14) | (reg-RADEON_I2C_CNTL_0+0x20), 4, (CARD8 *)&value);
+    	} else {
+	OUTREG(reg, value);
+	}
+
+}
+
+
 
 /****************************************************************************
  *  I2C_WaitForAck (void)                                                   *
@@ -1082,10 +1143,14 @@ static void RADEONInitI2C(ScrnInfoPtr pScrn, RADEONPortPrivPtr pPriv)
     pPriv->i2c->scrnIndex=pScrn->scrnIndex;
     pPriv->i2c->BusName="Radeon multimedia bus";
     pPriv->i2c->DriverPrivate.ptr=(pointer)pPriv;
-    if(info->IsR200)
+    if(info->IsR200){
 	    pPriv->i2c->I2CWriteRead=R200_I2CWriteRead;
-	    else
+      	    xf86DrvMsg(pScrn->scrnIndex,X_INFO,"Using R200 i2c bus access method\n");
+	    
+	    } else {
 	    pPriv->i2c->I2CWriteRead=RADEONI2CWriteRead;
+    	    xf86DrvMsg(pScrn->scrnIndex,X_INFO,"Using Radeon bus access method\n");
+	    }
     if(!I2CBusInit(pPriv->i2c))
     {
     	xf86DrvMsg(pScrn->scrnIndex,X_ERROR,"Failed to register i2c bus\n");
@@ -1697,7 +1762,7 @@ RADEONSetupImageVideo(ScreenPtr pScreen)
     }
     
     if(pPriv->theatre != NULL) 
-    {
+    {	
        xf86_InitTheatre(pPriv->theatre);
        xf86_ResetTheatreRegsForNoTVout(pPriv->theatre);
        xf86_RT_SetTint(pPriv->theatre, pPriv->dec_hue);

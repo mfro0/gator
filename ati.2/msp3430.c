@@ -129,7 +129,7 @@ MSP3430Ptr DetectMSP3430(I2CBusPtr b, I2CSlaveAddr addr)
    
    m = xcalloc(1,sizeof(MSP3430Rec));
    if(m == NULL)return NULL;
-   m->d.DevName = "MSP34xx";
+   m->d.DevName = strdup("MSP34xx");
    m->d.SlaveAddr = addr;
    m->d.pI2CBus = b;
    m->d.NextDev = NULL;
@@ -140,12 +140,14 @@ MSP3430Ptr DetectMSP3430(I2CBusPtr b, I2CSlaveAddr addr)
    
    if(!I2C_WriteRead(&(m->d), NULL, 0, &a, 1))
    {
+   	xfree(m->d.DevName);
    	xfree(m);
 	return NULL;
     }
 
    if(!I2CDevInit(&(m->d)))
    {
+       xfree(m->d.DevName);
        xfree(m);
        return NULL;
    }

@@ -42,17 +42,17 @@ TheatrePtr DetectTheatre(GENERIC_BUS_Ptr b)
    t->VIP = b;
    t->theatre_num = -1;
    
+   b->read(b, VIP_VIP_VENDOR_DEVICE_ID, 4, (CARD8 *)&val);
    for(i=0;i<4;i++)
    {
 	if(b->read(b, ((i & 0x03)<<14) | VIP_VIP_VENDOR_DEVICE_ID, 4, (CARD8 *)&val) && 
 	          (val==RT_ATI_ID))
         {
            t->theatre_num=i;
-	   break;
 	}
-	if(val)xf86DrvMsg(b->scrnIndex, X_INFO, "Device %d on VIP bus ids as %x\n",i,val);
+	if(val)xf86DrvMsg(b->scrnIndex, X_INFO, "Device %d on VIP bus ids as 0x%08x\n",i,val);
    }
-   xf86DrvMsg(b->scrnIndex, X_INFO, "Device %d on VIP bus ids as %x\n",i,val);
+   if(t->theatre_num>0)xf86DrvMsg(b->scrnIndex, X_INFO, "Detected Rage Theatre as device %d on VIP bus with ids 0x%08x\n",i,val);
 
    if(t->theatre_num < 0)
    {
@@ -63,6 +63,7 @@ TheatrePtr DetectTheatre(GENERIC_BUS_Ptr b)
    RT_regr(VIP_VIP_REVISION_ID, &val);
    xf86DrvMsg(b->scrnIndex, X_INFO, "Detected Rage Theatre revision %8.8X\n", val);
 
+DumpRageTheatreRegsByName(t);
    return t;
 }
 
@@ -1900,6 +1901,211 @@ void DumpRageTheatreRegs(TheatrePtr t)
        RT_regr(i, &data);
        xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "register 0x%04x is equal to 0x%08x\n", i, data);
     }   
+
+}
+
+void DumpRageTheatreRegsByName(TheatrePtr t)
+{
+    int i;
+    CARD32 data;
+    struct { char *name; long addr; } rt_reg_list[]={
+    { "ADC_CNTL                ", 0x0400 },
+    { "ADC_DEBUG               ", 0x0404 },
+    { "AUD_CLK_DIVIDERS        ", 0x00e8 },
+    { "AUD_DTO_INCREMENTS      ", 0x00ec },
+    { "AUD_PLL_CNTL            ", 0x00e0 },
+    { "AUD_PLL_FINE_CNTL       ", 0x00e4 },
+    { "CLKOUT_CNTL             ", 0x004c },
+    { "CLKOUT_GPIO_CNTL        ", 0x0038 },
+    { "CLOCK_SEL_CNTL          ", 0x00d0 },
+    { "COMB_CNTL0              ", 0x0440 },
+    { "COMB_CNTL1              ", 0x0444 },
+    { "COMB_CNTL2              ", 0x0448 },
+    { "COMB_LINE_LENGTH        ", 0x044c },
+    { "CP_ACTIVE_GAIN          ", 0x0594 },
+    { "CP_AGC_CNTL             ", 0x0590 },
+    { "CP_BURST_GAIN           ", 0x058c },
+    { "CP_DEBUG_FORCE          ", 0x05b8 },
+    { "CP_HUE_CNTL             ", 0x0588 },
+    { "CP_PLL_CNTL0            ", 0x0580 },
+    { "CP_PLL_CNTL1            ", 0x0584 },
+    { "CP_PLL_STATUS0          ", 0x0598 },
+    { "CP_PLL_STATUS1          ", 0x059c },
+    { "CP_PLL_STATUS2          ", 0x05a0 },
+    { "CP_PLL_STATUS3          ", 0x05a4 },
+    { "CP_PLL_STATUS4          ", 0x05a8 },
+    { "CP_PLL_STATUS5          ", 0x05ac },
+    { "CP_PLL_STATUS6          ", 0x05b0 },
+    { "CP_PLL_STATUS7          ", 0x05b4 },
+    { "CP_VERT_LOCKOUT         ", 0x05bc },
+    { "CRC_CNTL                ", 0x02c0 },
+    { "CRT_DTO_INCREMENTS      ", 0x0394 },
+    { "CRT_PLL_CNTL            ", 0x00c4 },
+    { "CRT_PLL_FINE_CNTL       ", 0x00bc },
+    { "DECODER_DEBUG_CNTL      ", 0x05d4 },
+    { "DELAY_ONE_MAP_A         ", 0x0114 },
+    { "DELAY_ONE_MAP_B         ", 0x0118 },
+    { "DELAY_ZERO_MAP_A        ", 0x011c },
+    { "DELAY_ZERO_MAP_B        ", 0x0120 },
+    { "DFCOUNT                 ", 0x00a4 },
+    { "DFRESTART               ", 0x00a8 },
+    { "DHRESTART               ", 0x00ac },
+    { "DVRESTART               ", 0x00b0 },
+    { "DVS_PORT_CTRL           ", 0x0610 },
+    { "DVS_PORT_READBACK       ", 0x0614 },
+    { "FIFOA_CONFIG            ", 0x0800 },
+    { "FIFOB_CONFIG            ", 0x0804 },
+    { "FIFOC_CONFIG            ", 0x0808 },
+    { "FRAME_LOCK_CNTL         ", 0x0100 },
+    { "GAIN_LIMIT_SETTINGS     ", 0x01e4 },
+    { "GPIO_CNTL               ", 0x0034 },
+    { "GPIO_INOUT              ", 0x0030 },
+    { "HCOUNT                  ", 0x0090 },
+    { "HDISP                   ", 0x0084 },
+    { "HOST_RD_WT_CNTL         ", 0x0188 },
+    { "HOST_READ_DATA          ", 0x0180 },
+    { "HOST_WRITE_DATA         ", 0x0184 },
+    { "HSIZE                   ", 0x0088 },
+    { "HSTART                  ", 0x008c },
+    { "HS_DTOINC               ", 0x0484 },
+    { "HS_GENLOCKDELAY         ", 0x0490 },
+    { "HS_MINMAXWIDTH          ", 0x048c },
+    { "HS_PLINE                ", 0x0480 },
+    { "HS_PLLGAIN              ", 0x0488 },
+    { "HS_PLL_ERROR            ", 0x04a0 },
+    { "HS_PLL_FS_PATH          ", 0x04a4 },
+    { "HS_PULSE_WIDTH          ", 0x049c },
+    { "HS_WINDOW_LIMIT         ", 0x0494 },
+    { "HS_WINDOW_OC_SPEED      ", 0x0498 },
+    { "HTOTAL                  ", 0x0080 },
+    { "HW_DEBUG                ", 0x0010 },
+    { "H_ACTIVE_WINDOW         ", 0x05c0 },
+    { "H_SCALER_CONTROL        ", 0x0600 },
+    { "H_VBI_WINDOW            ", 0x05c8 },
+    { "I2C_CNTL                ", 0x0054 },
+    { "I2C_CNTL_0              ", 0x0020 },
+    { "I2C_CNTL_1              ", 0x0024 },
+    { "I2C_DATA                ", 0x0028 },
+    { "I2S_RECEIVE_CNTL        ", 0x081c },
+    { "I2S_TRANSMIT_CNTL       ", 0x0818 },
+    { "IIS_TX_CNT_REG          ", 0x0824 },
+    { "INT_CNTL                ", 0x002c },
+    { "L54_DTO_INCREMENTS      ", 0x00f8 },
+    { "L54_PLL_CNTL            ", 0x00f0 },
+    { "L54_PLL_FINE_CNTL       ", 0x00f4 },
+    { "LINEAR_GAIN_SETTINGS    ", 0x01e8 },
+    { "LP_AGC_CLAMP_CNTL0      ", 0x0500 },
+    { "LP_AGC_CLAMP_CNTL1      ", 0x0504 },
+    { "LP_BLACK_LEVEL          ", 0x051c },
+    { "LP_BRIGHTNESS           ", 0x0508 },
+    { "LP_CONTRAST             ", 0x050c },
+    { "LP_SLICE_LEVEL          ", 0x0520 },
+    { "LP_SLICE_LIMIT          ", 0x0510 },
+    { "LP_SYNCTIP_LEVEL        ", 0x0524 },
+    { "LP_VERT_LOCKOUT         ", 0x0528 },
+    { "LP_WPA_CNTL0            ", 0x0514 },
+    { "LP_WPA_CNTL1            ", 0x0518 },
+    { "MASTER_CNTL             ", 0x0040 },
+    { "MODULATOR_CNTL1         ", 0x0200 },
+    { "MODULATOR_CNTL2         ", 0x0204 },
+    { "MV_LEVEL_CNTL1          ", 0x0210 },
+    { "MV_LEVEL_CNTL2          ", 0x0214 },
+    { "MV_MODE_CNTL            ", 0x0208 },
+    { "MV_STATUS               ", 0x0330 },
+    { "MV_STRIPE_CNTL          ", 0x020c },
+    { "NOISE_CNTL0             ", 0x0450 },
+    { "PLL_CNTL0               ", 0x00c8 },
+    { "PLL_CNTL1               ", 0x00fc },
+    { "PLL_TEST_CNTL           ", 0x00cc },
+    { "PRE_DAC_MUX_CNTL        ", 0x0240 },
+    { "RGB_CNTL                ", 0x0048 },
+    { "RIPINTF_PORT_CNTL       ", 0x003c },
+    { "SCALER_IN_WINDOW        ", 0x0618 },
+    { "SCALER_OUT_WINDOW       ", 0x061c },
+    { "SG_BLACK_GATE           ", 0x04c0 },
+    { "SG_SYNCTIP_GATE         ", 0x04c4 },
+    { "SG_UVGATE_GATE          ", 0x04c8 },
+    { "SINGLE_STEP_DATA        ", 0x05d8 },
+    { "SPDIF_AC3_PREAMBLE      ", 0x0814 },
+    { "SPDIF_CHANNEL_STAT      ", 0x0810 },
+    { "SPDIF_PORT_CNTL         ", 0x080c },
+    { "SPDIF_TX_CNT_REG        ", 0x0820 },
+    { "STANDARD_SELECT         ", 0x0408 },
+    { "SW_SCRATCH              ", 0x0014 },
+    { "SYNC_CNTL               ", 0x0050 },
+    { "SYNC_LOCK_CNTL          ", 0x0104 },
+    { "SYNC_SIZE               ", 0x00b4 },
+    { "THERMO2BIN_STATUS       ", 0x040c },
+    { "TIMING_CNTL             ", 0x01c4 },
+    { "TVO_DATA_DELAY_A        ", 0x0140 },
+    { "TVO_DATA_DELAY_B        ", 0x0144 },
+    { "TVO_SYNC_PAT_ACCUM      ", 0x0108 },
+    { "TVO_SYNC_PAT_EXPECT     ", 0x0110 },
+    { "TVO_SYNC_THRESHOLD      ", 0x010c },
+    { "TV_DAC_CNTL             ", 0x0280 },
+    { "TV_DTO_INCREMENTS       ", 0x0390 },
+    { "TV_PLL_CNTL             ", 0x00c0 },
+    { "TV_PLL_FINE_CNTL        ", 0x00b8 },
+    { "UPSAMP_AND_GAIN_CNTL    ", 0x01e0 },
+    { "UPSAMP_COEFF0_0         ", 0x0340 },
+    { "UPSAMP_COEFF0_1         ", 0x0344 },
+    { "UPSAMP_COEFF0_2         ", 0x0348 },
+    { "UPSAMP_COEFF1_0         ", 0x034c },
+    { "UPSAMP_COEFF1_1         ", 0x0350 },
+    { "UPSAMP_COEFF1_2         ", 0x0354 },
+    { "UPSAMP_COEFF2_0         ", 0x0358 },
+    { "UPSAMP_COEFF2_1         ", 0x035c },
+    { "UPSAMP_COEFF2_2         ", 0x0360 },
+    { "UPSAMP_COEFF3_0         ", 0x0364 },
+    { "UPSAMP_COEFF3_1         ", 0x0368 },
+    { "UPSAMP_COEFF3_2         ", 0x036c },
+    { "UPSAMP_COEFF4_0         ", 0x0370 },
+    { "UPSAMP_COEFF4_1         ", 0x0374 },
+    { "UPSAMP_COEFF4_2         ", 0x0378 },
+    { "UV_ADR                  ", 0x0300 },
+    { "VBI_20BIT_CNTL          ", 0x02d0 },
+    { "VBI_CC_CNTL             ", 0x02c8 },
+    { "VBI_CONTROL             ", 0x05d0 },
+    { "VBI_DTO_CNTL            ", 0x02d4 },
+    { "VBI_EDS_CNTL            ", 0x02cc },
+    { "VBI_LEVEL_CNTL          ", 0x02d8 },
+    { "VBI_SCALER_CONTROL      ", 0x060c },
+    { "VCOUNT                  ", 0x009c },
+    { "VDISP                   ", 0x0098 },
+    { "VFTOTAL                 ", 0x00a0 },
+    { "VIDEO_PORT_SIG          ", 0x02c4 },
+    { "VIN_PLL_CNTL            ", 0x00d4 },
+    { "VIN_PLL_FINE_CNTL       ", 0x00d8 },
+    { "VIP_COMMAND_STATUS      ", 0x0008 },
+    { "VIP_REVISION_ID         ", 0x000c },
+    { "VIP_SUB_VENDOR_DEVICE_ID", 0x0004 },
+    { "VIP_VENDOR_DEVICE_ID    ", 0x0000 },
+    { "VSCALER_CNTL1           ", 0x01c0 },
+    { "VSCALER_CNTL2           ", 0x01c8 },
+    { "VSYNC_DIFF_CNTL         ", 0x03a0 },
+    { "VSYNC_DIFF_LIMITS       ", 0x03a4 },
+    { "VSYNC_DIFF_RD_DATA      ", 0x03a8 },
+    { "VS_BLANKING_CNTL        ", 0x0544 },
+    { "VS_COUNTER_CNTL         ", 0x054c },
+    { "VS_DETECTOR_CNTL        ", 0x0540 },
+    { "VS_FIELD_ID_CNTL        ", 0x0548 },
+    { "VS_FRAME_TOTAL          ", 0x0550 },
+    { "VS_LINE_COUNT           ", 0x0554 },
+    { "VTOTAL                  ", 0x0094 },
+    { "V_ACTIVE_WINDOW         ", 0x05c4 },
+    { "V_DEINTERLACE_CONTROL   ", 0x0608 },
+    { "V_SCALER_CONTROL        ", 0x0604 },
+    { "V_VBI_WINDOW            ", 0x05cc },
+    { "Y_FALL_CNTL             ", 0x01cc },
+    { "Y_RISE_CNTL             ", 0x01d0 },
+    { "Y_SAW_TOOTH_CNTL        ", 0x01d4 },
+    {NULL, NULL}
+    };
+
+    for(i=0; rt_reg_list[i].name!=NULL;i++){
+        RT_regr(rt_reg_list[i].addr, &data);
+        xf86DrvMsg(t->VIP->scrnIndex, X_INFO, "register (0x%04x) %s is equal to 0x%08x\n", rt_reg_list[i].addr, rt_reg_list[i].name, data);
+    	}
 
 }
 

@@ -771,7 +771,10 @@
 #define RADEON_I2C_CNTL_1                   0x0094 
 #define RADEON_I2C_DATA			    0x0098
 
-#define RADEON_DVI_I2C_CNTL_1               0x02e4 /* ? */
+#define RADEON_DVI_I2C_CNTL_0		    0x02e0
+#define RADEON_DVI_I2C_CNTL_1               0x02e4 
+#define RADEON_DVI_I2C_DATA		    0x02e8
+
 #define RADEON_INTERRUPT_LINE               0x0f3c /* PCI */
 #define RADEON_INTERRUPT_PIN                0x0f3d /* PCI */
 #define RADEON_IO_BASE                      0x0f14 /* PCI */

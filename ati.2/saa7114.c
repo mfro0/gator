@@ -62,20 +62,20 @@ SAA7114Ptr DetectSAA7114(I2CBusPtr b, I2CSlaveAddr addr)
 
   if(!I2C_WriteRead(&(saa->d), NULL, 0, &a, 1))
   {
-     free(saa);
+     xfree(saa);
      return NULL;
   }
 
   saa->id = saaread(saa,SAA7114_CHIP_VERSION);
 
-  free(saa->d.DevName);
+  xfree(saa->d.DevName);
   saa->d.DevName = xcalloc(200, sizeof(char));
   sprintf(saa->d.DevName, "saa7114 video decoder, version %d",(saa->id >>4) & 0xf);
 
   /* set default parameters */
   if(!I2CDevInit(&(saa->d)))
   {
-     free(saa);
+     xfree(saa);
      return NULL;
   }
 
