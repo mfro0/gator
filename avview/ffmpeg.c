@@ -48,10 +48,15 @@ typedef struct {
 	long width;
 	long height;
 	long stop;
+	/* statistics */
 	long frame_count;
 	long frames_encoded;
-	int quality;
 	int64 encoded_stream_size;
+
+	/* values to write into picture struct for ffmpeg */
+	int quality;
+	int qscale_type;
+	
 	V4L_DATA *v4l_device;
 	int fd_out;
 	AVCodec *video_codec;
@@ -129,6 +134,7 @@ picture->pts=f->timestamp;
 picture->quality=sdata->quality;
 picture->type=FF_BUFFER_TYPE_SHARED;
 picture->qscale_table=NULL;
+picture->qscale_type=sdata->qscale_type;
 }
 
 void ffmpeg_v4l_encoding_thread(PACKET_STREAM *s)
@@ -409,12 +415,15 @@ const char *arg_deinterlace_mode;
 const char *arg_step_frames;
 const char *arg_video_quality;
 const char *arg_video_bitrate_control;
+const char *arg_gop_size;
 struct video_picture vpic;
 double a,b;
+AVCodecContext *enc=&(sdata->video_codec_context);
 
 int qmin=2;
 
 arg_v4l_handle=get_value(argc, argv, "-v4l_handle");
+arg_gop_size=get_value(argc, argv, "-gop_size");
 arg_video_codec=get_value(argc, argv, "-video_codec");
 arg_v4l_mode=get_value(argc, argv, "-v4l_mode");
 arg_v4l_rate=get_value(argc, argv, "-v4l_rate");
@@ -472,12 +481,14 @@ data->video_size=data->vwin.width*data->vwin.height*2;
 sdata->frame_count=1;
 sdata->frames_encoded=0;
 sdata->last_video_timestamp=0;
+sdata->qscale_type=FF_QSCALE_TYPE_MPEG2;
 
 if(arg_video_codec==NULL){
 	sdata->video_codec=avcodec_find_encoder(CODEC_ID_MPEG2VIDEO);
 	} else
 if(!strcmp("MPEG-1", arg_video_codec)){
 	sdata->video_codec=avcodec_find_encoder(CODEC_ID_MPEG1VIDEO);
+	sdata->qscale_type=FF_QSCALE_TYPE_MPEG1;
 	} else
 if(!strcmp("MPEG-2", arg_video_codec)){
 	sdata->video_codec=avcodec_find_encoder(CODEC_ID_MPEG2VIDEO);
@@ -512,23 +523,23 @@ if(sdata->video_codec==NULL){
 	}
 memset(&(sdata->video_codec_context), 0, sizeof(AVCodecContext));
 avcodec_get_context_defaults(&(sdata->audio_codec_context));
-sdata->video_codec_context.codec_id=sdata->video_codec->id;
-sdata->video_codec_context.codec_type=sdata->video_codec->type;
+enc->codec_id=sdata->video_codec->id;
+enc->codec_type=sdata->video_codec->type;
 
 switch(data->mode){
 	case MODE_SINGLE_FRAME:
-		sdata->video_codec_context.width=data->vwin.width;
-		sdata->video_codec_context.height=data->vwin.height;
+		enc->width=data->vwin.width;
+		enc->height=data->vwin.height;
 		break;
 	case MODE_DOUBLE_INTERPOLATE:
 	case MODE_DEINTERLACE_BOB:
 	case MODE_DEINTERLACE_WEAVE:
-		sdata->video_codec_context.width=data->vwin.width;
-		sdata->video_codec_context.height=data->vwin.height*2;
+		enc->width=data->vwin.width;
+		enc->height=data->vwin.height*2;
 		break;
 	case MODE_DEINTERLACE_HALF_WIDTH:
-		sdata->video_codec_context.width=data->vwin.width/2;
-		sdata->video_codec_context.height=data->vwin.height;
+		enc->width=data->vwin.width/2;
+		enc->height=data->vwin.height;
 		break;
 	}
 
@@ -544,58 +555,65 @@ switch(data->mode){
 #endif
 #endif
 
-sdata->video_codec_context.frame_rate=0;
-if(arg_v4l_rate!=NULL)sdata->video_codec_context.frame_rate=rint(atof(arg_v4l_rate)*FFMPEG_FRAME_RATE_BASE);
-if(sdata->video_codec_context.frame_rate<=0)sdata->video_codec_context.frame_rate=60*FFMPEG_FRAME_RATE_BASE;
-if(data->step_frames>0)sdata->video_codec_context.frame_rate=sdata->video_codec_context.frame_rate/data->step_frames;
-a=(((800000.0*data->vwin.width)*data->vwin.height)*sdata->video_codec_context.frame_rate);
+enc->frame_rate=0;
+if(arg_v4l_rate!=NULL)enc->frame_rate=rint(atof(arg_v4l_rate)*FFMPEG_FRAME_RATE_BASE);
+if(enc->frame_rate<=0)enc->frame_rate=60*FFMPEG_FRAME_RATE_BASE;
+if(data->step_frames>0)enc->frame_rate=enc->frame_rate/data->step_frames;
+a=(((800000.0*data->vwin.width)*data->vwin.height)*enc->frame_rate);
 b=(352.0*288.0*25.0*FFMPEG_FRAME_RATE_BASE);
-sdata->video_codec_context.bit_rate=0;
-if(arg_video_bitrate!=NULL)sdata->video_codec_context.bit_rate=atol(arg_video_bitrate);
-if(sdata->video_codec_context.bit_rate< (sdata->video_codec_context.frame_rate/FFMPEG_FRAME_RATE_BASE+1))
-	sdata->video_codec_context.bit_rate=rint(a/b);
-fprintf(stderr,"video: using bitrate=%d, frame_rate=%d\n", sdata->video_codec_context.bit_rate, sdata->video_codec_context.frame_rate);
-sdata->video_codec_context.pix_fmt=PIX_FMT_YUV420P;
-sdata->video_codec_context.flags=0;
+enc->bit_rate=0;
+if(arg_video_bitrate!=NULL)enc->bit_rate=atol(arg_video_bitrate);
+if(enc->bit_rate< (enc->frame_rate/FFMPEG_FRAME_RATE_BASE+1))
+	enc->bit_rate=rint(a/b);
+fprintf(stderr,"video: using bitrate=%d, frame_rate=%d\n", enc->bit_rate, enc->frame_rate);
+enc->pix_fmt=PIX_FMT_YUV420P;
+enc->flags=0;
 if((arg_video_bitrate_control!=NULL)&&!strcmp(arg_video_bitrate_control, "Fix quality"))
-	sdata->video_codec_context.flags=CODEC_FLAG_QSCALE;
-sdata->video_codec_context.qmin=qmin;
-sdata->video_codec_context.qmax=15;
+	enc->flags|=CODEC_FLAG_QSCALE;
+enc->qmin=qmin;
+enc->qmax=15;
 if(arg_video_quality!=NULL)sdata->quality=atoi(arg_video_quality);
 if(sdata->quality<qmin)sdata->quality=qmin;
-if(sdata->quality>sdata->video_codec_context.qmax)sdata->quality=sdata->video_codec_context.qmax;
+if(sdata->quality>enc->qmax)sdata->quality=enc->qmax;
 
-sdata->video_codec_context.frame_rate_base=FFMPEG_FRAME_RATE_BASE;
-sdata->video_codec_context.max_qdiff=3;
-sdata->video_codec_context.aspect_ratio=0.0; /* guess assuming square pixels */
-sdata->video_codec_context.me_method=ME_FULL;
-sdata->video_codec_context.qblur=0.5;
-sdata->video_codec_context.qcompress=0.5;
-sdata->video_codec_context.b_quant_factor=1.25;
-sdata->video_codec_context.b_quant_offset=1.25;
-sdata->video_codec_context.i_quant_factor=-0.8;
-sdata->video_codec_context.i_quant_offset=0.0;
-sdata->video_codec_context.gop_size=0;
-sdata->video_codec_context.get_buffer=avcodec_default_get_buffer;
-sdata->video_codec_context.release_buffer=avcodec_default_release_buffer;
-sdata->video_codec_context.pix_fmt=PIX_FMT_YUV420P;
-sdata->video_codec_context.rc_qsquish=1.0;
-sdata->video_codec_context.rc_max_rate = 0;
-sdata->video_codec_context.rc_min_rate = 0;
-sdata->video_codec_context.rc_buffer_size = 0;
-sdata->video_codec_context.rc_buffer_aggressivity= 1;
-sdata->video_codec_context.rc_initial_cplx= 0;
-sdata->video_codec_context.lumi_masking=0;
-sdata->video_codec_context.temporal_cplx_masking=0;
-sdata->video_codec_context.spatial_cplx_masking=0;
-sdata->video_codec_context.p_masking=0;
-sdata->video_codec_context.dark_masking=0;
-sdata->video_codec_context.mpeg_quant=1;
-sdata->video_codec_context.global_quality=sdata->quality;
+enc->frame_rate_base=FFMPEG_FRAME_RATE_BASE;
+enc->max_qdiff=3;
+enc->aspect_ratio=0.0; /* guess assuming square pixels */
+enc->me_method=ME_FULL;
+enc->qblur=0.5;
+enc->qcompress=0.5;
+enc->b_quant_factor=1.25;
+enc->b_quant_offset=1.25;
+enc->i_quant_factor=-0.8;
+enc->i_quant_offset=0.0;
+enc->get_buffer=avcodec_default_get_buffer;
+enc->release_buffer=avcodec_default_release_buffer;
+enc->pix_fmt=PIX_FMT_YUV420P;
+enc->rc_qsquish=1.0;
+enc->rc_max_rate = 0;
+enc->rc_min_rate = 0;
+enc->rc_buffer_size = 0;
+enc->rc_buffer_aggressivity= 1;
+enc->rc_initial_cplx= 0;
+enc->lumi_masking=0;
+enc->temporal_cplx_masking=0;
+enc->spatial_cplx_masking=0;
+enc->p_masking=0;
+enc->dark_masking=0;
+enc->global_quality=sdata->quality;
+enc->strict_std_compliance=0;
+if(enc->codec_id==CODEC_ID_MPEG1VIDEO || 
+	enc->codec_id==CODEC_ID_H264)
+                enc->flags|= CODEC_FLAG_TRUNCATED;
+
+enc->gop_size=0;
 if((arg_video_codec!=NULL)&&(
   !strcasecmp(arg_video_codec, "MPEG-4") ||
   !strcasecmp(arg_video_codec, "MSMPEG-4")))
-  	sdata->video_codec_context.gop_size=12;
+  	enc->gop_size=12;
+if(arg_gop_size!=NULL)enc->gop_size=atol(arg_gop_size);
+if(enc->gop_size<0)enc->gop_size=0;
+
 if(sdata->video_codec->priv_data_size==0){
 	fprintf(stderr,"BUG: sdata->video_codec->priv_data_size==0, fixing it\n");
 	sdata->video_codec->priv_data_size=64*1024; /* 64K should be enough */
@@ -620,6 +638,7 @@ int ffmpeg_create_audio_codec(Tcl_Interp* interp, int argc, const char * argv[])
 const char *arg_audio_codec;
 const char *arg_audio_bitrate;
 const char *arg_audio_rate;
+long endiannes_test;
 if(alsa_setup_reader_thread(sdata->audio_s, argc, argv, &(sdata->alsa_param))<0){
 	return 0;
 	}
@@ -644,6 +663,14 @@ if(!strcasecmp(arg_audio_codec,"VORBIS")){
 	} else 
 if(!strcasecmp(arg_audio_codec,"AC-3")){
 	sdata->audio_codec=avcodec_find_encoder(CODEC_ID_AC3); 
+	} else
+if(!strcasecmp(arg_audio_codec,"PCM")){
+	endiannes_test=1;
+	if(*((char *)&endiannes_test)){
+		sdata->audio_codec=avcodec_find_encoder(CODEC_ID_PCM_S16LE); 
+		} else {
+		sdata->audio_codec=avcodec_find_encoder(CODEC_ID_PCM_S16BE); 
+		}
 	}
 if(sdata->audio_codec==NULL){
 	fprintf(stderr,"Could not find audio codec\n");
@@ -774,7 +801,6 @@ if(!strcasecmp("mpg", arg_av_format)){
 	} else
 if(!strcasecmp("vob", arg_av_format)){
 	sdata->format_context.oformat=guess_format("vob", NULL, NULL);
-	fprintf(stderr,"**VOB\n");
 	} else
 if(!strcasecmp("mpeg", arg_av_format)){
 	sdata->format_context.oformat=guess_format("mpeg", NULL, NULL);

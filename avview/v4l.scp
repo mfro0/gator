@@ -87,6 +87,8 @@ grid configure $cw.window_button -sticky news
 
 eval label $cw.encoding_themel -text "\"Encoding theme: \"" [get_settings $cw.encoding_themel label Capture V4L]
 set menu [tk_optionMenu $cw.encoding_theme_optionmenu ffmpeg_encoding_theme None]
+global panel_encoding_theme_menu
+set panel_encoding_theme_menu $menu
 $menu delete 0 end
 global encoding_themes_list
 foreach theme $encoding_themes_list {

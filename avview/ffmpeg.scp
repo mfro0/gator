@@ -17,11 +17,11 @@ set encoding_theme_template {
 set encoding_themes { 
 	  "Very high quality MPEG-1"
 	  "MPEG-1 VHQ" 
-	  300000
+	  600000
 	  2
 	  "Fix quality"
 	  "MPEG-1"
-	  64000
+	  128000
 	  "MPEG-2"
 	  "MPEG" 
 	  "double-interpolate" 
@@ -30,11 +30,11 @@ set encoding_themes {
 
 	  "High quality MPEG-1"
 	  "MPEG-1 HQ" 
-	  300000
+	  600000
 	  5
 	  "Fix quality"
 	  "MPEG-1"
-	  64000
+	  128000
 	  "MPEG-2"
 	  "MPEG" 
 	  "double-interpolate" 
@@ -43,11 +43,11 @@ set encoding_themes {
 	  
 	  "VCR quality MPEG-1"
 	  "MPEG-1 VCR" 
-	  300000
+	  600000
 	  5
 	  "Fix quality"
 	  "MPEG-1"
-	  64000
+	  128000
 	  "MPEG-2"
 	  "MPEG" 
 	  "half-width" 
@@ -56,11 +56,11 @@ set encoding_themes {
 
 	  "Webcam quality MPEG-1"
 	  "MPEG-1 Webcam" 
-	  300000
+	  600000
 	  10
 	  "Fix quality"
 	  "MPEG-1"
-	  64000
+	  128000
 	  "MPEG-2"
 	  "MPEG" 
 	  "half-width" 
@@ -69,11 +69,11 @@ set encoding_themes {
 
 	  "Very high quality MPEG-4"
 	  "MPEG-4 VHQ" 
-	  300000
+	  600000
 	  2
 	  "Fix quality"
 	  "MPEG-4"
-	  64000
+	  128000
 	  "MPEG-2"
 	  "AVI" 
 	  "double-interpolate" 
@@ -82,11 +82,11 @@ set encoding_themes {
 
 	  "High quality MPEG-4"
 	  "MPEG-4 HQ" 
-	  300000
+	  600000
 	  5
 	  "Fix quality"
 	  "MPEG-4"
-	  64000
+	  128000
 	  "MPEG-2"
 	  "AVI" 
 	  "double-interpolate" 
@@ -95,11 +95,11 @@ set encoding_themes {
 	  
 	  "Very high quality DVD"
 	  "DVD VHQ" 
-	  600000
+	  1200000
 	  2
 	  "Fix quality"
 	  "MPEG-2"
-	  64000
+	  128000
 	  "MPEG-2"
 	  "VOB" 
 	  "double-interpolate" 
@@ -108,11 +108,11 @@ set encoding_themes {
 
 	  "High quality DVD"
 	  "DVD HQ" 
-	  600000
+	  1200000
 	  5
 	  "Fix quality"
 	  "MPEG-2"
-	  64000
+	  128000
 	  "MPEG-2"
 	  "VOB" 
 	  "double-interpolate" 
@@ -120,62 +120,32 @@ set encoding_themes {
 	  "vob"
 	 }
 
-global encoding_themes_list encoding_themes_table
-set encoding_themes_list {}
-set i 0
-foreach $encoding_theme_template $encoding_themes {
-	lappend encoding_themes_list $short_name
-	set encoding_themes_table($short_name) $i
-	incr i
-	}
 		
-add_parameter_pane "/Configuration/Encoding settings" "Encoding settings" \
-		"Pre-configured themes" heading "" \
-		"Encoding theme" choice [concat ffmpeg_encoding_theme $encoding_themes_list] \
-		"" ro_entry ffmpeg_encoding_theme_detail \
-		"Set parameters" command set_encoding_theme 
-
-add_parameter_pane "/Configuration/Encoding settings/Capture parameters" "Capture parameters" \
-		"V4L parameters" heading "" \
-		"Deinterlacing method" choice [concat current_v4l_mode [get_deinterlacing_methods]] \
-		"V4L recording rate" choice {current_v4l_rrate "as is" "one half" "one quarter"} \
-		"Video frame rate" entry current_video_rate
-
-if { [ffmpeg_present] } {
-	add_parameter_pane "/Configuration/Encoding settings/Compression parameters" "Compression parameters" \
-		"Video codec parameters" heading "" \
-		"Bitrate control" choice { ffmpeg_video_bitrate_control "Fix bitrate" "Fix quality" } \
-		"Bitrate" entry ffmpeg_video_bitrate \
-		"Quality (smaller is better)" scale { ffmpeg_video_quality 2 31 } \
-		"Video codec" choice { ffmpeg_video_codec "H263" "H263I" "H263P" "MJPEG" "MPEG-1" "MPEG-4" "MSMPEG-4" "RV10" } \
-		"Audio codec parameters" heading "" \
-		"Audio sample rate" choice {ffmpeg_audio_sample_rate "48000" "44100" "32000" "24000" "22050" "16000" } \
-		"Audio bitrate" choice {ffmpeg_audio_bitrate "384000" "320000" "256000" "224000" "192000" "160000" "128000" "112000" "96000" "80000" "64000" "56000" "48000" "32000" } \
-		"Audio codec" choice {ffmpeg_audio_codec "PCM" "MPEG-2" "AC3" "MPEG-3" "VORBIS"} \
-		"File format parameters" heading "" \
-		"File format" choice {ffmpeg_file_format "none" "AVI" "ASF" "MPEG" "VOB" "DV" "RM"} \
-		"Stop capture when fifo exceeds (MB)" entry ffmpeg_max_fifo_size
-#		"Record in chunks of (MB)" entry ffmpeg_recording_chunk_size 
-		
-	} {
-	add_description_pane "/Configuration/Compression parameters" "Compression parameters" "AVview has not been compiled to include compression library"
-	}
-
 global ffmpeg_encoding_theme
 trace variable ffmpeg_encoding_theme w {
-	global ffmpeg_encoding_theme ffmpeg_encoding_theme_detail \
-		 encoding_themes_table encoding_theme_template encoding_themes
-	set ffmpeg_encoding_theme_detail [lindex $encoding_themes [expr $encoding_themes_table($ffmpeg_encoding_theme)*[llength $encoding_theme_template]]]
 	skip_args3 }
 
 set ffmpeg_encoding_theme [lindex $encoding_themes 1]
 
+proc get_encoding_theme { short_name } {
+global ffmpeg_encoding_theme ffmpeg_encoding_theme_detail \
+	 encoding_themes_table encoding_theme_template encoding_themes \
+	 builtin_themes_count user_encoding_themes
+set theme_index $encoding_themes_table($short_name)
+if { $theme_index < $builtin_themes_count } {
+	set theme [lrange $encoding_themes [expr $theme_index*[llength $encoding_theme_template]] end]
+	set theme [lrange $theme 0 [expr [llength $encoding_theme_template]-1] ]
+	} {
+	set theme [lrange $user_encoding_themes [expr ($theme_index-$builtin_themes_count)*[llength $encoding_theme_template]] end]
+	set theme [lrange $theme 0 [expr [llength $encoding_theme_template]-1] ]
+	}
+return $theme
+}
+
 proc set_encoding_theme {} {
 global ffmpeg_encoding_theme ffmpeg_encoding_theme_detail \
 	 encoding_themes_table encoding_theme_template encoding_themes 
-set theme [lrange $encoding_themes [expr $encoding_themes_table($ffmpeg_encoding_theme)*[llength $encoding_theme_template]] end]
-set theme [lrange $theme 0 [expr [llength $encoding_theme_template]-1] ]
-foreach $encoding_theme_template $theme {
+foreach $encoding_theme_template [get_encoding_theme $ffmpeg_encoding_theme] {
 	foreach {var field} {
 		ffmpeg_video_bitrate_control q_control
 		ffmpeg_video_quality quality
@@ -192,6 +162,206 @@ foreach $encoding_theme_template $theme {
 		set $var [set $field]
 		}	
 	}
+
+set ffmpeg_encoding_theme_detail [lindex $encoding_themes [expr $encoding_themes_table($ffmpeg_encoding_theme)*[llength $encoding_theme_template]]]
 }
 
-set_encoding_theme
+proc create_new_theme {} {
+global custom_theme_name encoding_theme_template encoding_themes user_encoding_themes ffmpeg_encoding_theme
+if { $custom_theme_name == "" } {
+	tk_dialog .setup.theme_error "Cannot create theme" "Cannot create theme - please input new theme name" "" 0 "Acknowledged"
+	return
+	}
+foreach $encoding_theme_template $encoding_themes {
+	if { $custom_theme_name == $short_name } {
+		tk_dialog .setup.theme_error "Cannot create theme" "Theme \"$short_name\" already exists" "" 0 "Acknowledged"
+		return
+		}
+	}
+foreach $encoding_theme_template $user_encoding_themes {
+	if { $custom_theme_name == $short_name } {
+		tk_dialog .setup.theme_error "Cannot create theme" "Theme \"$short_name\" already exists" "" 0 "Acknowledged"
+		return
+		}
+	}
+set theme [get_encoding_theme $ffmpeg_encoding_theme]
+set short_name_index [lsearch -exact $encoding_theme_template "short_name"]
+if { $short_name_index < 0 } { 
+	puts stderr "AVview internal error"
+	}
+lset theme $short_name_index $custom_theme_name
+foreach value $theme {
+	lappend user_encoding_themes $value
+	}
+rehash_themes
+Tree:open .setup.tree "/Configuration"
+Tree:open .setup.tree "/Configuration/Encoding settings"
+Tree:open .setup.tree "/Configuration/Encoding settings/Custom themes"
+switch_to_pane "/Configuration/Encoding settings/Custom themes/$custom_theme_name"
+}
+
+proc get_theme_var_name { short_name var } {
+return encoding_theme_${short_name}_$var
+}
+
+proc adjust_user_theme_var { theme_index short_name var } {
+global encoding_themes_table user_encoding_themes builtin_themes_count \
+	encoding_theme_template 
+set short_name_index [lsearch $encoding_theme_template "short_name"]
+set start [expr ($theme_index-$builtin_themes_count)*[llength $encoding_theme_template]]
+set verify_short_name [lindex $user_encoding_themes [expr $start+$short_name_index]]
+if { $verify_short_name != $short_name } {
+	puts stderr "$verify_short_name!=$short_name for $theme_index $var"
+	return
+	}
+set var_index [lsearch $encoding_theme_template $var]
+if { $var_index < 0 } {
+	puts stderr "No such var $var for $theme_index $short_name"
+	return
+	}
+set var_name [get_theme_var_name $short_name $var]
+global $var_name
+lset user_encoding_themes [expr $start+$var_index] [set $var_name]
+}
+
+proc add_user_template_pane { template theme_index } {
+global encoding_theme_template
+foreach var $encoding_theme_template value $template {
+	set t_$var $value
+	}
+
+foreach var $encoding_theme_template value $template {
+	set var_name [get_theme_var_name $t_short_name $var]
+	global $var_name
+	catch {
+		unset $var_name
+		}
+	set $var_name $value
+	trace variable $var_name w "adjust_user_theme_var $theme_index $t_short_name $var ; skip_args3"
+	}
+
+add_parameter_pane "/Configuration/Encoding settings/Custom themes/${t_short_name}" $t_short_name \
+	"Description" entry [get_theme_var_name $t_short_name name] \
+	"Video codec parameters" heading "" \
+	"Bitrate control" choice [concat [get_theme_var_name $t_short_name q_control] { "Fix bitrate" "Fix quality" } ]\
+	"Bitrate" entry [get_theme_var_name $t_short_name video_bitrate] \
+	"Quality (smaller is better)" scale [concat [get_theme_var_name $t_short_name quality] { 2 31 } ] \
+	"Video codec" choice [concat [get_theme_var_name $t_short_name video_codec] { "H263" "H263I" "H263P" "MJPEG" "MPEG-1" "MPEG-4" "MSMPEG-4" "RV10" } ] \
+	"Audio codec parameters" heading "" \
+	"Audio bitrate" choice [concat [get_theme_var_name $t_short_name audio_bitrate] { "384000" "320000" "256000" "224000" "192000" "160000" "128000" "112000" "96000" "80000" "64000" "56000" "48000" "32000" } ] \
+	"Audio codec" choice [concat [get_theme_var_name $t_short_name audio_codec] { "PCM" "MPEG-2" "AC3" "MPEG-3" "VORBIS"} ] \
+	"File format parameters" heading "" \
+	"File format" choice [concat [get_theme_var_name $t_short_name file_format] { "none" "AVI" "ASF" "MPEG" "VOB" "MOV" "RM"} ] \
+	"File extension" entry [get_theme_var_name $t_short_name extension] \
+	"Capture mode" heading "" \
+	"Deinterlacing method" choice [concat [get_theme_var_name $t_short_name v4l_mode] [get_deinterlacing_methods] ] \
+	"Frame skipping" choice [concat [get_theme_var_name $t_short_name v4l_rate] {"as is" "one half" "one quarter"} ] \
+	"Delete theme" heading "" \
+	"Delete this theme" command "delete_user_encoding_theme $theme_index {$t_short_name}"
+}
+
+proc delete_user_encoding_theme { theme_index short_name } {
+global encoding_themes_table user_encoding_themes builtin_themes_count \
+	encoding_theme_template
+set short_name_index [lsearch $encoding_theme_template "short_name"]
+set start [expr ($theme_index-$builtin_themes_count)*[llength $encoding_theme_template]]
+set verify_short_name [lindex $user_encoding_themes [expr $start+$short_name_index]]
+if { $verify_short_name != $short_name } {
+	puts stderr "$verify_short_name!=$short_name for $theme_index"
+	return
+	}
+set end [expr $start+[llength $encoding_theme_template]-1]
+set user_encoding_themes [lreplace $user_encoding_themes $start $end]
+switch_to_pane "/Configuration/Encoding settings"
+rehash_themes
+}
+
+proc rehash_themes {} {
+global encoding_themes_list encoding_themes_table user_encoding_themes builtin_themes_count \
+	encoding_theme_template encoding_themes
+set encoding_themes_list {}
+set i 0
+foreach $encoding_theme_template $encoding_themes {
+	lappend encoding_themes_list $short_name
+	set encoding_themes_table($short_name) $i
+	incr i
+	}
+set builtin_themes_count $i
+foreach $encoding_theme_template $user_encoding_themes {
+	lappend encoding_themes_list $short_name
+	set encoding_themes_table($short_name) $i
+	incr i
+	}
+
+foreach key [get_pane_children "/Configuration/Encoding settings/Custom themes" ] {
+	delete_pane $key
+	}
+
+foreach theme [lsort -dictionary $encoding_themes_list] {
+	set index $encoding_themes_table($theme)
+	if { $index < $builtin_themes_count } { continue }
+	set start [expr ($index-$builtin_themes_count)*[llength $encoding_theme_template]]
+	set end [expr $start+[llength $encoding_theme_template]-1 ]
+	set template [lrange $user_encoding_themes $start $end]
+	puts "$index $template"
+	add_user_template_pane $template $index
+	}
+global SETUP_MAIN
+if { [winfo exists $SETUP_MAIN] && [winfo ismapped $SETUP_MAIN ] } {
+	resize_frames 
+	}
+
+catch {
+	replace_parameter_choices "/Configuration/Encoding settings" 1 ffmpeg_encoding_theme $encoding_themes_list
+	}
+catch {
+	global panel_encoding_theme_menu
+	set menu $panel_encoding_theme_menu
+	$menu delete 0 end
+	foreach theme $encoding_themes_list {
+		$menu add radiobutton -label "$theme" -value "$theme" -variable ffmpeg_encoding_theme
+		}
+	}
+}
+
+rehash_themes
+
+add_parameter_pane "/Configuration/Encoding settings" "Encoding settings" \
+		"Pre-configured themes" heading "" \
+		"Encoding theme" choice [concat ffmpeg_encoding_theme $encoding_themes_list] \
+		"" ro_entry ffmpeg_encoding_theme_detail \
+		"Create custom theme" heading "" \
+		"Name" entry custom_theme_name \
+		"Create new theme based on current one" command create_new_theme
+
+add_description_pane "/Configuration/Encoding settings/Custom themes" "Custom themes" \
+{     You can create new custom encoding themes by 
+duplicating an existing one. The newly created theme
+can then be changed to any supported combination of
+encoding parameters.}
+
+add_parameter_pane "/Configuration/Capture parameters" "Capture parameters" \
+		"V4L parameters" heading "" \
+		"Deinterlacing method" choice [concat current_v4l_mode [get_deinterlacing_methods]] \
+		"Frame skipping" choice {current_v4l_rrate "as is" "one half" "one quarter"} \
+		"Video frame rate" entry current_video_rate \
+		"Stop capture when fifo exceeds (MB)" entry ffmpeg_max_fifo_size
+
+if { [ffmpeg_present] } {
+#	add_parameter_pane "/Configuration/Encoding settings/Compression parameters" "Compression parameters" \
+#		"Video codec parameters" heading "" \
+#		"Bitrate control" choice { ffmpeg_video_bitrate_control "Fix bitrate" "Fix quality" } \
+#		"Bitrate" entry ffmpeg_video_bitrate \
+#		"Quality (smaller is better)" scale { ffmpeg_video_quality 2 31 } \
+#		"Video codec" choice { ffmpeg_video_codec "H263" "H263I" "H263P" "MJPEG" "MPEG-1" "MPEG-4" "MSMPEG-4" "RV10" } \
+#		"Audio codec parameters" heading "" \
+#		"Audio sample rate" choice {ffmpeg_audio_sample_rate "48000" "44100" "32000" "24000" "22050" "16000" } \
+#		"Audio bitrate" choice {ffmpeg_audio_bitrate "384000" "320000" "256000" "224000" "192000" "160000" "128000" "112000" "96000" "80000" "64000" "56000" "48000" "32000" } \
+#		"Audio codec" choice {ffmpeg_audio_codec "PCM" "MPEG-2" "AC3" "MPEG-3" "VORBIS"} \
+#		"File format parameters" heading "" \
+#		"File format" choice {ffmpeg_file_format "none" "AVI" "ASF" "MPEG" "VOB" "MOV" "RM"}
+		
+	} {
+	add_description_pane "/Configuration/Compression parameters" "Compression parameters" "AVview has not been compiled to include compression library"
+	}
+

@@ -29,3 +29,4 @@ for { set i 0 } { $i < $NUM_ADAPTORS } { incr i 1 } {
 	}
 }
 
+replace_parameter_choices "/Configuration/Video device parameters" 0 current_port a

@@ -73,16 +73,39 @@ if { "$pane" != "" } {
 	set L [grid bbox $SETUP_MAIN 2 1]
 #	$pane configure -width [$SETUP_MAIN.f cget -width] -height [$SETUP_MAIN.f cget -height]
 	$pane configure -width [lindex $L 2] -height [lindex $L 3]
+	} {
+	puts stderr "Could not find pane for key $key"
 	}
 }
 
 proc get_pane_frame {key } {
 global SETUP_PANES
 set a ""
-catch {
+if { [catch {	
 	set a $SETUP_PANES($key:pane_frame)
+	} err  ] } {
+	puts stderr "Cannot find pane frame for key $key: $err"
 	}
 return "$a"
+}
+
+proc get_pane_children { key } {
+global SETUP_PANES
+set A [array names SETUP_PANES -regexp "^$key/(\[^/\]*):pane_frame$"]
+set children {}
+foreach element $A {
+	regexp {^(.*):pane_frame$} $element {} child
+	lappend children $child
+	}
+return $children
+}
+
+proc delete_pane { key } {
+global SETUP_PANES SETUP_MAIN
+set pane_frame $SETUP_PANES($key:pane_frame)
+unset SETUP_PANES($key:pane_frame)
+Tree:delitem $SETUP_MAIN.tree $key
+destroy $pane_frame
 }
 
 proc add_pane {key title} {
@@ -232,11 +255,13 @@ bind $PANE_FRAME <Map> "resize_parameter_pane $PANE_FRAME $A"
 
 }
 
-proc replace_parameter_choices {key parameter_index choices} {
-catch {
-	set PANE_FRAME [get_pane_frame "$key"]
-	set A $PANE_FRAME.f.canvas.f
-	puts "[$A.optionmenu$parameter_index cget -menu]"
+proc replace_parameter_choices {key parameter_index variable choices} {
+set PANE_FRAME [get_pane_frame $key]
+set A $PANE_FRAME.f.canvas.f
+set menu [$A.optionmenu$parameter_index cget -menu]
+$menu delete 0 end
+foreach choice $choices {
+	$menu add radiobutton -label $choice -value $choice -variable $variable
 	}
 }
 

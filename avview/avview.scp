@@ -65,6 +65,7 @@ foreach {variable value} {
 	transparent_when_minimized "true"
 	transparency_ratio	200
 	is_minimized		"false"
+	user_encoding_themes	{}
 	} {
 	global $variable
 	set $variable $value
@@ -436,7 +437,7 @@ foreach variable {show_control_window warn_about_missing_km current_port current
 	display_setup_window_on_startup file_save_path dpms_off_on_fullscreen_power_off
 	disable_fullscreen_switching use_physical_screen_size message_visible_secs
 	on_screen_cc_page save_settings_on_exit transparent_when_minimized mute_when_minimized
-	transparency_ratio current_file_extension} {
+	transparency_ratio current_file_extension ffmpeg_encoding_theme user_encoding_themes } {
 	global $variable
 	puts $fileid "\nglobal $variable"
 	puts $fileid "set $variable \"[set $variable]\""
@@ -881,7 +882,6 @@ add_parameter_pane "/Configuration/User interface settings/Minimize behaviour" "
 Tree:open .setup.tree "/Configuration"
 Tree:open .setup.tree "/Configuration/User interface settings"
 
-replace_parameter_choices "/Configuration/Video device parameters" 0 a
 regenerate_port_menu
 
 proc set_default_settings {} {
@@ -898,11 +898,17 @@ set_encoding_theme
 }
 
 proc set_ui_traces {} {
-global show_control_window attributes_window capture_window alsa_window theme_name
-trace variable show_control_window w "show_control_window_proc ; skip_args3"
-trace variable attributes_window w  { generate_attributes_window .controlwin.allattributes ; skip_args3 }
-trace variable capture_window w  { generate_capture_window .controlwin.capture ; skip_args3 }
-trace variable theme_name w { global theme_name ; reset_theme $theme_name ; skip_args3 }
+global show_control_window attributes_window capture_window alsa_window theme_name ffmpeg_encoding_theme
+foreach {var command} {
+	show_control_window {show_control_window_proc ; skip_args3 }
+	attributes_window { generate_attributes_window .controlwin.allattributes ; skip_args3 }
+	capture_window { generate_capture_window .controlwin.capture ; skip_args3 }
+	theme_name { global theme_name ; reset_theme $theme_name ; skip_args3 }
+	ffmpeg_encoding_theme { set_encoding_theme ; skip_args3 }
+	} {
+	global $var
+	trace variable $var w $command
+	}
 if {[alsa_present] == "yes" } {
 	trace variable alsa_window w "generate_alsa_window .controlwin.alsamixer ; skip_args3"
 	}
@@ -924,7 +930,8 @@ after 100 {
 	assign_default_bindings
 	set_default_settings
 	read_settings
-	switch_to_pane "/User interface settings"
+	rehash_themes
+	switch_to_pane "/Configuration/User interface settings"
 	if { $display_setup_window_on_startup } {
 		create_setup_window
 		}
