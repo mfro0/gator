@@ -3433,6 +3433,7 @@ RADEONPutVideo(
    CARD32 id, display_base;
    int width, height;
    int mult;
+   int vbi_line_width;
 
    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "PutVideo %dx%d+%d+%d\n", drw_w,drw_h,drw_x,drw_y);
    info->accel->Sync(pScrn);
@@ -3468,6 +3469,7 @@ RADEONPutVideo(
 
    width = InputVideoEncodings[pPriv->encoding].width;
    height = InputVideoEncodings[pPriv->encoding].height;
+   vbi_line_width = 0x618;
         
    if(!RADEONClipVideo(&dstBox, &xa, &xb, &ya, &yb, clipBoxes, width, height))
         return Success;
@@ -3519,7 +3521,7 @@ RADEONPutVideo(
    }
 
    new_size = new_size + 0x1f; /* for aligning */
-   if(!(info->videoLinear = RADEONAllocateMemory(pScrn, info->videoLinear, new_size*mult+(pPriv->capture_vbi_data?2*dstPitch*20:0))))
+   if(!(info->videoLinear = RADEONAllocateMemory(pScrn, info->videoLinear, new_size*mult+(pPriv->capture_vbi_data?2*2*vbi_line_width*21:0))))
    {
         return BadAlloc;
    }
@@ -3571,8 +3573,10 @@ RADEONPutVideo(
         vbi_offset1 = vbi_offset0 + dstPitch*20;
         OUTREG(RADEON_CAP0_VBI0_OFFSET, vbi_offset0+display_base);
         OUTREG(RADEON_CAP0_VBI1_OFFSET, vbi_offset1+display_base);
+        OUTREG(RADEON_CAP0_VBI2_OFFSET, 0);
+        OUTREG(RADEON_CAP0_VBI3_OFFSET, 0);
         OUTREG(RADEON_CAP0_VBI_V_WINDOW, 9 | ((pPriv->v-1)<<16));
-        OUTREG(RADEON_CAP0_VBI_H_WINDOW, 0 | (2*width)<<16);
+        OUTREG(RADEON_CAP0_VBI_H_WINDOW, 0 | (vbi_line_width)<<16);
         }
    
    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "PutVideo Checkpoint 3\n");
