@@ -34,3 +34,14 @@ AC_CHECK_FUNCS([memset strdup strerror])
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
+
+if test "no_x" = "yes" ; then
+	AC_MSG_ERROR(can not find X11)
+fi
+
+echo ""
+echo "------------- Configuration ----------------"
+echo ""
+echo "  X11 libraries           $X_LIBS"
+echo "  X11 cflags              $X_CFLAGS"
+echo ""

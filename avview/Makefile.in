@@ -16,7 +16,9 @@ TCLLIBS=-ltcl
 TKLIBS=-ltk
 
 
-all: avview 
+all: avview
+
+test: avview 
 	sync
 	bash -c 'export DISPLAY=:0.0; ./avview.scp control=inspire:0.0'
 
@@ -31,7 +33,7 @@ avview.static: $(SRCS) main.c
 	
 	
 tarball:
-	(cd .. ; tar cvf - avview/*.scp avview/*.[c,h] avview/Makefile avview/README | gzip - ) > avview.tgz
+	(cd .. ; tar cvf - avview/*.scp avview/*.[c,h] avview/Makefile.in avview/configure.in avview/configure avview/README | gzip - ) > avview.tgz
 
 clean:
 	rm -f *.o *.bck *.bak core
