@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/radeon_cursor.c,v 1.20 2003/01/29 18:06:06 martin Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/radeon_cursor.c,v 1.23 2003/02/24 20:34:55 tsi Exp $ */
 /*
  * Copyright 2000 ATI Technologies Inc., Markham, Ontario, and
  *                VA Linux Systems Inc., Fremont, California.
@@ -52,22 +52,78 @@
 				/* X and server generic header files */
 #include "xf86.h"
 
+/* Mono ARGB cursor colours (premultiplied). */
+static CARD32 mono_cursor_color[] = {
+	0x00000000, /* White, fully transparent. */
+	0x00000000, /* Black, fully transparent. */
+	0xffffffff, /* White, fully opaque. */
+	0xff000000, /* Black, fully opaque. */
+};
+
+#define CURSOR_WIDTH	64
+#define CURSOR_HEIGHT	64
+
+/*
+ * The cursor bits are always 32bpp.  On MSBFirst busses,
+ * configure byte swapping to swap 32 bit units when writing
+ * the cursor image.  Byte swapping must always be returned
+ * to its previous value before returning.
+ */
+#if X_BYTE_ORDER == X_BIG_ENDIAN
+
+#define CURSOR_SWAPPING_DECL_MMIO   unsigned char *RADEONMMIO = info->MMIO;
+#define CURSOR_SWAPPING_DECL	    CARD32  __surface_cntl;
+#define CURSOR_SWAPPING_START() \
+    OUTREG(RADEON_SURFACE_CNTL, \
+	   ((__surface_cntl = INREG(RADEON_SURFACE_CNTL)) | \
+	    RADEON_NONSURF_AP0_SWP_32BPP) & \
+	   ~RADEON_NONSURF_AP0_SWP_16BPP)
+#define CURSOR_SWAPPING_END()	(OUTREG(RADEON_SURFACE_CNTL, __surface_cntl))
+
+#else
+
+#define CURSOR_SWAPPING_DECL_MMIO
+#define CURSOR_SWAPPING_DECL
+#define CURSOR_SWAPPING_START()
+#define CURSOR_SWAPPING_END()
+
+#endif
 
 /* Set cursor foreground and background colors */
 static void RADEONSetCursorColors(ScrnInfoPtr pScrn, int bg, int fg)
 {
     RADEONInfoPtr  info       = RADEONPTR(pScrn);
-    unsigned char *RADEONMMIO = info->MMIO;
+    CARD32        *pixels     = (CARD32 *)(pointer)(info->FB + info->cursor_start);
+    int            pixel, i;
+    CURSOR_SWAPPING_DECL_MMIO
+    CURSOR_SWAPPING_DECL
 
-    if (info->IsSecondary || info->Clone) {
-	OUTREG(RADEON_CUR2_CLR0, bg);
-	OUTREG(RADEON_CUR2_CLR1, fg);
-    }
+#ifdef ARGB_CURSOR
+    /* Don't recolour cursors set with SetCursorARGB. */
+    if (info->cursor_argb)
+       return;
+#endif
+    
+    fg |= 0xff000000;
+    bg |= 0xff000000;
+    
+    /* Don't recolour the image if we don't have to. */
+    if (fg == info->cursor_fg && bg == info->cursor_bg)
+       return;
 
-    if (!info->IsSecondary) {
-	OUTREG(RADEON_CUR_CLR0, bg);
-	OUTREG(RADEON_CUR_CLR1, fg);
-    }
+    CURSOR_SWAPPING_START();
+    
+    /* Note: We assume that the pixels are either fully opaque or fully
+     * transparent, so we won't premultiply them, and we can just
+     * check for non-zero pixel values; those are either fg or bg
+     */
+    for (i = 0; i < CURSOR_WIDTH * CURSOR_HEIGHT; i++, pixels++)
+       if ((pixel = *pixels))
+           *pixels = (pixel == info->cursor_fg) ? fg : bg;
+
+    CURSOR_SWAPPING_END();
+    info->cursor_fg = fg;
+    info->cursor_bg = bg;
 }
 
 
@@ -84,11 +140,8 @@ static void RADEONSetCursorPosition(ScrnInfoPtr pScrn, int x, int y)
     int                total_y    = pScrn->frameY1 - pScrn->frameY0;
     int                X2         = pScrn->frameX0 + x;
     int                Y2         = pScrn->frameY0 + y;
-    int		       stride     = 16;
+    int		       stride     = 256;
 
-#ifdef ARGB_CURSOR
-    if (info->cursor_argb) stride = 256;
-#endif
     if (x < 0)                        xorigin = -x+1;
     if (y < 0)                        yorigin = -y+1;
     if (y > total_y)                  y       = total_y;
@@ -192,37 +245,23 @@ static void RADEONLoadCursorImage(ScrnInfoPtr pScrn, unsigned char *image)
 {
     RADEONInfoPtr  info       = RADEONPTR(pScrn);
     unsigned char *RADEONMMIO = info->MMIO;
-    CARD32        *s          = (CARD32 *)(pointer)image;
+    CARD8         *s          = (CARD8 *)(pointer)image;
     CARD32        *d          = (CARD32 *)(pointer)(info->FB + info->cursor_start);
-    int            y;
     CARD32         save1      = 0;
     CARD32         save2      = 0;
-#if X_BYTE_ORDER == X_BIG_ENDIAN
-    CARD32         surface_cntl = INREG(RADEON_SURFACE_CNTL);
-
-    OUTREG(RADEON_SURFACE_CNTL, surface_cntl & ~(RADEON_NONSURF_AP0_SWP_16BPP
-						 | RADEON_NONSURF_AP0_SWP_32BPP));
-#endif
+    CARD8	   chunk;
+    CARD32         i, j;
+    CURSOR_SWAPPING_DECL
 
     if (!info->IsSecondary) {
-	save1 = INREG(RADEON_CRTC_GEN_CNTL);
-	if (save1 & (3 << 20)) {
-	    /* Workaround the flickering problem when switching from
-	     * rgba cursor.  This happens even when cursor is turned
-	     * off.  There may be a better way to do this.
-	     */
-	    RADEONWaitForVerticalSync(pScrn);
-	    save1 &= ~(CARD32) (3 << 20);
-	}
+	save1 = INREG(RADEON_CRTC_GEN_CNTL) & ~(CARD32) (3 << 20);
+	save1 |= (CARD32) (2 << 20);
 	OUTREG(RADEON_CRTC_GEN_CNTL, save1 & (CARD32)~RADEON_CRTC_CUR_EN);
     }
 
     if (info->IsSecondary || info->Clone) {
-	save2 = INREG(RADEON_CRTC2_GEN_CNTL);
-	if (save2 & (3 << 20)) {
-	    RADEONWaitForVerticalSync2(pScrn);
-	    save2 &= ~(CARD32) (3 << 20);
-	}
+	save2 = INREG(RADEON_CRTC2_GEN_CNTL) & ~(CARD32) (3 << 20);
+	save2 |= (CARD32) (2 << 20);
 	OUTREG(RADEON_CRTC2_GEN_CNTL, save2 & (CARD32)~RADEON_CRTC2_CUR_EN);
     }
 
@@ -230,21 +269,25 @@ static void RADEONLoadCursorImage(ScrnInfoPtr pScrn, unsigned char *image)
     info->cursor_argb = FALSE;
 #endif
 
-    for (y = 0; y < 64; y++) {
-	*d++ = *s++;
-	*d++ = *s++;
-	*d++ = *s++;
-	*d++ = *s++;
+    /*
+     * Convert the bitmap to ARGB32.
+     *
+     * HARDWARE_CURSOR_SOURCE_MASK_INTERLEAVE_1 always places
+     * source in the low bit of the pair and mask in the high bit,
+     * and MSBFirst machines set HARDWARE_CURSOR_BIT_ORDER_MSBFIRST
+     * (which actually bit swaps the image) to make the bits LSBFirst
+     */
+    CURSOR_SWAPPING_START();
+#define ARGB_PER_CHUNK	(8 * sizeof (chunk) / 2)
+    for (i = 0; i < CURSOR_WIDTH * CURSOR_HEIGHT / ARGB_PER_CHUNK; i++) {
+        chunk = *s++;
+	for (j = 0; j < ARGB_PER_CHUNK; j++, chunk >>= 2)
+	    *d++ = mono_cursor_color[chunk & 3];
     }
-
-    /* Set the area after the cursor to be all transparent so that we
-       won't display corrupted cursors on the screen */
-    for (y = 0; y < 64; y++) {
-	*d++ = 0xffffffff; /* The AND bits */
-	*d++ = 0xffffffff;
-	*d++ = 0x00000000; /* The XOR bits */
-	*d++ = 0x00000000;
-    }
+    CURSOR_SWAPPING_END();
+    
+    info->cursor_bg = mono_cursor_color[2];
+    info->cursor_fg = mono_cursor_color[3];
 
     if (!info->IsSecondary)
 	OUTREG(RADEON_CRTC_GEN_CNTL, save1);
@@ -252,10 +295,6 @@ static void RADEONLoadCursorImage(ScrnInfoPtr pScrn, unsigned char *image)
     if (info->IsSecondary || info->Clone)
 	OUTREG(RADEON_CRTC2_GEN_CNTL, save2);
 
-#if X_BYTE_ORDER == X_BIG_ENDIAN
-    /* restore byte swapping */
-    OUTREG(RADEON_SURFACE_CNTL, surface_cntl);
-#endif
 }
 
 /* Hide hardware cursor. */
@@ -304,7 +343,7 @@ static Bool RADEONUseHWCursorARGB (ScreenPtr pScreen, CursorPtr pCurs)
     RADEONInfoPtr  info  = RADEONPTR(pScrn);
 
     if (info->cursor_start &&
-	pCurs->bits->height <= 64 && pCurs->bits->width <= 64)
+	pCurs->bits->height <= CURSOR_HEIGHT && pCurs->bits->width <= CURSOR_WIDTH)
 	return TRUE;
     return FALSE;
 }
@@ -319,38 +358,20 @@ static void RADEONLoadCursorARGB (ScrnInfoPtr pScrn, CursorPtr pCurs)
     CARD32         save2      = 0;
     CARD32	  *image = pCurs->bits->argb;
     CARD32	  *i;
-#if X_BYTE_ORDER == X_BIG_ENDIAN
-    CARD32         surface_cntl = INREG(RADEON_SURFACE_CNTL);
-
-    OUTREG(RADEON_SURFACE_CNTL, (surface_cntl | RADEON_NONSURF_AP0_SWP_32BPP)
-				& ~RADEON_NONSURF_AP0_SWP_16BPP	);
-#endif
+    CURSOR_SWAPPING_DECL
 
     if (!image)
 	return;	/* XXX can't happen */
     
     if (!info->IsSecondary) {
-	save1 = INREG(RADEON_CRTC_GEN_CNTL);
-	OUTREG(RADEON_CRTC_GEN_CNTL, save1 & (CARD32)~RADEON_CRTC_CUR_EN);
-	if ((save1 & (3 << 20)) != (2 << 20)) {
-	    /* Workaround the flickering problem when switching from
-	     * mono cursor.  This happens even when cursor is turned
-	     * off.  There may be a better way to do this.
-	     */
-	    RADEONWaitForVerticalSync(pScrn);
-	    save1 &= ~(CARD32) (3 << 20);
-	    save1 |=  (CARD32) (2 << 20);
-	}
+	save1 = INREG(RADEON_CRTC_GEN_CNTL) & ~(CARD32) (3 << 20);
+	save1 |= (CARD32) (2 << 20);
 	OUTREG(RADEON_CRTC_GEN_CNTL, save1 & (CARD32)~RADEON_CRTC_CUR_EN);
     }
 
     if (info->IsSecondary || info->Clone) {
-	save2 = INREG(RADEON_CRTC2_GEN_CNTL);
-	if ((save2 & (3 << 20)) != (2 << 20)) {
-	    RADEONWaitForVerticalSync2(pScrn);
-	    save2 &= ~(CARD32) (3 << 20);
-	    save2 |= (CARD32) (2 << 20);
-	}
+	save2 = INREG(RADEON_CRTC_GEN_CNTL) & ~(CARD32) (3 << 20);
+	save2 |= (CARD32) (2 << 20);
 	OUTREG(RADEON_CRTC2_GEN_CNTL, save2 & (CARD32)~RADEON_CRTC2_CUR_EN);
     }
 
@@ -358,12 +379,14 @@ static void RADEONLoadCursorARGB (ScrnInfoPtr pScrn, CursorPtr pCurs)
     info->cursor_argb = TRUE;
 #endif
     
+    CURSOR_SWAPPING_START();
+
     w = pCurs->bits->width;
-    if (w > 64)
-	w = 64;
+    if (w > CURSOR_WIDTH)
+	w = CURSOR_WIDTH;
     h = pCurs->bits->height;
-    if (h > 64)
-	h = 64;
+    if (h > CURSOR_HEIGHT)
+	h = CURSOR_HEIGHT;
     for (y = 0; y < h; y++)
     {
 	i = image;
@@ -371,13 +394,15 @@ static void RADEONLoadCursorARGB (ScrnInfoPtr pScrn, CursorPtr pCurs)
 	for (x = 0; x < w; x++)
 	    *d++ = *i++;
 	/* pad to the right with transparent */
-	for (; x < 64; x++)
+	for (; x < CURSOR_WIDTH; x++)
 	    *d++ = 0;
     }
     /* pad below with transparent */
-    for (; y < 64; y++)
-	for (x = 0; x < 64; x++)
+    for (; y < CURSOR_HEIGHT; y++)
+	for (x = 0; x < CURSOR_WIDTH; x++)
 	    *d++ = 0;
+
+    CURSOR_SWAPPING_END ();
 
     if (!info->IsSecondary)
 	OUTREG(RADEON_CRTC_GEN_CNTL, save1);
@@ -385,10 +410,6 @@ static void RADEONLoadCursorARGB (ScrnInfoPtr pScrn, CursorPtr pCurs)
     if (info->IsSecondary || info->Clone)
 	OUTREG(RADEON_CRTC2_GEN_CNTL, save2);
 
-#if X_BYTE_ORDER == X_BIG_ENDIAN
-    /* restore byte swapping */
-    OUTREG(RADEON_SURFACE_CNTL, surface_cntl);
-#endif
 }
 
 #endif
@@ -402,23 +423,25 @@ Bool RADEONCursorInit(ScreenPtr pScreen)
     xf86CursorInfoPtr  cursor;
     FBAreaPtr          fbarea;
     int                width;
+    int		       width_bytes;
     int                height;
-    int                size;
-    int		       stride = 16;
+    int                size_bytes;
 
     if (!(cursor = info->cursor = xf86CreateCursorInfoRec())) return FALSE;
 
-    cursor->MaxWidth          = 64;
-    cursor->MaxHeight         = 64;
+    cursor->MaxWidth          = CURSOR_WIDTH;
+    cursor->MaxHeight         = CURSOR_HEIGHT;
     cursor->Flags             = (HARDWARE_CURSOR_TRUECOLOR_AT_8BPP
-
-#if X_BYTE_ORDER == X_LITTLE_ENDIAN
+				 | HARDWARE_CURSOR_AND_SOURCE_WITH_MASK
+#if X_BYTE_ORDER == X_BIG_ENDIAN
+				 /* this is a lie -- 
+				  * HARDWARE_CURSOR_BIT_ORDER_MSBFIRST
+				  * actually inverts the bit order, so
+				  * this switches to LSBFIRST
+				  */
 				 | HARDWARE_CURSOR_BIT_ORDER_MSBFIRST
 #endif
-				 | HARDWARE_CURSOR_INVERT_MASK
-				 | HARDWARE_CURSOR_AND_SOURCE_WITH_MASK
-				 | HARDWARE_CURSOR_SOURCE_MASK_INTERLEAVE_64
-				 | HARDWARE_CURSOR_SWAP_SOURCE_AND_MASK);
+				 | HARDWARE_CURSOR_SOURCE_MASK_INTERLEAVE_1);
 
     cursor->SetCursorColors   = RADEONSetCursorColors;
     cursor->SetCursorPosition = RADEONSetCursorPosition;
@@ -427,18 +450,18 @@ Bool RADEONCursorInit(ScreenPtr pScreen)
     cursor->ShowCursor        = RADEONShowCursor;
     cursor->UseHWCursor       = RADEONUseHWCursor;
 
-    size                      = (cursor->MaxWidth/4) * cursor->MaxHeight;
 #ifdef ARGB_CURSOR
     cursor->UseHWCursorARGB   = RADEONUseHWCursorARGB;
     cursor->LoadCursorARGB    = RADEONLoadCursorARGB;
-    size                      = (cursor->MaxWidth * 4) * cursor->MaxHeight;
 #endif
+    size_bytes                = CURSOR_WIDTH * 4 * CURSOR_HEIGHT;
     width                     = pScrn->displayWidth;
-    height                    = (size*2 + 1023) / pScrn->displayWidth;
+    width_bytes		      = width * (pScrn->bitsPerPixel / 8);
+    height                    = (size_bytes + width_bytes - 1) / width_bytes;
     fbarea                    = xf86AllocateOffscreenArea(pScreen,
 							  width,
 							  height,
-							  stride,
+							  256,
 							  NULL,
 							  NULL,
 							  NULL);
@@ -449,11 +472,11 @@ Bool RADEONCursorInit(ScreenPtr pScreen)
 		   "Hardware cursor disabled"
 		   " due to insufficient offscreen memory\n");
     } else {
-	info->cursor_start    = RADEON_ALIGN((fbarea->box.x1
-					      + width * fbarea->box.y1)
-					     * info->CurrentLayout.pixel_bytes,
-					     stride);
-	info->cursor_end      = info->cursor_start + size;
+	info->cursor_start    = RADEON_ALIGN((fbarea->box.x1 + 
+					      fbarea->box.y1 * width) *
+					     info->CurrentLayout.pixel_bytes,
+					     256);
+	info->cursor_end      = info->cursor_start + size_bytes;
     }
 
     RADEONTRACE(("RADEONCursorInit (0x%08x-0x%08x)\n",

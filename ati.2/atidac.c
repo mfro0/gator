@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atidac.c,v 1.17 2003/01/01 19:16:31 tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atidac.c,v 1.18 2003/02/25 17:58:13 tsi Exp $ */
 /*
  * Copyright 1997 through 2003 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
  *
@@ -94,7 +94,7 @@ ATISetDACIOPorts
             pATI->CPIO_DAC_MASK = ATIIOPort(DAC_REGS) + 2;
             pATI->CPIO_DAC_READ = ATIIOPort(DAC_REGS) + 3;
             pATI->CPIO_DAC_WRITE = ATIIOPort(DAC_REGS) + 0;
-            pATI->CPIO_DAC_WAIT = pATI->CPIO_DAC_MASK;
+            pATI->CPIO_DAC_WAIT = pATI->CPIOBase;
             break;
 
         default:

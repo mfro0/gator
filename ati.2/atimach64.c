@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atimach64.c,v 1.50 2003/01/01 19:16:32 tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/atimach64.c,v 1.51 2003/02/24 20:46:54 tsi Exp $ */
 /*
  * Copyright 1997 through 2003 by Marc Aurele La France (TSI @ UQV), tsi@xfree86.org
  *
@@ -381,7 +381,7 @@ ATIMach64Save
 
     pATIHW->config_cntl = inr(CONFIG_CNTL);
 
-    pATIHW->gen_test_cntl = inr(GEN_TEST_CNTL);
+    pATIHW->gen_test_cntl = inr(GEN_TEST_CNTL) & ~GEN_CUR_EN;
 
     if (pATI->Chip >= ATI_CHIP_264VTB)
     {

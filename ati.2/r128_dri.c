@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/r128_dri.c,v 1.27 2002/12/16 16:19:11 dawes Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/r128_dri.c,v 1.28 2003/02/07 20:41:14 martin Exp $ */
 /*
  * Copyright 1999, 2000 ATI Technologies Inc., Markham, Ontario,
  *                      Precision Insight, Inc., Cedar Park, Texas, and
@@ -742,6 +742,40 @@ static Bool R128DRIPciInit(R128InfoPtr info, ScreenPtr pScreen)
     case PCI_CHIP_RAGE128TF:
     case PCI_CHIP_RAGE128TL:
     case PCI_CHIP_RAGE128TR:
+    /* FIXME: ATI documentation does not specify if the following chips are
+     * AGP or PCI, it just mentions their PCI IDs.  I'm assuming they're AGP
+     * until I get more correct information. <mharris@redhat.com>
+     */
+    case PCI_CHIP_RAGE128PA:
+    case PCI_CHIP_RAGE128PB:
+    case PCI_CHIP_RAGE128PC:
+    case PCI_CHIP_RAGE128PE:
+    case PCI_CHIP_RAGE128PG:
+    case PCI_CHIP_RAGE128PH:
+    case PCI_CHIP_RAGE128PI:
+    case PCI_CHIP_RAGE128PJ:
+    case PCI_CHIP_RAGE128PK:
+    case PCI_CHIP_RAGE128PL:
+    case PCI_CHIP_RAGE128PM:
+    case PCI_CHIP_RAGE128PN:
+    case PCI_CHIP_RAGE128PO:
+    case PCI_CHIP_RAGE128PQ:
+    case PCI_CHIP_RAGE128PS:
+    case PCI_CHIP_RAGE128PT:
+    case PCI_CHIP_RAGE128PU:
+    case PCI_CHIP_RAGE128PV:
+    case PCI_CHIP_RAGE128PW:
+    case PCI_CHIP_RAGE128PX:
+    case PCI_CHIP_RAGE128SE:
+    case PCI_CHIP_RAGE128SF:
+    case PCI_CHIP_RAGE128SG:
+    case PCI_CHIP_RAGE128SH:
+    case PCI_CHIP_RAGE128SK:
+    case PCI_CHIP_RAGE128SL:
+    case PCI_CHIP_RAGE128SN:
+    case PCI_CHIP_RAGE128TS:
+    case PCI_CHIP_RAGE128TT:
+    case PCI_CHIP_RAGE128TU:
     default:
 	/* This is really an AGP card, force PCI GART mode */
         chunk = INREG(R128_BM_CHUNK_0_VAL);

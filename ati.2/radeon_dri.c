@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/radeon_dri.c,v 1.27 2003/01/31 15:43:09 tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/radeon_dri.c,v 1.32 2003/02/19 09:17:30 alanh Exp $ */
 /*
  * Copyright 2000 ATI Technologies Inc., Markham, Ontario,
  *                VA Linux Systems Inc., Fremont, California.
@@ -247,7 +247,7 @@ static Bool RADEONInitVisualConfigs(ScreenPtr pScreen)
 		else
 		    pConfigs[i].doubleBuffer   = FALSE;
 		pConfigs[i].stereo             = FALSE;
-		pConfigs[i].bufferSize         = 24;
+		pConfigs[i].bufferSize         = 32;
 		if (stencil) {
 		    pConfigs[i].depthSize      = 24;
 		    pConfigs[i].stencilSize    = 8;
@@ -731,8 +731,7 @@ static Bool RADEONDRIAgpInit(RADEONInfoPtr info, ScreenPtr pScreen)
 	 * market, so this is not yet a problem.
 	 */
 	if ((info->ChipFamily == CHIP_FAMILY_M6) ||
-	    (info->ChipFamily == CHIP_FAMILY_M7) || 
-	    (info->ChipFamily == CHIP_FAMILY_M9))
+	    (info->ChipFamily == CHIP_FAMILY_M7))
 	    return FALSE;
 
 	/* Disable fast write for AMD 761 chipset, since they cause
@@ -932,7 +931,7 @@ static Bool RADEONDRIPciInit(RADEONInfoPtr info, ScreenPtr pScreen)
 	       (unsigned long)info->ring);
     xf86DrvMsg(pScreen->myNum, X_INFO,
 	       "[pci] Ring contents 0x%08lx\n",
-	       *(unsigned long *)info->ring);
+	       *(unsigned long *)(pointer)info->ring);
 
     if (drmAddMap(info->drmFD, info->ringReadOffset, info->ringReadMapSize,
 		  DRM_SCATTER_GATHER, flags, &info->ringReadPtrHandle) < 0) {
@@ -955,7 +954,7 @@ static Bool RADEONDRIPciInit(RADEONInfoPtr info, ScreenPtr pScreen)
 	       (unsigned long)info->ringReadPtr);
     xf86DrvMsg(pScreen->myNum, X_INFO,
 	       "[pci] Ring read ptr contents 0x%08lx\n",
-	       *(unsigned long *)info->ringReadPtr);
+	       *(unsigned long *)(pointer)info->ringReadPtr);
 
     if (drmAddMap(info->drmFD, info->bufStart, info->bufMapSize,
 		  DRM_SCATTER_GATHER, 0, &info->bufHandle) < 0) {
@@ -978,7 +977,7 @@ static Bool RADEONDRIPciInit(RADEONInfoPtr info, ScreenPtr pScreen)
 	       (unsigned long)info->buf);
     xf86DrvMsg(pScreen->myNum, X_INFO,
 	       "[pci] Vertex/indirect buffers contents 0x%08lx\n",
-	       *(unsigned long *)info->buf);
+	       *(unsigned long *)(pointer)info->buf);
 
     return TRUE;
 }
@@ -1554,7 +1553,7 @@ Bool RADEONDRIFinishScreenInit(ScreenPtr pScreen)
 
     /* Have shadowfb run only while there is 3d active. */
     if (info->allowPageFlip /* && info->drmMinor >= 3 */) {
-	ShadowFBInit2( pScreen, NULL, RADEONDRIRefreshArea, FALSE );
+	ShadowFBInit( pScreen, RADEONDRIRefreshArea );
     } else {
        info->allowPageFlip = 0;
     }
@@ -1834,7 +1833,9 @@ static void RADEONDRITransitionTo3d(ScreenPtr pScreen)
     RADEONEnablePageFlip(pScreen);
 
     info->have3DWindows = 1;
-    xf86ForceHWCursor (pScreen, TRUE);
+
+    if (info->cursor_start)
+	xf86ForceHWCursor (pScreen, TRUE);
 }
 
 static void RADEONDRITransitionTo2d(ScreenPtr pScreen)
@@ -1857,5 +1858,7 @@ static void RADEONDRITransitionTo2d(ScreenPtr pScreen)
     xf86FreeOffscreenArea(info->depthTexArea); 
 
     info->have3DWindows = 0;
-    xf86ForceHWCursor (pScreen, FALSE);
+
+    if (info->cursor_start)
+	    xf86ForceHWCursor (pScreen, FALSE);
 }

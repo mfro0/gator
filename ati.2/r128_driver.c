@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/r128_driver.c,v 1.73 2003/01/15 03:32:16 dawes Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/r128_driver.c,v 1.75 2003/02/19 01:19:41 dawes Exp $ */
 /*
  * Copyright 1999, 2000 ATI Technologies Inc., Markham, Ontario,
  *                      Precision Insight, Inc., Cedar Park, Texas, and
@@ -945,10 +945,44 @@ static Bool R128PreInitConfig(ScrnInfoPtr pScrn)
 	switch (info->Chipset) {
 	/* R128 Pro and Pro2 can have DFP, we will deal with it.
 	   No support for dual-head/xinerama yet.
-          M3 can also have DFP, no support for now */	
+           M3 can also have DFP, no support for now */	
 	case PCI_CHIP_RAGE128TF: 
 	case PCI_CHIP_RAGE128TL:
-	case PCI_CHIP_RAGE128TR: info->isPro2 = TRUE; 
+	case PCI_CHIP_RAGE128TR:
+	/* FIXME: RAGE128 TS/TT/TU are assumed to be PRO2 as all 6 chips came
+	 *        out at the same time, so are of the same family likely.
+	 *        This requires confirmation however to be fully correct.
+	 *        Mike A. Harris <mharris@redhat.com>
+	 */
+	case PCI_CHIP_RAGE128TS: 
+	case PCI_CHIP_RAGE128TT:
+	case PCI_CHIP_RAGE128TU: info->isPro2 = TRUE; 
+	/* FIXME: RAGE128 P[ABCEGHIJKLMNOQSTUVWX] are assumed to have DFP
+	 *        capability, as the comment at the top suggests.
+	 *        This requires confirmation however to be fully correct.
+	 *        Mike A. Harris <mharris@redhat.com>
+	 */
+	case PCI_CHIP_RAGE128PA:
+	case PCI_CHIP_RAGE128PB:
+	case PCI_CHIP_RAGE128PC:
+	case PCI_CHIP_RAGE128PE:
+	case PCI_CHIP_RAGE128PG:
+	case PCI_CHIP_RAGE128PH:
+	case PCI_CHIP_RAGE128PI:
+	case PCI_CHIP_RAGE128PJ:
+	case PCI_CHIP_RAGE128PK:
+	case PCI_CHIP_RAGE128PL:
+	case PCI_CHIP_RAGE128PM:
+	case PCI_CHIP_RAGE128PN:
+	case PCI_CHIP_RAGE128PO:
+	case PCI_CHIP_RAGE128PQ:
+	case PCI_CHIP_RAGE128PS:
+	case PCI_CHIP_RAGE128PT:
+	case PCI_CHIP_RAGE128PU:
+	case PCI_CHIP_RAGE128PV:
+	case PCI_CHIP_RAGE128PW:
+	case PCI_CHIP_RAGE128PX:
+
 	case PCI_CHIP_RAGE128PD:
 	case PCI_CHIP_RAGE128PF:
 	case PCI_CHIP_RAGE128PP:
@@ -964,6 +998,18 @@ static Bool R128PreInitConfig(ScrnInfoPtr pScrn)
 	case PCI_CHIP_RAGE128RK:
 	case PCI_CHIP_RAGE128RL:
 	case PCI_CHIP_RAGE128SM:
+	/* FIXME: RAGE128 S[EFGHKLN] are assumed to be like the SM above as
+	 *        all of them are listed as "Rage 128 4x" in ATI docs.
+	 *        This requires confirmation however to be fully correct.
+	 *        Mike A. Harris <mharris@redhat.com>
+	 */
+	case PCI_CHIP_RAGE128SE:
+	case PCI_CHIP_RAGE128SF:
+	case PCI_CHIP_RAGE128SG:
+	case PCI_CHIP_RAGE128SH:
+	case PCI_CHIP_RAGE128SK:
+	case PCI_CHIP_RAGE128SL:
+	case PCI_CHIP_RAGE128SN:
 	default:                 info->HasPanelRegs = FALSE; break;
 	}
     }
@@ -1104,20 +1150,53 @@ static Bool R128PreInitConfig(ScrnInfoPtr pScrn)
 	case PCI_CHIP_RAGE128LE:
 	case PCI_CHIP_RAGE128RE:
 	case PCI_CHIP_RAGE128RK:
-	case PCI_CHIP_RAGE128PP:
+	case PCI_CHIP_RAGE128PD:
 	case PCI_CHIP_RAGE128PR:
-	case PCI_CHIP_RAGE128PD: info->IsPCI = TRUE;  break;
+	case PCI_CHIP_RAGE128PP: info->IsPCI = TRUE;  break;
 	case PCI_CHIP_RAGE128LF:
 	case PCI_CHIP_RAGE128MF:
 	case PCI_CHIP_RAGE128ML:
+	case PCI_CHIP_RAGE128PF:
 	case PCI_CHIP_RAGE128RF:
 	case PCI_CHIP_RAGE128RG:
 	case PCI_CHIP_RAGE128RL:
 	case PCI_CHIP_RAGE128SM:
-	case PCI_CHIP_RAGE128PF:
 	case PCI_CHIP_RAGE128TF:
 	case PCI_CHIP_RAGE128TL:
 	case PCI_CHIP_RAGE128TR:
+	/* FIXME: Rage 128 S[EFGHKLN], T[STU], P[ABCEGHIJKLMNOQSTUVWX] are
+	 * believed to be AGP, but need confirmation. <mharris@redhat.com>
+	 */
+	case PCI_CHIP_RAGE128PA:
+	case PCI_CHIP_RAGE128PB:
+	case PCI_CHIP_RAGE128PC:
+	case PCI_CHIP_RAGE128PE:
+	case PCI_CHIP_RAGE128PG:
+	case PCI_CHIP_RAGE128PH:
+	case PCI_CHIP_RAGE128PI:
+	case PCI_CHIP_RAGE128PJ:
+	case PCI_CHIP_RAGE128PK:
+	case PCI_CHIP_RAGE128PL:
+	case PCI_CHIP_RAGE128PM:
+	case PCI_CHIP_RAGE128PN:
+	case PCI_CHIP_RAGE128PO:
+	case PCI_CHIP_RAGE128PQ:
+	case PCI_CHIP_RAGE128PS:
+	case PCI_CHIP_RAGE128PT:
+	case PCI_CHIP_RAGE128PU:
+	case PCI_CHIP_RAGE128PV:
+	case PCI_CHIP_RAGE128PW:
+	case PCI_CHIP_RAGE128PX:
+	case PCI_CHIP_RAGE128TS:
+	case PCI_CHIP_RAGE128TT:
+	case PCI_CHIP_RAGE128TU:
+	case PCI_CHIP_RAGE128SE:
+	case PCI_CHIP_RAGE128SF:
+	case PCI_CHIP_RAGE128SG:
+	case PCI_CHIP_RAGE128SH:
+	case PCI_CHIP_RAGE128SK:
+	case PCI_CHIP_RAGE128SL:
+	case PCI_CHIP_RAGE128SN:
 	default:                 info->IsPCI = FALSE; break;
 	}
     }
@@ -2481,6 +2560,7 @@ Bool R128ScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	    xf86DrvMsg(scrnIndex, X_INFO, "Using software cursor\n");
 	}
     } else {
+	info->cursor_start = 0;
 	xf86DrvMsg(scrnIndex, X_INFO, "Using software cursor\n");
     }
 

@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/radeon_reg.h,v 1.24 2003/01/17 19:54:03 martin Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/radeon_reg.h,v 1.25 2003/02/07 18:08:59 martin Exp $ */
 /*
  * Copyright 2000 ATI Technologies Inc., Markham, Ontario, and
  *                VA Linux Systems Inc., Fremont, California.
@@ -305,6 +305,10 @@
 #define RADEON_CRTC2_PITCH                  0x032c
 #define RADEON_CRTC_STATUS                  0x005c
 #       define RADEON_CRTC_VBLANK_SAVE      (1 <<  1)
+#       define RADEON_CRTC_VBLANK_SAVE_CLEAR  (1 <<  1)
+#define RADEON_CRTC2_STATUS                  0x03fc
+#       define RADEON_CRTC2_VBLANK_SAVE      (1 <<  1)
+#       define RADEON_CRTC2_VBLANK_SAVE_CLEAR  (1 <<  1)
 #define RADEON_CRTC_V_SYNC_STRT_WID         0x020c
 #       define RADEON_CRTC_V_SYNC_STRT        (0x7ff <<  0)
 #       define RADEON_CRTC_V_SYNC_STRT_SHIFT  0

@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/radeon.h,v 1.36 2003/02/04 12:02:19 eich Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/radeon.h,v 1.37 2003/02/23 23:28:48 dawes Exp $ */
 /*
  * Copyright 2000 ATI Technologies Inc., Markham, Ontario, and
  *                VA Linux Systems Inc., Fremont, California.
@@ -350,6 +350,8 @@ typedef struct {
 #ifdef ARGB_CURSOR
     Bool	      cursor_argb;
 #endif
+    int               cursor_fg;
+    int               cursor_bg;
 
     /*
      * XAAForceTransBlit is used to change the behavior of the XAA

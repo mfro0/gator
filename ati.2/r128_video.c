@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/r128_video.c,v 1.25 2003/02/04 02:40:24 dawes Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/r128_video.c,v 1.26 2003/02/19 01:19:41 dawes Exp $ */
 
 #include "r128.h"
 #include "r128_reg.h"
@@ -1536,7 +1536,8 @@ R128StopVideo(ScrnInfoPtr pScrn, pointer data, Bool cleanup)
   if(cleanup) {
      if(pPriv->videoStatus & CLIENT_VIDEO_ON) {
 	OUTREG(R128_OV0_SCALE_CNTL, 0);
-	xf86ForceHWCursor (pScrn->pScreen, FALSE);
+	if (info->cursor_start)
+	   xf86ForceHWCursor (pScrn->pScreen, FALSE);
      }
      if(pPriv->linear) {
 	xf86FreeOffscreenLinear(pPriv->linear);
@@ -2433,7 +2434,7 @@ R128PutImage(
 	break;
     }
 
-    if (!(pPriv->videoStatus & CLIENT_VIDEO_ON))
+    if (info->cursor_start && !(pPriv->videoStatus & CLIENT_VIDEO_ON))
 	xf86ForceHWCursor (pScrn->pScreen, TRUE);
     pPriv->videoStatus = CLIENT_VIDEO_ON;
 
@@ -3012,7 +3013,7 @@ R128VideoTimerCallback(ScrnInfoPtr pScrn, Time now)
 	    if(pPriv->offTime < now) {
 		unsigned char *R128MMIO = info->MMIO;
 		OUTREG(R128_OV0_SCALE_CNTL, 0);
-		if (pPriv->videoStatus & CLIENT_VIDEO_ON)
+		if (info->cursor_start && pPriv->videoStatus & CLIENT_VIDEO_ON)
 		    xf86ForceHWCursor (pScrn->pScreen, FALSE);
 		pPriv->videoStatus = FREE_TIMER;
 		pPriv->freeTime = now + FREE_DELAY;
@@ -3023,7 +3024,7 @@ R128VideoTimerCallback(ScrnInfoPtr pScrn, Time now)
 		   xf86FreeOffscreenLinear(pPriv->linear);
 		   pPriv->linear = NULL;
 		}
-		if (pPriv->videoStatus & CLIENT_VIDEO_ON)
+		if (info->cursor_start && pPriv->videoStatus & CLIENT_VIDEO_ON)
 		    xf86ForceHWCursor (pScrn->pScreen, FALSE);
 		pPriv->videoStatus = 0;
 		info->VideoTimerCallback = NULL;

@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/radeon_video.c,v 1.23 2003/01/29 18:06:07 martin Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/ati/radeon_video.c,v 1.24 2003/02/19 01:19:43 dawes Exp $ */
 
 #include "radeon.h"
 #include "radeon_macros.h"
@@ -2052,7 +2052,8 @@ RADEONStopVideo(ScrnInfoPtr pScrn, pointer data, Bool cleanup)
      if(pPriv->videoStatus & CLIENT_VIDEO_ON) {
 	RADEONWaitForFifo(pScrn, 2);
 	OUTREG(RADEON_OV0_SCALE_CNTL, 0);
-	xf86ForceHWCursor (pScrn->pScreen, FALSE);
+	if (info->cursor_start)
+	    xf86ForceHWCursor (pScrn->pScreen, FALSE);
      }
      if(pPriv->video_stream_active){
         RADEONWaitForFifo(pScrn, 2);
@@ -3084,7 +3085,7 @@ RADEONPutImage(
 					   REGION_RECTS(clipBoxes));
     }
 
-    if (!(pPriv->videoStatus & CLIENT_VIDEO_ON))
+    if (info->cursor_start && !(pPriv->videoStatus & CLIENT_VIDEO_ON))
 	xf86ForceHWCursor (pScrn->pScreen, TRUE);
 
     RADEONDisplayVideo(pScrn, pPriv, id, offset, offset, offset, offset, width, height, dstPitch,
@@ -3726,7 +3727,7 @@ RADEONVideoTimerCallback(ScrnInfoPtr pScrn, Time now)
 	    if(pPriv->offTime < now) {
 		unsigned char *RADEONMMIO = info->MMIO;
 		OUTREG(RADEON_OV0_SCALE_CNTL, 0x80000000);
-		if (pPriv->videoStatus & CLIENT_VIDEO_ON)
+		if (info->cursor_start && pPriv->videoStatus & CLIENT_VIDEO_ON)
 		    xf86ForceHWCursor (pScrn->pScreen, FALSE);
 		pPriv->videoStatus = FREE_TIMER;
 		pPriv->freeTime = now + FREE_DELAY;
@@ -3737,7 +3738,7 @@ RADEONVideoTimerCallback(ScrnInfoPtr pScrn, Time now)
 		   xf86FreeOffscreenLinear(info->videoLinear);
 		   info->videoLinear = NULL;
 		}
-		if (pPriv->videoStatus & CLIENT_VIDEO_ON)
+		if (info->cursor_start && pPriv->videoStatus & CLIENT_VIDEO_ON)
 		    xf86ForceHWCursor (pScrn->pScreen, FALSE);
 		pPriv->videoStatus = 0;
 		info->VideoTimerCallback = NULL;
@@ -3921,7 +3922,8 @@ RADEONDisplaySurface(
     if (portPriv->videoStatus & CLIENT_VIDEO_ON) {
 	REGION_EMPTY(pScrn->pScreen, &portPriv->clip);   
 	UpdateCurrentTime();
-	xf86ForceHWCursor (pScrn->pScreen, FALSE);
+	if (info->cursor_start)
+	    xf86ForceHWCursor (pScrn->pScreen, FALSE);
 	portPriv->videoStatus = FREE_TIMER;
 	portPriv->freeTime = currentTime.milliseconds + FREE_DELAY;
 	info->VideoTimerCallback = RADEONVideoTimerCallback;
