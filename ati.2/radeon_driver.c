@@ -2277,6 +2277,11 @@ Bool RADEONPreInit(ScrnInfoPtr pScrn, int flags)
     } else {
     	info->RageTheatreTunerPort=-1;
     }
+    
+    if(info->RageTheatreTunerPort>5){
+         xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "Attempt to assign Rage Theatre tuner port to invalid value. Disabling setting\n");
+	 info->RageTheatreTunerPort=-1;
+	 }
 
     if(xf86GetOptValInteger(info->Options, OPTION_RAGE_THEATRE_COMPOSITE_PORT, &(info->RageTheatreCompositePort))) {
         xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "Rage Theatre composite port was specified as %d\n",
@@ -2285,6 +2290,11 @@ Bool RADEONPreInit(ScrnInfoPtr pScrn, int flags)
     	info->RageTheatreCompositePort=-1;
     }
 
+    if(info->RageTheatreCompositePort>6){
+         xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "Attempt to assign Rage Theatre composite port to invalid value. Disabling setting\n");
+	 info->RageTheatreCompositePort=-1;
+	 }
+
     if(xf86GetOptValInteger(info->Options, OPTION_RAGE_THEATRE_SVIDEO_PORT, &(info->RageTheatreSVideoPort))) {
         xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "Rage Theatre SVideo Port was specified as %d\n",
                                 info->RageTheatreSVideoPort);
@@ -2292,12 +2302,22 @@ Bool RADEONPreInit(ScrnInfoPtr pScrn, int flags)
     	info->RageTheatreSVideoPort=-1;
     }
 
+    if(info->RageTheatreSVideoPort>6){
+         xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "Attempt to assign Rage Theatre SVideo port to invalid value. Disabling setting\n");
+	 info->RageTheatreSVideoPort=-1;
+	 }
+
     if(xf86GetOptValInteger(info->Options, OPTION_TUNER_TYPE, &(info->tunerType))) {
         xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "Tuner type was specified as %d\n",
                                 info->tunerType);
     } else {
     	info->tunerType=-1;
     }
+
+    if(info->tunerType>31){
+         xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "Attempt to set tuner type to invalid value. Disabling setting\n");
+	 info->tunerType=-1;
+	 }
 #endif
 
     if (xf86ReturnOptValBool(info->Options, OPTION_FBDEV, FALSE)) {

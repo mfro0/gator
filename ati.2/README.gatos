@@ -1,3 +1,19 @@
+** instructions for users
+
+   GATOS specific options. The following options may be specified in
+   /etc/XF86Config device section in case when BIOS is not available
+   or autodetection fails.
+   
+   RageTheatreCrystal: either 2700 or 2950. Normally autodetection should
+                       work fine
+   RageTheatreTunerPort, RageTheatreCompositePort, RageTheatreSVideoPort:
+    these options should be specified only if BIOS is not present or
+    autodetection fails. Possible values span integers from 0 to 6.
+
+   TunerType should be specified when BIOS is not available or autodetection
+   fails. Possible values span integers from 0 to 31, but not all tuner types
+   are in use at the moment.
+
 ** instructions for developers
 
 	- Create patches with:
