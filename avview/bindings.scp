@@ -33,8 +33,8 @@ set avview_bindings {
 set avview_video_window_bindings {
 	"input_channel %s %K" <Key> 
 	"next_control 1" <ButtonPress-1>
-	"change_control -1" <ButtonPress-4>
-	"change_control 1" <ButtonPress-5>
+	"change_control -1" <ButtonPress-5>
+	"change_control 1" <ButtonPress-4>
 	}
 
 set avview_bindings_layout {action default_sequence}
