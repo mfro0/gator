@@ -31,7 +31,7 @@ typedef struct {
 	double f_ifbw;  /* bandwidth */
 	double f_step;  /* step */
 	
-	/* what we computer */
+	/* what we compute */
 	double f_lo1;
 	double f_lo2;
 	int LO1I;
@@ -51,6 +51,7 @@ typedef struct {
 	int afc_count;
 	int last_afc_hint;
 	
+	double video_if;
 	FI1236_parameters parm;
 	
 	struct {

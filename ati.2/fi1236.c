@@ -43,6 +43,7 @@ FI1236Ptr Detect_FI1236(I2CBusPtr b, I2CSlaveAddr addr)
    f->type=TUNER_TYPE_FI1236;
    f->afc_timer_installed=FALSE;
    f->last_afc_hint=FI1236_OFF;
+   f->video_if=45.7812;
   
    if(!I2C_WriteRead(&(f->d), NULL, 0, &a, 1))
    {
@@ -344,7 +345,7 @@ xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "MT2032: status: XOK=%d LO1LK=%d LO2
 	XOK, LO1LK, LO2LK, LDONrb, AFC, TAD1, TAD2);
 }
 
-static void MT2032_tune_NTSC(FI1236Ptr f, double freq, double step)
+static void MT2032_tune(FI1236Ptr f, double freq, double step)
 {
 MT2032_parameters m;
 CARD8 data[10];
@@ -354,7 +355,7 @@ CARD8 data[10];
 MT2032_calculate_register_settings(&m, freq, 1090.0, 45.125, 5.25, 6.0, step);
 MT2032_calculate_register_settings(&m, freq, 1090.0, 45.74, 5.25, 6.0, step);
 #endif
-MT2032_calculate_register_settings(&m, freq, 1090.0, 45.7812, 5.25, 6.0, step);
+MT2032_calculate_register_settings(&m, freq, 1090.0, f->video_if, 5.25, 6.0, step);
 MT2032_implement_settings(f, &m);
 MT2032_optimize_VCO(f, &m);
 /* MT2032_dump_parameters(f, &m); */
@@ -432,7 +433,7 @@ void TUNER_set_frequency(FI1236Ptr f, CARD32 frequency)
     f->original_frequency=frequency;
 
     if(f->type==TUNER_TYPE_MT2032){
-    	MT2032_tune_NTSC(f, (1.0*frequency)/16.0, 0.0625);
+    	MT2032_tune(f, (1.0*frequency)/16.0, 0.0625);
 	} else {
 	FI1236_tune(f, frequency);
 	}
@@ -459,7 +460,7 @@ int FI1236_AFC(FI1236Ptr f)
 		} else
 		f->afc_delta+=f->last_afc_hint;
         xf86DrvMsg(f->d.pI2CBus->scrnIndex, X_INFO, "AFC: Setting tuner frequency to %g\n", (0.5*(2*f->original_frequency+f->afc_delta))/16.0);
-    	MT2032_tune_NTSC(f, (1.0*f->original_frequency+0.5*f->afc_delta)/16.0, 0.03125);
+    	MT2032_tune(f, (1.0*f->original_frequency+0.5*f->afc_delta)/16.0, 0.03125);
 	if(f->last_afc_hint==FI1236_OFF)return 0;
 	return 1; /* call me again */
 	} else {

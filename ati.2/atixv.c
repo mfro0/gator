@@ -1795,7 +1795,7 @@ ATIDisplayVideo(
 		-((pScrn->currentMode->Flags & V_DBLSCAN)?1:0)));
 
     v_inc = v_inc * pScrn->currentMode->VDisplay;
-    if(pATI->LCDPanelID>=0)
+    if((pATI->LCDPanelID>=0) && !pATI->OptionCRT)
 	v_inc = v_inc/(drw_h*pATI->LCDVertical);
 	else
 	v_inc = v_inc/(drw_h*pScrn->currentMode->VDisplay);
