@@ -362,7 +362,11 @@ if(f2!=NULL)f2->free_func(f2);
 vcvt_422_rgb32(snapshot_data->pib.width, snapshot_data->pib.height, snapshot_data->pib.width, snapshot_data->read_buffer, snapshot_data->pib.pixelPtr);
 set_transparency(&(snapshot_data->pib), 0xff);
 Tk_PhotoSetSize(snapshot_data->ph, snapshot_data->pib.width, snapshot_data->pib.height);
-Tk_PhotoPutBlock(snapshot_data->ph, &(snapshot_data->pib), 0, 0, snapshot_data->pib.width, snapshot_data->pib.height);
+Tk_PhotoPutBlock(snapshot_data->ph, &(snapshot_data->pib), 0, 0, snapshot_data->pib.width, snapshot_data->pib.height
+#if (TK_MAJOR_VERSION==8) && (TK_MINOR_VERSION==4)
+	, TK_PHOTO_COMPOSITE_SET
+#endif
+	);
 if(snapshot_data->transfer_complete_script!=NULL)Tcl_Eval(snapshot_data->interp, snapshot_data->transfer_complete_script);
 free(snapshot_data->pib.pixelPtr);
 snapshot_data->pib.pixelPtr=NULL;
