@@ -10,6 +10,7 @@
 #define __PACKET_STREAM_H__
 
 #include <pthread.h>
+#include "global.h"
 
 /* consumer threads should NEVER touch packet with p->next==NULL */
 /* for now s->ctr_mutex protects the whole PACKET_STREAM not just the fields
@@ -21,6 +22,7 @@ typedef struct S_PACKET{
 	size_t free;
 	int discard;
 	int recycle;
+	int64 timestamp;
 	unsigned char *buf;
 	void (*free_func)(struct S_PACKET *);
 	char *type;
@@ -46,6 +48,9 @@ PACKET *new_generic_packet(PACKET_STREAM *s, size_t size);
 void free_generic_packet(PACKET *p);
 void deliver_packet(PACKET_STREAM *s, PACKET *p);
 void discard_packets(PACKET_STREAM *s);
+
+#define STOP_CONSUMER_THREAD	1
+#define STOP_PRODUCER_THREAD	2
 
 
 #endif

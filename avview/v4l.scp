@@ -341,6 +341,7 @@ catch {
 	if { $v4l_capture_on && ($size > [expr $fifo_limit*1024*1024]) } {
 		set v4l_capture_on false
 		$cw.record_button flash
+		tk_dialog .controlwin.limit_reached "Fifo limit reached" "Fifo limit has been reached.\nCapture stopped." "" 0 "OK"
 		}
 	}
 after 800 "check_fifo $cw"

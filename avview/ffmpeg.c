@@ -27,6 +27,7 @@
 
 #if USE_FFMPEG
 
+#include <sys/time.h>
 #include <pthread.h>
 #include "avcodec.h"
 #include "avformat.h"
@@ -52,6 +53,9 @@ typedef struct {
 	AVFormatContext format_context;
 	int audio_stream_num;
 	int video_stream_num;
+	int64 last_audio_timestamp;
+	int64 last_video_timestamp;
+	
 	pthread_mutex_t format_context_mutex;
 	PACKET_STREAM *video_s;
 	PACKET_STREAM *audio_s;
@@ -115,10 +119,15 @@ picture.linesize[0]=sdata->video_codec_context.width;
 picture.linesize[1]=sdata->video_codec_context.width/2;
 picture.linesize[2]=sdata->video_codec_context.width/2;
 while(1){
-	/* wait for data to arrive */
-/*	sleep(1); */
 	pthread_mutex_lock(&(s->ctr_mutex));
 	f=s->first;
+	if(!(s->stop_stream & STOP_PRODUCER_THREAD) &&((f==NULL)||(f->next==NULL))){
+		/* no data to encode - terminate thread instead of spinning */
+		do_free(picture.data[0]);
+		s->consumer_thread_running=0;
+		pthread_mutex_unlock(&(s->ctr_mutex));
+		pthread_exit(NULL);
+		}
 	pthread_mutex_unlock(&(s->ctr_mutex));
 	while((f!=NULL)&&(f->next!=NULL)){
 		if(1){
@@ -135,9 +144,31 @@ while(1){
 					} else {
 					i=write(sdata->fd_out, output_buf+ob_written, ob_free-ob_written);
 					}
+				sdata->last_video_timestamp=f->timestamp;
+				if(sdata->last_audio_timestamp > f->timestamp){
+					/* audio encoding is faster than us */
+					if(sdata->audio_s!=NULL){
+						pthread_mutex_lock(&(sdata->audio_s->ctr_mutex));
+						sdata->audio_s->stop_stream |= STOP_CONSUMER_THREAD;
+						pthread_mutex_unlock(&(sdata->audio_s->ctr_mutex));
+						fprintf(stderr,"- Stopping audio thread\n");
+						}
+					} else {
+					/* we caught up with audio encoding */
+					if(sdata->audio_s!=NULL){
+						pthread_mutex_lock(&(sdata->audio_s->ctr_mutex));
+						sdata->audio_s->stop_stream &= ~STOP_CONSUMER_THREAD;
+						if(!sdata->audio_s->consumer_thread_running){
+							pthread_create(&(sdata->audio_s->consumer_thread_id), NULL, sdata->audio_s->consume_func, sdata->audio_s);
+							fprintf(stderr,"+ Restarting audio thread\n");
+							}
+						pthread_mutex_unlock(&(sdata->audio_s->ctr_mutex));
+						}
+					}
 				pthread_mutex_unlock(&(sdata->format_context_mutex));
 				if(i>=0)ob_written+=i;
 				}
+			fprintf(stderr,"Done encoding video packet with timestamp %lld\n", f->timestamp);
 			}
 		incoming_frames_count++;
 		/* get next one */
@@ -145,13 +176,17 @@ while(1){
 		f=f->next;
 		pthread_mutex_lock(&(s->ctr_mutex));
 		discard_packets(s); 
+		if(s->stop_stream & STOP_CONSUMER_THREAD){
+			pthread_mutex_unlock(&(s->ctr_mutex));
+			break;
+			}
 		pthread_mutex_unlock(&(s->ctr_mutex));
 		}
 #if 0
 	fprintf(stderr,"frame_count=%d  stop=%d\n", sdata->frame_count, sdata->stop);
 #endif
 	pthread_mutex_lock(&(s->ctr_mutex));
-	if(s->stop_stream){
+	if((s->stop_stream & STOP_PRODUCER_THREAD) && !s->producer_thread_running){
 		avcodec_close(&(sdata->video_codec_context));
 		for(f=s->first;f!=NULL;f=f->next)f->discard=1;
 		discard_packets(s);
@@ -179,7 +214,7 @@ nice(1);
 while(1){
 	pthread_mutex_lock(&(s->ctr_mutex));
 	f=s->first;
-	if(!s->stop_stream &&((f==NULL)||(f->next==NULL))){
+	if(!(s->stop_stream & STOP_PRODUCER_THREAD) &&((f==NULL)||(f->next==NULL))){
 		/* no data to encode - terminate thread instead of spinning */
 		do_free(out_buf);
 		s->consumer_thread_running=0;
@@ -199,21 +234,36 @@ while(1){
 					} else {
 					i=write(sdata->fd_out, out_buf+ob_written, ob_free-ob_written);
 					}
+				sdata->last_audio_timestamp=f->timestamp;
+				if(sdata->last_video_timestamp < f->timestamp){
+					pthread_mutex_lock(&(s->ctr_mutex));
+					s->stop_stream|=STOP_CONSUMER_THREAD;
+					pthread_mutex_unlock(&(s->ctr_mutex));
+					fprintf(stderr,"* Stopping audio thread (self)\n");					
+					}
 				pthread_mutex_unlock(&(sdata->format_context_mutex));
 				if(i>=0)ob_written+=i;
 				}
+			fprintf(stderr,"Done encoding audio packet with timestamp %lld\n", f->timestamp);
 			}
 		f->discard=1;
 		f=f->next;
 		pthread_mutex_lock(&(s->ctr_mutex));
 		discard_packets(s); 
+		if(s->stop_stream & STOP_CONSUMER_THREAD){
+			s->consumer_thread_running=0;
+			pthread_mutex_unlock(&(s->ctr_mutex));
+			free(out_buf);
+			pthread_exit(NULL);
+			break;
+			}
 		pthread_mutex_unlock(&(s->ctr_mutex));
 		}
 	pthread_mutex_lock(&(s->ctr_mutex));	
-	if(s->stop_stream){
-		avcodec_close(&(sdata->audio_codec_context));
-		for(f=s->first;f!=NULL;f=f->next)f->discard=1;
-		discard_packets(s);
+	if((s->stop_stream & STOP_PRODUCER_THREAD) && !s->producer_thread_running){
+		if(s->first!=NULL)avcodec_close(&(sdata->audio_codec_context));
+		for(f=sdata->audio_s->first;f!=NULL;f=f->next)f->discard=1;
+		discard_packets(sdata->audio_s);
 		s->consumer_thread_running=0;
 		pthread_mutex_unlock(&(s->ctr_mutex));
 		free(out_buf);
@@ -231,18 +281,21 @@ PACKET_STREAM *s=sdata->video_s;
 fd_set read_fds;
 int a;
 long incoming_frames_count=0;
+struct timeval tv;
 /* lock mutex before testing s->stop_stream */
 p=new_generic_packet(s, sdata->video_size);
 pthread_mutex_lock(&(s->ctr_mutex));
-while(!s->stop_stream){
+while(!(s->stop_stream & STOP_PRODUCER_THREAD)){
 	pthread_mutex_unlock(&(s->ctr_mutex));
 	
 	/* do the reading */
 	if((a=read(data->fd, p->buf+p->free, p->size-p->free))>0){
 		p->free+=a;
 		if(p->free==p->size){ /* deliver packet */
+			gettimeofday(&tv, NULL);
+			p->timestamp=(((int64)tv.tv_sec)<<20)|(tv.tv_usec);
 			pthread_mutex_lock(&(s->ctr_mutex));
-			if(!s->stop_stream &&
+			if(!(s->stop_stream & STOP_PRODUCER_THREAD) &&
 				(!sdata->step_frames || !(incoming_frames_count % sdata->step_frames))){
 				deliver_packet(s, p);
 				pthread_mutex_unlock(&(s->ctr_mutex));
@@ -349,6 +402,8 @@ sdata->height=vwin.height;
 sdata->video_size=vwin.width*vwin.height*2;
 sdata->frame_count=1;
 sdata->frames_encoded=0;
+sdata->last_audio_timestamp=0;
+sdata->last_video_timestamp=0;
 
 if(arg_video_codec==NULL){
 	sdata->video_codec=avcodec_find_encoder(CODEC_ID_MPEG4);
@@ -584,7 +639,7 @@ struct video_window vwin;
 
 Tcl_ResetResult(interp);
 
-/* no don raise errors if no capture is going on */
+/* no don't raise errors if no capture is going on */
 
 if(argc<2){
 	Tcl_AppendResult(interp,"ERROR: ffmpeg_stop_encoding requires one argument", NULL);
@@ -601,8 +656,8 @@ if((sdata==NULL)||(sdata->type!=FFMPEG_CAPTURE_KEY)){
 	}
 pthread_mutex_lock(&(sdata->video_s->ctr_mutex));
 pthread_mutex_lock(&(sdata->audio_s->ctr_mutex));
-sdata->video_s->stop_stream=1;
-sdata->audio_s->stop_stream=1;
+sdata->video_s->stop_stream|=STOP_PRODUCER_THREAD;
+sdata->audio_s->stop_stream|=STOP_PRODUCER_THREAD;
 pthread_mutex_unlock(&(sdata->audio_s->ctr_mutex));
 pthread_mutex_unlock(&(sdata->video_s->ctr_mutex));
 return 0;
@@ -615,6 +670,7 @@ pthread_t thread;
 struct video_picture vpic;
 struct video_window vwin;
 long total;
+PACKET *f;
 
 Tcl_ResetResult(interp);
 /* Report 0 bytes when no such device exists or it is not capturing */
@@ -640,16 +696,18 @@ if(sdata->video_s!=NULL){
 if(sdata->audio_s!=NULL){
 	pthread_mutex_lock(&(sdata->audio_s->ctr_mutex));
 	}
-if((sdata->video_s!=NULL) && sdata->video_s->stop_stream && 
+if((sdata->video_s!=NULL) && (sdata->video_s->stop_stream & STOP_PRODUCER_THREAD) && 
 	!sdata->video_s->consumer_thread_running &&
-	!sdata->video_s->producer_thread_running){
+	!sdata->video_s->producer_thread_running &&
+	(sdata->video_s->total==0)){
 	data->priv=NULL;
 	free(sdata->video_s);
 	sdata->video_s=NULL;
 	}
-if((sdata->audio_s!=NULL) && sdata->audio_s->stop_stream && 
+if((sdata->audio_s!=NULL) && (sdata->audio_s->stop_stream & STOP_PRODUCER_THREAD) && 
 	!sdata->audio_s->consumer_thread_running &&
-	!sdata->audio_s->producer_thread_running){
+	!sdata->audio_s->producer_thread_running &&
+	(sdata->audio_s->total==0)){
 	free(sdata->audio_s);
 	sdata->audio_s=NULL;
 	}

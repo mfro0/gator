@@ -99,6 +99,7 @@ if(s->first==NULL)s->first=p;
 s->total+=p->free;
 if((s->total>s->threshold) && 
 	!s->consumer_thread_running &&
+	!(s->stop_stream & STOP_CONSUMER_THREAD) &&
 	(s->consume_func!=NULL)){
 	/* start consumer thread */
 	if(pthread_create(&(s->consumer_thread_id), NULL, s->consume_func, s)<0){
@@ -119,7 +120,7 @@ while((s->first!=NULL) && (s->first->discard) && (s->first->next!=NULL)){
 	s->first=p->next;
 	if(s->first!=NULL)s->first->prev=NULL;
 	s->total-=p->free;
-	if(p->recycle && !s->stop_stream && (s->unused_total<=(s->total+s->threshold+2*p->size)/2)){
+	if(p->recycle && !(s->stop_stream & STOP_PRODUCER_THREAD) && (s->unused_total<=(s->total+s->threshold+2*p->size)/2)){
 		p->next=s->unused;
 		p->prev=NULL;
 		s->unused=p;
@@ -127,12 +128,12 @@ while((s->first!=NULL) && (s->first->discard) && (s->first->next!=NULL)){
 		} else
 	if(p->free_func!=NULL)p->free_func(p);
 	}
-if((s->first!=NULL) && (s->first->discard) && (s->first->next==s->last)){
+if((s->first!=NULL) && (s->first->discard) && (s->first==s->last)){
 	p=s->first;
 	s->first=NULL;
 	s->last=NULL;
 	s->total-=p->free;
-	if(p->recycle && !s->stop_stream && (s->unused_total<=(s->total+s->threshold+2*p->size)/2)){
+	if(p->recycle && !(s->stop_stream & STOP_PRODUCER_THREAD) && (s->unused_total<=(s->total+s->threshold+2*p->size)/2)){
 		p->next=s->unused;
 		p->prev=NULL;
 		s->unused=p;
@@ -141,7 +142,7 @@ if((s->first!=NULL) && (s->first->discard) && (s->first->next==s->last)){
 	if(p->free_func!=NULL)p->free_func(p);
 	}
 while((s->unused_total>=2*(s->total+s->threshold))
-      ||(s->stop_stream && (s->unused!=NULL))){
+      ||((s->stop_stream & STOP_PRODUCER_THREAD) && (s->unused!=NULL))){
 	if(s->unused==NULL){
 		fprintf(stderr,"INTERNAL ERROR: unused_total non-zero while unused==NULL\n");
 		break;

@@ -25,6 +25,7 @@
 #include "config.h"
 
 #include <pthread.h>
+#include "global.h"
 #include "alsa.h"
 
 #if USE_ALSA
@@ -32,6 +33,7 @@
 
 #include <alsa/asoundlib.h>
 #include <endian.h>
+#include <sys/time.h>
 
 STRING_CACHE *alsa_sc;
 
@@ -51,8 +53,6 @@ typedef struct {
 	ALSA_PARAMETERS *param;
 	} ALSA_DATA;
 
-#include "global.h"
-#include "alsa.h"
 
 int alsa_card_get_name(ClientData client_data,Tcl_Interp* interp,int argc,char *argv[])
 {
@@ -443,11 +443,12 @@ PACKET *p;
 ALSA_DATA *data=(ALSA_DATA *)s->priv;
 int a;
 int frames_to_read;
+struct timeval tv;
 /* lock mutex before testing s->stop_stream */
 data->recording_chunk_size=data->param->chunk_size;
 p=new_generic_packet(s, data->recording_chunk_size); 
 pthread_mutex_lock(&(s->ctr_mutex));
-while(!s->stop_stream){
+while(!(s->stop_stream & STOP_PRODUCER_THREAD)){
 	pthread_mutex_unlock(&(s->ctr_mutex));
 	
 	/* do the reading */
@@ -460,8 +461,10 @@ while(!s->stop_stream){
 		fprintf(stderr,"Read %d samples\n", a);
 		#endif
 		if(p->free>=p->size){ /* deliver packet */
+			gettimeofday(&tv, NULL);
+			p->timestamp=(((int64)tv.tv_sec)<<20)|(tv.tv_usec);
 			pthread_mutex_lock(&(s->ctr_mutex));
-			if(!s->stop_stream){
+			if(!(s->stop_stream & STOP_PRODUCER_THREAD)){
 				deliver_packet(s, p);
 				pthread_mutex_unlock(&(s->ctr_mutex));
 				p=new_generic_packet(s, data->recording_chunk_size);
