@@ -1926,6 +1926,18 @@ RADEONSetupImageVideo(ScreenPtr pScreen)
 	case PCI_CHIP_RADEON_LW:
 	        xf86DrvMsg(pScrn->scrnIndex,X_INFO,"Detected Radeon Mobility M7, disabling i2c and Rage Theatre\n");
 		break;
+	#ifndef PCI_CHIP_RADEON_If
+		#define PCI_CHIP_RADEON_If 0x496e
+	#endif
+	case PCI_CHIP_RADEON_If:
+	     xf86DrvMsg(pScrn->scrnIndex,X_INFO,"Detected Radeon 9000 - skipping i2c initialization code.\n");
+	    if(!pPriv->MM_TABLE_valid){
+	        xf86DrvMsg(pScrn->scrnIndex,X_INFO,"Multimedia table is not valid and no forced settings have been specified\n");
+	        xf86DrvMsg(pScrn->scrnIndex,X_INFO,"Skipping Rage Theatre initialization code.\n");
+	    	} else {
+		    pPriv->theatre=xf86_DetectTheatre(pPriv->VIP);
+		    }
+	     break;
 	default:
 	    if(!pPriv->MM_TABLE_valid){
 	        xf86DrvMsg(pScrn->scrnIndex,X_INFO,"Multimedia table is not valid and no forced settings have been specified\n");
