@@ -28,8 +28,8 @@ km_drv.o: $(KM_OBJS)
 km_api_drv.o: $(KM_API_OBJS)
 	ld -r $(KM_API_OBJS) -o km_api_drv.o
 
-km_v4l.o:	km_v4l.c
-	$(CC) $(CFLAGS) -DMODULE -D__KERNEL__ -DLINUX -I$(LINUXINCLUDES) -c km_v4l.c
+km_v4l.o:	km_v4l_24.c
+	$(CC) $(CFLAGS) -DMODULE -D__KERNEL__ -DLINUX -I$(LINUXINCLUDES) -c km_v4l_24.c
 
 km_memory.o:	km_memory.c
 	$(CC) $(CFLAGS) -DMODULE -D__KERNEL__ -DLINUX -I$(LINUXINCLUDES) -c km_memory.c
