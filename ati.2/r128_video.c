@@ -1296,6 +1296,8 @@ R128SetupImageVideo(ScreenPtr pScreen)
     R128PortPrivPtr pPriv;
     XF86VideoAdaptorPtr adapt;
 
+    info->accel->Sync(pScrn);
+
     if(info->adaptor != NULL){
     	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Reinitializing Xvideo subsystems\n");
 	R128ResetVideo(pScrn);
@@ -1490,6 +1492,8 @@ R128StopVideo(ScrnInfoPtr pScrn, pointer data, Bool cleanup)
   unsigned char *R128MMIO = info->MMIO;
   R128PortPrivPtr pPriv = (R128PortPrivPtr)data;
 
+  info->accel->Sync(pScrn);
+
   REGION_EMPTY(pScrn->pScreen, &pPriv->clip);
 
   xf86DrvMsg(pScrn->scrnIndex, X_INFO, "StopVideo %s\n", cleanup ? "cleanup": "");
@@ -1531,6 +1535,8 @@ R128SetPortAttribute(
   R128InfoPtr info = R128PTR(pScrn);
   unsigned char *R128MMIO = info->MMIO;
   R128PortPrivPtr pPriv = (R128PortPrivPtr)data;
+
+  info->accel->Sync(pScrn);
 
   if(attribute == xv_autopaint_colorkey) {
   	pPriv->autopaint_colorkey = value;
@@ -1637,7 +1643,10 @@ R128GetPortAttribute(
   INT32 *value,
   pointer data
 ){
+  R128InfoPtr info = R128PTR(pScrn);
   R128PortPrivPtr pPriv = (R128PortPrivPtr)data;
+
+  info->accel->Sync(pScrn);
 
   if(attribute == xv_autopaint_colorkey) {
   	*value = pPriv->autopaint_colorkey;
@@ -2158,6 +2167,8 @@ R128PutImage(
    int top, left, npixels, nlines, bpp;
    BoxRec dstBox;
    CARD32 tmp;
+
+   info->accel->Sync(pScrn);
 
    /* if capture was active shutdown it first */
    if(pPriv->video_stream_active)
@@ -2712,6 +2723,7 @@ R128PutVideo(
    int width, height;
 
    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "PutVideo\n");
+   info->accel->Sync(pScrn);
    /*
     * s2offset, s3offset - byte offsets into U and V plane of the
     *                      source where copying starts.  Y plane is
@@ -2901,6 +2913,7 @@ R128VideoTimerCallback(ScrnInfoPtr pScrn, Time now)
 	if(pPriv->videoStatus & OFF_TIMER) {
 	    if(pPriv->offTime < now) {
 		unsigned char *R128MMIO = info->MMIO;
+		info->accel->Sync(pScrn);
 		OUTREG(R128_OV0_SCALE_CNTL, 0x80000000);
 		pPriv->videoStatus = FREE_TIMER;
 		pPriv->freeTime = now + FREE_DELAY;
