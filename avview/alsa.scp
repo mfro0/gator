@@ -209,31 +209,33 @@ $canvas configure -scrollregion "[grid bbox $mw]" -width [expr [lindex $bbox 2]+
 proc generate_alsa_window { cw } {
 global alsa_window
 global current_alsa_device
-foreach win [grid slaves $cw] { destroy $win }
+foreach win [grid slaves $cw] {
+	destroy $win 
+	}
 destroy $cw.f.c.f
 
 set cw_info [grid info $cw]
 set master [get_value $cw_info "-in"]
 set column [get_value $cw_info "-column"]
 set row [get_value $cw_info "-row"]
+
 if { !$alsa_window || ([alsa_present] == "no") } { 
 	if { "$master" != "" } {
 		grid columnconfigure $master $column -weight 0
 		}
-	canvas $cw.f -width 0 -height 0 -background red
-	grid $cw.f
+	canvas $cw.c -width 0 -height 0 -background red
+	grid $cw.c
 	return 
 	}
-#grid columnconfigure .controlwin 2 -weight 1
 if { "$master" != "" } {
 	grid columnconfigure $master $column -weight 1
-	grid rowconfigure $master $row -weight 1
+	grid rowconfigure $master [expr $row+1] -weight 1
 	}
 
 frame $cw.f 
 
 label $cw.title -text "Audio (ALSA)" -background black -foreground white
-grid $cw.title - - -sticky news -pady 2 -padx 2
+grid $cw.title - - -sticky news -pady 2 -padx 2 -row 0
 grid columnconfigure $cw 1 -weight 1
 label $cw.devicel -text "ALSA Audio device: "
 global alsa_device_menu
@@ -251,7 +253,7 @@ set current_alsa_device1 "$save_alsa_device"
 
 frame $cw.f1 -relief groove -borderwidth 2
 
-grid $cw.f1 - - -sticky news
+grid $cw.f1 - - -sticky news -padx 2 
 
 set c_info [grid info $cw.f1]
 
@@ -260,9 +262,17 @@ grid rowconfig $cw [get_value $c_info "-row"] -weight 1
 canvas $cw.f1.c -yscrollcommand "$cw.f1.vscroll set" -bd 0 -borderwidth 0\
 	-highlightthickness 0 -confine "yes" -relief flat
 scrollbar $cw.f1.vscroll -command "$cw.f1.c yview" -orient vertical 
-grid $cw.f1.c - $cw.f1.vscroll -sticky news
+#grid $cw.f1.c - $cw.f1.vscroll -sticky news
+#grid rowconfig $cw.f1 0 -weight 1
+#grid columnconfig $cw.f1 0 -weight 1
+
+grid $cw.f1.vscroll $cw.f1.c -  -sticky news
 grid rowconfig $cw.f1 0 -weight 1
-grid columnconfig $cw.f1 0 -weight 1
+grid columnconfig $cw.f1 1 -weight 1
+
+#pack $cw.f1.c  $cw.f1.vscroll  -side right
+#pack configure $cw.f1.c -fill both -expand yes
+#pack configure $cw.f1.vscroll -fill y -expand yes 
 
 frame $cw.f1.c.f
 $cw.f1.c create window 5 0 -window $cw.f1.c.f -anchor nw
@@ -270,7 +280,6 @@ $cw.f1.c create window 5 0 -window $cw.f1.c.f -anchor nw
 if { "$current_alsa_device" != "none" } {
 	generate_mixer_window $cw.f1.c $cw.f1.c.f	
 	}
-
 
 }
 	

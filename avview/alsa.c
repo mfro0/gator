@@ -281,7 +281,7 @@ for(elem=snd_hctl_first_elem(ad->hctl);elem!=NULL;elem=snd_hctl_elem_next(elem))
 				if((a=snd_hctl_elem_info(elem, ad->einfo[j]))<0){
 					fprintf(stderr,"Alsa error %s\n", snd_strerror(a));
 					} else {
-					fprintf(stderr,"item %d %s\n", k, snd_ctl_elem_info_get_item_name(ad->einfo[j]));
+					/* fprintf(stderr,"item %d %s\n", k, snd_ctl_elem_info_get_item_name(ad->einfo[j])); */
 					Tcl_ListObjAppendElement(interp, list2, Tcl_NewStringObj(snd_ctl_elem_info_get_item_name(ad->einfo[j]), -1));
 					}
 				}
