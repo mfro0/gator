@@ -6,10 +6,12 @@
 #
 bin_PROGRAMS = avview_shell start_avview
 
+INCLUDES = -I@TCL_INC_DIR@ -I@TK_INC_DIR@
 avview_shell_SOURCES = xv.c frequencies.c xmisc.c string_cache.c v4l.c formats.c ffmpeg.c \
 	alsa.c packet_stream.c linux.c main.c alsa.h config.h ffmpeg.h formats.h \
 	frequencies.h global.h linux.h packet_stream.h string_cache.h v4l.h  \
 	xmisc.h xv.h
+avview_shell_LDFLAGS = @TCL_LIB_SPEC@ @TK_LIB_SPEC@ @TK_XLIBSW@
 
 scpdir = @datadir@/AVview
 

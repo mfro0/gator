@@ -65,23 +65,30 @@ AC_CHECK_HEADER(linux/videodev.h, ,echo "Avview requires video4linux support. Yo
 AC_CHECK_LIB([X11], [XCreateSimpleWindow],,,[$X_LIBS])
 AC_CHECK_LIB([Xext], [XInitExtension],,,[$X_LIBS])
 AC_CHECK_LIB([Xv], [XvPutVideo],,,[$X_LIBS -lX11 -lXext])
-AC_CHECK_LIB([tcl8.3], [Tcl_Init],,,[$X_LIBS])
-AC_CHECK_LIB([tk8.3], [Tk_Init],,,[$X_LIBS])
 
 A_CFLAGS="$CFLAGS"
 
-AC_CHECK_HEADERS(tk.h tcl.h, TCL_HEADERS=in_path TK_HEADERS=in_path,
-	[CFLAGS="$A_FLAGS -I/usr/local/include"
-	AC_CHECK_HEADERS(tk.h tcl.h, TCL_HEADERS=/usr/local/include TK_HEADERS=/usr/local/include,
-		[CFLAGS="$A_CFLAGS -I/usr/include/tcl8.3 -I/usr/include/tk8.3"
-		AC_CHECK_HEADERS(tk.h tcl.h, TCL_HEADERS=/usr/include/tcl8.3 TK_HEADERS=/usr/include/tk8.3,
-			[echo ""
-			echo " Could not find Tcl/Tk headers. Please install Tcl/Tk 8.3"
-			echo ""
-			exit
-			],)
-		],)
-	],)
+# Sets TCL_BIN_DIR
+SC_PATH_TCLCONFIG
+# Sets TK_BIN_DIR
+SC_PATH_TKCONFIG
+# Sources tclConfig.sh, substs TCL_{BIN,SRC,INC,LIB}_DIR
+SC_LOAD_TCLCONFIG
+# Sources tkConfig.sh, substs TK_BIN_DIR
+SC_LOAD_TKCONFIG
+
+AC_SUBST([TCL_LIB_SPEC])
+AC_SUBST([TK_LIB_SPEC])
+AC_SUBST([TK_INC_DIR])
+AC_SUBST([TK_XLIBSW])
+
+dnl [echo ""
+dnl 			echo " Could not find Tcl/Tk headers. Please install Tcl/Tk 8.3"
+dnl 			echo ""
+dnl 			exit
+dnl 			],)
+dnl 		],)
+dnl 	],)
 
 AC_SUBST(X_CFLAGS)
 AC_SUBST(X_LIBS)
@@ -100,8 +107,6 @@ fi
 
 AC_SUBST(FFMPEG_LIBS)
 AC_SUBST(FFMPEG_CFLAGS)
-#AC_SUBST(TCL_HEADERS)
-#AC_SUBST(TK_HEADERS)
 
 AC_HEADER_STDC
 AC_CHECK_HEADERS([errno.h fcntl.h stdlib.h string.h sys/ioctl.h unistd.h])
@@ -125,8 +130,8 @@ echo "------------------- Configuration -------------------"
 echo ""
 echo "  X11 libraries                       $X_LIBS"
 echo "  X11 cflags                          $X_CFLAGS"
-echo "  TCL headers                         $TCL_HEADERS"
-echo "  TK headers                          $TK_HEADERS"
+echo "  TCL location                        $TCL_PREFIX"
+echo "  TK location                         $TK_PREFIX"
 echo "  ALSA support                        $ALSA_PRESENT"
 if test "$with_ffmpeg" = "" ; then
 echo "  Movie recording                     disabled"
