@@ -106,43 +106,16 @@ void
 FUNC_NAME(RADEONWaitForIdle)(ScrnInfoPtr pScrn)
 {
     RADEONInfoPtr  info = RADEONPTR(pScrn);
-    unsigned char *RADEONMMIO = info->MMIO;
     int            i    = 0;
 
-#ifdef ACCEL_CP
-    /* Make sure the CP is idle first */
-    if (info->CPStarted) {
-	int  ret;
-	FLUSH_RING();
+#ifdef ACCEL_MMIO
 
-	for (;;) {
-	    do {
-		ret = drmCommandNone(info->drmFD, DRM_RADEON_CP_IDLE);
-		if (ret && ret != -EBUSY) {
-		    xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-			       "%s: CP idle %d\n", __FUNCTION__, ret);
-		}
-	    } while ((ret == -EBUSY) && (i++ < RADEON_TIMEOUT));
-
-	    if (ret == 0) return;
-
-	    xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-		       "Idle timed out, resetting engine...\n");
-	    RADEONEngineReset(pScrn);
-	    RADEONEngineRestore(pScrn);
-
-	    /* Always restart the engine when doing CP 2D acceleration */
-	    RADEONCP_RESET(pScrn, info);
-	    RADEONCP_START(pScrn, info);
-	}
-    }
-#endif
+    unsigned char *RADEONMMIO = info->MMIO;
 
     RADEONTRACE(("WaitForIdle (entering): %d entries, stat=0x%08x\n",
 		     INREG(RADEON_RBBM_STATUS) & RADEON_RBBM_FIFOCNT_MASK,
 		     INREG(RADEON_RBBM_STATUS)));
 
-    /* Wait for the engine to go idle */
     RADEONWaitForFifoFunction(pScrn, 64);
 
     for (;;) {
@@ -166,6 +139,40 @@ FUNC_NAME(RADEONWaitForIdle)(ScrnInfoPtr pScrn)
 	}
 #endif
     }
+
+#else /* ACCEL_CP */
+
+    int  ret;
+
+    if (!info->CPStarted) {
+	RADEONWaitForIdleMMIO(pScrn);
+	return;
+    }
+    
+    FLUSH_RING();
+
+    for (;;) {
+	do {
+	    ret = drmCommandNone(info->drmFD, DRM_RADEON_CP_IDLE);
+	    if (ret && ret != -EBUSY) {
+		xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+			   "%s: CP idle %d\n", __FUNCTION__, ret);
+	    }
+	} while ((ret == -EBUSY) && (i++ < RADEON_TIMEOUT));
+
+	if (ret == 0) return;
+
+	xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+		   "Idle timed out, resetting engine...\n");
+	RADEONEngineReset(pScrn);
+	RADEONEngineRestore(pScrn);
+
+	/* Always restart the engine when doing CP 2D acceleration */
+	RADEONCP_RESET(pScrn, info);
+	RADEONCP_START(pScrn, info);
+    }
+
+#endif
 }
 
 /* This callback is required for multiheader cards using XAA */
@@ -178,10 +185,21 @@ FUNC_NAME(RADEONRestoreAccelState)(ScrnInfoPtr pScrn)
 #ifdef ACCEL_MMIO
 
     CARD32         pitch64;
+	 RADEONEntPtr   pRADEONEnt;
+	 DevUnion      *pPriv;
 
+    pPriv = xf86GetEntityPrivate(pScrn->entityList[0], gRADEONEntityIndex);
+    pRADEONEnt = pPriv->ptr;
+#if 0
+    /* Not working yet */
+    if (pRADEONEnt->IsDRIEnabled) {
+	RADEONInfoPtr info0 = RADEONPTR(pRADEONEnt->pPrimaryScrn);
+	RADEONCP_TO_MMIO(pRADEONEnt->pPrimaryScrn, info0);
+    }
+#endif
     pitch64 = ((pScrn->displayWidth * (pScrn->bitsPerPixel / 8) + 0x3f)) >> 6;
 
-    OUTREG(RADEON_DEFAULT_OFFSET, (((INREG(RADEON_DISPLAY_BASE_ADDR) + pScrn->fbOffset) >> 10) |
+    OUTREG(RADEON_DEFAULT_OFFSET, (((pScrn->fbOffset+INREG(RADEON_DISPLAY_BASE_ADDR))>>10) |
 				   (pitch64 << 22)));
 
     /* FIXME: May need to restore other things, like BKGD_CLK FG_CLK... */

@@ -82,6 +82,7 @@
 				/* Driver data structures */
 #include "r128.h"
 #include "r128_reg.h"
+#include "r128_sarea.h"
 #ifdef XF86DRI
 #include "r128_sarea.h"
 #define _XF86DRI_SERVER_

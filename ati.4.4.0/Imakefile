@@ -34,11 +34,27 @@ MODSRCS1 = atimodule.c
 MODSRCS2 = atiload.c atimisc.c
 MODSRCS3 = r128_misc.c
 MODSRCS4 = radeon_misc.c
+MODSRC_FI1236 = fi1236_module.c
+MODSRC_MSP3430 = msp3430_module.c
+MODSRC_THEATRE = theatre_module.c
+MODSRC_BT829 = bt829_module.c
+MODSRC_SAA7114 = saa7114_module.c
+MODSRC_TDA9850 = tda9850_module.c
+MODSRC_TDA8425 = tda8425_module.c
+MODSRC_TDA9885 = tda9885_module.c
 
 MODOBJS1 = atimodule.o
 MODOBJS2 = atiload.o atimisc.o
 MODOBJS3 = r128_misc.o
 MODOBJS4 = radeon_misc.o
+MODOBJ_FI1236 = fi1236_module.o
+MODOBJ_MSP3430 = msp3430_module.o
+MODOBJ_THEATRE = theatre_module.o
+MODOBJ_BT829 = bt829_module.o
+MODOBJ_SAA7114 = saa7114_module.o
+MODOBJ_TDA9850 = tda9850_module.o
+MODOBJ_TDA8425 = tda8425_module.o
+MODOBJ_TDA9885 = tda9885_module.o
 
 #endif
 
@@ -161,6 +177,15 @@ SRCS3 = r128_accel.c r128_cursor.c r128_dga.c r128_driver.c \
 SRCS4 = radeon_accel.c radeon_cursor.c radeon_dga.c radeon_driver.c \
         radeon_video.c $(DRISRCS4) $(MODSRCS4)
 
+SRCS_FI1236 = fi1236.c $(MODSRC_FI1236)
+SRCS_MSP3430 = msp3430.c $(MODSRC_MSP3430)
+SRCS_THEATRE = theatre.c $(MODSRC_THEATRE)
+SRCS_BT829 = bt829.c $(MODSRC_BT829)
+SRCS_SAA7114 = saa7114.c $(MODSRC_SAA7114)
+SRCS_TDA9850 = tda9850.c $(MODSRC_TDA9850)
+SRCS_TDA8425 = tda8425.c $(MODSRC_TDA8425)
+SRCS_TDA9885 = tda9885.c $(MODSRC_TDA9885)
+
 OBJS1 = ati.o atiadapter.o atibus.o atichip.o atiident.o atioption.o \
         atiprobe.o atividmem.o $(CPIOOBJS1) $(MODOBJS1) \
         radeon_probe.o r128_probe.o
@@ -175,8 +200,22 @@ OBJS3 = r128_accel.o r128_cursor.o r128_dga.o r128_driver.o \
 OBJS4 = radeon_accel.o radeon_cursor.o radeon_dga.o radeon_driver.o \
         radeon_video.o $(DRIOBJS4) $(MODOBJS4)
 
-SRCS = $(SRCS1) $(SRCS2) $(SRCS3) $(SRCS4)
-OBJS = $(OBJS1) $(OBJS2) $(OBJS3) $(OBJS4)
+
+OBJS_FI1236 = fi1236.o $(MODOBJ_FI1236)
+OBJS_MSP3430 = msp3430.o $(MODOBJ_MSP3430)
+OBJS_THEATRE = theatre.o $(MODOBJ_THEATRE)
+OBJS_BT829 = bt829.o $(MODOBJ_BT829)
+OBJS_SAA7114 = saa7114.o $(MODOBJ_SAA7114)
+OBJS_TDA9850 = tda9850.o $(MODOBJ_TDA9850)
+OBJS_TDA8425 = tda8425.o $(MODOBJ_TDA8425)
+OBJS_TDA9885 = tda9885.o $(MODOBJ_TDA9885)
+
+SRCS = $(SRCS1) $(SRCS2) $(SRCS3) $(SRCS4) $(SRCS_FI1236) \
+	$(SRCS_MSP3430) $(SRCS_THEATRE) $(SRCS_BT829) $(SRCS_TDA9850) \
+	$(SRCS_TDA8425) $(SRCS_TDA9885) $(SRCS_SAA7114)
+OBJS = $(OBJS1) $(OBJS2) $(OBJS3) $(OBJS4) $(OBJS_FI1236) \
+	$(OBJS_MSP3430) $(OBJS_THEATRE) $(OBJS_BT829) $(OBJS_TDA9850) \
+	$(OBJS_TDA8425) $(OBJS_TDA9885) $(OBJS_SAA7114)
 
 #if defined(XF86DriverSDK)
 INCLUDES = -I. -I../../include
@@ -204,11 +243,28 @@ ObjectModuleTarget(ati,$(OBJS1))
 ObjectModuleTarget(atimisc,$(OBJS2))
 ObjectModuleTarget(r128,$(OBJS3))
 ObjectModuleTarget(radeon,$(OBJS4))
+ObjectModuleTarget(fi1236,$(OBJS_FI1236))
+ObjectModuleTarget(msp3430, $(OBJS_MSP3430))
+ObjectModuleTarget(theatre, $(OBJS_THEATRE))
+ObjectModuleTarget(bt829, $(OBJS_BT829))
+ObjectModuleTarget(saa7114, $(OBJS_SAA7114))
+ObjectModuleTarget(tda9850, $(OBJS_TDA9850))
+ObjectModuleTarget(tda8425, $(OBJS_TDA8425))
+ObjectModuleTarget(tda9885, $(OBJS_TDA9885))
+
 
 InstallObjectModule(ati,$(MODULEDIR),drivers)
 InstallObjectModule(atimisc,$(MODULEDIR),drivers)
 InstallObjectModule(r128,$(MODULEDIR),drivers)
+InstallObjectModule(theatre,$(MODULEDIR),multimedia)
 InstallObjectModule(radeon,$(MODULEDIR),drivers)
+InstallObjectModule(fi1236,$(MODULEDIR),multimedia)
+InstallObjectModule(msp3430,$(MODULEDIR),multimedia)
+InstallObjectModule(bt829,$(MODULEDIR),multimedia)
+InstallObjectModule(saa7114,$(MODULEDIR),multimedia)
+InstallObjectModule(tda9850,$(MODULEDIR),multimedia)
+InstallObjectModule(tda8425,$(MODULEDIR),multimedia)
+InstallObjectModule(tda9885,$(MODULEDIR),multimedia)
 
 #if !defined(XF86DriverSDK)
 #if 0
@@ -336,6 +392,39 @@ InstallDriverSDKNonExecFile(r128_version.h,$(DRIVERSDKDIR)/drivers/ati)
 InstallDriverSDKNonExecFile(r128_video.c,$(DRIVERSDKDIR)/drivers/ati)
 InstallDriverSDKNonExecFile(r128_common.h,$(DRIVERSDKDIR)/drivers/ati)
 
+InstallDriverSDKNonExecFile(theatre.c,$(DRIVERSDKDIR)/drivers/ati)
+InstallDriverSDKNonExecFile(theatre_module.c,$(DRIVERSDKDIR)/drivers/ati)
+InstallDriverSDKNonExecFile(theatre.h,$(DRIVERSDKDIR)/drivers/ati)
+InstallDriverSDKNonExecFile(theatre_reg.h,$(DRIVERSDKDIR)/drivers/ati)
+
+InstallDriverSDKNonExecFile(bt829.c,$(DRIVERSDKDIR)/drivers/ati)
+InstallDriverSDKNonExecFile(bt829_module.c,$(DRIVERSDKDIR)/drivers/ati)
+InstallDriverSDKNonExecFile(bt829.h,$(DRIVERSDKDIR)/drivers/ati)
+
+InstallDriverSDKNonExecFile(saa7114.c,$(DRIVERSDKDIR)/drivers/ati)
+InstallDriverSDKNonExecFile(saa7114_module.c,$(DRIVERSDKDIR)/drivers/ati)
+InstallDriverSDKNonExecFile(saa7114.h,$(DRIVERSDKDIR)/drivers/ati)
+
+InstallDriverSDKNonExecFile(msp3430.c,$(DRIVERSDKDIR)/drivers/ati)
+InstallDriverSDKNonExecFile(msp3430_module.c,$(DRIVERSDKDIR)/drivers/ati)
+InstallDriverSDKNonExecFile(msp3430.h,$(DRIVERSDKDIR)/drivers/ati)
+
+InstallDriverSDKNonExecFile(fi1236.c,$(DRIVERSDKDIR)/drivers/ati)
+InstallDriverSDKNonExecFile(fi1236_module.c,$(DRIVERSDKDIR)/drivers/ati)
+InstallDriverSDKNonExecFile(fi1236.h,$(DRIVERSDKDIR)/drivers/ati)
+
+InstallDriverSDKNonExecFile(tda8425.c,$(DRIVERSDKDIR)/drivers/ati)
+InstallDriverSDKNonExecFile(tda8425_module.c,$(DRIVERSDKDIR)/drivers/ati)
+InstallDriverSDKNonExecFile(tda8425.h,$(DRIVERSDKDIR)/drivers/ati)
+
+InstallDriverSDKNonExecFile(tda9850.c,$(DRIVERSDKDIR)/drivers/ati)
+InstallDriverSDKNonExecFile(tda9850_module.c,$(DRIVERSDKDIR)/drivers/ati)
+InstallDriverSDKNonExecFile(tda9850.h,$(DRIVERSDKDIR)/drivers/ati)
+
+InstallDriverSDKNonExecFile(tda9885.c,$(DRIVERSDKDIR)/drivers/ati)
+InstallDriverSDKNonExecFile(tda9885_module.c,$(DRIVERSDKDIR)/drivers/ati)
+InstallDriverSDKNonExecFile(tda9885.h,$(DRIVERSDKDIR)/drivers/ati)
+
 InstallDriverSDKNonExecFile(radeon.h,$(DRIVERSDKDIR)/drivers/ati)
 InstallDriverSDKNonExecFile(radeon_accel.c,$(DRIVERSDKDIR)/drivers/ati)
 InstallDriverSDKNonExecFile(radeon_cursor.c,$(DRIVERSDKDIR)/drivers/ati)
@@ -358,7 +447,14 @@ InstallDriverSDKNonExecFile(radeon_accelfuncs.c,$(DRIVERSDKDIR)/drivers/ati)
 InstallDriverSDKObjectModule(ati,$(DRIVERSDKMODULEDIR),drivers)
 InstallDriverSDKObjectModule(atimisc,$(DRIVERSDKMODULEDIR),drivers)
 InstallDriverSDKObjectModule(r128,$(DRIVERSDKMODULEDIR),drivers)
+InstallDriverSDKObjectModule(theatre,$(DRIVERSDKMODULEDIR),drivers)
 InstallDriverSDKObjectModule(radeon,$(DRIVERSDKMODULEDIR),drivers)
+InstallDriverSDKObjectModule(fi1236,$(MODULEDIR),multimedia)
+InstallDriverSDKObjectModule(msp3430,$(MODULEDIR),multimedia)
+InstallDriverSDKObjectModule(bt829,$(MODULEDIR),multimedia)
+InstallDriverSDKObjectModule(saa7114,$(MODULEDIR),multimedia)
+InstallDriverSDKObjectModule(tda9850,$(MODULEDIR),multimedia)
+InstallDriverSDKObjectModule(tda8425,$(MODULEDIR),multimedia)
 
 /* Remove instances of ati2 module */
 #if DoLoadableServer

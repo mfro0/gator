@@ -149,6 +149,12 @@ typedef struct {
 } r128_texture_regs_t;
 
 typedef struct {
+    unsigned char next, prev;	/* indices to form a circular LRU  */
+    unsigned char in_use;	/* owned by a client, or free? */
+    int age;			/* tracked by clients to update local LRU's */
+} r128_tex_region_t;
+
+typedef struct {
     /* The channel for communication of state information to the kernel
      * on firing a vertex buffer.
      */
@@ -158,10 +164,12 @@ typedef struct {
     unsigned int vertsize;
     unsigned int vc_format;
 
+#ifdef XF86DRI
     /* The current cliprects, or a subset thereof.
      */
     XF86DRIClipRectRec boxes[R128_NR_SAREA_CLIPRECTS];
     unsigned int nbox;
+#endif
 
     /* Counters for throttling of rendering clients.
      */
@@ -183,9 +191,9 @@ typedef struct {
      * else's - simply eject them all in LRU order.
      */
 				/* Last elt is sentinal */
-    drmTextureRegion texList[R128_NR_TEX_HEAPS][R128_NR_TEX_REGIONS+1];
+    r128_tex_region_t texList[R128_NR_TEX_HEAPS][R128_NR_TEX_REGIONS+1];
 				/* last time texture was uploaded */
-    unsigned int texAge[R128_NR_TEX_HEAPS];
+    int texAge[R128_NR_TEX_HEAPS];
 
     int ctxOwner;		/* last context to upload state */
     int pfAllowPageFlip;	/* set by the 2d driver, read by the client */

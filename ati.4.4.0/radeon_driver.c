@@ -137,6 +137,13 @@ typedef enum {
     OPTION_CLONE_VREFRESH,
     OPTION_FBDEV,
     OPTION_VIDEO_KEY,
+#ifdef XvExtension
+    OPTION_RAGE_THEATRE_CRYSTAL,
+    OPTION_RAGE_THEATRE_TUNER_PORT,
+    OPTION_RAGE_THEATRE_COMPOSITE_PORT,
+    OPTION_RAGE_THEATRE_SVIDEO_PORT,
+    OPTION_TUNER_TYPE,
+#endif
     OPTION_DISP_PRIORITY,
     OPTION_PANEL_SIZE,
     OPTION_MIN_DOTCLOCK
@@ -171,6 +178,14 @@ const OptionInfoRec RADEONOptions[] = {
     { OPTION_CLONE_HSYNC,    "CloneHSync",       OPTV_ANYSTR,  {0}, FALSE },
     { OPTION_CLONE_VREFRESH, "CloneVRefresh",    OPTV_ANYSTR,  {0}, FALSE },
     { OPTION_FBDEV,          "UseFBDev",         OPTV_BOOLEAN, {0}, FALSE },
+    { OPTION_VIDEO_KEY,      "VideoKey",         OPTV_INTEGER, {0}, FALSE },
+#ifdef XvExtension
+    { OPTION_RAGE_THEATRE_CRYSTAL, "RageTheatreCrystal",      OPTV_INTEGER, {0}, FALSE },
+    { OPTION_RAGE_THEATRE_TUNER_PORT, "RageTheatreTunerPort",      OPTV_INTEGER, {0}, FALSE },
+    { OPTION_RAGE_THEATRE_COMPOSITE_PORT, "RageTheatreCompositePort",      OPTV_INTEGER, {0}, FALSE },
+    { OPTION_RAGE_THEATRE_SVIDEO_PORT, "RageTheatreSVideoPort",      OPTV_INTEGER, {0}, FALSE },
+    { OPTION_TUNER_TYPE, "TunerType",      OPTV_INTEGER, {0}, FALSE },
+#endif
     { OPTION_VIDEO_KEY,      "VideoKey",         OPTV_INTEGER, {0}, FALSE },
     { OPTION_DISP_PRIORITY,  "DisplayPriority",  OPTV_ANYSTR,  {0}, FALSE },
     { OPTION_PANEL_SIZE,     "PanelSize",        OPTV_ANYSTR,  {0}, FALSE },
@@ -3988,6 +4003,72 @@ Bool RADEONPreInit(ScrnInfoPtr pScrn, int flags)
 	info->videoKey = 0x1E;
     }
 
+#ifdef XvExtension
+    if(xf86GetOptValInteger(info->Options, OPTION_VIDEO_KEY, &(info->videoKey))) {
+        xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "video key set to 0x%x\n",
+                                info->videoKey);
+    } else {
+        /* this default is very unlikely to occur (mostly a few pixels in photos) */
+	/* Unlike R128, Radeon's videokey is always stored in 32 bit ARGB format */
+        info->videoKey = (1<<8) | (2<<8) | (3<<8);
+    }
+
+    if(xf86GetOptValInteger(info->Options, OPTION_RAGE_THEATRE_CRYSTAL, &(info->RageTheatreCrystal))) {
+        xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "Rage Theatre Crystal frequency was specified as %d.%d Mhz\n",
+                                info->RageTheatreCrystal/100, info->RageTheatreCrystal % 100);
+    } else {
+    	info->RageTheatreCrystal=-1;
+    }
+
+    if(xf86GetOptValInteger(info->Options, OPTION_RAGE_THEATRE_TUNER_PORT, &(info->RageTheatreTunerPort))) {
+        xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "Rage Theatre tuner port was specified as %d\n",
+                                info->RageTheatreTunerPort);
+    } else {
+    	info->RageTheatreTunerPort=-1;
+    }
+    
+    if(info->RageTheatreTunerPort>5){
+         xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "Attempt to assign Rage Theatre tuner port to invalid value. Disabling setting\n");
+	 info->RageTheatreTunerPort=-1;
+	 }
+
+    if(xf86GetOptValInteger(info->Options, OPTION_RAGE_THEATRE_COMPOSITE_PORT, &(info->RageTheatreCompositePort))) {
+        xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "Rage Theatre composite port was specified as %d\n",
+                                info->RageTheatreCompositePort);
+    } else {
+    	info->RageTheatreCompositePort=-1;
+    }
+
+    if(info->RageTheatreCompositePort>6){
+         xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "Attempt to assign Rage Theatre composite port to invalid value. Disabling setting\n");
+	 info->RageTheatreCompositePort=-1;
+	 }
+
+    if(xf86GetOptValInteger(info->Options, OPTION_RAGE_THEATRE_SVIDEO_PORT, &(info->RageTheatreSVideoPort))) {
+        xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "Rage Theatre SVideo Port was specified as %d\n",
+                                info->RageTheatreSVideoPort);
+    } else {
+    	info->RageTheatreSVideoPort=-1;
+    }
+
+    if(info->RageTheatreSVideoPort>6){
+         xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "Attempt to assign Rage Theatre SVideo port to invalid value. Disabling setting\n");
+	 info->RageTheatreSVideoPort=-1;
+	 }
+
+    if(xf86GetOptValInteger(info->Options, OPTION_TUNER_TYPE, &(info->tunerType))) {
+        xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "Tuner type was specified as %d\n",
+                                info->tunerType);
+    } else {
+    	info->tunerType=-1;
+    }
+
+    if(info->tunerType>31){
+         xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "Attempt to set tuner type to invalid value. Disabling setting\n");
+	 info->tunerType=-1;
+	 }
+#endif
+
     info->DispPriority = 1;
     if ((s = xf86GetOptValString(info->Options, OPTION_DISP_PRIORITY))) {
 	if (strcmp(s, "AUTO") == 0) {
@@ -4053,10 +4134,12 @@ Bool RADEONPreInit(ScrnInfoPtr pScrn, int flags)
 #endif
 
 				/* Free the video bios (if applicable) */
+    #if 0 /* we need it later */
     if (info->VBIOS) {
 	xfree(info->VBIOS);
 	info->VBIOS = NULL;
     }
+    #endif
 
 				/* Free int10 info */
     if (pInt10)
@@ -6258,6 +6341,10 @@ static Bool RADEONInitCrtc2Registers(ScrnInfoPtr pScrn, RADEONSavePtr save,
 		 save->crtc2_pitch, pScrn->virtualX,
 		 info->CurrentLayout.displayWidth));
 
+#ifdef XvExtension
+    RADEONEnterVT_Video(pScrn);
+#endif
+
     return TRUE;
 }
 
@@ -6952,6 +7039,10 @@ void RADEONLeaveVT(int scrnIndex, int flags)
     RADEONSavePtr  save  = &info->ModeReg;
 
     RADEONTRACE(("RADEONLeaveVT\n"));
+#ifdef XvExtension
+    RADEONLeaveVT_Video(pScrn);
+#endif
+
 #ifdef XF86DRI
     if (RADEONPTR(pScrn)->directRenderingEnabled) {
 	DRILock(pScrn->pScreen, 0);

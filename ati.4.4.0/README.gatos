@@ -1,0 +1,75 @@
+** instructions for users
+
+   GATOS specific options. The following options may be specified in
+   /etc/XF86Config device section in case when BIOS is not available
+   or autodetection fails.
+   
+   RageTheatreCrystal: either 2700 or 2950. Normally autodetection should
+                       work fine
+   RageTheatreTunerPort, RageTheatreCompositePort, RageTheatreSVideoPort:
+    these options should be specified only if BIOS is not present or
+    autodetection fails. Possible values span integers from 0 to 6.
+
+   TunerType should be specified when BIOS is not available or autodetection
+   fails. Possible values span integers from 0 to 31, but not all tuner types
+   are in use at the moment.
+
+** instructions for developers
+
+	- Create patches with:
+
+		diff -u --unidirectional-new-file ati.2.orig ati.2 > ati.2.patch
+
+        - ati.2 is based on XFree86 4.3.0 source
+	  Your mileage with later trees may vary
+
+** Hint from Marko Skofljanec:  
+    (this is now the recommended way to compile ati.2)
+
+    If you want to setup ati.2 separately from XFree source tree cd into
+    driver directory ati.2 and execute the following command:
+    
+       xmkmf path/to/your/xfree86/tree
+       
+    Afterwards you can run make as usual..
+
+** Developing for 4.3.0
+
+    + Get the tree from usual place, compile and install it.
+      Do _NOT_ delete it !
+      Be careful to follow instruction in the README, take a 
+      look at host.def and site.cf files, especially for DRI trees,
+      as they tend to enable everything dri-specific (and you might not
+      have glide library if you don't have any 3dfx cards).
+
+    + chdir to directory ati.2 and do 
+    
+        xmkmf path/to/your/xfree86/tree
+	
+	make
+	
+	make install
+	
+    + try the server.. 
+    
+    + develop/debug/enhance 
+    
+    + repeat steps as necessary.
+    
+    
+** Submitting patches
+
+If you want to send the maintainer (or the list) a patch, then you do
+the same  (not forgetting to clean the directories as people don't want extra
+.bck or .o files) but use  
+
+  	diff -u --unidirectional-new-files ati.2 my.ati.2 > my.patch
+  
+where ati.2 is the directory you got from livid cvs and my.ati.2 is the 
+directory with your changes. This way everyone can clearly see what are the 
+modifications to current ati.2 you want to make.
+ 
+And, of course, if you did not create any new files (like SAAXXXX.c) you
+can simply use diff -u  - saves time on cleaning directories (you just
+keep the original one clean).
+

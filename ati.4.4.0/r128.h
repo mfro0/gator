@@ -393,6 +393,12 @@ typedef struct {
     XF86VideoAdaptorPtr adaptor;
     void              (*VideoTimerCallback)(ScrnInfoPtr, Time);
     int               videoKey;
+    Bool              forceXvProbing;
+    int		      RageTheatreCrystal;
+    int               RageTheatreTunerPort;
+    int               RageTheatreCompositePort;
+    int               RageTheatreSVideoPort;
+    int               tunerType;
     Bool              showCache;
     OptionInfoPtr     Options;
 
@@ -425,6 +431,11 @@ extern Bool        R128DGAInit(ScreenPtr pScreen);
 extern int         R128MinBits(int val);
 
 extern void        R128InitVideo(ScreenPtr pScreen);
+#ifdef XvExtension
+extern void	   R128ShutdownVideo(ScrnInfoPtr pScrn);
+extern void        R128LeaveVT_Video(ScrnInfoPtr pScrn);
+extern void        R128EnterVT_Video(ScrnInfoPtr pScrn);
+#endif
 
 #ifdef XF86DRI
 extern Bool        R128DRIScreenInit(ScreenPtr pScreen);
@@ -523,9 +534,9 @@ do {									\
       xf86DrvMsg( pScrn->scrnIndex, X_INFO,				\
 		  "ADVANCE_RING() used: %d+%d=%d/%d\n",			\
 		  info->indirectBuffer->used - info->indirectStart,	\
-		  __count * (int)sizeof(CARD32),			\
+		  __count * sizeof(CARD32),				\
 		  info->indirectBuffer->used - info->indirectStart +	\
-		  __count * (int)sizeof(CARD32),			\
+		  __count * sizeof(CARD32),				\
 		  info->indirectBuffer->total - info->indirectStart );	\
    }									\
    info->indirectBuffer->used += __count * (int)sizeof(CARD32);		\

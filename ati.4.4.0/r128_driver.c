@@ -128,6 +128,14 @@ typedef enum {
   /* FIXME: Disable CRTOnly until it is tested */
   OPTION_CRT,
 #endif
+#ifdef XvExtension
+  OPTION_FORCE_XV_PROBING,
+  OPTION_RAGE_THEATRE_CRYSTAL,
+  OPTION_RAGE_THEATRE_TUNER_PORT,
+  OPTION_RAGE_THEATRE_COMPOSITE_PORT,
+  OPTION_RAGE_THEATRE_SVIDEO_PORT,
+  OPTION_TUNER_TYPE,
+#endif
   OPTION_DISPLAY,
   OPTION_PANEL_WIDTH,
   OPTION_PANEL_HEIGHT,
@@ -161,6 +169,15 @@ const OptionInfoRec R128Options[] = {
   { OPTION_FBDEV,        "UseFBDev",         OPTV_BOOLEAN, {0}, FALSE },
   { OPTION_VIDEO_KEY,    "VideoKey",         OPTV_INTEGER, {0}, FALSE },
   { OPTION_SHOW_CACHE,   "ShowCache",        OPTV_BOOLEAN, {0}, FALSE },
+#ifdef XvExtension
+  { OPTION_VIDEO_KEY, "VideoKey",      OPTV_INTEGER, {0}, FALSE },
+  { OPTION_FORCE_XV_PROBING, "ForceXvProbing", OPTV_BOOLEAN, {0}, FALSE},
+  { OPTION_RAGE_THEATRE_CRYSTAL, "RageTheatreCrystal",      OPTV_INTEGER, {0}, FALSE },
+  { OPTION_RAGE_THEATRE_TUNER_PORT, "RageTheatreTunerPort",      OPTV_INTEGER, {0}, FALSE },
+  { OPTION_RAGE_THEATRE_COMPOSITE_PORT, "RageTheatreCompositePort",      OPTV_INTEGER, {0}, FALSE },
+  { OPTION_RAGE_THEATRE_SVIDEO_PORT, "RageTheatreSVideoPort",      OPTV_INTEGER, {0}, FALSE },
+  { OPTION_TUNER_TYPE, "TunerType",      OPTV_INTEGER, {0}, FALSE },
+#endif
   { -1,                  NULL,               OPTV_NONE,    {0}, FALSE }
 };
 
@@ -1894,6 +1911,76 @@ Bool R128PreInit(ScrnInfoPtr pScrn, int flags)
 
     if (!R128PreInitWeight(pScrn))    goto fail;
 
+#ifdef XvExtension
+    if(xf86GetOptValInteger(info->Options, OPTION_RAGE_THEATRE_CRYSTAL, &(info->RageTheatreCrystal))) {
+        xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "Rage Theatre Crystal frequency was specified as %d.%d Mhz\n",
+                                info->RageTheatreCrystal/100, info->RageTheatreCrystal % 100);
+    } else {
+    	info->RageTheatreCrystal=-1;
+    }
+
+    if(xf86GetOptValInteger(info->Options, OPTION_RAGE_THEATRE_TUNER_PORT, &(info->RageTheatreTunerPort))) {
+        xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "Rage Theatre tuner port was specified as %d\n",
+                                info->RageTheatreTunerPort);
+    } else {
+    	info->RageTheatreTunerPort=-1;
+    }
+    
+    if(info->RageTheatreTunerPort>5){
+         xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "Attempt to assign Rage Theatre tuner port to invalid value. Disabling setting\n");
+	 info->RageTheatreTunerPort=-1;
+	 }
+
+    if(xf86GetOptValInteger(info->Options, OPTION_RAGE_THEATRE_COMPOSITE_PORT, &(info->RageTheatreCompositePort))) {
+        xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "Rage Theatre composite port was specified as %d\n",
+                                info->RageTheatreCompositePort);
+    } else {
+    	info->RageTheatreCompositePort=-1;
+    }
+
+    if(info->RageTheatreCompositePort>6){
+         xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "Attempt to assign Rage Theatre composite port to invalid value. Disabling setting\n");
+	 info->RageTheatreCompositePort=-1;
+	 }
+
+    if(xf86GetOptValInteger(info->Options, OPTION_RAGE_THEATRE_SVIDEO_PORT, &(info->RageTheatreSVideoPort))) {
+        xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "Rage Theatre SVideo Port was specified as %d\n",
+                                info->RageTheatreSVideoPort);
+    } else {
+    	info->RageTheatreSVideoPort=-1;
+    }
+
+    if(info->RageTheatreSVideoPort>6){
+         xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "Attempt to assign Rage Theatre SVideo port to invalid value. Disabling setting\n");
+	 info->RageTheatreSVideoPort=-1;
+	 }
+
+    if(xf86GetOptValInteger(info->Options, OPTION_TUNER_TYPE, &(info->tunerType))) {
+        xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "Tuner type was specified as %d\n",
+                                info->tunerType);
+    } else {
+    	info->tunerType=-1;
+    }
+
+    if(info->tunerType>31){
+         xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "Attempt to set tuner type to invalid value. Disabling setting\n");
+	 info->tunerType=-1;
+	 }
+
+    if(xf86ReturnOptValBool(info->Options, OPTION_FORCE_XV_PROBING, FALSE)) {
+        xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "Forcing Xv probing for multimedia harware (lockup prone)\n");
+	info->forceXvProbing=TRUE;
+    } 
+
+    if(xf86GetOptValInteger(info->Options, OPTION_VIDEO_KEY, &(info->videoKey))) {
+        xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "video key set to 0x%x\n",
+                                info->videoKey);
+    } else {
+        /* this default is very unlikely to occur (mostly a few pixels in photos) */
+        info->videoKey = (1<<pScrn->offset.red) | (2<<pScrn->offset.green) | (3<<pScrn->offset.blue);
+    }
+#endif
+
     if(xf86GetOptValInteger(info->Options, OPTION_VIDEO_KEY, &(info->videoKey))) {
         xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "video key set to 0x%x\n",
                                 info->videoKey);
@@ -2992,6 +3079,10 @@ static Bool R128InitCrtcRegisters(ScrnInfoPtr pScrn, R128SavePtr save,
     }
 #endif
 
+#ifdef XvExtension
+    R128EnterVT_Video(pScrn);
+#endif
+
     return TRUE;
 }
 
@@ -3499,6 +3590,10 @@ void R128LeaveVT(int scrnIndex, int flags)
     R128SavePtr save  = &info->ModeReg;
 
     R128TRACE(("R128LeaveVT\n"));
+#ifdef XvExtension
+    R128LeaveVT_Video(pScrn);
+#endif
+
 #ifdef XF86DRI
     if (info->directRenderingEnabled) {
 	DRILock(pScrn->pScreen, 0);

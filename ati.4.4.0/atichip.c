@@ -674,11 +674,14 @@ ATIChipID
         case NewChipID('Q', 'X'):
             return ATI_CHIP_RV200;
 
+        case NewChipID('I', 'd'):
+        case NewChipID('I', 'e'):
         case NewChipID('I', 'f'):
         case NewChipID('I', 'g'):
             return ATI_CHIP_RV250;
 
         case NewChipID('L', 'd'):
+        case NewChipID('L', 'e'):
         case NewChipID('L', 'f'):
         case NewChipID('L', 'g'):
             return ATI_CHIP_RADEONMOBILITY9;

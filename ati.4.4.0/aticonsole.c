@@ -299,6 +299,10 @@ ATIEnterVT
         pScreenPixmap->devPrivate.ptr = NULL;
     }
 
+    #ifdef XvExtension
+    ATIEnterVT_Video(pScreenInfo);
+    #endif
+    
     return Entered;
 }
 
@@ -317,6 +321,9 @@ ATILeaveVT
 {
     ScrnInfoPtr pScreenInfo = xf86Screens[iScreen];
 
+    #ifdef XvExtension
+    ATILeaveVT_Video(pScreenInfo);
+    #endif
     ATILeaveGraphics(pScreenInfo, ATIPTR(pScreenInfo));
 }
 

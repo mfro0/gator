@@ -185,6 +185,12 @@ typedef struct {
 } radeon_texture_regs_t;
 
 typedef struct {
+    unsigned char next, prev;	/* indices to form a circular LRU  */
+    unsigned char in_use;	/* owned by a client, or free? */
+    int age;			/* tracked by clients to update local LRU's */
+} radeon_tex_region_t;
+
+typedef struct {
     /* The channel for communication of state information to the kernel
      * on firing a vertex buffer.
      */

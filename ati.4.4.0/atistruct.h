@@ -28,6 +28,9 @@
 #include "aticlock.h"
 #include "atiregs.h"
 
+				/* Xv support */
+#include "xf86xv.h"
+
 #include "xaa.h"
 #include "xf86Cursor.h"
 #include "xf86Pci.h"
@@ -435,6 +438,16 @@ typedef struct _ATIRec
      * Wrapped functions.
      */
     CloseScreenProcPtr CloseScreen;
+
+	 /* Xv extension fields */
+    XF86VideoAdaptorPtr adaptor;
+    void (*VideoTimerCallback)(ScrnInfoPtr, Time);
+
+    /* BIOS */
+    
+    CARD8 *VBIOS;
+    CARD32 BIOSSize;
+
 } ATIRec;
 
 #define ATIPTR(_p) ((ATIPtr)((_p)->driverPrivate))

@@ -41,6 +41,11 @@ extern Bool ATISwitchMode    FunctionPrototype((int, DisplayModePtr, int));
 extern Bool ATIEnterVT       FunctionPrototype((int, int));
 extern void ATILeaveVT       FunctionPrototype((int, int));
 
+#ifdef XvExtension
+extern void ATIEnterVT_Video       FunctionPrototype((ScrnInfoPtr));
+extern void ATILeaveVT_Video       FunctionPrototype((ScrnInfoPtr));
+#endif
+
 extern void ATIFreeScreen    FunctionPrototype((int, int));
 
 #endif /* ___ATICONSOLE_H___ */

@@ -92,9 +92,9 @@ typedef enum
     ATI_CHIP_RS100,             /* IGP320 */
     ATI_CHIP_RS200,             /* IGP340 */
     ATI_CHIP_RS250,             /* Radoen 7000 IGP */
-    ATI_CHIP_RV200,             /* RV200 */
     ATI_CHIP_RADEONMOBILITY7,   /* Radeon M7 */
     ATI_CHIP_R200,              /* R200 */
+    ATI_CHIP_RV200,             /* RV200 */
     ATI_CHIP_RV250,             /* RV250 */
     ATI_CHIP_RADEONMOBILITY9,   /* Radeon M9 */
     ATI_CHIP_RS300,             /* Radoen 9000 IGP */

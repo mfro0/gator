@@ -276,7 +276,11 @@
 #define R128_CACHE_CNTL                   0x1724
 #define R128_CACHE_LINE                   0x0f0c /* PCI */
 #define R128_CAP0_TRIG_CNTL               0x0950 /* ? */
-#define R128_CAP1_TRIG_CNTL               0x09c0 /* ? */
+#       define R128_CAP0_TRIG_CNTL_TRIGGER_GET         0x00000003        
+#       define R128_CAP0_TRIG_CNTL_TRIGGER_SET         0x00000001        
+#       define R128_CAP0_TRIG_CNTL_CAPTURE_EN          0x00000010        
+#       define R128_CAP0_TRIG_CNTL_VSYNC_GET           0x0000FF00        
+#       define R128_CAP0_TRIG_CNTL_VSYNC_SET           0x00010000        
 #define R128_CAPABILITIES_ID              0x0f50 /* PCI */
 #define R128_CAPABILITIES_PTR             0x0f34 /* PCI */
 #define R128_CLK_PIN_CNTL                 0x0001 /* PLL */
@@ -673,7 +677,10 @@
 #define R128_HW_DEBUG                     0x0128
 #define R128_HW_DEBUG2                    0x011c
 
-#define R128_I2C_CNTL_1                   0x0094 /* ? */
+#define R128_I2C_CNTL_0			  0x0090
+#define R128_I2C_CNTL_1                   0x0094 
+#define R128_I2C_DATA			  0x0098
+
 #define R128_INTERRUPT_LINE               0x0f3c /* PCI */
 #define R128_INTERRUPT_PIN                0x0f3d /* PCI */
 #define R128_IO_BASE                      0x0f14 /* PCI */
@@ -802,6 +809,16 @@
 #define R128_OV0_VID_BUF_PITCH0_VALUE     0x0460
 #define R128_OV0_VID_BUF_PITCH1_VALUE     0x0464
 #define R128_OV0_AUTO_FLIP_CNTL           0x0470
+#       define  R128_OV0_AUTO_FLIP_CNTL_SOFT_BUF_NUM        0x00000007
+#       define  R128_OV0_AUTO_FLIP_CNTL_SOFT_REPEAT_FIELD   0x00000008
+#       define  R128_OV0_AUTO_FLIP_CNTL_SOFT_BUF_ODD        0x00000010
+#       define  R128_OV0_AUTO_FLIP_CNTL_IGNORE_REPEAT_FIELD 0x00000020
+#       define  R128_OV0_AUTO_FLIP_CNTL_SOFT_EOF_TOGGLE     0x00000040
+#       define  R128_OV0_AUTO_FLIP_CNTL_VID_PORT_SELECT     0x00000300
+#       define  R128_OV0_AUTO_FLIP_CNTL_P1_FIRST_LINE_EVEN  0x00010000
+#       define  R128_OV0_AUTO_FLIP_CNTL_SHIFT_EVEN_DOWN     0x00040000
+#       define  R128_OV0_AUTO_FLIP_CNTL_SHIFT_ODD_DOWN      0x00080000
+#       define  R128_OV0_AUTO_FLIP_CNTL_FIELD_POL_SOURCE    0x00800000
 #define R128_OV0_DEINTERLACE_PATTERN      0x0474
 #define R128_OV0_H_INC                    0x0480
 #define R128_OV0_STEP_BY                  0x0484
@@ -836,6 +853,92 @@
 #       define  R128_CMP_MIX_OR                  0x00000000L
 #       define  R128_CMP_MIX_AND                 0x00000100L
 #define R128_OV0_TEST                     0x04F8
+
+/* first capture unit */
+
+#define R128_CAP0_BUF0_OFFSET	 	  0x0920
+#define R128_CAP0_BUF1_OFFSET	 	  0x0924
+#define R128_CAP0_BUF0_EVEN_OFFSET	  0x0928
+#define R128_CAP0_BUF1_EVEN_OFFSET	  0x092C
+
+#define R128_CAP0_BUF_PITCH		  0x0930
+#define R128_CAP0_V_WINDOW		  0x0934
+#define R128_CAP0_H_WINDOW		  0x0938
+#define R128_CAP0_VBI_ODD_OFFSET	  0x093C
+#define R128_CAP0_VBI_EVEN_OFFSET	  0x0940
+#define R128_CAP0_VBI_V_WINDOW		  0x0944
+#define R128_CAP0_VBI_H_WINDOW		  0x0948
+#define R128_CAP0_PORT_MODE_CNTL	  0x094C
+#define R128_CAP0_TRIG_CNTL		  0x0950
+#define R128_CAP0_DEBUG			  0x0954
+#define R128_CAP0_CONFIG		  0x0958
+#       define R128_CAP0_CONFIG_CONTINUOS          0x00000001
+#       define R128_CAP0_CONFIG_START_FIELD_EVEN   0x00000002
+#       define R128_CAP0_CONFIG_START_BUF_GET      0x00000004
+#       define R128_CAP0_CONFIG_START_BUF_SET      0x00000008
+#       define R128_CAP0_CONFIG_BUF_TYPE_ALT       0x00000010
+#       define R128_CAP0_CONFIG_BUF_TYPE_FRAME     0x00000020
+#       define R128_CAP0_CONFIG_ONESHOT_MODE_FRAME 0x00000040
+#       define R128_CAP0_CONFIG_BUF_MODE_DOUBLE    0x00000080
+#       define R128_CAP0_CONFIG_BUF_MODE_TRIPLE    0x00000100
+#       define R128_CAP0_CONFIG_MIRROR_EN          0x00000200
+#       define R128_CAP0_CONFIG_ONESHOT_MIRROR_EN  0x00000400
+#       define R128_CAP0_CONFIG_VIDEO_SIGNED_UV    0x00000800
+#       define R128_CAP0_CONFIG_ANC_DECODE_EN      0x00001000
+#       define R128_CAP0_CONFIG_VBI_EN             0x00002000
+#       define R128_CAP0_CONFIG_SOFT_PULL_DOWN_EN  0x00004000
+#       define R128_CAP0_CONFIG_VIP_EXTEND_FLAG_EN 0x00008000
+#       define R128_CAP0_CONFIG_FAKE_FIELD_EN      0x00010000
+#       define R128_CAP0_CONFIG_ODD_ONE_MORE_LINE  0x00020000
+#       define R128_CAP0_CONFIG_EVEN_ONE_MORE_LINE 0x00040000
+#       define R128_CAP0_CONFIG_HORZ_DIVIDE_2      0x00080000
+#       define R128_CAP0_CONFIG_HORZ_DIVIDE_4      0x00100000
+#       define R128_CAP0_CONFIG_VERT_DIVIDE_2      0x00200000
+#       define R128_CAP0_CONFIG_VERT_DIVIDE_4      0x00400000
+#       define R128_CAP0_CONFIG_FORMAT_BROOKTREE   0x00000000
+#       define R128_CAP0_CONFIG_FORMAT_CCIR656     0x00800000
+#       define R128_CAP0_CONFIG_FORMAT_ZV          0x01000000
+#       define R128_CAP0_CONFIG_FORMAT_VIP         0x01800000
+#       define R128_CAP0_CONFIG_FORMAT_TRANSPORT   0x02000000
+#       define R128_CAP0_CONFIG_HORZ_DECIMATOR     0x04000000
+#       define R128_CAP0_CONFIG_VIDEO_IN_YVYU422   0x00000000
+#       define R128_CAP0_CONFIG_VIDEO_IN_VYUY422   0x20000000
+#define R128_CAP0_ANC_ODD_OFFSET	  0x095C
+#define R128_CAP0_ANC_EVEN_OFFSET	  0x0960
+#define R128_CAP0_ANC_H_WINDOW		  0x0964
+#define R128_CAP0_VIDEO_SYNC_TEST	  0x0968
+#define R128_CAP0_ONESHOT_BUF_OFFSET	  0x096C
+#define R128_CAP0_BUF_STATUS		  0x0970
+#define R128_CAP0_DWNSC_XRATIO	 	  0x0978
+#define R128_CAP0_XSHARPNESS		  0x097C
+
+/* second capture unit */
+
+#define R128_CAP1_BUF0_OFFSET	 	  0x0990
+#define R128_CAP1_BUF1_OFFSET	 	  0x0994
+#define R128_CAP1_BUF0_EVEN_OFFSET	  0x0998
+#define R128_CAP1_BUF1_EVEN_OFFSET	  0x099C
+
+#define R128_CAP1_BUF_PITCH		  0x09A0
+#define R128_CAP1_V_WINDOW		  0x09A4
+#define R128_CAP1_H_WINDOW		  0x09A8
+#define R128_CAP1_VBI_ODD_OFFSET	  0x09AC
+#define R128_CAP1_VBI_EVEN_OFFSET	  0x09B0
+#define R128_CAP1_VBI_V_WINDOW		  0x09B4
+#define R128_CAP1_VBI_H_WINDOW		  0x09B8
+#define R128_CAP1_PORT_MODE_CNTL	  0x09BC
+#define R128_CAP1_TRIG_CNTL		  0x09C0
+#define R128_CAP1_DEBUG			  0x09C4
+#define R128_CAP1_CONFIG		  0x09C8
+#define R128_CAP1_ANC_ODD_OFFSET	  0x09CC
+#define R128_CAP1_ANC_EVEN_OFFSET	  0x09D0
+#define R128_CAP1_ANC_H_WINDOW		  0x09D4
+#define R128_CAP1_VIDEO_SYNC_TEST	  0x09D8
+#define R128_CAP1_ONESHOT_BUF_OFFSET	  0x09DC
+#define R128_CAP1_BUF_STATUS		  0x09E0
+#define R128_CAP1_DWNSC_XRATIO	 	  0x09E8
+#define R128_CAP1_XSHARPNESS		  0x09EC
+
 
 
 #define R128_PALETTE_DATA                 0x00b4
@@ -1288,8 +1391,8 @@
 #       define R128_DATATYPE_Y8                (8  << 16)
 #       define R128_DATATYPE_RGB8              (9  << 16)
 #       define R128_DATATYPE_CI16              (10 << 16)
-#       define R128_DATATYPE_YVYU422           (11 << 16)
-#       define R128_DATATYPE_VYUY422           (12 << 16)
+#       define R128_DATATYPE_YUV422            (11 << 16)
+#       define R128_DATATYPE_YUV422_2          (12 << 16)
 #       define R128_DATATYPE_AYUV444           (14 << 16)
 #       define R128_DATATYPE_ARGB4444          (15 << 16)
 #       define R128_PALLETE_EITHER             (0  << 20)

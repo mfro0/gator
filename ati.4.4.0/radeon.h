@@ -530,6 +530,11 @@ typedef struct {
     void              (*VideoTimerCallback)(ScrnInfoPtr, Time);
     FBLinearPtr       videoLinear;
     int               videoKey;
+    int		      RageTheatreCrystal;
+    int               RageTheatreTunerPort;
+    int               RageTheatreCompositePort;
+    int               RageTheatreSVideoPort;
+    int               tunerType;
 
 				/* general */
     Bool              showCache;
@@ -573,6 +578,10 @@ extern Bool        RADEONDGAInit(ScreenPtr pScreen);
 extern int         RADEONMinBits(int val);
 
 extern void        RADEONInitVideo(ScreenPtr pScreen);
+#ifdef XvExtension
+extern void	   	 RADEONLeaveVT_Video(ScrnInfoPtr pScrn);
+extern void	   	 RADEONEnterVT_Video(ScrnInfoPtr pScrn);
+#endif
 extern void        RADEONResetVideo(ScrnInfoPtr pScrn);
 extern void        R300CGWorkaround(ScrnInfoPtr pScrn);
 
