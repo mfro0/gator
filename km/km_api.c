@@ -271,6 +271,7 @@ kmd->fields=kmfl;
 kmd->num_fields=0;
 while(kmd->fields[kmd->num_fields].type!=KM_FIELD_TYPE_EOL)kmd->num_fields++;
 kmd->priv=priv;
+spin_lock_init(&(kmd->lock));
 init_waitqueue_head(&(kmd->wait));
 
 sprintf(temp, "control%d", num);

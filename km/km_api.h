@@ -57,6 +57,7 @@ typedef struct S_KM_FIELD {
 typedef struct {
 	long number; /* set to the device number if active, to -1 if inactive */
 	int use_count;
+	spinlock_t lock;
 	wait_queue_head_t wait;
 	struct proc_dir_entry *control;
 	struct proc_dir_entry *data;	

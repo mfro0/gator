@@ -56,8 +56,8 @@ if(kms->allocate_single_frame_buffer(kms, &(kms->frame_even), buf_size)<0){
 	goto fail;
 	}
 
-kms->start_transfer(kms);
 spin_unlock(&(kms->kms_lock));
+kms->start_transfer(kms);
 return 0;
 
 fail:
