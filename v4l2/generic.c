@@ -2316,17 +2316,23 @@ dprintk(2,"card(%d) VIDIOC_S_TUNER called\n",card->cardnum);
               return -EINVAL;
       down_interruptible(&card->lock);
       if (t->audmode == V4L2_TUNER_MODE_MONO){
-        dprintk(1,"card(%d) set to mono (not done)\n",card->cardnum);
+	card->stereo = 0;
+	card->sap = 0;
       } else if (t->audmode == V4L2_TUNER_MODE_STEREO){
-        dprintk(1,"card(%d) set to stereo (not done)\n",card->cardnum);
+	card->stereo = 1;
+	card->sap = 0;
       } else if (t->audmode == V4L2_TUNER_MODE_LANG1){
-        dprintk(1,"card(%d) set to lang1 (not done)\n",card->cardnum);
+	card->stereo = 1;
+	card->sap = 1;
       } else if (t->audmode == V4L2_TUNER_MODE_SAP){
-        dprintk(1,"card(%d) set to sap (not done)\n",card->cardnum);
+	card->stereo = 1;
+	card->sap = 1;
+printk (KERN_INFO "Setting sap mode \n");	
       } else {
         dprintk(1,"card(%d) unknown %d\n",card->cardnum,t->audmode);
       }
       up(&card->lock);
+      board_setaudio(card);
       return 0;
      }
      /* get tuner freq */

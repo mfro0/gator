@@ -26,6 +26,7 @@
 #include "bt829.h"
 #include "mach64.h"
 #include "memory.h"
+#include "tda9850.h"
 
 static const int videoRamSizes[] =
     {0, 256, 512, 1024, 2*1024, 4*1024, 6*1024, 8*1024, 12*1024, 16*1024, 0};
@@ -433,13 +434,13 @@ int board_setaudio(GENERIC_CARD *card)
   u8 tmp, data;
 
   if (card->audio.deviceid == TDA8425){
-    i2c_writereg8(card,card->audio.addr,0x00,0xFF); //left
-    i2c_writereg8(card,card->audio.addr,0x01,0xFF); //right
+    i2c_writereg8(card,card->audio.addr,0x00,0xFF); //left vol
+    i2c_writereg8(card,card->audio.addr,0x01,0xFF); //right vol
     i2c_writereg8(card,card->audio.addr,0x02,0xF6); //bass
     i2c_writereg8(card,card->audio.addr,0x03,0xF6); //treble
     tmp = 0xC0;
     tmp |= card->mute ? 0x20 : 0x0;
-    /* stereo 3 = Spacial 2 = Linear 1 = Pseudo 0 = Forced mono */
+    /* stereo 3 , Linear 2 , Pseudo 1 , Forced mono 0 */
     tmp |= card->stereo ? (3 << 3) : 0x0;
     tmp |= 3 << 1; //src sel
     tmp |= (card->mux != 2) ? 0 : 1;
@@ -447,29 +448,21 @@ int board_setaudio(GENERIC_CARD *card)
   }
 
   if (card->audio.deviceid == TDA9850) {
-    if (card->mux == 2) {
-      i2c_writereg8(card,card->audio.addr,0x04,0x0F); 
-      i2c_writereg8(card,card->audio.addr,0x05,0x0F);
-      i2c_writereg8(card,card->audio.addr,0x06,0x58);
-      i2c_writereg8(card,card->audio.addr,0x07,0x07);
-      i2c_writereg8(card,card->audio.addr,0x08,0x00);
-      i2c_writereg8(card,card->audio.addr,0x09,0x00);
-      i2c_writereg8(card,card->audio.addr,0x0A,0x03); 
-    } else {
-      i2c_writereg8(card,card->audio.addr,0x04,0x07);
-      i2c_writereg8(card,card->audio.addr,0x05,0x07);
-      i2c_writereg8(card,card->audio.addr,0x06,0x58);
-      i2c_writereg8(card,card->audio.addr,0x07,0x07);
-      i2c_writereg8(card,card->audio.addr,0x08,0x10);
-      i2c_writereg8(card,card->audio.addr,0x09,0x10);
-      i2c_writereg8(card,card->audio.addr,0x0A,0x03); 
-    }
+    i2c_writereg8(card,card->audio.addr,CON1ADDR,0x08); /* noise threshold stereo */ 
+    i2c_writereg8(card,card->audio.addr,CON2ADDR,0x08); /* noise threshold sap */
+    i2c_writereg8(card,card->audio.addr,CON3ADDR,0x40); /* stereo mode */
+    i2c_writereg8(card,card->audio.addr,CON4ADDR,0x07); /* 0 dB input gain? */
+    i2c_writereg8(card,card->audio.addr,ALI1ADDR,0x10); /* wideband alignment? */
+    i2c_writereg8(card,card->audio.addr,ALI2ADDR,0x10); /* spectral alignment? */
+    i2c_writereg8(card,card->audio.addr,ALI3ADDR,0x03); 
+
     tmp = 0x0;
     tmp |= card->stereo<<6;
-    tmp |= card->sap<<6;
+    tmp |= card->sap<<7;
     tmp |= card->mute ? 0x8 : 0x0; //normal mute
     tmp |= card->mute ? 0x10 : 0x0; //sap mute?
-    i2c_writereg8(card,card->audio.addr,0x06,tmp); 
+
+    i2c_writereg8(card,card->audio.addr,CON3ADDR,tmp); 
   }
 
   if (card->audio.deviceid == TDA9851) {

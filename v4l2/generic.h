@@ -322,7 +322,7 @@ struct S_GENERIC_CARD {
   /* ATI chip refclock crystal frequency */
   unsigned long refclock;     
 
-  int stereo, sap;
+  int stereo, sap, mute;
 
   /* video4linux 1 */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
@@ -353,7 +353,7 @@ struct S_GENERIC_CARD {
   int width,height;
   unsigned long freq;
   unsigned long lastfreq; /* direction matters when telling the tuner to change channel */
-  int tvnorm,hue,contrast,bright,saturation,mute;
+  int tvnorm,hue,contrast,bright,saturation;
   unsigned int mux; /* Video source (Bt829 MUX) 1=Composite,2=tuner,3=S-Video */
   int cbsense;
   u16 luma, sat_u, sat_v;
