@@ -24,14 +24,14 @@
 #include "packet_stream.h"
 #include "config.h"
 
+#include <pthread.h>
+#include "alsa.h"
 
 #if USE_ALSA
 
-#include <pthread.h>
 
 #include <alsa/asoundlib.h>
 #include <endian.h>
-#include "alsa.h"
 
 STRING_CACHE *alsa_sc;
 
