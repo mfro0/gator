@@ -16,11 +16,25 @@ add_parameter_pane "/Diagnostics" "Diagnostics" \
 
 add_pane "/Diagnostics/xvinfo" "XVideo extension information" 
 add_pane "/Diagnostics/dmesg" "Kernel debug messages"
+add_pane "/Diagnostics/modules" "Loaded modules"
+
+proc make_text_holder { pane refresh_cmd} {
+button $pane.f.refresh -text "Refresh" -command $refresh_cmd
+grid $pane.f.refresh -pady 3 -padx 3
+scrollbar $pane.f.vsb -command "$pane.f.text yview" -orient vert
+scrollbar $pane.f.hsb -command "$pane.f.text xview" -orient horiz
+text $pane.f.text -xscrollcommand "$pane.f.hsb set" -yscrollcommand "$pane.f.vsb set"
+grid $pane.f.text - $pane.f.vsb -sticky news
+grid $pane.f.hsb - - -sticky news
+grid columnconfig $pane.f 1 -weight 1
+
+$pane.f.refresh invoke
+}
 
 
 set xvinfo_pane [get_pane_frame "/Diagnostics/xvinfo"]
 
-button $xvinfo_pane.f.refresh -text "Refresh" -command {
+make_text_holder $xvinfo_pane {
 	set a "Failed to run xvinfo"
 	catch {
 		set a [exec xvinfo]
@@ -35,19 +49,10 @@ button $xvinfo_pane.f.refresh -text "Refresh" -command {
 	$xvinfo_pane.f.text insert end $c
 	$xvinfo_pane.f.text see 0.0
 	}
-grid $xvinfo_pane.f.refresh -pady 3 -padx 3
-scrollbar $xvinfo_pane.f.vsb -command "$xvinfo_pane.f.text yview" -orient vert
-scrollbar $xvinfo_pane.f.hsb -command "$xvinfo_pane.f.text xview" -orient horiz
-text $xvinfo_pane.f.text -xscrollcommand "$xvinfo_pane.f.hsb set" -yscrollcommand "$xvinfo_pane.f.vsb set"
-grid $xvinfo_pane.f.text - $xvinfo_pane.f.vsb -sticky news
-grid $xvinfo_pane.f.hsb - - -sticky news
-grid columnconfig $xvinfo_pane.f 1 -weight 1
-
-$xvinfo_pane.f.refresh invoke
 
 set dmesg_pane [get_pane_frame "/Diagnostics/dmesg"]
 
-button $dmesg_pane.f.refresh -text "Refresh" -command {
+make_text_holder $dmesg_pane {
 	set a "Failed to run dmesg"
 	catch {
 		set a [exec dmesg]
@@ -62,12 +67,23 @@ button $dmesg_pane.f.refresh -text "Refresh" -command {
 	$dmesg_pane.f.text insert end $c
 	$dmesg_pane.f.text see end
 	}
-grid $dmesg_pane.f.refresh -pady 3 -padx 3
-scrollbar $dmesg_pane.f.vsb -command "$dmesg_pane.f.text yview" -orient vert
-scrollbar $dmesg_pane.f.hsb -command "$dmesg_pane.f.text xview" -orient horiz
-text $dmesg_pane.f.text -xscrollcommand "$dmesg_pane.f.hsb set" -yscrollcommand "$dmesg_pane.f.vsb set"
-grid $dmesg_pane.f.text - $dmesg_pane.f.vsb -sticky news
-grid $dmesg_pane.f.hsb - - -sticky news
-grid columnconfig $dmesg_pane.f 1 -weight 1
 
-$dmesg_pane.f.refresh invoke
+set modules_pane [get_pane_frame "/Diagnostics/modules"]
+
+make_text_holder $modules_pane {
+	set a "Failed to read /proc/modules"
+	catch {
+		set FILE [open "/proc/modules" "r"]
+		set a [read $FILE]
+		close $FILE
+		} b
+	set modules_pane [get_pane_frame "/Diagnostics/modules"]
+	$modules_pane.f.text delete 0.0 end
+	if { $a != "Failed to read /proc/modules" } {
+		$modules_pane.f.text insert end $a
+		$modules_pane.f.text insert end "-------------------------------------"
+		}
+	$modules_pane.f.text insert end $b
+	$modules_pane.f.text see 0.0
+	}
+

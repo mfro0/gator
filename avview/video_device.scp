@@ -4,3 +4,28 @@ add_parameter_pane "/Video device parameters" "Video device parameters" \
 	"Xv port used for on-screen display" choice {current_port } \
 	"Xv port encoding" choice {current_encoding } \
 	"Channel table" choice [linsert $TABLE_LIST 0 current_table_name] 
+
+
+proc regenerate_port_menu {} {
+global VIDEO_WINDOW
+set vd_param [get_pane_frame "/Video device parameters"]
+set menu [$vd_param.f.canvas.f.optionmenu0 cget -menu]
+set NUM_ADAPTORS [xv_numadaptors $VIDEO_WINDOW]
+puts "NUM_ADAPTORS=$NUM_ADAPTORS"
+
+$menu delete 0 end
+for { set i 0 } { $i < $NUM_ADAPTORS } { incr i 1 } { 
+	puts "Adaptor $i: [xv_adaptor_name $VIDEO_WINDOW $i]"
+	puts "\t\ttype [xv_adaptor_type $VIDEO_WINDOW $i]"
+	puts "\t\tports [xv_adaptor_ports $VIDEO_WINDOW $i]"
+	if { ([lsearch -exact [xv_adaptor_type $VIDEO_WINDOW $i] input] != -1) } {
+		set adaptor_name "[xv_adaptor_name $VIDEO_WINDOW $i]"
+		foreach port [xv_adaptor_ports $VIDEO_WINDOW $i] {
+			puts "$port $adaptor_name"
+			$menu add radiobutton -label "$adaptor_name: $port" -value "$port" -variable current_port
+			}
+		}
+	}
+
+}
+
