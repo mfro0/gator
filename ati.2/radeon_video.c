@@ -1709,21 +1709,28 @@ RADEONSetupImageVideo(ScreenPtr pScreen)
 	return NULL;
     } 
     xf86LoaderReqSymbols(TheatreSymbolsList, NULL);
-    if(!info->IsM6)
+    pPriv->i2c=NULL;
+    pPriv->theatre=NULL;
+    /* do not try to access i2c bus on radeon mobility */
+    switch(info->Chipset){
+    	case PCI_CHIP_RADEON_LY:
+	case PCI_CHIP_RADEON_LZ:
+	        xf86DrvMsg(pScrn->scrnIndex,X_INFO,"Detected Radeon Mobility M6, disabling i2c and Rage Theatre\n");
+		break;
+	case PCI_CHIP_RADEON_LW:
+	        xf86DrvMsg(pScrn->scrnIndex,X_INFO,"Detected Radeon Mobility M7, disabling i2c and Rage Theatre\n");
+		break;
+	default:
 	    pPriv->theatre=xf86_DetectTheatre(pPriv->VIP);
-	    else {
-	    pPriv->theatre=NULL;
-	    pPriv->i2c=NULL;
-	    xf86DrvMsg(pScrn->scrnIndex,X_INFO,"Detected Radeon Mobility M6, disabling i2c and Rage Theatre\n");
-	    return NULL;
-	    }
+	    RADEONInitI2C(pScrn,pPriv);
+	}
     if((pPriv->theatre!=NULL) && !RADEONSetupTheatre(pScrn,pPriv,pPriv->theatre))
     {
     	free(pPriv->theatre);
 	pPriv->theatre=NULL;
 	xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "Failed to initialize Rage Theatre, chip disabled\n");
     }
-    RADEONInitI2C(pScrn,pPriv);
+
     if(pPriv->theatre != NULL) 
     {	
        xf86_InitTheatre(pPriv->theatre);
