@@ -19,12 +19,6 @@
 #ifndef GENERIC_MACH64_HEADER
 #define GENERIC_MACH64_HEADER 1
 
-#define CAPTURE_MODE_SINGLE_ODD 0
-#define CAPTURE_MODE_SINGLE_EVEN 1
-#define CAPTURE_MODE_DOUBLE 2
-#define CAPTURE_MODE_INTERLACED 3
-#define CAPTURE_MODE_INTERLACED_INV 4
-
 #define MACH64_DMA_GUI_COMMAND__EOL     0x80000000
 
 #define MACH64_CONFIG_CHIP_ID        (*(card->MEM_0+0x38))
@@ -104,24 +98,7 @@
 #define MACH64_BUSMASTER_INT_EN  (1<<24)
 #define MACH64_BUSMASTER_INT_ACK (1<<25)
 
-#define TDA8425 8425
-#define TDA9850 9850
-#define TDA9851 9851
-#define MSP3410 3410
-
-#define CARD_STAND_ALONE        1
-#define CARD_ALL_IN_WONDER      2
-#define CARD_ALL_IN_WONDER_PRO  3
-#define CARD_ALL_IN_WONDER_128  4
-#define CARD_NEC                5
-
-int board_setbyte(GENERIC_CARD *card);
 int m64_inita(GENERIC_CARD *card);
-int fi12xx_tune(GENERIC_CARD *card);
-int fi12xx_register(GENERIC_CARD *card,u8 addr, int use);
-void set_mute(GENERIC_CARD *card, int value);
-int board_setaudio(GENERIC_CARD *card);
-u8 fi12xx_band(GENERIC_CARD *card, unsigned long freq);
 void mach64_enable_capture(GENERIC_CARD *card);
 void mach64_disable_capture(GENERIC_CARD *card);
 

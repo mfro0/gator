@@ -27,9 +27,8 @@
 #endif
 
 #include "generic.h"
-#include "i2c.h"
-#include "bt829.h"
 #include "mach64.h"
+#include "rage128.h"
 #include "memory.h"
 
 /* Here we want the physical address of the memory.
@@ -98,6 +97,8 @@ void build_dma_table(DMA_BM_TABLE *ptr, u32 from_addr, u32 to_addr, u32 bufsize)
     ptr[i].from_addr = from_addr + i*PAGE_SIZE;
     ptr[i].to_addr = kvirt_to_pa(to_addr + i*PAGE_SIZE);
     ptr[i].size = PAGE_SIZE; // amount to transfer?
+/* ERROR NOT REQUIRED FOR MACH64 */
+    ptr[i].size = PAGE_SIZE | RAGE128_BM_FORCE_TO_PCI; 
     ptr[i].reserved = 0;
     bufsize -= PAGE_SIZE;
   }
@@ -112,5 +113,7 @@ void build_dma_table(DMA_BM_TABLE *ptr, u32 from_addr, u32 to_addr, u32 bufsize)
   ptr[i].from_addr = from_addr + i*PAGE_SIZE;
   ptr[i].to_addr = kvirt_to_pa(to_addr + i*PAGE_SIZE);
   ptr[i].size = bufsize | MACH64_DMA_GUI_COMMAND__EOL; //make it stop
+/* ERROR NOT REQUIRED FOR MACH64 */
+  ptr[i].size = bufsize | RAGE128_BM_FORCE_TO_PCI | MACH64_DMA_GUI_COMMAND__EOL; //make it stop
   ptr[i].reserved = 0;
 }

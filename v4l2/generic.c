@@ -37,6 +37,7 @@
 #include "generic.h"
 #include "i2c.h"
 #include "bt829.h"
+#include "board.h"
 #include "mach64.h"
 #include "rage128.h"
 #include "memory.h"
@@ -681,7 +682,7 @@ void generic_enable_capture(GENERIC_CARD *card)
   down_interruptible(&card->lock);
 
   if (card->driver_data & RAGE128CHIP) {
-printk (KERN_INFO "Rage128 enable capture\n");
+    rage128_enable_capture(card);
   } else {
     mach64_enable_capture(card);
   }
@@ -722,14 +723,14 @@ MOD_DEC_USE_COUNT;
       if (fh->resources & STATUS_CAPTURING){
         generic_disable_capture(card);
       }
-printk (KERN_INFO "Release video called\n");
+dprintk (1, "Release video called\n");
       break;
     case V4L2_BUF_TYPE_VBI_CAPTURE:
       /* stop vbi capture here */
       if (fh->resources & STATUS_VBI_CAPTURE){
         generic_disable_vbi(card);
       }
-printk (KERN_INFO "Release vbi called\n");
+dprintk (1, "Release vbi called\n");
       break;
     default:
       BUG();
@@ -969,7 +970,7 @@ ssize_t generic_write(struct file *file, const char *buf,
 #define DUMP_BT_REG(REG) \
   len += sprintf (buffer+len,"%-20s (0x%02X) = 0x%02X\n",#REG,REG, BTREAD(card,REG))
 
-#define DUMP_M64_REG(REG) \
+#define DUMP_BOARD_REG(REG) \
   len += sprintf (buffer+len,"%-20s = 0x%02X\n",#REG,REG)
 
 /* should do one for each card? is it possible to do generic func? */
@@ -1016,9 +1017,16 @@ ssize_t proc_read(char *buffer, char **start, off_t offset, int size,
   DUMP_BT_REG(BT829_CC_DATA);
   DUMP_BT_REG(BT829_WC_DN);
   DUMP_BT_REG(BT829_P_IO);
-  DUMP_M64_REG(MACH64_CAPTURE_BUF0_OFFSET);
-  DUMP_M64_REG(MACH64_CAPTURE_BUF1_OFFSET);
-  DUMP_M64_REG(MACH64_ONESHOT_BUF_OFFSET);
+  if (card->driver_data & MACH64CHIP){
+    DUMP_BOARD_REG(MACH64_CAPTURE_BUF0_OFFSET);
+    DUMP_BOARD_REG(MACH64_CAPTURE_BUF1_OFFSET);
+    DUMP_BOARD_REG(MACH64_ONESHOT_BUF_OFFSET);
+  } else {
+    DUMP_BOARD_REG(R128_CAP0_BUF0_OFFSET);
+    DUMP_BOARD_REG(R128_CAP0_BUF1_OFFSET);
+    DUMP_BOARD_REG(R128_CAP0_ONESHOT_BUF_OFFSET);
+    DUMP_BOARD_REG(R128_CAP0_CONFIG);
+  }
 
 //  up(&card->lock);
 //  up(&card->lockcap);
@@ -1050,11 +1058,12 @@ ssize_t proc_write(struct file *file, const char *buffer,
   inbuf[count] = '\0';
 
   printk(KERN_INFO "card(%d) Write called you sent [%s]\n",card->cardnum, inbuf);
-  if (debug) {
+/*  if (debug) {
     debug = 0;
   } else {
     debug = 3;
-  }
+  } */
+
   return count;
 }
 
@@ -1345,7 +1354,7 @@ void grab_frame(GENERIC_CARD *card)
     printk (KERN_INFO "STALLED!!!!! aborting framegrab\n");
     up(&card->lockcap);
     return;
-  }
+  } 
 
   // there are two dma tables, one for buf0 one for buf1
   // they are rebuilt when the capture size changes
@@ -1370,7 +1379,11 @@ void grab_frame(GENERIC_CARD *card)
   if (!disabledma) {
     down_interruptible(&card->lock);
     // pass the dma_table to the card
-    MACH64_BM_SYSTEM_TABLE = virt_to_bus(ptr) | FRAME_BUFFER_TO_SYSTEM;
+    if (card->driver_data & RAGE128CHIP) {
+      R128_BM_VIDCAP_BUF0 = virt_to_bus(ptr) | R128_SYSTEM_TRIGGER_VIDEO_TO_SYSTEM; 
+    } else if (card->driver_data & MACH64CHIP){
+      MACH64_BM_SYSTEM_TABLE = virt_to_bus(ptr) | FRAME_BUFFER_TO_SYSTEM;
+    }
   
     //wait for dma to finish
     /* this should transfer the vbi information as well */
@@ -1408,8 +1421,14 @@ int grab_vbi(GENERIC_CARD *card)
   // odd vbi is 0 even is 1;
   whichfield = BTREAD(card,BT829_DSTATUS) & BT829_DSTATUS_FIELD;
   if (!disabledma) {
-    MACH64_BM_SYSTEM_TABLE = virt_to_bus(card->dma_table_vbi) |
+    if (card->driver_data & RAGE128CHIP) {
+      R128_BM_VIDCAP_BUF0 = virt_to_bus(card->dma_table_vbi) | 
+	R128_SYSTEM_TRIGGER_SYSTEM_TO_VIDEO; 
+    } else if (card->driver_data & MACH64CHIP){
+      MACH64_BM_SYSTEM_TABLE = virt_to_bus(card->dma_table_vbi) | 
         FRAME_BUFFER_TO_SYSTEM;
+    }
+
     wait_event_interruptible(generic_wait, (card->status & STATUS_DMABUF_READY));
     card->status &= ~STATUS_DMABUF_READY;
   }
@@ -2441,14 +2460,14 @@ int __devinit generic_probe(struct pci_dev *dev,
     /* keep going it still might work! */
   }
 
-  /* request end memory region 720x480x2 and 2 frames (so x2) */
+  /* request end memory region 720x480x2 and 2 frames (so x2) 
   if (!request_mem_region(pci_resource_start(dev,0) + 
 			  pci_resource_len(dev,0) - 1382400,
   			  1382400,
   			  tag)) {
     printk(KERN_WARNING "genericv4l(%d): can't lock video memory.\n", num_cards_detected);
-    /* keep going it still might work! */
-  }
+   keep going it still might work! 
+  } */
 
   /* enable bus mastering for this card */
   pci_set_master(dev);
@@ -2494,7 +2513,16 @@ int __devinit generic_probe(struct pci_dev *dev,
   pci_write_config_dword(dev, PCI_ROM_ADDRESS, val);
 
   biosptr=ioremap(romaddr,pci_resource_len(dev, PCI_ROM_RESOURCE)); 
-
+  if (card->driver_data & RAGE128CHIP) {
+    /* force the rage128 to let us read the bios...
+	not sure why this works but it does (found by trial and error) */
+    if (*(biosptr) == 0x0) {
+      printk (KERN_INFO "ERROR reading from bios, attempting to fix!\n");
+      R128_I2C_CNTL_1 = 0x0;
+      iounmap(card->atifb);
+      card->atifb=ioremap(pci_resource_start(dev, 0),pci_resource_len(dev, 0)); 
+    } 
+  }
   /* now read in some values from the rom */
   if (card->driver_data & MACH64CHIP){
     ptr = biosptr + 0x48;
@@ -2510,8 +2538,9 @@ int __devinit generic_probe(struct pci_dev *dev,
     romtable = biosptr + *((u16*)ptr);
     ptr = romtable + 0x38;
     ptr = biosptr + *((u16*)ptr);
-    if (ptr != biosptr)
+    if (ptr != biosptr) {
       memcpy(card->r128mminfo,ptr,12) ;
+    }
     ptr = romtable + 0x30;
     ptr = biosptr + *((u16*)ptr) + 0x0E;
     /* before using divide by 100!!!! */
@@ -2567,14 +2596,19 @@ int __devinit generic_probe(struct pci_dev *dev,
   /*setup a video4linux device for this card */
   register_video4linux(card);
 
-  card->saved_crtc_cntl = MACH64_CRTC_INT_CNTL;
-  card->saved_bus_cntl = MACH64_BUS_CNTL;
+  if (card->driver_data & MACH64CHIP){
+    card->saved_crtc_cntl = MACH64_CRTC_INT_CNTL;
+    card->saved_bus_cntl = MACH64_BUS_CNTL;
 
-  // enable bus mastering.
-  MACH64_BUS_CNTL = (card->saved_bus_cntl | MACH64_BUS_APER_REG_DIS |
+    // enable bus mastering.
+    MACH64_BUS_CNTL = (card->saved_bus_cntl | MACH64_BUS_APER_REG_DIS |
   	MACH64_BUS_MSTR_RESET | MACH64_BUS_FLUSH_BUF |
 	MACH64_BUS_PCI_DAC_DLY | MACH64_BUS_RD_DISCARD_EN |
 	MACH64_BUS_RD_ABORT_EN) & ~MACH64_BUS_MASTER_DIS; 
+  } else if (card->driver_data & RAGE128CHIP){ 
+    //enable bus mastering for r128?
+
+  }
 
   //allocate space for dma_tables (*150 holds enough for 640*480*2)
   //should check cards max capture and set max size to that?
@@ -2694,14 +2728,17 @@ printk (KERN_INFO "framebuffer2 is 0x%p\n", card->framebuffer2);
   }
 
   //set location of capture buffers
-  MACH64_CAPTURE_BUF0_OFFSET = card->buffer0;
-  MACH64_CAPTURE_BUF1_OFFSET = card->buffer1;
-  MACH64_ONESHOT_BUF_OFFSET = card->vbibuffer; /* set it to store to vbibuffer*/
-
-  //make sure video format is yuyv
-  flags = MACH64_VIDEO_FORMAT;
-  flags &= ~MACH64_VIDEO_IN; //clear video_in
-  MACH64_VIDEO_FORMAT = flags | MACH64_VIDEO_VYUY422;
+  if (card->driver_data & MACH64CHIP){
+    MACH64_CAPTURE_BUF0_OFFSET = card->buffer0;
+    MACH64_CAPTURE_BUF1_OFFSET = card->buffer1;
+    MACH64_ONESHOT_BUF_OFFSET = card->vbibuffer; /* set it to store to vbibuffer*/
+    //make sure video format is yuyv
+    flags = MACH64_VIDEO_FORMAT;
+    flags &= ~MACH64_VIDEO_IN; //clear video_in
+    MACH64_VIDEO_FORMAT = flags | MACH64_VIDEO_VYUY422;
+  } else {
+    // set locations for r128 card here?
+  }
 
   if (!disabledma) {
     // build dma tables (dma table, from_addr, to_addr, bufsize)
@@ -2815,46 +2852,83 @@ static irqreturn_t generic_irq_handler(int irq, void *dev_id, struct pt_regs * r
 #endif
 {
   GENERIC_CARD *card = (GENERIC_CARD *)dev_id;
-  unsigned int flags;
-
-  flags = MACH64_CRTC_INT_CNTL;
-  if (flags & MACH64_BUSMASTER_INT_ACK){
-    dprintk(3,"card(%d) busmaster interrupt\n",card->cardnum);
-    //Acknowledge that we saw the interrupt
-    MACH64_CRTC_INT_CNTL = flags | MACH64_BUSMASTER_INT_ACK;
-    card->status |= STATUS_DMABUF_READY;
-  }
-  if (flags & MACH64_CAPBUF0_INT_ACK){
-    dprintk(3,"card(%d) buf0 interrupt\n",card->cardnum);
-    //Acknowledge that we saw the interrupt
-    MACH64_CRTC_INT_CNTL = flags | MACH64_CAPBUF0_INT_ACK;
-    card->field_count++;
-//    if (!(card->status & STATUS_BUF0_READY)){
+  int handled = 0;
+  
+  if (card->driver_data & MACH64CHIP){
+    unsigned int flags;
+    flags = MACH64_CRTC_INT_CNTL;
+    if (flags & MACH64_BUSMASTER_INT_ACK){
+      dprintk(3,"card(%d) busmaster interrupt\n",card->cardnum);
+      //Acknowledge that we saw the interrupt
+      MACH64_CRTC_INT_CNTL = flags | MACH64_BUSMASTER_INT_ACK;
+      card->status |= STATUS_DMABUF_READY;
+      handled = 1;
+    }
+    if (flags & MACH64_CAPBUF0_INT_ACK){
+      dprintk(3,"card(%d) buf0 interrupt\n",card->cardnum);
+      //Acknowledge that we saw the interrupt
+      MACH64_CRTC_INT_CNTL = flags | MACH64_CAPBUF0_INT_ACK;
+      card->field_count++;
       card->status |= STATUS_BUF0_READY | STATUS_POLL_READY;
-//    }
-  }
-  if (flags & MACH64_CAPBUF1_INT_ACK){
-    dprintk(3,"card(%d) buf1 interrupt\n",card->cardnum);
-    //Acknowledge that we saw the interrupt
-    MACH64_CRTC_INT_CNTL = flags | MACH64_CAPBUF1_INT_ACK;
-    card->field_count++;
-//    if (!(card->status & STATUS_BUF1_READY)){
+      handled = 1;
+    }
+    if (flags & MACH64_CAPBUF1_INT_ACK){
+      dprintk(3,"card(%d) buf1 interrupt\n",card->cardnum);
+      //Acknowledge that we saw the interrupt
+      MACH64_CRTC_INT_CNTL = flags | MACH64_CAPBUF1_INT_ACK;
+      card->field_count++;
       card->status |= STATUS_BUF1_READY | STATUS_POLL_READY;
-//    }
-  }
-  if (flags & MACH64_CAPONESHOT_INT_ACK){
-    dprintk(3,"card(%d) oneshot interrupt\n",card->cardnum);
-    //Acknowledge that we saw the interrupt
-    MACH64_CRTC_INT_CNTL = flags | MACH64_CAPONESHOT_INT_ACK;
-//    if (!(card->status & STATUS_VBI_READY)){
+      handled = 1;
+    }
+    if (flags & MACH64_CAPONESHOT_INT_ACK){
+      dprintk(3,"card(%d) oneshot interrupt\n",card->cardnum);
+      //Acknowledge that we saw the interrupt
+      MACH64_CRTC_INT_CNTL = flags | MACH64_CAPONESHOT_INT_ACK;
       card->status |= STATUS_VBI_READY | STATUS_POLL_READY;
-//    }
+      handled = 1;
+    }
+  } else if (card->driver_data & RAGE128CHIP){ 
+    unsigned int status, mask;
+
+    /* check if we have any frame captures ready */
+    status = R128_CAP_INT_STATUS;
+    mask = R128_CAP_INT_CNTL;
+printk (KERN_INFO "Cap Status is 0x%08x mask is 0x%08x\n", status, mask);
+
+    if (status & 1){
+      handled = 1;
+      card->field_count++;
+      card->status |= STATUS_BUF0_READY | STATUS_POLL_READY;
+    }  
+    if (status & 2){
+      handled = 1;
+      card->field_count++;
+      card->status |= STATUS_BUF1_READY | STATUS_POLL_READY;
+    }
+    //Acknowledge that we saw the interrupt
+    R128_CAP_INT_STATUS = status & mask;
+
+    /* check for dma interrupt now */
+    status = R128_GEN_INT_STATUS;
+    mask = R128_GEN_INT_CNTL;
+
+printk (KERN_INFO "Gen Status is 0x%08x mask is 0x%08x\n", status, mask);
+
+    /* check if dma transfer finished */
+    if (status & (1<<16)) {
+      card->status |= STATUS_DMABUF_READY;
+      handled=1;
+    }
+    //Acknowledge that we saw the interrupt
+    R128_GEN_INT_STATUS = status & mask;
   }
 
-  tasklet_schedule(&generic_tasklet);
+  if (handled) {
+     tasklet_schedule(&generic_tasklet);
+  }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,5,0)
-  return IRQ_HANDLED;
+  return IRQ_RETVAL(handled);
 #endif
 }
 
@@ -2916,8 +2990,13 @@ void __devexit generic_remove(struct pci_dev *pci_dev)
 
   printk("genericv4l(%d): unloading\n",card->cardnum);  
 
-  //disable interrupts
-  MACH64_CRTC_INT_CNTL &= ~(MACH64_CAPBUF0_INT_EN|MACH64_CAPBUF1_INT_EN|MACH64_CAPONESHOT_INT_EN|MACH64_BUSMASTER_INT_EN);
+  if (card->driver_data & RAGE128CHIP) {
+    /* must set R128_I2C_CNTL_1 to 0 or we will not beable to read from rom next time we load the module */
+    R128_I2C_CNTL_1 = 0x0;
+  } else if (card->driver_data & MACH64CHIP){ 
+    //disable interrupts
+    MACH64_CRTC_INT_CNTL &= ~(MACH64_CAPBUF0_INT_EN|MACH64_CAPBUF1_INT_EN|MACH64_CAPONESHOT_INT_EN|MACH64_BUSMASTER_INT_EN);
+  }
 
   /* remove v4l devices */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)

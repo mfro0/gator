@@ -66,10 +66,8 @@ int bt829_setmux(GENERIC_CARD *card)
 {
   /* 1=Composite,  2=tuner, 3=S-Video */
   if(card->mux==3)
-    //BTWRITE(card, BT829_ADC,0xA1);
     BTWRITE(card, BT829_ADC,0x80);
   else
-//    BTWRITE(card, BT829_ADC,0xA3);
     BTWRITE(card, BT829_ADC,0x82);
 
   bt829_ctrl(card);
@@ -79,15 +77,7 @@ int bt829_setmux(GENERIC_CARD *card)
 
 void bt829_iform(GENERIC_CARD *card)
 {
-/*  int flag;
-
-  flag = BTREAD(card,BT829_IFORM);
-  if (tunertype == -1) {
-    flag &= 0xf8; // set FORMAT to AUTOFORMAT (000) 
-    BTWRITE(card,BT829_IFORM,card->mux<<5|GENERIC_IFORM_XT0|GENERIC_IFORM_XT1);
-  } else { */
-    BTWRITE(card,BT829_IFORM,card->mux<<5|generic_tvnorms[card->tvnorm].iform);
-//  }
+  BTWRITE(card,BT829_IFORM,card->mux<<5|generic_tvnorms[card->tvnorm].iform);
 }
 
 int bt829_ctrl(GENERIC_CARD *card)

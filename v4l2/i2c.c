@@ -24,7 +24,6 @@
 
 #include "generic.h"
 #include "i2c.h"
-#include "bt829.h"
 #include "mach64.h"
 #include "rage128.h"
 
@@ -48,7 +47,10 @@ int i2c_init(GENERIC_CARD *card)
   unsigned long nm;
 
   if (card->driver_data & RAGE128CHIP){
-    nm = card->refclock * 1000000 / (4*R128_CLOCK_FREQ);
+    /* set it to the rage128 i2c driver (all nulls) */
+    card->i2c = &generic_i2c_driver[3];
+
+    nm = card->refclock * 10000 / (4*R128_CLOCK_FREQ);
      for (card->R128_N=1 ; card->R128_N<255 ; card->R128_N++)
        if (card->R128_N*(card->R128_N-1) > nm)
          break;
@@ -62,119 +64,126 @@ int i2c_init(GENERIC_CARD *card)
       i2c_device(card,0xC4) + i2c_device(card,0xC6);
 
     if (ok != 0 && ok != 4){
-dprintk(2,"card(%d) Rage128 i2c driver\n",card->cardnum);
+printk(KERN_INFO "card(%d) Rage128 i2c driver\n",card->cardnum);
       return 0;
     }  
-  }
+    /* check for bt829 chip */
+    ok = i2c_device(card,0x88) + i2c_device(card,0x8a);
 
-  // try (DAC+GEN_TEST) 
-  card->i2c = &generic_i2c_driver[0];
-  card->sclreg = MACH64_DAC_CNTL_PTR;
-  card->sdareg = MACH64_GEN_TEST_CNTL_PTR;
-  card->sclset = 0x01000000; 
-  card->sdaset = 0x00000001; 
-  card->sdaget = 0x00000008;
-  card->scldir = 0x08000000; 
-  card->sdadir = 0x00000020;
-  save1 = MACH64_DAC_CNTL; 
-  save2 = MACH64_GEN_TEST_CNTL; 
-  save3 = MACH64_GP_IO;
-  *card->sdareg |= 0x00000010; 
-  save4 = MACH64_CRTC_H_TOTAL_DISP; //hmm why do this?
-  MACH64_GP_IO &= 0x7FFFFFFF; 
-  MACH64_CRTC_H_TOTAL_DISP = save4; //hmm why do this?
+    if ((ok != 0) && (ok != 4)) {
+	return 0;
+    }
+    /* failed to find it */
+    R128_I2C_CNTL_1 = 0x0;
+  } else if (card->driver_data & MACH64CHIP){
+    // try (DAC+GEN_TEST) 
+    card->i2c = &generic_i2c_driver[0];
+    card->sclreg = MACH64_DAC_CNTL_PTR;
+    card->sdareg = MACH64_GEN_TEST_CNTL_PTR;
+    card->sclset = 0x01000000; 
+    card->sdaset = 0x00000001; 
+    card->sdaget = 0x00000008;
+    card->scldir = 0x08000000; 
+    card->sdadir = 0x00000020;
+    save1 = MACH64_DAC_CNTL; 
+    save2 = MACH64_GEN_TEST_CNTL; 
+    save3 = MACH64_GP_IO;
+    *card->sdareg |= 0x00000010; 
+    save4 = MACH64_CRTC_H_TOTAL_DISP; //hmm why do this?
+    MACH64_GP_IO &= 0x7FFFFFFF; 
+    MACH64_CRTC_H_TOTAL_DISP = save4; //hmm why do this?
 
-  ok = i2c_device(card,0xC0) + i2c_device(card,0xC2) +
-    i2c_device(card,0xC4) + i2c_device(card,0xC6);
+    ok = i2c_device(card,0xC0) + i2c_device(card,0xC2) +
+      i2c_device(card,0xC4) + i2c_device(card,0xC6);
 
-  if (ok != 0 && ok != 4){
+    if (ok != 0 && ok != 4){
 dprintk(2,"card(%d) DAC+GEN_TEST i2c driver\n",card->cardnum);
-    return 0;
-  }
-  //else this is not the right i2c driver set everything back to what it was
-  MACH64_DAC_CNTL = save1;
-  MACH64_GEN_TEST_CNTL = save2;
-  MACH64_GP_IO = save3;
-
-  //try next i2c driver  (GP_IO Register)
-  card->sclreg = MACH64_GP_IO_PTR;
-  card->sdareg = MACH64_GP_IO_PTR; 
-  save1 = MACH64_GP_IO;
-  card->sclset = 0x00000800; 
-  card->sdaset = 0x00000010; 
-  card->sdaget = 0x00000010;
-  card->scldir = 0x08000000; 
-  card->sdadir = 0x00100000;
-  ok = i2c_device(card,0xC0) + i2c_device(card,0xC2) +
-    i2c_device(card,0xC4) + i2c_device(card,0xC6);
-
-  if (ok != 0 && ok != 4){
-dprintk(2,"card(%d) GP_IO i2c driver\n",card->cardnum);
-    return 0;
-  }
-  /* now try bt829 units in case there is no tuner */
-  if (ok == 0){
-    ok = i2c_device(card,0x88)+i2c_device(card,0x8a);
-    if (ok != 0){
       return 0;
     }
-  }
+    //else this is not the right i2c driver set everything back to what it was
+    MACH64_DAC_CNTL = save1;
+    MACH64_GEN_TEST_CNTL = save2;
+    MACH64_GP_IO = save3;
 
-  //else nope reset and test next
-  MACH64_GP_IO = save1;
+    //try next i2c driver  (GP_IO Register)
+    card->sclreg = MACH64_GP_IO_PTR;
+    card->sdareg = MACH64_GP_IO_PTR; 
+    save1 = MACH64_GP_IO;
+    card->sclset = 0x00000800; 
+    card->sdaset = 0x00000010; 
+    card->sdaget = 0x00000010;
+    card->scldir = 0x08000000; 
+    card->sdadir = 0x00100000;
+    ok = i2c_device(card,0xC0) + i2c_device(card,0xC2) +
+      i2c_device(card,0xC4) + i2c_device(card,0xC6);
 
-  //try next i2c driver LG (GP_IO Register)
-  card->sclreg = MACH64_GP_IO_PTR; 
-  card->sdareg = MACH64_GP_IO_PTR; 
-  save1 = MACH64_GP_IO;
-  card->sclset = 0x00000400; 
-  card->sdaset = 0x00001000; 
-  card->sdaget = 0x00001000;
-  card->scldir = 0x04000000; 
-  card->sdadir = 0x10000000; 
-  ok = i2c_device(card,0xC0) + i2c_device(card,0xC2) +
+    if (ok != 0 && ok != 4){
+dprintk(2,"card(%d) GP_IO i2c driver\n",card->cardnum);
+      return 0;
+    }
+    /* now try bt829 units in case there is no tuner */
+    if (ok == 0){
+      ok = i2c_device(card,0x88)+i2c_device(card,0x8a);
+      if (ok != 0){
+        return 0;
+      }
+    }
+
+    //else nope reset and test next
+    MACH64_GP_IO = save1;
+
+    //try next i2c driver LG (GP_IO Register)
+    card->sclreg = MACH64_GP_IO_PTR; 
+    card->sdareg = MACH64_GP_IO_PTR; 
+    save1 = MACH64_GP_IO;
+    card->sclset = 0x00000400; 
+    card->sdaset = 0x00001000; 
+    card->sdaget = 0x00001000;
+    card->scldir = 0x04000000; 
+    card->sdadir = 0x10000000; 
+    ok = i2c_device(card,0xC0) + i2c_device(card,0xC2) +
     i2c_device(card,0xC4) + i2c_device(card,0xC6);
 
-  if (ok != 0 && ok != 4){
+    if (ok != 0 && ok != 4){
 dprintk(2,"card(%d) LG GP_IO i2c driver\n",card->cardnum);
-    return 0;
-  }
-  //else nope reset and try next
-  MACH64_GP_IO = save1;
+      return 0;
+    }
+    //else nope reset and try next
+    MACH64_GP_IO = save1;
 
-  //TB (ImpacTV)
-  card->i2c = &generic_i2c_driver[1];
-  tvout_write32(card,MACH64_TV_I2C_CNTL,0x00005500|card->tv_i2c_cntl);
-  ok = i2c_device(card,0xC0) + i2c_device(card,0xC2) +
-    i2c_device(card,0xC4) + i2c_device(card,0xC6);
+    //TB (ImpacTV)
+    card->i2c = &generic_i2c_driver[1];
+    tvout_write32(card,MACH64_TV_I2C_CNTL,0x00005500|card->tv_i2c_cntl);
+    ok = i2c_device(card,0xC0) + i2c_device(card,0xC2) +
+      i2c_device(card,0xC4) + i2c_device(card,0xC6);
 
-  if (ok != 0 && ok != 4){
+    if (ok != 0 && ok != 4){
 dprintk(2,"card(%d) Impact tv i2c driver\n",card->cardnum);
-    return 0;
-  }
-  //else nope try last one
+      return 0;
+    }
+    //else nope try last one
 
-  //(Rage PRO)
-  card->i2c = &generic_i2c_driver[2];
-  save1 = MACH64_I2C_CNTL_0; 
-  save2 = MACH64_I2C_CNTL_1;
-  MACH64_I2C_CNTL_1 = 0x00400000; 
-  if (MACH64_I2C_CNTL_1!=0x00400000) 
-    return (-ENODEV);
+    //(Rage PRO)
+    card->i2c = &generic_i2c_driver[2];
+    save1 = MACH64_I2C_CNTL_0; 
+    save2 = MACH64_I2C_CNTL_1;
+    MACH64_I2C_CNTL_1 = 0x00400000; 
+    if (MACH64_I2C_CNTL_1!=0x00400000) 
+      return (-ENODEV);
 
-  card->i2c_cntl_0 = 0x0000C000; 
-  MACH64_I2C_CNTL_0 = card->i2c_cntl_0|0x00040000; 
+    card->i2c_cntl_0 = 0x0000C000; 
+    MACH64_I2C_CNTL_0 = card->i2c_cntl_0|0x00040000; 
 
-  ok = i2c_device(card,0xC0) + i2c_device(card,0xC2) +
-    i2c_device(card,0xC4) + i2c_device(card,0xC6);
+    ok = i2c_device(card,0xC0) + i2c_device(card,0xC2) +
+      i2c_device(card,0xC4) + i2c_device(card,0xC6);
 
-  if (ok != 0 && ok != 4){
+    if (ok != 0 && ok != 4){
 dprintk(2,"card(%d) RagePro i2c driver\n",card->cardnum);
-    return 0;
-  }  
-  MACH64_I2C_CNTL_0 = save1;
-  MACH64_I2C_CNTL_1 = save2;
-
+      return 0;
+    }  
+    MACH64_I2C_CNTL_0 = save1;
+    MACH64_I2C_CNTL_1 = save2;
+  }
   return (-ENODEV);
 }
 
@@ -432,11 +441,11 @@ void tvout_write32(GENERIC_CARD *card, u16 addr, u32 data)
 
 int r128_wait_ack(GENERIC_CARD *card) {
   int nack=0, n1=0, n2=0 ;
-  while (n1++ < 10 && (R128_I2C_CNTL_0_1 & (I2C_GO>>8))) udelay(1);
+  while (n1++ < 10 && (R128_I2C_CNTL_0_1 & (I2C_GO>>8))) udelay(15);
   while (n2++ < 10 && !nack) { 
     nack = R128_I2C_CNTL_0_0 & (I2C_DONE|I2C_NACK|I2C_HALT);
     if (!nack)
-      udelay(1); 
+      udelay(15); 
   }
   return (nack != I2C_DONE);
 } 
