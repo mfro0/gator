@@ -178,7 +178,7 @@ kdu->type=KDU_TYPE_VIRTUAL_BLOCK;
 kdu->data_private=dvb;
 kdu->free_private=km_free_private_data_virtual_block;
 if(kdu->data!=NULL){
-	kdu->data->size=dvb->size;
+	kdu->data->size=dvb->size*dvb->n;
 	}
 for(i=0;i<dvb->n;i++){
 	dvb->ptr[i]=rvmalloc(dvb->size);
