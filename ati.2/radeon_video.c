@@ -249,6 +249,111 @@ static XF86AttributeRec Attributes[NUM_DEC_ATTRIBUTES+1] =
    { 0, 0, 0, NULL}  /* just a place holder so I don't have to be fancy with commas */
 };
 
+#define INCLUDE_RGB_FORMATS 1
+
+#if INCLUDE_RGB_FORMATS
+
+#define NUM_IMAGES 8
+
+/* Note: GUIDs are bogus... - but nothing uses them anyway */
+
+#define FOURCC_RGBA32	0x41424752
+
+#define XVIMAGE_RGBA32(byte_order)   \
+	{ \
+		FOURCC_RGBA32, \
+		XvRGB, \
+		byte_order, \
+		{ 'R', 'G', 'B', 'A', \
+		  0x00,0x00,0x00,0x10,0x80,0x00,0x00,0xAA,0x00,0x38,0x9B,0x71}, \
+		32, \
+		XvPacked, \
+		1, \
+		32, 0x00FF0000, 0x0000FF00, 0x000000FF, \
+		0, 0, 0, 0, 0, 0, 0, 0, 0, \
+		{'A', 'R', 'G', 'B', \
+		  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, \
+		XvTopToBottom \
+	}		
+
+#define FOURCC_RGB24	0x00000000
+
+#define XVIMAGE_RGB24(byte_order)   \
+	{ \
+		FOURCC_RGB24, \
+		XvRGB, \
+		byte_order, \
+		{ 'R', 'G', 'B', 0, \
+		  0x00,0x00,0x00,0x10,0x80,0x00,0x00,0xAA,0x00,0x38,0x9B,0x71}, \
+		24, \
+		XvPacked, \
+		1, \
+		24, 0x00FF0000, 0x0000FF00, 0x000000FF, \
+		0, 0, 0, 0, 0, 0, 0, 0, 0, \
+		{ 'R', 'G', 'B', \
+		  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, \
+		XvTopToBottom \
+	}
+
+#define FOURCC_RGBT16	0x54424752
+
+#define XVIMAGE_RGBT16(byte_order)   \
+	{ \
+		FOURCC_RGBT16, \
+		XvRGB, \
+		byte_order, \
+		{ 'R', 'G', 'B', 'T', \
+		  0x00,0x00,0x00,0x10,0x80,0x00,0x00,0xAA,0x00,0x38,0x9B,0x71}, \
+		16, \
+		XvPacked, \
+		1, \
+		16, 0x00007C00, 0x000003E0, 0x0000001F, \
+		0, 0, 0, 0, 0, 0, 0, 0, 0, \
+		{'A', 'R', 'G', 'B', \
+		  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, \
+		XvTopToBottom \
+	}		
+
+#define FOURCC_RGB16	0x32424752
+
+#define XVIMAGE_RGB16(byte_order)   \
+	{ \
+		FOURCC_RGB16, \
+		XvRGB, \
+		byte_order, \
+		{ 'R', 'G', 'B', 0x00, \
+		  0x00,0x00,0x00,0x10,0x80,0x00,0x00,0xAA,0x00,0x38,0x9B,0x71}, \
+		16, \
+		XvPacked, \
+		1, \
+		16, 0x0000F800, 0x000007E0, 0x0000001F, \
+		0, 0, 0, 0, 0, 0, 0, 0, 0, \
+		{'R', 'G', 'B', \
+		  0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, \
+		XvTopToBottom \
+	}		
+
+static XF86ImageRec Images[NUM_IMAGES] =
+{
+#if X_BYTE_ORDER == X_BIG_ENDIAN
+	XVIMAGE_RGBA32(MSBFirst),
+	XVIMAGE_RGB24(MSBFirst),
+	XVIMAGE_RGBT16(MSBFirst),
+	XVIMAGE_RGB16(MSBFirst),
+#else
+	XVIMAGE_RGBA32(LSBFirst),
+	XVIMAGE_RGB24(LSBFirst),
+	XVIMAGE_RGBT16(LSBFirst),
+	XVIMAGE_RGB16(LSBFirst),
+#endif
+	XVIMAGE_YUY2,
+	XVIMAGE_UYVY,
+	XVIMAGE_YV12,
+	XVIMAGE_I420
+};
+
+#else
+
 #define NUM_IMAGES 4
 
 static XF86ImageRec Images[NUM_IMAGES] =
@@ -258,6 +363,8 @@ static XF86ImageRec Images[NUM_IMAGES] =
 	XVIMAGE_YV12,
 	XVIMAGE_I420
 };
+
+#endif
 
 void RADEONLeaveVT_Video(ScrnInfoPtr pScrn)
 {
@@ -2034,6 +2141,32 @@ RADEONCopyData(
 }
 
 static void
+RADEONCopyRGB24Data(
+  unsigned char *src,
+  unsigned char *dst,
+  int srcPitch,
+  int dstPitch,
+  int h,
+  int w
+){
+    CARD32 *dptr;
+    CARD8 *sptr;
+    int i,j;
+    
+
+    for(j=0;j<h;j++){
+	dptr=(CARD32 *)(dst+j*dstPitch);
+        sptr=src+j*srcPitch;
+    
+    	for(i=w;i>0;i--){
+	dptr[0]=((sptr[0])<<24)|((sptr[1])<<16)|(sptr[2]);
+	dptr++;
+	sptr+=3;
+	}
+    }
+}
+
+static void
 RADEONCopyMungedData(
    unsigned char *src1,
    unsigned char *src2,
@@ -2209,8 +2342,17 @@ RADEONDisplayVideo(
     RADEONWaitForIdle(pScrn);
     while(!(INREG(RADEON_OV0_REG_LOAD_CNTL) & (1 << 3)));
 
+    RADEONWaitForFifo(pScrn, 1);
+    switch(id){
+    	case FOURCC_RGBA32:
+	case FOURCC_RGB24:
+	    OUTREG(RADEON_OV0_H_INC, (h_inc>>1) | ((h_inc >> 1) << 16));
+	    break;
+	default:
+	    OUTREG(RADEON_OV0_H_INC, h_inc | ((h_inc >> 1) << 16));
+	}
+
     RADEONWaitForFifo(pScrn, 15);
-    OUTREG(RADEON_OV0_H_INC, h_inc | ((h_inc >> 1) << 16));
     OUTREG(RADEON_OV0_STEP_BY, step_by | (step_by << 8));
     OUTREG(RADEON_OV0_Y_X_START, dstBox->x1 | ((dstBox->y1*((pScrn->currentMode->Flags & V_DBLSCAN)?2:1)) << 16));
     OUTREG(RADEON_OV0_Y_X_END,   dstBox->x2 | ((dstBox->y2*((pScrn->currentMode->Flags & V_DBLSCAN)?2:1)) << 16));
@@ -2241,18 +2383,46 @@ RADEONDisplayVideo(
        OUTREG(RADEON_OV0_SCALE_CNTL, 0x41008B03);
 */
 
-    if(id == FOURCC_UYVY)
-       OUTREG(RADEON_OV0_SCALE_CNTL, RADEON_SCALER_SOURCE_YVYU422 \
-       	       | RADEON_SCALER_ADAPTIVE_DEINT \
-	       | RADEON_SCALER_SMART_SWITCH \
-	       | RADEON_SCALER_DOUBLE_BUFFER \
-	       | RADEON_SCALER_ENABLE);
-    else
-       OUTREG(RADEON_OV0_SCALE_CNTL,  RADEON_SCALER_SOURCE_VYUY422 \
-       	       | RADEON_SCALER_ADAPTIVE_DEINT \
-	       | RADEON_SCALER_SMART_SWITCH \
-	       | RADEON_SCALER_DOUBLE_BUFFER \
-	       | RADEON_SCALER_ENABLE);
+   switch(id){
+   	case FOURCC_UYVY:
+       		OUTREG(RADEON_OV0_SCALE_CNTL, RADEON_SCALER_SOURCE_YVYU422 \
+       	       		| RADEON_SCALER_ADAPTIVE_DEINT \
+	       		| RADEON_SCALER_SMART_SWITCH \
+	       		| RADEON_SCALER_DOUBLE_BUFFER \
+	       		| RADEON_SCALER_ENABLE);
+		break;
+	case FOURCC_RGB24:
+	case FOURCC_RGBA32:
+       		OUTREG(RADEON_OV0_SCALE_CNTL, RADEON_SCALER_SOURCE_32BPP \
+       	       		| RADEON_SCALER_ADAPTIVE_DEINT \
+	       		| RADEON_SCALER_SMART_SWITCH \
+	       		| RADEON_SCALER_DOUBLE_BUFFER \
+	       		| RADEON_SCALER_ENABLE);
+		break;
+	case FOURCC_RGBT16:
+       		OUTREG(RADEON_OV0_SCALE_CNTL, RADEON_SCALER_SOURCE_15BPP \
+       	       		| RADEON_SCALER_ADAPTIVE_DEINT \
+	       		| RADEON_SCALER_SMART_SWITCH \
+	       		| RADEON_SCALER_DOUBLE_BUFFER \
+	       		| RADEON_SCALER_ENABLE);
+		break;
+	case FOURCC_RGB16:
+       		OUTREG(RADEON_OV0_SCALE_CNTL, RADEON_SCALER_SOURCE_15BPP \
+       	       		| RADEON_SCALER_ADAPTIVE_DEINT \
+	       		| RADEON_SCALER_SMART_SWITCH \
+	       		| RADEON_SCALER_DOUBLE_BUFFER \
+	       		| RADEON_SCALER_ENABLE);
+		break;
+	case FOURCC_YUY2:
+   	case FOURCC_YV12:
+   	case FOURCC_I420:
+	default:
+       		OUTREG(RADEON_OV0_SCALE_CNTL,  RADEON_SCALER_SOURCE_VYUY422 \
+       	       		| RADEON_SCALER_ADAPTIVE_DEINT \
+	       		| RADEON_SCALER_SMART_SWITCH \
+	       		| RADEON_SCALER_DOUBLE_BUFFER \
+	       		| RADEON_SCALER_ENABLE);
+	}
 
     OUTREG(RADEON_OV0_REG_LOAD_CNTL, 0);
 }
@@ -2333,6 +2503,26 @@ RADEONPutImage(
    pitch = bpp * pScrn->displayWidth;
 
    switch(id) {
+   case FOURCC_RGB24:
+   	dstPitch=(width*4+0x0f)&(~0x0f);
+	srcPitch=width*3;
+	new_size=(dstPitch*height+bpp-1)/bpp;
+	break;
+   case FOURCC_RGBA32:
+   	dstPitch=(width*4+0x0f)&(~0x0f);
+	srcPitch=width*4;
+	new_size=(dstPitch*height+bpp-1)/bpp;
+	break;
+   case FOURCC_RGBT16:
+   	dstPitch=(width*2+0x0f)&(~0x0f);
+	srcPitch=(width*2+3)&(~0x03);
+	new_size=(dstPitch*height+bpp-1)/bpp;
+	break;
+   case FOURCC_RGB16:
+   	dstPitch=(width*2+0x0f)&(~0x0f);
+	srcPitch=(width*2+3)&(~0x03);
+	new_size=(dstPitch*height+bpp-1)/bpp;
+	break;
    case FOURCC_YV12:
    case FOURCC_I420:
 	dstPitch = ((width << 1) + 15) & ~15;
@@ -2387,8 +2577,22 @@ RADEONPutImage(
 			   buf + s3offset, dst_start, srcPitch, srcPitch2,
 			   dstPitch, nlines, npixels);
 	break;
+    case FOURCC_RGBA32:
+	buf += (top * srcPitch) + left*4;
+	nlines = ((yb + 0xffff) >> 16) - top;
+	dst_start += left*4;
+	RADEONCopyData(buf, dst_start, srcPitch, dstPitch, nlines, 2*npixels); 
+    	break;
+    case FOURCC_RGB24:
+	buf += (top * srcPitch) + left*3;
+	nlines = ((yb + 0xffff) >> 16) - top;
+	dst_start += left*4;
+	RADEONCopyRGB24Data(buf, dst_start, srcPitch, dstPitch, nlines, npixels); 
+    	break;
     case FOURCC_UYVY:
     case FOURCC_YUY2:
+    case FOURCC_RGBT16:
+    case FOURCC_RGB16:
     default:
 	left <<= 1;
 	buf += (top * srcPitch) + left;
