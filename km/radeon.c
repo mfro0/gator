@@ -159,6 +159,9 @@ while((a=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS))&RADEON_DMA_GUI_STATUS__
 	}
 wmb();
 writel(a & ~ RADEON_DMA_GUI_STATUS__ABORT, kms->reg_aperture+RADEON_DMA_GUI_STATUS);
+wmb();
+a=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
+printk("km: DMA_GUI_STATUS=0x%08x entries=%d\n", a, a & 0x1f);
 }
 
 int radeon_start_gui_dma_queue(KM_STRUCT *kms)
@@ -318,14 +321,17 @@ wmb();
 count=0;
 do {
 	status=readl(kms->reg_aperture+RADEON_DMA_GUI_STATUS);
+	if((status & RADEON_DMA_GUI_STATUS__ACTIVE))printk("DMA_GUI_QUEUE is active\n");
 	count++;
 	if(count==10){
 		printk(KERN_ERR "radeon DMA_GUI queue full DMA_GUI_STATUS=0x%08x\n", status);
 		}
 	KM_DEBUG("status=0x%08lx\n", status);
+	printk("DGQ entries=%d\n", status & 0x1f);
 	} while (!(status & 0x1f));
 wmb();
-writel(kvirt_to_bus(kmtr->stream->dma_table[kmtr->buffer]), (u32)(kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR)| (0));
+writel(kvirt_to_bus(kmtr->stream->dma_table[kmtr->buffer])&~1, kms->reg_aperture+RADEON_DMA_GUI_TABLE_ADDR);
+wmb();
 }
 
 static void radeon_schedule_request(KM_STRUCT *kms, KM_STREAM *stream, u32 offset, int odd)
@@ -377,15 +383,7 @@ kms->interrupt_count++;
 /* we should only get tens per second, no more */
 count=10000;
 
-atomic_inc(&(kms->recursion_count));
-/* bug - recursion count could have changed in between these instructions..
-   very unlikely.. We need the ability to check whether recursion_count is
-   greater than 1.. */
-if(atomic_read(&(kms->recursion_count))>1){
-	printk("km: irq handler double entry\n");
-	return; /* another interrupt handler is active */
-	}
-while(atomic_read(&(kms->recursion_count))){
+while(1){
 /*	KM_DEBUG("beep %ld\n", kms->interrupt_count); */
 
 		/* Check interrupt status */
@@ -401,8 +399,17 @@ while(atomic_read(&(kms->recursion_count))){
 		INT_BIT_CAP0;
 	if(!status){
 		/* INT_BIT_CAP0 will tell us if any interrupt bits are high */
-		if(atomic_dec_and_test(&(kms->recursion_count)))return;
-		continue;
+		return;
+		}
+	atomic_inc(&(kms->recursion_count));
+	/* bug ?? For some reason I think that changing recursion count in
+	   between these instructions is not possible as interrupt has not
+	   been acknowledged yet - and we know it was our interrupt
+	   as status is non-zero */
+	if(atomic_read(&(kms->recursion_count))>1){
+		printk("km: irq handler double entry\n");
+		atomic_dec(&(kms->recursion_count));
+		return; /* another interrupt handler is active */
 		}
 	status_cap=0;
 	if(status & INT_BIT_CAP0){
@@ -460,6 +467,7 @@ while(atomic_read(&(kms->recursion_count))){
 		writel(0, kms->reg_aperture+RADEON_GEN_INT_CNTL);
 		writel(0, kms->reg_aperture+RADEON_CAP_INT_CNTL);
 		}
+	atomic_dec(&(kms->recursion_count));
 	}
 }
 
@@ -535,6 +543,7 @@ writel(a|(INT_BIT_VBLANK|INT_BIT_VLINE|INT_BIT_VSYNC), kms->reg_aperture+RADEON_
    that determines whether any of bits of CAP_INT_CNTL
    cause an interrupt */
 writel(0, kms->reg_aperture+RADEON_CAP_INT_CNTL);
+radeon_purge_gui_dma_queue(kms);
 return 0;
 }
 

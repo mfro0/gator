@@ -164,22 +164,6 @@ printk("km: closed stream, %ld buffers captured\n", stream->total_frames);
 return 0;
 }
 
-static int km_fire_transfer_request(KM_TRANSFER_QUEUE *kmtq)
-{
-if(kmtq->request[kmtq->first].flag & KM_TRANSFER_IN_PROGRESS){
-	return 0;
-	}
-while(kmtq->first!=kmtq->last){
-	if(kmtq->request[kmtq->first].flag!=KM_TRANSFER_NOP){
-		kmtq->request[kmtq->first].flag|=KM_TRANSFER_IN_PROGRESS;
-		return 1;		
-		}
-	kmtq->first++;
-	if(kmtq->first>=kmtq->size)kmtq->first=0;
-	}
-return 0;
-}
-
 KM_TRANSFER_QUEUE * km_make_transfer_queue(int size)
 {
 int i;
@@ -196,6 +180,22 @@ for(i=0;i<kmtq->size;i++)
 return kmtq;
 }
 
+static int km_fire_transfer_request(KM_TRANSFER_QUEUE *kmtq)
+{
+if(kmtq->request[kmtq->first].flag & KM_TRANSFER_IN_PROGRESS){
+	return 0;
+	}
+while(kmtq->first!=kmtq->last){
+	if(kmtq->request[kmtq->first].flag!=KM_TRANSFER_NOP){
+		kmtq->request[kmtq->first].flag|=KM_TRANSFER_IN_PROGRESS;
+		return 1;		
+		}
+	kmtq->first++;
+	if(kmtq->first>=kmtq->size)kmtq->first=0;
+	}
+return 0;
+}
+
 int km_add_transfer_request(KM_TRANSFER_QUEUE *kmtq, 
 	KM_STREAM *stream, int buffer, int flag,
 	int (*start_transfer)(KM_TRANSFER_REQUEST *kmtr), void *user_data)
@@ -205,7 +205,9 @@ last=kmtq->last;
 last++;
 if(last>=kmtq->size)last=0;
 if(kmtq->request[last].flag!=KM_TRANSFER_NOP){
-	printk("km: GUI_DMA queue is full first=%d last=%d flag=0x%08x\n", kmtq->first, kmtq->last,
+	printk("km: GUI_DMA queue (size=%d) is full first=%d last=%d flag=0x%08x\n", 
+		kmtq->size,
+		kmtq->first, kmtq->last,
 		kmtq->request[last].flag);
 	return -1;
 	}
