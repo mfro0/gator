@@ -1,0 +1,11 @@
+# to compile for linux kernel>2.6.0 rename this file to Makefile and then 
+# compile with: make -C /usr/src/linux-2.6.X SUBDIRS=$PWD modules
+CFLAGS += -DLINUX_2_6
+KM_OBJS=km.o km_v4l.o km_memory.o radeon.o mach64.o rage128.o
+KM_API_OBJS=km_api.o km_api_data.o km_memory.o
+
+km_drv-objs := ${KM_OBJS}
+km_api_drv-objs := ${KM_API_OBJS}
+
+obj-m += km_drv.o
+obj-m += km_api_drv.o
