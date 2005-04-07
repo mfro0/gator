@@ -983,7 +983,7 @@ ssize_t generic_write(struct file *file, const char *buf,
   len += sprintf (buffer+len,"%-20s = 0x%02X\n",#REG,REG)
 
 /* should do one for each card? is it possible to do generic func? */
-ssize_t proc_read(char *buffer, char **start, off_t offset, int size,
+int proc_read(char *buffer, char **start, off_t offset, int size,
                         int *eof, void *data)
 {
 //  char buffer[8000];
@@ -1052,7 +1052,7 @@ ssize_t proc_read(char *buffer, char **start, off_t offset, int size,
   return len;
 }
 
-ssize_t proc_write(struct file *file, const char *buffer,
+int proc_write(struct file *file, const char *buffer,
                       unsigned long count, void *data)
 {
   GENERIC_CARD *card = data;
