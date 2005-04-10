@@ -545,10 +545,23 @@ if { ![array exists is_favorite_channel] } { return }
 
 proc exit_avview {} {
 global save_settings_on_exit
+global VIDEO_WINDOW saved_screensaver_mode
 if { [ffmpeg_present] == "yes" } {
 	ffmpeg_stop_encoding
         }
 if { $save_settings_on_exit == "true" } { save_settings }
+if {[info exists saved_screensaver_mode]} {
+    xmisc_setscreensaver $VIDEO_WINDOW [lindex $saved_screensaver_mode 0]\
+	[lindex $saved_screensaver_mode 1]\
+	[lindex $saved_screensaver_mode 2]\
+	[lindex $saved_screensaver_mode 3]\
+	[lindex $saved_screensaver_mode 4]\
+	[lindex $saved_screensaver_mode 5]\
+	[lindex $saved_screensaver_mode 6]\
+	[lindex $saved_screensaver_mode 7]\
+	[lindex $saved_screensaver_mode 8]\
+	[lindex $saved_screensaver_mode 9]
+}
 exit
 }
 
