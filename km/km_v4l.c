@@ -428,6 +428,7 @@ int init_km_v4l(KM_STRUCT *kms)
 	kms->vd = video_device_alloc();
 	if (NULL == kms->vd) return -ENOMEM;
 	memcpy(kms->vd, &km_v4l_template, sizeof(km_v4l_template));
+	kms->vd->dev = &(kms->dev->dev);
 	video_set_drvdata(kms->vd, kms);
 
 	kms->vbi_vd = video_device_alloc();
@@ -436,6 +437,7 @@ int init_km_v4l(KM_STRUCT *kms)
 		return -ENOMEM;
 	}
 	memcpy(kms->vbi_vd, &km_v4l_vbi_template, sizeof(km_v4l_vbi_template));
+	kms->vbi_vd->dev = &(kms->dev->dev);
 	video_set_drvdata(kms->vbi_vd, kms);
 
 	if(kms->is_capture_active!=NULL)
