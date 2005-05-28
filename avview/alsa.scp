@@ -206,6 +206,7 @@ foreach win [grid slaves $mw] { destroy $win }
 if { "$current_alsa_device" == "none" } {
 	canvas $mw.label -width 0 -height 0 -background red
 	grid $mw.label
+	$canvas configure -scrollregion "0 0 1 1"
 	return
 	}
 eval label $mw.title -text "\"Mixer (ALSA)\"" \
@@ -221,12 +222,9 @@ foreach element $current_alsa_info {
 	incr i 
 	}
 
-after idle [ subst -nocommands {
-	catch {
-		set bbox [grid bbox $mw]
-		$canvas configure -scrollregion "[grid bbox $mw]" -width [expr [lindex \$bbox 2]+8]
-		}
-	} ]
+update idletasks
+set bbox [grid bbox $mw]
+$canvas configure -scrollregion $bbox -width [expr [lindex $bbox 2]+8]
 }
 	
 proc generate_alsa_window { cw } {
@@ -317,6 +315,7 @@ grid columnconfig $cw.f1 1 -weight 1
 
 eval frame $cw.f1.c.f [get_settings $cw.f1.c.f ALSA]
 $cw.f1.c create window 5 0 -window $cw.f1.c.f -anchor nw
+bind $cw.f1.c.f <Configure> "readjust_alsa_scrollbar $cw.f1.c %W %h"
 
 if { "$current_alsa_device" != "none" } {
 	generate_mixer_window $cw.f1.c $cw.f1.c.f	
@@ -354,6 +353,13 @@ if { $current_alsa_device != "none" } {
 if { $alsa_window } {
 	generate_mixer_window $cw.f1.c $cw.f1.c.f
 	}
+}
+
+proc readjust_alsa_scrollbar {canvas frame height} {
+    if {[$frame cget -height] != $height} {
+	$canvas configure -scrollregion [grid bbox $frame]
+	eval $frame configure -height $height
+    }
 }
 
 global alsa_window
