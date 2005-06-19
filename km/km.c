@@ -588,7 +588,7 @@ static int __devinit km_probe(struct pci_dev *dev, const struct pci_device_id *p
 #ifdef CONFIG_PCI_NAMES
 	printk(KERN_INFO "km: probing %s\n",dev->pretty_name);
 #else
-	printk(KERN_INFO "km: probing %s\n",dev->slot_name);
+	printk(KERN_INFO "km: probing %s\n",pci_name(dev));
 #endif
 #else
 	printk(KERN_INFO "km: probing %s\n",dev->name);
@@ -724,16 +724,16 @@ static int __devinit km_probe(struct pci_dev *dev, const struct pci_device_id *p
 	FIELD("DEVICE_ID").data.c.string=kmalloc(strlen(dev->pretty_name)+1, GFP_KERNEL);
 	memcpy(FIELD("DEVICE_ID").data.c.string, dev->pretty_name, strlen(dev->pretty_name)+1);
 #else
-	FIELD("DEVICE_ID").data.c.string=kmalloc(strlen(dev->slot_name)+1, GFP_KERNEL);
-	memcpy(FIELD("DEVICE_ID").data.c.string, dev->slot_name, strlen(dev->slot_name)+1);
+	FIELD("DEVICE_ID").data.c.string=kmalloc(strlen(pci_name(dev))+1, GFP_KERNEL);
+	memcpy(FIELD("DEVICE_ID").data.c.string, pci_name(dev), strlen(pci_name(dev))+1);
 #endif
 #else
 	FIELD("DEVICE_ID").data.c.string=kmalloc(strlen(dev->name)+1, GFP_KERNEL);
 	memcpy(FIELD("DEVICE_ID").data.c.string, dev->name, strlen(dev->name)+1);
 #endif
 
-	FIELD("LOCATION_ID").data.c.string=kmalloc(strlen(dev->slot_name)+10, GFP_KERNEL);
-	sprintf(FIELD("LOCATION_ID").data.c.string, "PCI:%s", dev->slot_name);
+	FIELD("LOCATION_ID").data.c.string=kmalloc(strlen(pci_name(dev))+10, GFP_KERNEL);
+	sprintf(FIELD("LOCATION_ID").data.c.string, "PCI:%s", pci_name(dev));
 
 	FIELD("INSTANCE_ID").data.c.string=kmalloc(20, GFP_KERNEL);
 	sprintf(FIELD("INSTANCE_ID").data.c.string, "KM_DEVICE:%d", num_devices);
@@ -772,14 +772,14 @@ static int __devinit km_probe(struct pci_dev *dev, const struct pci_device_id *p
 #ifdef LINUX_2_6
 #ifdef CONFIG_PCI_NAMES
 	printk("Device %s %s (0x%04x:0x%04x) corresponds to /dev/video%d\n",
-	       dev->pretty_name, dev->slot_name, dev->vendor, dev->device, kms->vd->minor);
+	       dev->pretty_name, pci_name(dev), dev->vendor, dev->device, kms->vd->minor);
 #else
 	printk("Device %s (0x%04x:0x%04x) corresponds to /dev/video%d\n",
-	       dev->slot_name, dev->vendor, dev->device, kms->vd->minor);
+	       pci_name(dev), dev->vendor, dev->device, kms->vd->minor);
 #endif
 #else
 	printk("Device %s %s (0x%04x:0x%04x) corresponds to /dev/video%d\n",
-	       dev->name, dev->slot_name, dev->vendor, dev->device, kms->vd->minor);
+	       dev->name, pci_name(dev), dev->vendor, dev->device, kms->vd->minor);
 #endif
 	pci_set_master(dev);
 	printk("kms variables: reg_aperture=%p\n",kms->reg_aperture);
