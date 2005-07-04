@@ -189,10 +189,13 @@ int fi12xx_register(GENERIC_CARD *card,u8 addr, int use)
 
   dprintk(2,"card(%d) fi12xx_register called ptr is %d\n",card->cardnum, *ptr);
   if (card->board.addr == 0xFF){
-    if (*ptr&0x0F)
+    if (*ptr&0x0F){
+      dprintk(2,"card(%d) board.addr 0xFF\n", card->cardnum);
       card->tuner = (*ptr<=MAXTUNERTYPE) ? *ptr : 0;
+    }
   } else {
       card->tuner = card->boardinfo & 0x0F;
+      dprintk(2,"card(%d) tuner is 0x%02x\n", card->cardnum, card->tuner);
       if (card->tuner == 0x0F){
         card->tuner = (*ptr<=MAXTUNERTYPE) ? *ptr : 0;
       }

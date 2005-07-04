@@ -1851,10 +1851,11 @@ dprintk(2,"card(%d) VIDIOC_QUERYCAP called\n",card->cardnum);
       strncpy(cap->driver,"genericv4l",sizeof(cap->driver));
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
       strncpy(cap->card,card->video_dev.name,sizeof(cap->card));
+      snprintf(cap->bus_info,sizeof(cap->bus_info),"PCI:%s",card->dev->slot_name);
 #else
       strncpy(cap->card,card->video_dev->name,sizeof(cap->card));
+      snprintf(cap->bus_info,sizeof(cap->bus_info),"PCI:%s",pci_name(card->dev));
 #endif
-      snprintf(cap->bus_info,sizeof(cap->bus_info),"PCI:%s",card->dev->slot_name);
       cap->version = GENERIC_VERSION_CODE;
       cap->capabilities =
               V4L2_CAP_VIDEO_CAPTURE |
@@ -2488,7 +2489,11 @@ int __devinit generic_probe(struct pci_dev *dev,
 
   /* display info about the card we found */
   pci_read_config_byte(dev, PCI_LATENCY_TIMER, &lat);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
   printk(KERN_INFO "genericv4l(%d): rev %d at %s, irq: %d, latency: %d, atifb: 0x%lx\n", num_cards_detected, card->revision, dev->slot_name, dev->irq, lat, pci_resource_start(dev,0));
+#else
+  printk(KERN_INFO "genericv4l(%d): rev %d at %s, irq: %d, latency: %d, atifb: 0x%lx\n", num_cards_detected, card->revision, pci_name(dev), dev->irq, lat, pci_resource_start(dev,0));
+#endif
 
   printk(KERN_INFO "IO at 0x%08lx 0x%08lx\n", pci_resource_start(dev, 1), pci_resource_end(dev, 1));
   printk(KERN_INFO "mmr at 0x%08lx 0x%08lx\n", pci_resource_start(dev, 2), pci_resource_end(dev, 2));
@@ -2537,6 +2542,7 @@ printk (KERN_INFO "reading from bios, worked! %d \n", *(biosptr));
   if (card->driver_data & MACH64CHIP){
     ptr = biosptr + 0x48;
     romtable = biosptr + *((u16*)ptr);
+dprintk(2,"romtable at %p\n", romtable);
     ptr = romtable + 0x46;
     ptr = biosptr + *((u16*)ptr);
     memcpy(card->m64mminfo,ptr,5);
