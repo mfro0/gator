@@ -61,6 +61,9 @@ MODULE_PARM_DESC(disabledma, "disable dma support");
 int disableinterlace=0;
 MODULE_PARM(disableinterlace, "i");
 MODULE_PARM_DESC(disableinterlace, "disable interlace modes");
+int halfwidth=0;
+MODULE_PARM(halfwidth, "i");
+MODULE_PARM_DESC(halfwidth, "cut max width in half (640 becomes 320)");
 int tunertype=-1;
 MODULE_PARM(tunertype, "i");
 MODULE_PARM_DESC(tunertype, "Tuner type, 0=pal, 1=ntsc, 2=secam, 3=pal nc, 4=pal m, 5= pal n, 6=ntsc jp");
@@ -1500,7 +1503,8 @@ dprintk(2,"card(%d) VIDIOCGPICT called\n",card->cardnum);
      {
       struct video_picture *pic = arg;
 
-      if (pic->palette != VIDEO_PALETTE_YUV422){
+      if (pic->palette != VIDEO_PALETTE_YUV422 && pic->palette != VIDEO_PALETTE_YUYV){	      
+dprintk(1,"card(%d) VIDIOCGPICT call failed %d != %d\n",card->cardnum,pic->palette, VIDEO_PALETTE_YUV422);
          return -EAGAIN;
       }
 
@@ -1625,7 +1629,7 @@ dprintk(2,"card(%d) VIDIOCGMBUF called %dx%d\n",card->cardnum,card->width, card-
 
       // set format width height here and start capture
       //we only support yuyv packed
-if (vm->format != VIDEO_PALETTE_YUV422){
+if (vm->format != VIDEO_PALETTE_YUV422 && vm->format != VIDEO_PALETTE_YUYV){
 up(&fh->cap.lock);
 return -EINVAL;
 }
@@ -2591,7 +2595,6 @@ printk (KERN_INFO "refclock is %d\n", refclock);
      return -ENODEV;
    }
   }
-
   board_setaudio(card);
   bt829_setmux(card); /* set the mux */
 
@@ -2991,6 +2994,11 @@ static int generic_init_module(void) {
   if (disableinterlace){
     for (i = 0; i < GENERIC_TVNORMS; i++){
       generic_tvnorms[i].sheight /= 2;
+    }
+  }
+  if (halfwidth){
+    for (i = 0; i < GENERIC_TVNORMS; i++){
+      generic_tvnorms[i].swidth /= 2;
     }
   }
   /* add proc interface */
