@@ -125,7 +125,7 @@ ClientData init_lirc(Tcl_Interp *interp) {
 
   lirc_socket=lirc_init("avview",1);
   if(lirc_socket == -1) {
-    fprintf(stderr, "Can't initialize LIRC: error opening socket.\n");
+    fprintf(stderr, "Failed to initialize LIRC, remote control support disabled.\n");
     return NULL;
   }
 
@@ -138,8 +138,8 @@ ClientData init_lirc(Tcl_Interp *interp) {
   fcntl(lirc_socket,F_SETOWN,getpid());
   flags=fcntl(lirc_socket,F_GETFL,0);
   if(flags == -1) {
-    fprintf(stderr, "Can't initialize LIRC:"
-	    "error occured while setting-up the socket.\n");
+    fprintf(stderr, "Failed initialize LIRC socket, "
+	    "remote control support disabled.\n");
     lirc_deinit();
     return NULL;
   }
