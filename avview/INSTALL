@@ -19,6 +19,7 @@ not where you installed. it. AVview does not rely on installed ffmpeg binaries.
 
 If you are using code from CVS you need to run these commands first:
 
+	aclocal
 	autoconf
 	autoheader
 	automake
