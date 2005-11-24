@@ -55,7 +55,8 @@ int r128_inita(GENERIC_CARD *card)
   printk(KERN_INFO "videoram is %d\n",card->videoram);
 
   /* not sure what this does */
-  R128_VIDEOMUX_CNTL=0x50783;
+  //R128_VIDEOMUX_CNTL=0x50783;
+  R128_VIDEOMUX_CNTL=0x50781;
 
   R128_CAPTURE_PORT_MODE_CNTL = 0;
 

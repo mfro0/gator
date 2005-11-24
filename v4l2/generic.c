@@ -64,6 +64,9 @@ MODULE_PARM_DESC(disableinterlace, "disable interlace modes");
 int halfwidth=0;
 MODULE_PARM(halfwidth, "i");
 MODULE_PARM_DESC(halfwidth, "cut max width in half (640 becomes 320)");
+int forceromaddr=0;
+MODULE_PARM(forceromaddr, "i");
+MODULE_PARM_DESC(forceromaddr, "Force romaddr to 0x000C0000");
 int tunertype=-1;
 MODULE_PARM(tunertype, "i");
 MODULE_PARM_DESC(tunertype, "Tuner type, 0=pal, 1=ntsc, 2=secam, 3=pal nc, 4=pal m, 5= pal n, 6=ntsc jp");
@@ -250,7 +253,9 @@ static DECLARE_TASKLET_DISABLED(generic_tasklet, generic_blockhandler, 0);
 /* STATIC DATA                                                            */
 
 /* pass this struct to pci_module_init and it will call generic_probe
-on any cards that match generic_pci_tbl */
+on any cards that match generic_pci_tbl 
+Should i bother adding save_state,suspend,resume,enable_wake ?
+*/
 static struct pci_driver generic_pci_driver = {
         name:      "genericv4l",
         id_table:  generic_pci_tbl,
@@ -1724,7 +1729,7 @@ dprintk(2,"card(%d) VIDIOCSFREQ called %ld\n",card->cardnum, *freq);
 
 //     if (v->tuner) /* Only tuner 0 */
 //             return -EINVAL;
-     strcpy(v->name, "tuner");
+     strcpy(v->name, "Television");
      v->rangelow  = 0;
      v->rangehigh = 0x7FFFFFFF;
      v->flags     = VIDEO_TUNER_PAL|VIDEO_TUNER_NTSC|VIDEO_TUNER_SECAM;
@@ -1768,7 +1773,7 @@ dprintk(2,"card(%d) VIDIOCGCHAN called\n",card->cardnum);
                 v->type = VIDEO_TYPE_CAMERA;
                 v->norm = card->tvnorm;
                 if (channel == generic_tvcards[card->type].tuner)  {
-                        strcpy(v->name,"tuner");
+                        strcpy(v->name,"Television");
                         v->flags|=VIDEO_VC_TUNER;
                         v->type=VIDEO_TYPE_TV;
                         v->tuners=1;
@@ -1809,7 +1814,7 @@ dprintk(2,"card(%d) VIDIOCSCHAN called\n",card->cardnum);
 dprintk(2,"card(%d) VIDIOCGAUDIO called\n",card->cardnum);
 
                 memset(v,0,sizeof(*v));
-                strcpy(v->name,"tuner");
+                strcpy(v->name,"Television");
                 v->flags = VIDEO_AUDIO_MUTABLE;
                 v->mode  = VIDEO_SOUND_STEREO;
 
@@ -2259,7 +2264,7 @@ dprintk(2,"card(%d) VIDIOC_ENUMINPUT called\n",card->cardnum);
 
        /* you never know, they may make one without a tuner :) */
        if (i->index == generic_tvcards[card->type].tuner) {
-               sprintf(i->name, "tuner");
+               sprintf(i->name, "Television");
                i->type  = V4L2_INPUT_TYPE_TUNER;
                i->tuner = 0;
        } else if (i->index == generic_tvcards[card->type].svhs) {
@@ -2317,7 +2322,7 @@ dprintk(2,"card(%d) VIDIOC_G_TUNER called\n",card->cardnum);
 
        down_interruptible(&card->lock);
        memset(t,0,sizeof(*t));
-       strncpy(t->name, "tuner", sizeof(t->name));
+       strncpy(t->name, "Television", sizeof(t->name));
        t->type       = V4L2_TUNER_ANALOG_TV;
        t->rangehigh  = 0xffffffffUL;
        if (card->audio.deviceid == TDA9850) {
@@ -2502,9 +2507,10 @@ int __devinit generic_probe(struct pci_dev *dev,
   printk(KERN_INFO "IO at 0x%08lx 0x%08lx\n", pci_resource_start(dev, 1), pci_resource_end(dev, 1));
   printk(KERN_INFO "mmr at 0x%08lx 0x%08lx\n", pci_resource_start(dev, 2), pci_resource_end(dev, 2));
   romaddr = pci_resource_start(dev, PCI_ROM_RESOURCE);
-  if (romaddr == 0){
+  if (romaddr == 0 || forceromaddr){
     romaddr = 0x000C0000; //primary card
   }
+
   printk(KERN_INFO "bios at 0x%08x 0x%08lx\n", romaddr, pci_resource_end(dev, PCI_ROM_RESOURCE));
 
   /* map the cards framebuffer/capturebuffer/bios to our generic_card struct
@@ -2534,7 +2540,7 @@ int __devinit generic_probe(struct pci_dev *dev,
     /* force the rage128 to let us read the bios...
 	not sure why this works but it does (found by trial and error) */
     if (*(biosptr) == 0x0 || *(biosptr) == 0xFF) {
-      printk (KERN_INFO "ERROR reading from bios, attempting to fix!\n");
+      printk (KERN_INFO "ERROR reading from bios, attempting to fix! (if it still fails try forceromaddr=1\n");
       R128_I2C_CNTL_1 = 0x0;
       iounmap(card->atifb);
       card->atifb=ioremap(pci_resource_start(dev, 0),pci_resource_len(dev, 0)); 
@@ -3009,7 +3015,7 @@ static int generic_init_module(void) {
   proc_dir->owner = THIS_MODULE;
 
   //have the pci routines search for and initialize cards for us
-  retval = pci_module_init(&generic_pci_driver);
+  retval = pci_register_driver(&generic_pci_driver);
 
   /* enable our irq handler */
   tasklet_enable(&generic_tasklet);
@@ -3057,6 +3063,7 @@ void __devexit generic_remove(struct pci_dev *pci_dev)
 
   /* remove pointer back to our struct */
   pci_set_drvdata(pci_dev, NULL);
+//  pci_disable_device(pci_dev);
 
   /* remove the dma table and frame memory */
   if (!disabledma) {

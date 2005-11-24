@@ -21,6 +21,7 @@
 
 #include <linux/pci.h>
 #include <linux/videodev.h>
+#include <linux/version.h>
 
 #define GENERIC_VERSION_CODE KERNEL_VERSION(0,0,1)
 #define MAX_CARDS 10
