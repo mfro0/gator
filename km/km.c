@@ -1023,10 +1023,13 @@ static struct pci_device_id km_pci_tbl [] = {
          PCI_ANY_ID, PCI_ANY_ID, 0, 0, HARDWARE_RAGE128},
 #endif
 	/* Radeons */
+	/* Kernel 2.6.15 does not define these */
+#ifdef PCI_DEVICE_ID_ATI_RADEON_LE
         {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_RADEON_LE,
          PCI_ANY_ID, PCI_ANY_ID, 0, 0, HARDWARE_RADEON},
         {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_RADEON_LF,
          PCI_ANY_ID, PCI_ANY_ID, 0, 0, HARDWARE_RADEON},
+#endif
         {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_RADEON_N1,
          PCI_ANY_ID, PCI_ANY_ID, 0, 0, HARDWARE_RADEON},
         {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_RADEON_N2,
