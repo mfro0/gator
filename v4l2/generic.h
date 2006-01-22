@@ -371,6 +371,7 @@ struct S_GENERIC_CARD {
    DMA_BM_TABLE *dma_table_vbi;
    //u32 *framebuffer1,*framebuffer2, *vbidatabuffer;
    u8 *framebuffer1,*framebuffer2, *vbidatabuffer;
+   dma_addr_t dmabuf1, dmabuf2, dmavbi;
    int frame; /* which frame they want to capture to */
    int whichfield; /* which field we just captured */
    unsigned int field_count; 
@@ -418,8 +419,8 @@ void generic_mmap_vopen(struct vm_area_struct *vma);
 void generic_mmap_vclose(struct vm_area_struct *vma);
 void grab_frame(GENERIC_CARD *card);
 int grab_vbi(GENERIC_CARD *card);
-ssize_t proc_read(char *buffer, char **start, off_t offset, int size, int *eof, void *data);
-ssize_t proc_write(struct file *file, const char *buffer, unsigned long count, void *data);
+int proc_read(char *buffer, char **start, off_t offset, int size, int *eof, void *data);
+int proc_write(struct file *file, const char *buffer, unsigned long count, void *data);
 
 
 #endif

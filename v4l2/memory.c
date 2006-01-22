@@ -95,7 +95,7 @@ void build_dma_table(DMA_BM_TABLE *ptr, u32 from_addr, u32 to_addr, u32 bufsize)
 
   for (i=0;bufsize >= PAGE_SIZE; i++){
     ptr[i].from_addr = from_addr + i*PAGE_SIZE;
-    ptr[i].to_addr = kvirt_to_pa(to_addr + i*PAGE_SIZE);
+    ptr[i].to_addr = to_addr + i*PAGE_SIZE;
     ptr[i].size = PAGE_SIZE; // amount to transfer?
 /* ERROR NOT REQUIRED FOR MACH64 */
     ptr[i].size = PAGE_SIZE | RAGE128_BM_FORCE_TO_PCI; 
@@ -111,7 +111,7 @@ void build_dma_table(DMA_BM_TABLE *ptr, u32 from_addr, u32 to_addr, u32 bufsize)
   }
 
   ptr[i].from_addr = from_addr + i*PAGE_SIZE;
-  ptr[i].to_addr = kvirt_to_pa(to_addr + i*PAGE_SIZE);
+  ptr[i].to_addr = to_addr + i*PAGE_SIZE;
   ptr[i].size = bufsize | MACH64_DMA_GUI_COMMAND__EOL; //make it stop
 /* ERROR NOT REQUIRED FOR MACH64 */
   ptr[i].size = bufsize | RAGE128_BM_FORCE_TO_PCI | MACH64_DMA_GUI_COMMAND__EOL; //make it stop

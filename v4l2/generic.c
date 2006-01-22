@@ -923,7 +923,7 @@ unsigned long page,pos;
       page = kvirt_to_pa(pos);
       if (remap_page_range(vma,start,page,PAGE_SIZE, PAGE_SHARED)) {
 #else
-      page = page_to_pfn(vmalloc_to_page((void *)pos));
+      page = page_to_pfn(virt_to_page((void *)pos));
       if (remap_pfn_range(vma,start,page,PAGE_SIZE, PAGE_SHARED)) {	      
 #endif
 #endif
@@ -2411,6 +2411,35 @@ dprintk(2,"card(%d) VIDIOC_S_FREQUENCY set to %ld\n",card->cardnum, card->freq);
   } 
   return 0;
 }
+static void mark_pages2(void *res, int order)
+{
+	struct page *page = virt_to_page(res);
+	struct page *last_page = page + (1 << order);
+	while (page < last_page)
+		SetPageReserved(page++);
+}
+
+static void unmark_pages2(void *res, int order)
+{
+	struct page *page = virt_to_page(res);
+	struct page *last_page = page + (1 << order);
+	while (page < last_page)
+		ClearPageReserved(page++);
+}
+static void mark_pages(void *res, unsigned sz)
+{
+int pg;
+for (pg = 0; PAGE_SIZE * (1 << pg) < sz; pg++);
+ mark_pages2(res,pg);
+}
+
+static void unmark_pages(void *res, unsigned sz)
+{
+int pg;
+for (pg = 0; PAGE_SIZE * (1 << pg) < sz; pg++);
+unmark_pages2(res,pg);
+
+}
 
 /* called by pci_module_init, and is passed any cards listed in
 our table generic_pci_driver */
@@ -2717,9 +2746,12 @@ printk (KERN_INFO "refclock is %d\n", refclock);
   card->fbmallocsize = (card->fbmallocsize + PAGE_SIZE -1) & ~(PAGE_SIZE -1);
 
   if (!disabledma) {
-    card->framebuffer1 = rvmalloc(card->fbmallocsize);
-    card->framebuffer2 = rvmalloc(card->fbmallocsize);
-    card->vbidatabuffer = rvmalloc(32768);
+    card->framebuffer1 = pci_alloc_consistent(dev,card->fbmallocsize,&card->dmabuf1);
+    if (card->framebuffer1 != NULL)  mark_pages(card->framebuffer1,card->fbmallocsize);
+    card->framebuffer2 = pci_alloc_consistent(dev,card->fbmallocsize,&card->dmabuf2);
+    if (card->framebuffer2 != NULL)  mark_pages(card->framebuffer2,card->fbmallocsize);
+    card->vbidatabuffer = pci_alloc_consistent(dev,32768,&card->dmavbi);
+    if (card->vbidatabuffer != NULL)  mark_pages(card->vbidatabuffer,32768);
     if (card->framebuffer1 == NULL || card->framebuffer2 == NULL ||
         card->vbidatabuffer == NULL){
        printk("Could not allocate dma buffer\n");
@@ -2768,12 +2800,12 @@ printk (KERN_INFO "framebuffer2 is 0x%p\n", card->framebuffer2);
 
   if (!disabledma) {
     // build dma tables (dma table, from_addr, to_addr, bufsize)
-    build_dma_table(card->dma_table_buf0, card->buffer0,(unsigned long)card->framebuffer1, bufsize);
-    build_dma_table(card->dma_table_buf1, card->buffer1,(unsigned long)card->framebuffer1, bufsize);
-    build_dma_table(card->dma_table_buf2, card->buffer0,(unsigned long)card->framebuffer2, bufsize);
-    build_dma_table(card->dma_table_buf3, card->buffer1,(unsigned long)card->framebuffer2, bufsize);
+    build_dma_table(card->dma_table_buf0, cpu_to_le32(card->buffer0),cpu_to_le32(card->dmabuf1), bufsize);
+    build_dma_table(card->dma_table_buf1, cpu_to_le32(card->buffer1),cpu_to_le32(card->dmabuf1), bufsize);
+    build_dma_table(card->dma_table_buf2, cpu_to_le32(card->buffer0),cpu_to_le32(card->dmabuf2), bufsize);
+    build_dma_table(card->dma_table_buf3, cpu_to_le32(card->buffer1),cpu_to_le32(card->dmabuf2), bufsize);
     // build the vbi buffers while we are at it
-    build_dma_table(card->dma_table_vbi, card->vbibuffer,(unsigned long)card->vbidatabuffer, 32768);
+    build_dma_table(card->dma_table_vbi, card->vbibuffer,card->dmavbi, 32768);
   }
 
   /* add proc interface for this card */
@@ -3067,9 +3099,12 @@ void __devexit generic_remove(struct pci_dev *pci_dev)
 
   /* remove the dma table and frame memory */
   if (!disabledma) {
-    rvfree(card->framebuffer1,card->fbmallocsize);
-    rvfree(card->framebuffer2,card->fbmallocsize);
-    rvfree(card->vbidatabuffer,32768);
+    if (card->framebuffer1 != NULL)  unmark_pages(card->framebuffer1,card->fbmallocsize);
+    pci_free_consistent(pci_dev,card->fbmallocsize,card->framebuffer1,card->dmabuf1);
+    if (card->framebuffer2 != NULL)  unmark_pages(card->framebuffer2,card->fbmallocsize);
+    pci_free_consistent(pci_dev,card->fbmallocsize,card->framebuffer2,card->dmabuf2);
+    if (card->vbidatabuffer != NULL)  unmark_pages(card->vbidatabuffer,32768);
+    pci_free_consistent(pci_dev,32768,card->vbidatabuffer,card->dmavbi);
     kfree(card->dma_table_buf0);
     kfree(card->dma_table_buf1);
     kfree(card->dma_table_buf2);
