@@ -1708,6 +1708,7 @@ dprintk(1,"card(%d) VIDIOCGVBIFMT called \n",card->cardnum);
        unsigned long *freq = arg;
        *freq = card->freq;
 dprintk(2,"card(%d) VIDIOCGFREQ called %ld\n",card->cardnum,card->freq);
+printk("SNAPPER card(%d) VIDIOCGFREQ called %ld\n",card->cardnum,card->freq);
      return 0;
     }
     /* Set tuner */
@@ -1715,6 +1716,7 @@ dprintk(2,"card(%d) VIDIOCGFREQ called %ld\n",card->cardnum,card->freq);
     {
       unsigned long *freq = arg;
 dprintk(2,"card(%d) VIDIOCSFREQ called %ld\n",card->cardnum, *freq);
+printk("SNAPPER card(%d) VIDIOCSFREQ called %ld\n",card->cardnum, *freq);
       down_interruptible(&card->lock);
       card->freq=*freq;
       /* actually change the channel here */
@@ -2089,11 +2091,18 @@ dprintk(3,"card(%d) VIDIOC_DQBUF called\n",card->cardnum);
       card->frame = remove_frame_from_queue(&card->frame_queue);
       if (card->frame < 0){
         if (file->f_flags & O_NONBLOCK){
-          dprintk(1,"VIDIOC_DQBUF should do something here cause we ran out of buffers\n");
+          if (fh->resources & STATUS_CAPTURING){
+            dprintk(1,"VIDIOC_DQBUF should do something here cause we ran out of buffers and we are still capturing\n");
+	  }
           return -EAGAIN;
 	}
-	/* should wait for a frame to be available here? */
-	card->frame = 0;
+        if (fh->resources & STATUS_CAPTURING){
+	  /* should wait for a frame to be available here? */
+	  card->frame = 0;
+	} else {
+	  //out of buffers but thats okay cause we are not capturing
+          return -EAGAIN;
+	}
       }
 
       grab_frame(card);
@@ -2402,6 +2411,7 @@ dprintk(2,"card(%d) VIDIOC_G_FREQUENCY called\n",card->cardnum);
       down_interruptible(&card->lock);
       card->freq = f->frequency;
 dprintk(2,"card(%d) VIDIOC_S_FREQUENCY set to %ld\n",card->cardnum, card->freq);
+printk("SNAPPER card(%d) VIDIOC_S_FREQUENCY set to %ld\n",card->cardnum, card->freq);
       fi12xx_tune(card);
       up(&card->lock);
       return 0;
