@@ -1708,7 +1708,6 @@ dprintk(1,"card(%d) VIDIOCGVBIFMT called \n",card->cardnum);
        unsigned long *freq = arg;
        *freq = card->freq;
 dprintk(2,"card(%d) VIDIOCGFREQ called %ld\n",card->cardnum,card->freq);
-printk("SNAPPER card(%d) VIDIOCGFREQ called %ld\n",card->cardnum,card->freq);
      return 0;
     }
     /* Set tuner */
@@ -1716,7 +1715,6 @@ printk("SNAPPER card(%d) VIDIOCGFREQ called %ld\n",card->cardnum,card->freq);
     {
       unsigned long *freq = arg;
 dprintk(2,"card(%d) VIDIOCSFREQ called %ld\n",card->cardnum, *freq);
-printk("SNAPPER card(%d) VIDIOCSFREQ called %ld\n",card->cardnum, *freq);
       down_interruptible(&card->lock);
       card->freq=*freq;
       /* actually change the channel here */
@@ -2411,7 +2409,6 @@ dprintk(2,"card(%d) VIDIOC_G_FREQUENCY called\n",card->cardnum);
       down_interruptible(&card->lock);
       card->freq = f->frequency;
 dprintk(2,"card(%d) VIDIOC_S_FREQUENCY set to %ld\n",card->cardnum, card->freq);
-printk("SNAPPER card(%d) VIDIOC_S_FREQUENCY set to %ld\n",card->cardnum, card->freq);
       fi12xx_tune(card);
       up(&card->lock);
       return 0;
