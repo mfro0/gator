@@ -23,6 +23,7 @@ GNU Public License
 #include <linux/config.h>
 #include <linux/version.h>
 #include <linux/module.h>
+#include <linux/moduleparam.h>
 #include <linux/kmod.h>
 #include <linux/kernel.h>
 #include <linux/sched.h>
@@ -47,19 +48,16 @@ GNU Public License
 MODULE_LICENSE("GPL");
 #endif
 
+int km_debug=0;
+int km_buffers=5;
+
 MODULE_DESCRIPTION("km_drv");
-MODULE_PARM(km_debug, "i");
-MODULE_PARM(km_debug_overruns, "i");
-MODULE_PARM(km_buffers, "i");
+module_param(km_debug, int, 0);
+module_param(km_buffers, int, 0);
 MODULE_PARM_DESC(km_debug, "kmultimedia debugging level");
-MODULE_PARM_DESC(km_debug_overruns, "kmultimedia debug overruns");
 MODULE_PARM_DESC(km_buffers, "how many buffers to use for video capture per each device");
 
 #define POINTER_TO_INT( x ) ((unsigned long)(x))
-
-int km_debug=0;
-int km_debug_overruns=0;
-int km_buffers=5;
 
 int find_free_buffer(KM_STREAM *stream)
 {
