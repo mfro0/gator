@@ -27,170 +27,297 @@
 #include "mach64.h"
 #include "rage128.h"
 
-struct i2c_funcs generic_i2c_driver[] = {
-/* A (DAC+GEN_TEST) B (GP_IO Register) LG (GP_IO Register) */
-  { &reg_scldir, &reg_setscl, &reg_getscl,
-    &reg_sdadir, &reg_setsda, &reg_getsda },
-  /* TB (ImpacTV) */
-  { &itv_scldir, &itv_setscl, &itv_getscl,
-    &itv_sdadir, &itv_setsda, &itv_getsda },
-  { &pro_scldir, &pro_setscl, &pro_getscl,      /* C (Rage PRO) */
-    &pro_sdadir, &pro_setsda, &pro_getsda },
-  { NULL, NULL, NULL, NULL, NULL, NULL} /* Rage128 H/W Driver */
-};
-const unsigned int MAXI2CDRIVER = ARRAY_SIZE(generic_i2c_driver);
+static struct i2c_funcs* i2c_getfuncs(void); /* sleazy C proto avoidance */
 
 int i2c_init(GENERIC_CARD *card)
 {
-  int ok;
-  u32 save1,save2,save3,save4;
+  struct i2c_funcs *i2cf;
+  int idx, ok;
+  u32 saves[4];
   unsigned long nm;
-
+  
+  i2cf = i2c_getfuncs(); /* sleazy C proto avoidance */
+  
   if (card->driver_data & RAGE128CHIP){
-    /* set it to the rage128 i2c driver (all nulls) */
-    card->i2c = &generic_i2c_driver[3];
-
+    /* No banging, handled specially.  Set to all NULLs JIC. */
+    idx = 0;
+    while (i2cf[idx].name) idx++;
+    card->i2c = &i2cf[idx];
+    
     nm = card->refclock * 10000 / (4*R128_CLOCK_FREQ);
-     for (card->R128_N=1 ; card->R128_N<255 ; card->R128_N++)
-       if (card->R128_N*(card->R128_N-1) > nm)
-         break;
-     card->R128_M = card->R128_N - 1; 
-     card->R128_TIME = 2*card->R128_N;
-     R128_I2C_CNTL_1   = (card->R128_TIME<<24) | I2C_SEL | I2C_EN;
-     R128_I2C_CNTL_0_0 = I2C_DONE | I2C_NACK | I2C_HALT | I2C_SOFT_RST |
-                         I2C_DRIVE_EN | I2C_DRIVE_SEL; 
+    for (card->R128_N=1 ; card->R128_N < 255 ; card->R128_N++)
+      if (card->R128_N * (card->R128_N-1) > nm)
+	break;
+    card->R128_M = card->R128_N - 1; 
+    card->R128_TIME = 2*card->R128_N;
+    R128_I2C_CNTL_1   = (card->R128_TIME<<24) | I2C_SEL | I2C_EN;
+    R128_I2C_CNTL_0_0 = I2C_DONE | I2C_NACK | I2C_HALT | I2C_SOFT_RST |
+                        I2C_DRIVE_EN | I2C_DRIVE_SEL; 
 
-    ok = i2c_device(card,0xC0) + i2c_device(card,0xC2) +
-      i2c_device(card,0xC4) + i2c_device(card,0xC6);
 
-    if (ok != 0 && ok != 4){
-printk(KERN_INFO "card(%d) Rage128 i2c driver\n",card->cardnum);
-      return 0;
-    }  
-    /* check for bt829 chip */
-    ok = i2c_device(card,0x88) + i2c_device(card,0x8a);
-
-    if ((ok != 0) && (ok != 4)) {
-	return 0;
-    }
-    /* failed to find it */
-    R128_I2C_CNTL_1 = 0x0;
-  } else if (card->driver_data & MACH64CHIP){
-    // try (DAC+GEN_TEST) 
-    card->i2c = &generic_i2c_driver[0];
-    card->sclreg = MACH64_DAC_CNTL_PTR;
-    card->sdareg = MACH64_GEN_TEST_CNTL_PTR;
-    card->sclset = 0x01000000; 
-    card->sdaset = 0x00000001; 
-    card->sdaget = 0x00000008;
-    card->scldir = 0x08000000; 
-    card->sdadir = 0x00000020;
-    save1 = MACH64_DAC_CNTL; 
-    save2 = MACH64_GEN_TEST_CNTL; 
-    save3 = MACH64_GP_IO;
-    *card->sdareg |= 0x00000010; 
-    save4 = MACH64_CRTC_H_TOTAL_DISP; //hmm why do this?
-    MACH64_GP_IO &= 0x7FFFFFFF; 
-    MACH64_CRTC_H_TOTAL_DISP = save4; //hmm why do this?
-
-    ok = i2c_device(card,0xC0) + i2c_device(card,0xC2) +
-      i2c_device(card,0xC4) + i2c_device(card,0xC6);
-
-    if (ok != 0 && ok != 4){
-dprintk(2,"card(%d) DAC+GEN_TEST i2c driver\n",card->cardnum);
-      return 0;
-    }
-    //else this is not the right i2c driver set everything back to what it was
-    MACH64_DAC_CNTL = save1;
-    MACH64_GEN_TEST_CNTL = save2;
-    MACH64_GP_IO = save3;
-
-    //try next i2c driver  (GP_IO Register)
-    card->sclreg = MACH64_GP_IO_PTR;
-    card->sdareg = MACH64_GP_IO_PTR; 
-    save1 = MACH64_GP_IO;
-    card->sclset = 0x00000800; 
-    card->sdaset = 0x00000010; 
-    card->sdaget = 0x00000010;
-    card->scldir = 0x08000000; 
-    card->sdadir = 0x00100000;
-    ok = i2c_device(card,0xC0) + i2c_device(card,0xC2) +
-      i2c_device(card,0xC4) + i2c_device(card,0xC6);
-
-    if (ok != 0 && ok != 4){
-dprintk(2,"card(%d) GP_IO i2c driver\n",card->cardnum);
-      return 0;
-    }
-    /* now try bt829 units in case there is no tuner */
-    if (ok == 0){
-      ok = i2c_device(card,0x88)+i2c_device(card,0x8a);
-      if (ok != 0){
-        return 0;
-      }
-    }
-
-    //else nope reset and test next
-    MACH64_GP_IO = save1;
-
-    //try next i2c driver LG (GP_IO Register)
-    card->sclreg = MACH64_GP_IO_PTR; 
-    card->sdareg = MACH64_GP_IO_PTR; 
-    save1 = MACH64_GP_IO;
-    card->sclset = 0x00000400; 
-    card->sdaset = 0x00001000; 
-    card->sdaget = 0x00001000;
-    card->scldir = 0x04000000; 
-    card->sdadir = 0x10000000; 
-    ok = i2c_device(card,0xC0) + i2c_device(card,0xC2) +
-    i2c_device(card,0xC4) + i2c_device(card,0xC6);
-
-    if (ok != 0 && ok != 4){
-dprintk(2,"card(%d) LG GP_IO i2c driver\n",card->cardnum);
-      return 0;
-    }
-    //else nope reset and try next
-    MACH64_GP_IO = save1;
-
-    //TB (ImpacTV)
-    card->i2c = &generic_i2c_driver[1];
-    tvout_write32(card,MACH64_TV_I2C_CNTL,0x00005500|card->tv_i2c_cntl);
-    ok = i2c_device(card,0xC0) + i2c_device(card,0xC2) +
-      i2c_device(card,0xC4) + i2c_device(card,0xC6);
-
-    if (ok != 0 && ok != 4){
-dprintk(2,"card(%d) Impact tv i2c driver\n",card->cardnum);
-      return 0;
-    }
-    //else nope try last one
-
-    //(Rage PRO)
-    card->i2c = &generic_i2c_driver[2];
-    save1 = MACH64_I2C_CNTL_0; 
-    save2 = MACH64_I2C_CNTL_1;
-    MACH64_I2C_CNTL_1 = 0x00400000; 
-    if (MACH64_I2C_CNTL_1!=0x00400000) 
+    /* Probes can "succeed" if the pin is stuck high.  At least 
+       one of these should fail.  If stuck low, or no hardware,
+       all will fail as well.  Do minimum IO to make the call.
+    */
+    ok = i2c_device(card,0xC0); /* tuners */
+    if ((i2c_device(card,0xC2) == ok) && 
+	(i2c_device(card,0xC4) == ok) && 
+	(i2c_device(card,0xC6) == ok) && 
+	(i2c_device(card,0x88) == ok) && /* grabbers (bt8xx) */
+	(i2c_device(card,0x8a) == ok)) {
+      /* pin stuck or no harware present */
+      R128_I2C_CNTL_1 = 0x0;
       return (-ENODEV);
+    }
 
-    card->i2c_cntl_0 = 0x0000C000; 
-    MACH64_I2C_CNTL_0 = card->i2c_cntl_0|0x00040000; 
+    printk(KERN_INFO "card(%d) Rage128 i2c driver\n",card->cardnum);
+    return 0;
+  } else if (card->driver_data & MACH64CHIP){
 
-    ok = i2c_device(card,0xC0) + i2c_device(card,0xC2) +
-      i2c_device(card,0xC4) + i2c_device(card,0xC6);
+    idx = 0;
+    while (i2cf[idx].name) {
+      card->i2c = &i2cf[idx];
 
-    if (ok != 0 && ok != 4){
-dprintk(2,"card(%d) RagePro i2c driver\n",card->cardnum);
-      return 0;
-    }  
-    MACH64_I2C_CNTL_0 = save1;
-    MACH64_I2C_CNTL_1 = save2;
+      dprintk(3, "card(%d) Trying %s I2C driver\n",
+	      card->cardnum,i2cf[idx].name);
+      if (!card->i2c->init(card,saves)) {
+	/* Probes can "succeed" if the pin is stuck high.  At least 
+	   one of these should fail.  If stuck low, or no hardware,
+	   all will fail as well.  Do minimum IO to make the call.
+	*/
+	ok =   i2c_device(card,0xC0); /* tuners */
+	if (!((i2c_device(card,0xC2) == ok) && 
+	      (i2c_device(card,0xC4) == ok) && 
+	      (i2c_device(card,0xC6) == ok) && 
+	      (i2c_device(card,0x88) == ok) && /* grabbers (bt8xx) */
+	      (i2c_device(card,0x8a) == ok))) {
+	  /* found */
+	  dprintk(2, "card(%d) %s I2C driver succeeded\n",
+		  card->cardnum,i2cf[idx].name);
+	  return 0;
+	}
+      }
+      card->i2c->deinit(card, saves);
+      idx++;
+    }
+    printk(KERN_INFO "No hardware found via i2c.\n");
   }
   return (-ENODEV);
 }
 
-void pro_scldir(GENERIC_CARD *card,int set) { }
-void pro_sdadir(GENERIC_CARD *card,int set) { }
 
-void pro_setscl(GENERIC_CARD *card,int set) 
+
+/* Type A: I2C bus accessed through DAC_CNTL and GEN_TEST_CNTL */
+
+static int dac_init(GENERIC_CARD *card, u32 *saves) {
+  saves[0] = MACH64_DAC_CNTL; 
+  saves[1] = MACH64_GEN_TEST_CNTL; 
+  saves[2] = MACH64_GP_IO;
+  MACH64_GEN_TEST_CNTL |= 0x00000010; 
+  saves[3] = MACH64_CRTC_H_TOTAL_DISP; //hmm why do this?
+  MACH64_GP_IO &= 0x7FFFFFFF; 
+  MACH64_CRTC_H_TOTAL_DISP = saves[3]; //hmm why do this?
+  return 0;
+}
+
+static void dac_deinit(GENERIC_CARD *card, u32 *saves) {
+  MACH64_DAC_CNTL = saves[0];
+  MACH64_GEN_TEST_CNTL = saves[1];
+  MACH64_GP_IO = saves[2];
+}
+
+static void dac_scldir(GENERIC_CARD *card, int set)
+{
+  set ? (MACH64_DAC_CNTL |= 0x08000000) : (MACH64_DAC_CNTL &= 0xf7ffffff);
+}
+
+static void dac_sdadir(GENERIC_CARD *card, int set)
+{
+  set ? (MACH64_GEN_TEST_CNTL|=0x00000020):(MACH64_GEN_TEST_CNTL&=0xffffffdf);
+}
+
+static void dac_setscl(GENERIC_CARD *card, int set)
+{
+  set ? (MACH64_DAC_CNTL |= 0x01000000) : (MACH64_DAC_CNTL &= 0xfeffffff);
+  I2C_SLEEP;
+}
+
+static void dac_setsda(GENERIC_CARD *card, int set)
+{
+  set ? (MACH64_GEN_TEST_CNTL|=0x00000001):(MACH64_GEN_TEST_CNTL&=0xfffffffe);
+  I2C_SLEEP;
+}
+
+static int dac_getscl(GENERIC_CARD *card)
+{
+  return (MACH64_DAC_CNTL & 0x01000000);
+}
+
+static int dac_getsda(GENERIC_CARD *card)
+{
+  return (MACH64_GEN_TEST_CNTL & 0x00000008);
+}
+
+
+/* Type B: Routines for I2C bus accessed through GP_IO_B and GP_IO_4 */
+
+static int gb4_init(GENERIC_CARD *card, u32 *saves) {
+  saves[0] = MACH64_GP_IO;
+  return 0;
+}
+
+static void gb4_deinit(GENERIC_CARD *card, u32 *saves) {
+  MACH64_GP_IO = saves[0]; 
+}
+
+static void gb4_scldir(GENERIC_CARD *card, int set)
+{
+  set ? (MACH64_GP_IO |= 0x08000000) : (MACH64_GP_IO &= 0xf7ffffff);
+}
+
+static void gb4_sdadir(GENERIC_CARD *card, int set)
+{
+  set ? (MACH64_GP_IO |= 0x00100000) : (MACH64_GP_IO &= 0xffefffff);
+}
+
+static void gb4_setscl(GENERIC_CARD *card, int set)
+{
+  set ? (MACH64_GP_IO |= 0x00000800) : (MACH64_GP_IO &= 0xfffff7ff);
+  I2C_SLEEP;
+}
+
+static void gb4_setsda(GENERIC_CARD *card, int set)
+{
+  set ? (MACH64_GP_IO |=0x00000010) : (MACH64_GP_IO &=0xffffffef);
+  I2C_SLEEP;
+}
+
+static int gb4_getscl(GENERIC_CARD *card)
+{
+  return (MACH64_GP_IO & 0x00000800);
+}
+
+static int gb4_getsda(GENERIC_CARD *card)
+{
+  return (MACH64_GP_IO & 0x00000010);
+}
+
+
+/* Type C: I2C bus accessed through GP_IO_A and GP_IO_C */
+
+static int gac_init(GENERIC_CARD *card, u32 *saves) {
+  saves[0] = MACH64_GP_IO;
+  return 0;
+}
+
+static void gac_deinit(GENERIC_CARD *card, u32 *saves) {
+  MACH64_GP_IO = saves[0]; 
+}
+
+static void gac_scldir(GENERIC_CARD *card, int set)
+{
+  set ? (MACH64_GP_IO |= 0x04000000) : (MACH64_GP_IO &= 0xfbffffff);
+}
+
+static void gac_sdadir(GENERIC_CARD *card, int set)
+{
+  set ? (MACH64_GP_IO |= 0x10000000) : (MACH64_GP_IO &= 0xefffffff);
+}
+
+static void gac_setscl(GENERIC_CARD *card, int set)
+{
+  set ? (MACH64_GP_IO |= 0x00000400) : (MACH64_GP_IO &= 0xfffffbff);
+  I2C_SLEEP;
+}
+
+static void gac_setsda(GENERIC_CARD *card, int set)
+{
+  set ? (MACH64_GP_IO |=0x00001000) : (MACH64_GP_IO &=0xffffefff);
+  I2C_SLEEP;
+}
+
+static int gac_getscl(GENERIC_CARD *card)
+{
+  return (MACH64_GP_IO & 0x00000400);
+}
+
+static int gac_getsda(GENERIC_CARD *card)
+{
+  return (MACH64_GP_IO & 0x00001000);
+}
+
+
+/* Type BPM (Broken Pro/Mobility) I2C access through GPIO_D and GPIO_C */
+static int gdc_init(GENERIC_CARD *card, u32 *saves) {
+  saves[0] = MACH64_GP_IO;
+  saves[1] = MACH64_I2C_CNTL_1;
+  MACH64_I2C_CNTL_1 |= 0x00400000; /* bit 23 does something too, but what? */
+  return 0;
+}
+
+static void gdc_deinit(GENERIC_CARD *card, u32 *saves) {
+  MACH64_GP_IO = saves[0]; 
+  MACH64_I2C_CNTL_1 = saves[1]; 
+}
+
+/* Needs 8-bit access */
+#define MACH64_GP_IO_B1 *(( u8*)MACH64_GP_IO_PTR + 1)
+#define MACH64_GP_IO_B3 *(( u8*)MACH64_GP_IO_PTR + 3)
+static void gdc_scldir(GENERIC_CARD *card, int set)
+{
+  set ? (MACH64_GP_IO_B3 |= 0x20) : (MACH64_GP_IO_B3 &= 0xdf);
+}
+
+static void gdc_sdadir(GENERIC_CARD *card, int set)
+{
+  set ? (MACH64_GP_IO_B3 |= 0x10) : (MACH64_GP_IO_B3 &= 0xef);
+}
+
+static void gdc_setscl(GENERIC_CARD *card, int set)
+{
+  set ? (MACH64_GP_IO_B1 |= 0x20) : (MACH64_GP_IO_B1 &= 0xdf);
+  I2C_SLEEP;
+}
+
+static void gdc_setsda(GENERIC_CARD *card, int set)
+{
+  set ? (MACH64_GP_IO_B1 |= 0x10) : (MACH64_GP_IO_B1 &=0xef);
+  I2C_SLEEP;
+}
+
+static int gdc_getscl(GENERIC_CARD *card)
+{
+  return (MACH64_GP_IO_B1 & 0x20);
+}
+
+static int gdc_getsda(GENERIC_CARD *card)
+{
+  return (MACH64_GP_IO_B1 & 0x10);
+}
+
+
+/* Type C: Rage Pro I2C control registers */
+
+static int pro_init(GENERIC_CARD *card, u32 *saves) {
+  saves[0] = MACH64_I2C_CNTL_0; 
+  saves[1] = MACH64_I2C_CNTL_1;
+  MACH64_I2C_CNTL_1 = 0x00400000; 
+  if (MACH64_I2C_CNTL_1!=0x00400000) return (-ENODEV);
+
+  card->i2c_cntl_0 = 0x0000C000; 
+  MACH64_I2C_CNTL_0 = card->i2c_cntl_0|0x00040000; 
+  return 0;
+}
+
+static void pro_deinit(GENERIC_CARD *card, u32 *saves) {
+  MACH64_I2C_CNTL_0 = saves[0];
+  MACH64_I2C_CNTL_1 = saves[1];
+}
+
+static void pro_scldir(GENERIC_CARD *card,int set) { }
+static void pro_sdadir(GENERIC_CARD *card,int set) { }
+
+static void pro_setscl(GENERIC_CARD *card,int set) 
 {
   if (set){
     card->i2c_cntl_0 |= 0x00004000;
@@ -201,7 +328,7 @@ void pro_setscl(GENERIC_CARD *card,int set)
   I2C_SLEEP; 
 }
 
-void pro_setsda(GENERIC_CARD *card,int set) 
+static void pro_setsda(GENERIC_CARD *card,int set) 
 {
   if (set){
     card->i2c_cntl_0 |= 0x00008000; 
@@ -212,66 +339,84 @@ void pro_setsda(GENERIC_CARD *card,int set)
   I2C_SLEEP; 
 }
 
-int pro_getscl(GENERIC_CARD *card) 
+static int pro_getscl(GENERIC_CARD *card) 
 { 
   return (MACH64_I2C_CNTL_0 & 0x00004000); 
 }
 
-int pro_getsda(GENERIC_CARD *card) 
+static int pro_getsda(GENERIC_CARD *card) 
 { 
   return (MACH64_I2C_CNTL_0 & 0x00008000); 
 }
 
-/* Hardware routines for I2C modes A, B and LG (DAC+GEN_TEST or GP_IO) */
-void reg_scldir(GENERIC_CARD *card,int set)
+
+/* Type TB: Hardware routines for ImpacTV I2C access */
+
+/* Returns 1 if ready, 0 if MPP bus timed out (not ready) */
+static int mpp_wait(GENERIC_CARD *card) 
 {
-  if (set)
-    *card->sclreg |= card->scldir;
-  else
-    *card->sclreg &= ~card->scldir;
+  u32 tries=MPPTRIES ;
+  while (tries && (MPP_CONFIG3 & 0x40))
+    tries--; 
+  if (tries)
+    return 1 ;
+  return 0 ;
 }
 
-void reg_sdadir(GENERIC_CARD *card,int set)
+/* Set ImpacTV register index and return MPP_ADDR
+ * to 0x0018 for ImpacTV register data access. */
+static void tvout_addr(GENERIC_CARD *card,u16 addr)
 {
-  if (set)
-    *card->sdareg |= card->sdadir;
-  else
-    *card->sdareg &= ~card->sdadir;
+  mpp_wait(card);
+  MPP_CONFIG = MPPNORMALINC;
+  MPP_ADDR = 0x00000008L;
+  MPP_DATA0 = addr;
+  mpp_wait(card);
+  MPP_DATA0 = addr>>8;
+  mpp_wait(card);
+  MPP_CONFIG = MPPNORMAL;
+  MPP_ADDR = 0x00000018L;
 }
 
-void reg_setscl(GENERIC_CARD *card,int set)
+/* Write to ImpacTV register */
+static void tvout_write32(GENERIC_CARD *card, u16 addr, u32 data)
 {
-  if (set)
-    *card->sclreg |= card->sclset;
-  else
-    *card->sclreg &= ~card->sclset;
+  tvout_addr(card,addr);
 
-  I2C_SLEEP;
+  mpp_wait(card);
+  MPP_CONFIG = MPPNORMALINC ;
+  MPP_DATA0 = data ;       mpp_wait(card) ;
+  MPP_DATA0 = data >> 8 ;  mpp_wait(card) ;
+  MPP_DATA0 = data >> 16 ; mpp_wait(card) ;
+  MPP_DATA0 = data >> 24 ; mpp_wait(card) ;
+  if (addr != MACH64_TV_I2C_CNTL) tvout_addr(card,MACH64_TV_I2C_CNTL) ;
 }
 
-void reg_setsda(GENERIC_CARD *card,int set)
+/* Write low byte of ImpacTV TV_I2C_CNTL register */
+static void tvout_write_i2c_cntl8(GENERIC_CARD *card,u8 data)
 {
-  if (set)
-    *card->sdareg |= card->sdaset;
-  else
-    *card->sdareg &= ~card->sdaset;
-
-  I2C_SLEEP;
+  mpp_wait(card);
+  MPP_CONFIG = MPPNORMAL;
+  MPP_DATA0 = data;
 }
 
-int reg_getscl(GENERIC_CARD *card)
+/* Read low byte of ImpacTV TV_I2C_CNTL register */
+static u8 tvout_read_i2c_cntl8(GENERIC_CARD *card)
 {
-  return (*card->sclreg & card->sclset);
+  mpp_wait(card);
+  MPP_CONFIG = MPPREAD;
+  mpp_wait(card);
+  return MPPREADBYTE;
 }
 
-int reg_getsda(GENERIC_CARD *card)
-{
-  return (*card->sdareg & card->sdaget);
+static int itv_init (GENERIC_CARD *card, u32 *saves) {
+ tvout_write32(card, MACH64_TV_I2C_CNTL, 0x00005500 | card->tv_i2c_cntl);
+ return 0;
 }
 
-/* Hardware routines for I2C mode TB (ImpacTV) */
+static void itv_deinit (GENERIC_CARD *card, u32 *saves) { }
 
-void itv_scldir(GENERIC_CARD * card,int set)
+static void itv_scldir(GENERIC_CARD * card,int set)
 {
   if (set)
     card->tv_i2c_cntl |= 0x01;
@@ -282,7 +427,7 @@ void itv_scldir(GENERIC_CARD * card,int set)
   I2C_SLEEP;
 }
 
-void itv_sdadir(GENERIC_CARD * card,int set)
+static void itv_sdadir(GENERIC_CARD * card,int set)
 {
   if (set)
     card->tv_i2c_cntl |= 0x10;
@@ -293,7 +438,7 @@ void itv_sdadir(GENERIC_CARD * card,int set)
   I2C_SLEEP;
 }
 
-void itv_setsda(GENERIC_CARD * card,int set)
+static void itv_setsda(GENERIC_CARD * card,int set)
 {
   if (set)
     card->tv_i2c_cntl |= 0x20;
@@ -304,7 +449,7 @@ void itv_setsda(GENERIC_CARD * card,int set)
   I2C_SLEEP;
 }
 
-void itv_setscl(GENERIC_CARD * card,int set)
+static void itv_setscl(GENERIC_CARD * card,int set)
 {
   if (set)
     card->tv_i2c_cntl |= 0x02;
@@ -315,43 +460,43 @@ void itv_setscl(GENERIC_CARD * card,int set)
   I2C_SLEEP;
 }
 
-int itv_getscl(GENERIC_CARD *card)
+static int itv_getscl(GENERIC_CARD *card)
 {
   return (tvout_read_i2c_cntl8(card) & 0x04);
 }
 
-int itv_getsda(GENERIC_CARD *card)
+static int itv_getsda(GENERIC_CARD *card)
 {
   return (tvout_read_i2c_cntl8(card) & 0x40);
 }
 
-/* Returns 1 if ready, 0 if MPP bus timed out (not ready) */
-int mpp_wait(GENERIC_CARD *card) 
-{
-  u32 tries=MPPTRIES ;
-  while (tries && (MPP_CONFIG3 & 0x40))
-    tries--; 
-  if (tries)
-    return 1 ;
-  return 0 ;
+/* Rage128 I2C routines */
+
+static int r128_wait_ack(GENERIC_CARD *card) {
+  int nack=0, n1=0, n2=0 ;
+  while (n1++ < 10 && (R128_I2C_CNTL_0_1 & (I2C_GO>>8))) udelay(15);
+  while (n2++ < 10 && !nack) { 
+    nack = R128_I2C_CNTL_0_0 & (I2C_DONE|I2C_NACK|I2C_HALT);
+    if (!nack)
+      udelay(15); 
+  }
+  return (nack != I2C_DONE);
+} 
+
+static void r128_reset(GENERIC_CARD *card) {
+  R128_I2C_CNTL_0 = I2C_SOFT_RST | I2C_HALT | I2C_NACK | I2C_DONE;
 }
 
-/* Write low byte of ImpacTV TV_I2C_CNTL register */
-void tvout_write_i2c_cntl8(GENERIC_CARD *card,u8 data)
-{
-  mpp_wait(card);
-  MPP_CONFIG = MPPNORMAL;
-  MPP_DATA0 = data;
+static int r128_go(GENERIC_CARD *card,int naddr, int ndata, u32 flags) {
+  R128_I2C_CNTL_1 = (card->R128_TIME<<24) | I2C_EN | I2C_SEL 
+  	| (naddr<<8) | ndata;
+  R128_I2C_CNTL_0 = (card->R128_N<<24) | (card->R128_M<<16) 
+  	| I2C_GO | I2C_START | I2C_STOP | I2C_DRIVE_EN | flags;
+  return r128_wait_ack(card); 
 }
 
-/* Read low byte of ImpacTV TV_I2C_CNTL register */
-u8 tvout_read_i2c_cntl8(GENERIC_CARD *card)
-{
-  mpp_wait(card);
-  MPP_CONFIG = MPPREAD;
-  mpp_wait(card);
-  return MPPREADBYTE;
-}
+
+/* Mach64/Rage128 I2C Intraface */
 
 void i2c_start(GENERIC_CARD *card)
 {
@@ -407,59 +552,8 @@ int i2c_device(GENERIC_CARD * card,u8 addr)
     nack = i2c_sendbyte(card,addr);
     i2c_stop(card);
   }
+  dprintk(7, "%s @ %x result %d\n", card->i2c->name, addr, !nack);
   return !nack;
-}
-
-/* Set ImpacTV register index and return MPP_ADDR
- * to 0x0018 for ImpacTV register data access. */
-void tvout_addr(GENERIC_CARD *card,u16 addr)
-{
-  mpp_wait(card);
-  MPP_CONFIG = MPPNORMALINC;
-  MPP_ADDR = 0x00000008L;
-  MPP_DATA0 = addr;
-  mpp_wait(card);
-  MPP_DATA0 = addr>>8;
-  mpp_wait(card);
-  MPP_CONFIG = MPPNORMAL;
-  MPP_ADDR = 0x00000018L;
-}
-
-/* Write to ImpacTV register */
-void tvout_write32(GENERIC_CARD *card, u16 addr, u32 data)
-{
-  tvout_addr(card,addr);
-
-  mpp_wait(card);
-  MPP_CONFIG = MPPNORMALINC ;
-  MPP_DATA0 = data ;       mpp_wait(card) ;
-  MPP_DATA0 = data >> 8 ;  mpp_wait(card) ;
-  MPP_DATA0 = data >> 16 ; mpp_wait(card) ;
-  MPP_DATA0 = data >> 24 ; mpp_wait(card) ;
-  if (addr != MACH64_TV_I2C_CNTL) tvout_addr(card,MACH64_TV_I2C_CNTL) ;
-}
-
-int r128_wait_ack(GENERIC_CARD *card) {
-  int nack=0, n1=0, n2=0 ;
-  while (n1++ < 10 && (R128_I2C_CNTL_0_1 & (I2C_GO>>8))) udelay(15);
-  while (n2++ < 10 && !nack) { 
-    nack = R128_I2C_CNTL_0_0 & (I2C_DONE|I2C_NACK|I2C_HALT);
-    if (!nack)
-      udelay(15); 
-  }
-  return (nack != I2C_DONE);
-} 
-
-void r128_reset(GENERIC_CARD *card) {
-  R128_I2C_CNTL_0 = I2C_SOFT_RST | I2C_HALT | I2C_NACK | I2C_DONE;
-}
-
-int r128_go(GENERIC_CARD *card,int naddr, int ndata, u32 flags) {
-  R128_I2C_CNTL_1 = (card->R128_TIME<<24) | I2C_EN | I2C_SEL 
-  	| (naddr<<8) | ndata;
-  R128_I2C_CNTL_0 = (card->R128_N<<24) | (card->R128_M<<16) 
-  	| I2C_GO | I2C_START | I2C_STOP | I2C_DRIVE_EN | flags;
-  return r128_wait_ack(card); 
 }
 
 u8 i2c_read(GENERIC_CARD *card,u8 addr) 
@@ -562,3 +656,30 @@ int i2c_write(GENERIC_CARD *card,u8 addr, u8 *data, int count)
 
   return nack ? -1 : 0;
 }
+
+/* Drivers are tried in order listed here. */
+static struct i2c_funcs generic_i2c_driver[] = {
+  { "type A (DAC_CNTL/GEN_TEST_CNTL)", &dac_init, &dac_deinit,
+    &dac_scldir, &dac_setscl, &dac_getscl,
+    &dac_sdadir, &dac_setsda, &dac_getsda },
+  { "type B (GP_IO pins B and 4)", &gb4_init, &gb4_deinit,
+    &gb4_scldir, &gb4_setscl, &gb4_getscl,
+    &gb4_sdadir, &gb4_setsda, &gb4_getsda },
+  { "type LG (GP_IO pins A and C)", &gac_init, &gac_deinit,
+    &gac_scldir, &gac_setscl, &gac_getscl,
+    &gac_sdadir, &gac_setsda, &gac_getsda },
+  { "type C (Pro I2C registers)", &pro_init, &pro_deinit,
+    &pro_scldir, &pro_setscl, &pro_getscl,
+    &pro_sdadir, &pro_setsda, &pro_getsda },
+  { "type BPM (GP_IO pins D and C)", &gdc_init, &gdc_deinit,
+    &gdc_scldir, &gdc_setscl, &gdc_getscl,
+    &gdc_sdadir, &gdc_setsda, &gdc_getsda },
+  { "type TB (ImpacTV)", &itv_init, &itv_deinit,
+    &itv_scldir, &itv_setscl, &itv_getscl,
+    &itv_sdadir, &itv_setsda, &itv_getsda },
+  { NULL, NULL, NULL, 
+    NULL, NULL, NULL, 
+    NULL, NULL, NULL} /* List terminator + Rage128 */
+};
+
+static struct i2c_funcs *i2c_getfuncs(void) { return generic_i2c_driver; };

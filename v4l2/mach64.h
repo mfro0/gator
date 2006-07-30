@@ -29,6 +29,8 @@
 #define MACH64_GEN_TEST_CNTL_PTR       (card->MEM_0+0x34)
 #define MACH64_GP_IO                 (*(card->MEM_0+0x1E))
 #define MACH64_GP_IO_PTR               (card->MEM_0+0x1E)
+#define MACH64_SCRATCH_REG0          (*(card->MEM_0+0x20))
+#define MACH64_SCRATCH_REG0_PTR        (card->MEM_0+0x20)
 #define MACH64_CRTC_H_TOTAL_DISP     (*(card->MEM_0+0x00))
 #define MACH64_CRTC_V_TOTAL_DISP     (*(card->MEM_0+0x02))
 #define MACH64_CRTC_INT_CNTL         (*(card->MEM_0+0x06))

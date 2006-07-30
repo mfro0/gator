@@ -85,14 +85,14 @@ static struct pci_device_id generic_pci_tbl[] __devinitdata = {
      subdevice:   PCI_ANY_ID,
      class:       0,
      class_mask:  0,
-     driver_data: MACH64CHIP /* can use to store extra data here */
+     driver_data: MACH64CHIP /* Holds chiptype and i2c driver */
     },
     {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_215GB,
      PCI_ANY_ID, PCI_ANY_ID, 0, 0, MACH64CHIP},
     {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_215GD,
      PCI_ANY_ID, PCI_ANY_ID, 0, 0, MACH64CHIP},
     {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_215GI,
-     PCI_ANY_ID, PCI_ANY_ID, 0, 0, MACH64CHIP},
+     PCI_ANY_ID, PCI_ANY_ID, 0, 0, MACH64CHIP|RAGEPRO_I2C},
     {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_215GP,
      PCI_ANY_ID, PCI_ANY_ID, 0, 0, MACH64CHIP},
     {PCI_VENDOR_ID_ATI, PCI_DEVICE_ID_ATI_215GQ,

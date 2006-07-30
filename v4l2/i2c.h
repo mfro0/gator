@@ -35,6 +35,9 @@
 
 /* Function pointers used by low level functions */
 struct i2c_funcs {
+  char *name;
+  int (*init)(GENERIC_CARD *, u32 *saves);
+  void (*deinit)(GENERIC_CARD *, u32 *saves);
   void (*scldir)(GENERIC_CARD *,int);
   void (*setscl)(GENERIC_CARD *,int);
   int (*getscl)(GENERIC_CARD *);
@@ -43,41 +46,15 @@ struct i2c_funcs {
   int (*getsda)(GENERIC_CARD *);
 };
 
-void reg_scldir(GENERIC_CARD *card,int set);
-void reg_sdadir(GENERIC_CARD *card,int set);
-void reg_setscl(GENERIC_CARD *card,int set);
-void reg_setsda(GENERIC_CARD *card,int set);
-int reg_getscl(GENERIC_CARD *card);
-int reg_getsda(GENERIC_CARD *card);
-void itv_scldir(GENERIC_CARD * card,int set);
-void itv_sdadir(GENERIC_CARD * card,int set);
-void itv_setsda(GENERIC_CARD * card,int set);
-void itv_setscl(GENERIC_CARD * card,int set);
-int itv_getscl(GENERIC_CARD *card);
-int itv_getsda(GENERIC_CARD *card);
-int mpp_wait(GENERIC_CARD *card);
-void tvout_write_i2c_cntl8(GENERIC_CARD *card,u8 data);
-u8 tvout_read_i2c_cntl8(GENERIC_CARD *card);
 void i2c_start(GENERIC_CARD *card);
 void i2c_stop(GENERIC_CARD * card);
 int i2c_sendbyte(GENERIC_CARD *card, u8 data);
 int i2c_device(GENERIC_CARD * card,u8 addr);
-void tvout_addr(GENERIC_CARD *card,u16 addr);
-void tvout_write32(GENERIC_CARD *card, u16 addr, u32 data);
 u8 i2c_read(GENERIC_CARD *card,u8 addr);
 u8 i2c_readbyte(GENERIC_CARD *card,int last);
 u8 i2c_readreg8(GENERIC_CARD *card,u8 addr, u8 reg);
 int i2c_writereg8(GENERIC_CARD *card,u8 addr, u8 reg, u8 value);
 int i2c_write(GENERIC_CARD *card,u8 addr, u8 *data, int count);
-void pro_scldir(GENERIC_CARD *card, int set);
-void pro_sdadir(GENERIC_CARD *card, int set);
-void pro_setscl(GENERIC_CARD *card, int set);
-void pro_setsda(GENERIC_CARD *card, int set);
-int pro_getscl(GENERIC_CARD *card);
-int pro_getsda(GENERIC_CARD *card);
 int i2c_init(GENERIC_CARD *card);
-void r128_reset(GENERIC_CARD *card);
-int r128_go(GENERIC_CARD *card,int naddr, int ndata, u32 flags);
-int r128_wait_ack(GENERIC_CARD *card);
 
 #endif

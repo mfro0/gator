@@ -67,6 +67,11 @@
 which i2c driver to use and whatever else */
 #define MACH64CHIP (1 << 0)
 #define RAGE128CHIP (1 << 1)
+#define DACGEN_I2C (1 << 2)
+#define GPIO_I2C (1 << 3)
+#define LG_I2C (1 << 4)
+#define IMPACTTV_I2C (1 << 5)
+#define RAGEPRO_I2C (1 << 6)
 
 struct generici2cchip {
   int   deviceid;
