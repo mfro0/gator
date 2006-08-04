@@ -50,25 +50,25 @@ MODULE_LICENSE("GPL");
 
 /* any params that this module can accept are listed here */
 int debug=0;
-MODULE_PARM(debug, "i");
+module_param(debug, int , 0);
 MODULE_PARM_DESC(debug, "Debugging level");
 int disablev4l2=0;
-MODULE_PARM(disablev4l2, "i");
+module_param(disablev4l2, int, 0);
 MODULE_PARM_DESC(disablev4l2, "disable v4l2 support");
 int disabledma=0;
-MODULE_PARM(disabledma, "i");
+module_param(disabledma, int, 0);
 MODULE_PARM_DESC(disabledma, "disable dma support");
 int disableinterlace=0;
-MODULE_PARM(disableinterlace, "i");
+module_param(disableinterlace, int, 0);
 MODULE_PARM_DESC(disableinterlace, "disable interlace modes");
 int halfwidth=0;
-MODULE_PARM(halfwidth, "i");
+module_param(halfwidth, int, 0);
 MODULE_PARM_DESC(halfwidth, "cut max width in half (640 becomes 320)");
 int forceromaddr=0;
-MODULE_PARM(forceromaddr, "i");
+module_param(forceromaddr, int, 0);
 MODULE_PARM_DESC(forceromaddr, "Force romaddr to 0x000C0000");
 int tunertype=-1;
-MODULE_PARM(tunertype, "i");
+module_param(tunertype, int, 0);
 MODULE_PARM_DESC(tunertype, "Tuner type, 0=pal, 1=ntsc, 2=secam, 3=pal nc, 4=pal m, 5= pal n, 6=ntsc jp");
 
 struct proc_dir_entry *proc_dir;
