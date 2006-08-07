@@ -34,6 +34,9 @@
 #define MACH64_CRTC_H_TOTAL_DISP     (*(card->MEM_0+0x00))
 #define MACH64_CRTC_V_TOTAL_DISP     (*(card->MEM_0+0x02))
 #define MACH64_CRTC_INT_CNTL         (*(card->MEM_0+0x06))
+#define MACH64_CRTC_INT_CNTL_RO_MASK  0x10000fe1
+#define MACH64_CRTC_INT_CNTL_ACK_MASK 0xcaaaa014
+
 #define MACH64_BUS_CNTL              (*(card->MEM_0+0x28))
 #define MACH64_CRTC_GEN_CNTL         (*(card->MEM_0+0x07))
 #define MACH64_TV_I2C_CNTL             0x0015
