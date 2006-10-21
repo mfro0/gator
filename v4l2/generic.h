@@ -19,13 +19,23 @@
 #ifndef GENERICV4L_HEADER
 #define GENERICV4L_HEADER 1
 
-#include <linux/pci.h>
-#include <linux/videodev.h>
 #include <linux/version.h>
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,17)
+
+#if defined(CONFIG_MODVERSIONS) && ! defined(MODVERSIONS)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,17)
+#include <linux/modversions.h>
+#else
+#include <config/modversions.h>
 #include <linux/poll.h>
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,17)
 #include <media/v4l2-dev.h>
 #endif
+#define MODVERSIONS
+#endif
+#endif
+
+#include <linux/pci.h>
+#include <linux/videodev.h>
 #define GENERIC_VERSION_CODE KERNEL_VERSION(0,0,1)
 #define MAX_CARDS 10
 #ifdef dprintk

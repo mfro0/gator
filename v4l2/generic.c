@@ -23,14 +23,7 @@
 
 */
 
-#if defined(CONFIG_MODVERSIONS) && ! defined(MODVERSIONS)
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,17)
-#include <linux/modversions.h>
-#else
-#include <config/modversions.h>
-#define MODVERSIONS
-#endif
-#endif
+#include "generic.h"
 
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -38,7 +31,6 @@
 #include <linux/interrupt.h>
 #include <linux/proc_fs.h>
 
-#include "generic.h"
 #include "i2c.h"
 #include "bt829.h"
 #include "board.h"
