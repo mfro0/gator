@@ -24,8 +24,12 @@
 */
 
 #if defined(CONFIG_MODVERSIONS) && ! defined(MODVERSIONS)
-#include <linux/modversions.h> 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,17)
+#include <linux/modversions.h>
+#else
+#include <config/modversions.h>
 #define MODVERSIONS
+#endif
 #endif
 
 #include <linux/kernel.h>
@@ -2537,17 +2541,17 @@ int __devinit generic_probe(struct pci_dev *dev,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
   printk(KERN_INFO "genericv4l(%d): rev %d at %s, irq: %d, latency: %d, atifb: 0x%lx\n", num_cards_detected, card->revision, dev->slot_name, dev->irq, lat, pci_resource_start(dev,0));
 #else
-  printk(KERN_INFO "genericv4l(%d): rev %d at %s, irq: %d, latency: %d, atifb: 0x%lx\n", num_cards_detected, card->revision, pci_name(dev), dev->irq, lat, pci_resource_start(dev,0));
+  printk(KERN_INFO "genericv4l(%d): rev %d at %s, irq: %d, latency: %d, atifb: 0x%lx\n", num_cards_detected, card->revision, pci_name(dev), dev->irq, lat, (ulong) pci_resource_start(dev,0));
 #endif
 
-  printk(KERN_INFO "IO at 0x%08lx 0x%08lx\n", pci_resource_start(dev, 1), pci_resource_end(dev, 1));
-  printk(KERN_INFO "mmr at 0x%08lx 0x%08lx\n", pci_resource_start(dev, 2), pci_resource_end(dev, 2));
+  printk(KERN_INFO "IO at 0x%08lx 0x%08lx\n", (ulong) pci_resource_start(dev, 1), (ulong) pci_resource_end(dev, 1));
+  printk(KERN_INFO "mmr at 0x%08lx 0x%08lx\n", (ulong) pci_resource_start(dev, 2), (ulong) pci_resource_end(dev, 2));
   romaddr = pci_resource_start(dev, PCI_ROM_RESOURCE);
   if (romaddr == 0 || forceromaddr){
     romaddr = 0x000C0000; //primary card
   }
 
-  printk(KERN_INFO "bios at 0x%08x 0x%08lx\n", romaddr, pci_resource_end(dev, PCI_ROM_RESOURCE));
+  printk(KERN_INFO "bios at 0x%08x 0x%08lx\n", (uint) romaddr, (ulong) pci_resource_end(dev, PCI_ROM_RESOURCE));
 
   /* map the cards framebuffer/capturebuffer/bios to our generic_card struct
   pci_resource_start(device,number) will give you the starting address of 
