@@ -22,9 +22,10 @@
 #include <linux/pci.h>
 #include <linux/videodev.h>
 #include <linux/version.h>
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,17)
 #include <linux/poll.h>
 #include <media/v4l2-dev.h>
-
+#endif
 #define GENERIC_VERSION_CODE KERNEL_VERSION(0,0,1)
 #define MAX_CARDS 10
 #ifdef dprintk
