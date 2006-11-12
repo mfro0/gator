@@ -50,8 +50,8 @@
 	*** Pressed anywhere in AVview ***
 	
 	Control-F                toggle fullscreen
-	Keypad + or -  	         switch favorite channels
-	Control-Keypad + or -	 increas/decreases channel number
+	Keypad + or -            switch favorite channels
+	Control-Keypad + or -    increas/decreases channel number
 	Control-i                switch between tuner/composite/svideo
 	Keypad *                 toggle mute
 	Arrow Up/Down            switch on-screen controls
@@ -76,12 +76,11 @@
 *** LIRC CONFIGURATION ***
 
        * LIRC (Linux Infrared Remote Control) commands are defined in
-	 file ~/.lircrc, see
-	 <http://www.lirc.org/html/configure.html#lircrc_format> for
-	 description of the file format. Each entry in the file has
-	 prog field telling which application should handle the button
-	 press. For AVview this field is 'avview' (without the
-	 apostrophes). The following commands are recogniced as config
+	 file ~/.lircrc. Each entry in the file consist of at least
+	 button, prog and config fields. Button names can be found
+	 from /etc/lircd/lircd.conf or from graphical utility like KDE
+	 LIRC server. prog field has to be set to 'avview' (without
+	 the apostrophes). The following commands are valid config
 	 field values:
 
 	 fullscreen		 toggle fullscreen mode
@@ -101,3 +100,9 @@
 	 channel val		 select channel val. val is channel
 				 name (e.g. E5)
 	 channel_number val	 select channel number val
+
+	 See <http://www.lirc.org/html/configure.html> for further
+	 description of the file format and instructions on setting up
+	 LIRC. File lircrc.example contains a config file template
+	 that you can edit and append to ~/.lircrc (you may need to
+	 change the button names).

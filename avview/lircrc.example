@@ -1,0 +1,91 @@
+begin
+    button = CH+
+    prog = avview
+    config = next_channel +1
+end
+
+begin
+    button = CH-
+    prog = avview
+    config = next_channel -1
+end
+
+begin
+    button = VOL+
+    prog = avview
+    config = volume 1
+    repeat = 1
+end
+
+begin
+    button = VOL-
+    prog = avview
+    config = volume -1
+    repeat = 1
+end
+
+begin
+    button = 1
+    prog = avview
+    config = channel_number 1
+end
+
+begin
+    button = 2
+    prog = avview
+    config = channel_number 2
+end
+
+begin
+    button = 3
+    prog = avview
+    config = channel_number 3
+end
+
+begin
+    button = 4
+    prog = avview
+    config = channel_number 4
+end
+
+begin
+    button = 5
+    prog = avview
+    config = channel_number 5
+end
+
+begin
+    button = 6
+    prog = avview
+    config = channel_number 6
+end
+
+begin
+    button = 7
+    prog = avview
+    config = channel_number 7
+end
+
+begin
+    button = 8
+    prog = avview
+    config = channel_number 8
+end
+
+begin
+    button = 9
+    prog = avview
+    config = channel_number 9
+end
+
+begin
+    button = 0
+    prog = avview
+    config = channel_number 0
+end
+
+begin
+    button = POWER
+    prog = avview
+    config = exit
+end
