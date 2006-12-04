@@ -15,7 +15,6 @@
 #endif
 
 #include <linux/types.h>
-#include <linux/config.h>
 #include <linux/version.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -24,6 +23,7 @@
 #include <linux/pci.h>
 #include <linux/interrupt.h>
 #ifndef LINUX_2_6
+#include <linux/config.h>
 #include <linux/wrapper.h>
 #endif
 #include <linux/mm.h>

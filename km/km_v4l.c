@@ -14,7 +14,6 @@ GNU Public License
 #endif
 
 #include <linux/types.h>
-#include <linux/config.h>
 #include <linux/version.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -22,7 +21,11 @@ GNU Public License
 #include <linux/init.h>
 #include <linux/pci.h>
 #include <linux/interrupt.h>
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,17)
+#include <media/v4l2-dev.h>
+#else
 #include <linux/videodev.h>
+#endif
 
 #include "km.h"
 #include "km_memory.h"

@@ -9,6 +9,7 @@
 #ifndef __KM_DATA_H__
 #define __KM_DATA_H__
 
+#include <linux/poll.h>
 #include <linux/spinlock.h>
 
 

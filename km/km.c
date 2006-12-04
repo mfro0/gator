@@ -20,7 +20,6 @@ GNU Public License
 #endif
 
 #include <linux/types.h>
-#include <linux/config.h>
 #include <linux/version.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
@@ -33,8 +32,11 @@ GNU Public License
 #ifndef LINUX_2_6
 #include <linux/wrapper.h>
 #endif
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,17)
+#include <media/v4l2-dev.h>
+#else
 #include <linux/videodev.h>
-
+#endif
 
 #include "km_api.h"
 #include "km.h"

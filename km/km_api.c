@@ -19,13 +19,15 @@ GNU Public License
 #include <linux/proc_fs.h>
 
 #include <linux/types.h>
-#include <linux/config.h>
 #include <linux/version.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/sched.h>
 #include <linux/init.h>
 #include <linux/poll.h>
+#ifndef LINUX_2_6
+#include <linux/config.h>
+#endif
 
 #include "km_api.h"
 #include "km_api_data.h"
@@ -93,7 +95,6 @@ static void perform_status_cmd(KM_DEVICE *kmd, KM_FILE_PRIVATE_DATA *kmfpd)
 
 	if(kmfpd->br_free+10>=kmfpd->br_size)expand_buffer(kmfpd, 10);
 	kmfpd->br_free+=sprintf(kmfpd->buffer_read+kmfpd->br_free, "+STATUS\n");
-
 	for(i=0;kmd->fields[i].type!=KM_FIELD_TYPE_EOL;i++){
 		f=&(kmd->fields[i]);
 		switch(f->type){

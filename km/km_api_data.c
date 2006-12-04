@@ -19,7 +19,6 @@
 #include <linux/proc_fs.h>
 
 #include <linux/types.h>
-#include <linux/config.h>
 #include <linux/version.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -27,6 +26,9 @@
 #include <linux/init.h>
 #include <linux/poll.h>
 #include <linux/pci.h>
+#ifndef LINUX_2_6
+#include <linux/config.h>
+#endif
 
 #include "km_api_data.h"
 #include "km_memory.h"
