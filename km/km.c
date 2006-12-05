@@ -632,7 +632,7 @@ static int __devinit km_probe(struct pci_dev *dev, const struct pci_device_id *p
 	kms->vbi.info_du=-1;
 	spin_lock_init(&(kms->kms_lock));
 	printk(KERN_DEBUG "km: using irq %ld\n", kms->irq);
-	printk(KERN_DEBUG "Register aperture is 0x%08lx 0x%08lx\n", pci_resource_start(dev, 2), pci_resource_len(dev, 2));
+	printk(KERN_DEBUG "Register aperture is 0x%08llx 0x%08llx\n", (long long)pci_resource_start(dev, 2), (long long)pci_resource_len(dev, 2));
 /*
   if (!request_mem_region(pci_resource_start(dev,2),
   pci_resource_len(dev,2),
@@ -1086,15 +1086,12 @@ static int __init km_init_module(void)
 	printk(KERN_INFO "Kmultimedia module version %s loaded\n", KM_VERSION);
 	printk(KERN_DEBUG "Page size is %ld sizeof(bm_list_descriptor)=%ld sizeof(KM_STRUCT)=%ld\n", PAGE_SIZE, (unsigned long)sizeof(bm_list_descriptor), (unsigned long)sizeof(KM_STRUCT));
 	num_devices=0;
-	pci_module_init( &km_pci_driver );
-
-	return 0;
+	return pci_module_init( &km_pci_driver );
 }
 
 void __exit km_cleanup_module(void)
 {
 	pci_unregister_driver( &km_pci_driver );
-	return;
 }
 
 module_init(km_init_module);
