@@ -276,11 +276,13 @@ static struct file_operations generic_fops =
 /* defaults for setting up a cards video4linux capture device */
 static struct video_device generic_video_template =
 {
-        name:     "UNSET",
+        owner:     THIS_MODULE,
+        name:      "UNSET",
         type:      VID_TYPE_CAPTURE|VID_TYPE_TUNER|VID_TYPE_OVERLAY|
                    VID_TYPE_CLIPPING|VID_TYPE_SCALES,
         hardware:  VID_HARDWARE_BT848, /* look in videodev.h for a list NONE IN THERE FOR bt829 */
         fops:      &generic_fops, /* file operations table above */
+	release:   video_device_release, 
         minor:     -1,
 };
 
@@ -2909,7 +2911,11 @@ int __devinit register_video4linux(GENERIC_CARD *card)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
 void generic_irq_handler(int irq, void *dev_id, struct pt_regs * regs)
 #else
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,20)
 static irqreturn_t generic_irq_handler(int irq, void *dev_id, struct pt_regs * regs)
+#else 
+static irqreturn_t generic_irq_handler(int irq, void *dev_id)
+#endif
 #endif
 {
   GENERIC_CARD *card = (GENERIC_CARD *)dev_id;
