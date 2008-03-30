@@ -30,6 +30,10 @@
 #endif
 #endif
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,18)
+#define IRQF_SHARED                    SA_SHIRQ
+#endif
+
 #include <linux/pci.h>
 #include <linux/videodev.h>
 #include <linux/poll.h>

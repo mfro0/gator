@@ -280,7 +280,6 @@ static struct video_device generic_video_template =
         name:      "UNSET",
         type:      VID_TYPE_CAPTURE|VID_TYPE_TUNER|VID_TYPE_OVERLAY|
                    VID_TYPE_CLIPPING|VID_TYPE_SCALES,
-        hardware:  VID_HARDWARE_BT848, /* look in videodev.h for a list NONE IN THERE FOR bt829 */
         fops:      &generic_fops, /* file operations table above */
 	release:   video_device_release, 
         minor:     -1,
@@ -291,7 +290,6 @@ static struct video_device generic_vbi_template =
 {
         name:      "generic vbi",
         type:      VID_TYPE_TUNER|VID_TYPE_TELETEXT,
-        hardware:  VID_HARDWARE_BT848, /* look in videodev.h for a list */
         fops:      &generic_fops, /* file operations table above */
         minor:     -1,
 };
@@ -1351,7 +1349,7 @@ int v4l2_video_std_const(struct v4l2_standard *vs,
 void grab_frame(GENERIC_CARD *card)
 {
   DMA_BM_TABLE *ptr = NULL;
-  int stall = 0;
+  int ret;
 
   /* lock the capture semaphore *use this to make sure everything is finished
   before disabling interrupts when disable_capture is called */
@@ -1364,12 +1362,11 @@ void grab_frame(GENERIC_CARD *card)
   }
 
   // now wait for the video data (one of the frames)
-  wait_event_interruptible(generic_wait, (card->status & STATUS_BUF0_READY) || (card->status & STATUS_BUF1_READY) || (stall++ > 10));
-  if (stall > 10){
-    printk (KERN_INFO "STALLED!!!!! aborting framegrab\n");
-    up(&card->lockcap);
-    return;
-  } 
+  ret = wait_event_interruptible_timeout (generic_wait, (card->status & STATUS_BUF0_READY) || (card->status & STATUS_BUF1_READY), HZ * 1000);
+
+  if (ret == 0) {
+    printk ("Timed out waiting for frame\n");
+  }
 
   // there are two dma tables, one for buf0 one for buf1
   // they are rebuilt when the capture size changes
@@ -1402,9 +1399,10 @@ void grab_frame(GENERIC_CARD *card)
   
     //wait for dma to finish
     /* this should transfer the vbi information as well */
-    stall=0;
-    wait_event_interruptible(generic_wait, (card->status & STATUS_DMABUF_READY) 
-    	|| (stall++ > 10));
+    ret = wait_event_interruptible_timeout(generic_wait, (card->status & STATUS_DMABUF_READY), HZ * 1000);
+  if (ret == 0) {
+    printk ("Timed out sending frame\n");
+  }
     card->status &= ~STATUS_DMABUF_READY;
 
     // release the lock so we can transfer data again
@@ -1419,6 +1417,7 @@ call this twice */
 int grab_vbi(GENERIC_CARD *card)
 {
   int whichfield;
+  int ret;
   /* lockvbi is used to track when vbi capture is in use
   so we can wait till its done before disabling capture */
   down_interruptible(&card->lockvbi);
@@ -1429,7 +1428,10 @@ int grab_vbi(GENERIC_CARD *card)
     return -1;
   }
 
-  wait_event_interruptible(generic_wait, (card->status & STATUS_VBI_READY));
+  ret = wait_event_interruptible_timeout(generic_wait, (card->status & STATUS_VBI_READY), HZ * 1000);
+  if (ret == 0) {
+    printk ("Timed out waiting for vbi\n");
+  }
   card->status &= ~STATUS_VBI_READY;
 
   down_interruptible(&card->lock);
@@ -1444,7 +1446,10 @@ int grab_vbi(GENERIC_CARD *card)
         FRAME_BUFFER_TO_SYSTEM;
     }
 
-    wait_event_interruptible(generic_wait, (card->status & STATUS_DMABUF_READY));
+    ret = wait_event_interruptible_timeout(generic_wait, (card->status & STATUS_DMABUF_READY), HZ * 1000);
+  if (ret == 0) {
+    printk ("Timed out waiting for vbi\n");
+  }
     card->status &= ~STATUS_DMABUF_READY;
   }
   up(&card->lock);
@@ -3011,7 +3016,7 @@ static irqreturn_t generic_irq_handler(int irq, void *dev_id)
 /* send all irq request for this card to generic_irq_handler */
 int register_irq_handler(GENERIC_CARD *card)
 {
-  switch ((request_irq(card->dev->irq, generic_irq_handler, SA_SHIRQ, tag, (void *)card))){
+  switch ((request_irq(card->dev->irq, generic_irq_handler, IRQF_SHARED, tag, (void *)card))){
     case -EINVAL: 
       printk(KERN_ERR "genericv4l(%d): bad irq number or handler\n",card->cardnum);
       break;

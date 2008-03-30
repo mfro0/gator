@@ -83,6 +83,7 @@ int fi12xx_tune(GENERIC_CARD *card)
   data[2-i] = 0x8E;
   //data[2-i] = 0xCE; // MSB -> 1 CP T2 T1 T0 RSA RSB OS <- LSB (see fi1236.pdf)
   data[3-i] = band ;
+dprintk(1,"card(%d) fi12xx_tune called writing to [%d] i=%d d1=%d d2=%d d3=%d d4=%d tvnorm=%d\n",card->cardnum, card->fi12xx.addr,i, data[i], data[i+1], data[2-i], data[3-i],card->tvnorm);
   i2c_write(card,card->fi12xx.addr,data,sizeof(data));
   return 0;
 }
