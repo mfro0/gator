@@ -1,3 +1,3 @@
-KERNEL	:= $(shell uname -r | cut -c0-3)
+KERNEL	:= $(shell uname -r | cut -c1-3)
 
 include $(PWD)/Makefile_$(KERNEL)

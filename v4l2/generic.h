@@ -43,6 +43,9 @@
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,18)
 #include <media/v4l2-common.h>
 #endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,27)
+#include <media/v4l2-ioctl.h>
+#endif
 #define GENERIC_VERSION_CODE KERNEL_VERSION(0,0,1)
 #define MAX_CARDS 10
 #ifdef dprintk

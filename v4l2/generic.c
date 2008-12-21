@@ -262,7 +262,6 @@ static struct pci_driver generic_pci_driver = {
 /* for each file operation assign a function to handle them */
 static struct file_operations generic_fops =
 {
-        owner:     THIS_MODULE,
         llseek:    no_llseek, /* cant seek on a capture card */
         read:      generic_read,
         write:     generic_write,
@@ -271,27 +270,34 @@ static struct file_operations generic_fops =
         open:      generic_open,
         release:   generic_release,
         poll:      generic_poll,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,27)	
+        owner:     THIS_MODULE,
+#endif	
 };
 
 /* defaults for setting up a cards video4linux capture device */
 static struct video_device generic_video_template =
 {
-        owner:     THIS_MODULE,
         name:      "UNSET",
-        type:      VID_TYPE_CAPTURE|VID_TYPE_TUNER|VID_TYPE_OVERLAY|
-                   VID_TYPE_CLIPPING|VID_TYPE_SCALES,
         fops:      &generic_fops, /* file operations table above */
 	release:   video_device_release, 
         minor:     -1,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,27)	
+        owner:     THIS_MODULE,
+        type:      VID_TYPE_CAPTURE|VID_TYPE_TUNER|VID_TYPE_OVERLAY|
+                   VID_TYPE_CLIPPING|VID_TYPE_SCALES,
+#endif		   
 };
 
 /* defaults for boards that support closed captioning interface */
 static struct video_device generic_vbi_template =
 {
         name:      "generic vbi",
-        type:      VID_TYPE_TUNER|VID_TYPE_TELETEXT,
         fops:      &generic_fops, /* file operations table above */
         minor:     -1,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,27)	
+        type:      VID_TYPE_TUNER|VID_TYPE_TELETEXT,
+#endif
 };
 
 /* list properties of different card models here 
@@ -2842,7 +2848,7 @@ static struct video_device *vdev_init(GENERIC_CARD *card,
                 return NULL;
         *vfd = *template;
         vfd->minor   = -1;
-        vfd->dev     = &card->dev->dev;
+        //vfd->dev     = &card->dev->dev;
         vfd->release = video_device_release;
         snprintf (vfd->name, sizeof(vfd->name),
   	  "genericv4l rev %d",card->revision);
